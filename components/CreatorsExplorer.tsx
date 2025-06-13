@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
 import Avatar from './Avatar'
-import { CheckBadgeIcon, PlayIcon, UserPlusIcon, HeartIcon } from '@heroicons/react/24/outline'
+import { CheckBadgeIcon, PlayIcon, UserPlusIcon, HeartIcon, UsersIcon, SparklesIcon } from '@heroicons/react/24/outline'
 import { HeartIcon as HeartSolidIcon } from '@heroicons/react/24/solid'
 import SubscribeModal from './SubscribeModal'
 import { useWallet } from '@solana/wallet-adapter-react'
@@ -37,6 +37,7 @@ export default function CreatorsExplorer() {
   const [loading, setLoading] = useState(true)
   const [subscribedCreatorIds, setSubscribedCreatorIds] = useState<string[]>([])
   const { publicKey } = useWallet()
+  const [activeTab, setActiveTab] = useState<'subscriptions' | 'recommendations'>('recommendations')
 
   // Загружаем список авторов
   useEffect(() => {
@@ -49,6 +50,13 @@ export default function CreatorsExplorer() {
       fetchUserSubscriptions()
     }
   }, [publicKey])
+
+  // Устанавливаем начальную вкладку в зависимости от наличия подписок
+  useEffect(() => {
+    if (subscribedCreatorIds.length > 0) {
+      setActiveTab('subscriptions')
+    }
+  }, [subscribedCreatorIds])
 
   const fetchCreators = async () => {
     try {
@@ -108,6 +116,19 @@ export default function CreatorsExplorer() {
     return subscribedCreatorIds.includes(creatorId)
   }
 
+  // Фильтруем авторов в зависимости от активной вкладки
+  const getFilteredCreators = () => {
+    if (activeTab === 'subscriptions') {
+      // Показываем только тех, на кого подписан пользователь
+      return creators.filter(creator => isUserSubscribedTo(creator.id))
+    } else {
+      // Показываем рекомендации (тех, на кого НЕ подписан)
+      return creators.filter(creator => !isUserSubscribedTo(creator.id))
+    }
+  }
+
+  const filteredCreators = getFilteredCreators()
+
   if (loading) {
     return (
       <section className="py-20 bg-gradient-to-b from-slate-900 to-slate-800">
@@ -136,6 +157,54 @@ export default function CreatorsExplorer() {
           </p>
         </div>
 
+        {/* Tabs */}
+        <div className="flex justify-center mb-8">
+          <div className="inline-flex bg-slate-800/50 backdrop-blur-sm rounded-2xl p-1 border border-slate-700/50">
+            <button
+              onClick={() => setActiveTab('subscriptions')}
+              className={`flex items-center gap-2 px-6 py-3 rounded-xl font-semibold transition-all duration-300 ${
+                activeTab === 'subscriptions'
+                  ? 'bg-gradient-to-r from-purple-600 to-pink-600 text-white shadow-lg shadow-purple-500/25'
+                  : 'text-slate-300 hover:text-white'
+              }`}
+            >
+              <UsersIcon className="w-5 h-5" />
+              Ваши подписки
+              {subscribedCreatorIds.length > 0 && (
+                <span className="ml-2 px-2 py-0.5 bg-white/20 rounded-full text-sm">
+                  {subscribedCreatorIds.length}
+                </span>
+              )}
+            </button>
+            <button
+              onClick={() => setActiveTab('recommendations')}
+              className={`flex items-center gap-2 px-6 py-3 rounded-xl font-semibold transition-all duration-300 ${
+                activeTab === 'recommendations'
+                  ? 'bg-gradient-to-r from-purple-600 to-pink-600 text-white shadow-lg shadow-purple-500/25'
+                  : 'text-slate-300 hover:text-white'
+              }`}
+            >
+              <SparklesIcon className="w-5 h-5" />
+              Рекомендации для вас
+            </button>
+          </div>
+        </div>
+
+        {/* Section Title */}
+        {activeTab === 'subscriptions' && filteredCreators.length > 0 && (
+          <div className="text-center mb-8">
+            <h3 className="text-2xl font-bold text-white">Ваши подписки</h3>
+            <p className="text-slate-400 mt-2">Авторы, на которых вы подписаны</p>
+          </div>
+        )}
+
+        {activeTab === 'recommendations' && filteredCreators.length > 0 && (
+          <div className="text-center mb-8">
+            <h3 className="text-2xl font-bold text-white">Рекомендации для вас</h3>
+            <p className="text-slate-400 mt-2">Популярные авторы, на которых стоит подписаться</p>
+          </div>
+        )}
+
         {/* Category Filter */}
         <div className="flex flex-wrap justify-center gap-3 mb-12">
           {categories.map((category) => (
@@ -154,13 +223,25 @@ export default function CreatorsExplorer() {
         </div>
 
         {/* Creators Grid */}
-        {creators.length === 0 ? (
+        {filteredCreators.length === 0 ? (
           <div className="text-center py-12">
-            <p className="text-slate-400 text-lg">Нет авторов в этой категории</p>
+            <p className="text-slate-400 text-lg">
+              {activeTab === 'subscriptions' 
+                ? 'Вы пока ни на кого не подписаны' 
+                : 'Нет рекомендаций в этой категории'}
+            </p>
+            {activeTab === 'subscriptions' && (
+              <button
+                onClick={() => setActiveTab('recommendations')}
+                className="mt-4 px-6 py-3 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-xl font-semibold hover:scale-105 transition-transform"
+              >
+                Посмотреть рекомендации
+              </button>
+            )}
           </div>
         ) : (
           <div className="grid gap-6 md:gap-8 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-            {creators.map((creator) => {
+            {filteredCreators.map((creator) => {
               const isSubscribed = isUserSubscribedTo(creator.id)
               
               return (
@@ -326,7 +407,7 @@ export default function CreatorsExplorer() {
         )}
 
         {/* Load More */}
-        {creators.length > 0 && (
+        {filteredCreators.length > 0 && (
           <div className="text-center mt-12">
             <button className="group">
               <div className="bg-slate-800/50 backdrop-blur-sm text-slate-300 hover:text-white px-8 py-4 rounded-2xl font-semibold border border-slate-600/50 hover:border-slate-500/50 transform group-hover:scale-105 transition-all duration-300 hover:shadow-lg hover:shadow-slate-500/25">

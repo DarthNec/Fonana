@@ -31,7 +31,8 @@ model User {
   followers      Follow[]       @relation("UserFollowers")
   likes          Like[]
   posts          Post[]
-  subscriptions  Subscription[]
+  subscriptions  Subscription[]  @relation("UserSubscriptions")
+  subscribers    Subscription[]  @relation("CreatorSubscriptions")
 
   @@map("users")
 }
@@ -125,7 +126,8 @@ model Subscription {
   validUntil   DateTime
   isActive     Boolean  @default(true)
   txSignature  String?
-  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user         User     @relation("UserSubscriptions", fields: [userId], references: [id], onDelete: Cascade)
+  creator      User     @relation("CreatorSubscriptions", fields: [creatorId], references: [id], onDelete: Cascade)
 
   @@unique([userId, creatorId])
   @@map("subscriptions")

@@ -3,6 +3,8 @@
 import { useState, useRef } from 'react'
 import { XMarkIcon, UserIcon, PhotoIcon, SparklesIcon } from '@heroicons/react/24/outline'
 import { User } from '@/lib/hooks/useUser'
+import Avatar from './Avatar'
+import toast from 'react-hot-toast'
 
 interface ProfileSetupModalProps {
   isOpen: boolean
@@ -12,6 +14,7 @@ interface ProfileSetupModalProps {
     fullName?: string
     bio?: string
     avatar?: string
+    backgroundImage?: string
     website?: string
     twitter?: string
     telegram?: string
@@ -28,8 +31,10 @@ export default function ProfileSetupModal({
 }: ProfileSetupModalProps) {
   const [formData, setFormData] = useState({
     nickname: '',
+    fullName: '',
     bio: '',
     avatar: '',
+    backgroundImage: '',
     website: '',
     twitter: '',
     telegram: '',
@@ -43,6 +48,7 @@ export default function ProfileSetupModal({
   const [isUploading, setIsUploading] = useState(false)
   const [uploadError, setUploadError] = useState('')
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const bgFileInputRef = useRef<HTMLInputElement>(null)
   
   // Success states
   const [saveSuccess, setSaveSuccess] = useState(false)
@@ -70,43 +76,21 @@ export default function ProfileSetupModal({
     return `${adj}${noun}${number}`
   }
 
-  // Drag & Drop handlers
-  const handleDragEnter = (e: React.DragEvent) => {
-    e.preventDefault()
-    e.stopPropagation()
-    setIsDragging(true)
-  }
-
-  const handleDragLeave = (e: React.DragEvent) => {
-    e.preventDefault()
-    e.stopPropagation()
-    setIsDragging(false)
-  }
-
-  const handleDragOver = (e: React.DragEvent) => {
-    e.preventDefault()
-    e.stopPropagation()
-  }
-
-  const handleAvatarDrop = (e: React.DragEvent) => {
-    e.preventDefault()
-    e.stopPropagation()
-    setIsDragging(false)
-    
-    const files = e.dataTransfer.files
-    if (files.length > 0) {
-      uploadAvatarFile(files[0])
+  const handleAvatarChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0]
+    if (file) {
+      await uploadFile(file, 'avatar')
     }
   }
 
-  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = e.target.files
-    if (files && files.length > 0) {
-      uploadAvatarFile(files[0])
+  const handleBackgroundChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0]
+    if (file) {
+      await uploadFile(file, 'background')
     }
   }
 
-  const uploadAvatarFile = async (file: File) => {
+  const uploadFile = async (file: File, type: 'avatar' | 'background') => {
     setIsUploading(true)
     setUploadError('')
 
@@ -114,21 +98,27 @@ export default function ProfileSetupModal({
       const formData = new FormData()
       formData.append('file', file)
 
-      const response = await fetch('/api/upload', {
+      const endpoint = type === 'avatar' ? '/api/upload/avatar' : '/api/upload/background'
+      const response = await fetch(endpoint, {
         method: 'POST',
         body: formData,
       })
 
       const data = await response.json()
 
-      if (data.success) {
-        handleChange('avatar', data.url)
+      if (response.ok && data.success) {
+        const urlField = type === 'avatar' ? 'avatarUrl' : 'backgroundUrl'
+        const targetField = type === 'avatar' ? 'avatar' : 'backgroundImage'
+        handleChange(targetField, data[urlField])
+        toast.success(`${type === 'avatar' ? 'Аватар' : 'Фон'} загружен`)
       } else {
-        setUploadError(data.error || 'Ошибка загрузки файла')
+        setUploadError(data.error || `Ошибка загрузки ${type === 'avatar' ? 'аватара' : 'фона'}`)
+        toast.error(data.error || 'Ошибка загрузки файла')
       }
     } catch (error) {
       console.error('Upload error:', error)
       setUploadError('Ошибка загрузки файла')
+      toast.error('Ошибка загрузки файла')
     } finally {
       setIsUploading(false)
     }
@@ -155,16 +145,15 @@ export default function ProfileSetupModal({
     setSaveError('')
     
     try {
-      // Генерируем fullName из адреса кошелька
-      const generateFullName = (wallet: string) => {
-        return `User ${wallet.slice(0, 4)}...${wallet.slice(-4)}`
-      }
+      // Генерируем fullName если не указан
+      const fullName = formData.fullName.trim() || `User ${userWallet.slice(0, 4)}...${userWallet.slice(-4)}`
 
       await onSave({
         nickname: formData.nickname.trim(),
-        fullName: generateFullName(userWallet),
+        fullName: fullName,
         bio: formData.bio.trim() || undefined,
         avatar: formData.avatar.trim() || undefined,
+        backgroundImage: formData.backgroundImage.trim() || undefined,
         website: formData.website.trim() || undefined,
         twitter: formData.twitter.trim() || undefined,
         telegram: formData.telegram.trim() || undefined,
@@ -204,7 +193,7 @@ export default function ProfileSetupModal({
         />
         
         {/* Modal */}
-        <div className="relative w-full max-w-md bg-slate-800 rounded-3xl p-8 shadow-2xl border border-slate-700/50">
+        <div className="relative w-full max-w-2xl bg-slate-800 rounded-3xl p-8 shadow-2xl border border-slate-700/50 max-h-[90vh] overflow-y-auto">
           {/* Header */}
           <div className="flex items-center justify-between mb-8">
             <div>
@@ -225,112 +214,116 @@ export default function ProfileSetupModal({
 
           {/* Form */}
           <form onSubmit={handleSubmit} className="space-y-6">
-            {/* Никнейм (обязательное поле) */}
-            <div>
-              <label className="block text-sm font-medium text-slate-300 mb-2">
-                Никнейм *
-              </label>
-              <div className="relative">
-                <UserIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-slate-400" />
-                <input
-                  type="text"
-                  value={formData.nickname}
-                  onChange={(e) => handleChange('nickname', e.target.value)}
-                  placeholder="Ваш никнейм"
-                  className={`w-full pl-10 pr-16 py-3 bg-slate-700/50 border rounded-xl text-white placeholder-slate-400 focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all ${
-                    errors.nickname ? 'border-red-500' : 'border-slate-600/50'
-                  }`}
-                />
-                <button
-                  type="button"
-                  onClick={() => handleChange('nickname', generateRandomNickname())}
-                  className="absolute right-3 top-1/2 transform -translate-y-1/2 text-purple-400 hover:text-purple-300 transition-colors"
-                  title="Сгенерировать случайный никнейм"
-                >
-                  <SparklesIcon className="w-5 h-5" />
-                </button>
+            {/* Avatar and Background Section */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {/* Аватар */}
+              <div>
+                <label className="block text-sm font-medium text-slate-300 mb-2">
+                  Аватар
+                </label>
+                <div className="flex items-center gap-4">
+                  <Avatar
+                    src={formData.avatar}
+                    alt="Profile"
+                    seed={formData.nickname || userWallet}
+                    size={80}
+                    rounded="2xl"
+                  />
+                  <div>
+                    <label className="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white rounded-xl font-medium transition-all duration-300 hover:scale-105 cursor-pointer">
+                      <PhotoIcon className="w-5 h-5" />
+                      Изменить
+                      <input 
+                        ref={fileInputRef}
+                        type="file" 
+                        className="hidden" 
+                        accept="image/*" 
+                        onChange={handleAvatarChange}
+                        disabled={isUploading}
+                      />
+                    </label>
+                    <p className="text-slate-400 text-xs mt-1">JPG, PNG до 5MB</p>
+                  </div>
+                </div>
               </div>
-              {errors.nickname && (
-                <p className="text-red-400 text-sm mt-1">{errors.nickname}</p>
-              )}
+
+              {/* Фоновое изображение */}
+              <div>
+                <label className="block text-sm font-medium text-slate-300 mb-2">
+                  Фоновое изображение
+                </label>
+                <div className="space-y-2">
+                  {formData.backgroundImage && (
+                    <div className="relative w-full h-20 rounded-xl overflow-hidden">
+                      <img 
+                        src={formData.backgroundImage} 
+                        alt="Background" 
+                        className="w-full h-full object-cover"
+                      />
+                    </div>
+                  )}
+                  <label className="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600 text-white rounded-xl font-medium transition-all duration-300 hover:scale-105 cursor-pointer">
+                    <PhotoIcon className="w-5 h-5" />
+                    {formData.backgroundImage ? 'Изменить фон' : 'Загрузить фон'}
+                    <input 
+                      ref={bgFileInputRef}
+                      type="file" 
+                      className="hidden" 
+                      accept="image/*" 
+                      onChange={handleBackgroundChange}
+                      disabled={isUploading}
+                    />
+                  </label>
+                  <p className="text-slate-400 text-xs">1920x400px, до 10MB</p>
+                </div>
+              </div>
             </div>
 
-            {/* Аватар */}
-            <div>
-              <label className="block text-sm font-medium text-slate-300 mb-2">
-                Аватар
-              </label>
-              
-              {/* Avatar Upload Zone */}
-              <div
-                onDrop={handleAvatarDrop}
-                onDragOver={handleDragOver}
-                onDragEnter={handleDragEnter}
-                onDragLeave={handleDragLeave}
-                onClick={() => fileInputRef.current?.click()}
-                className={`relative w-full h-32 border-2 border-dashed rounded-xl cursor-pointer transition-all ${
-                  isDragging 
-                    ? 'border-purple-400 bg-purple-500/10' 
-                    : 'border-slate-600/50 hover:border-purple-500/50'
-                }`}
-              >
-                {isUploading ? (
-                  <div className="absolute inset-0 flex items-center justify-center">
-                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-500"></div>
-                    <span className="ml-3 text-slate-300">Загрузка...</span>
-                  </div>
-                ) : formData.avatar ? (
-                  <div className="relative w-full h-full">
-                    <img
-                      src={formData.avatar}
-                      alt="Avatar preview"
-                      className="w-full h-full object-cover rounded-xl"
-                      onError={(e) => {
-                        console.error('Image load error:', e)
-                        // Для локальной разработки пробуем альтернативный путь
-                        const currentTarget = e.currentTarget as HTMLImageElement
-                        if (!currentTarget.dataset.retried) {
-                          currentTarget.dataset.retried = 'true'
-                          // Если не загрузился обычный путь, пробуем с префиксом
-                          currentTarget.src = `${window.location.origin}${formData.avatar}`
-                        }
-                      }}
-                    />
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        handleChange('avatar', '')
-                      }}
-                      className="absolute top-2 right-2 w-6 h-6 bg-red-500 hover:bg-red-600 text-white rounded-full flex items-center justify-center transition-colors"
-                    >
-                      ×
-                    </button>
-                    <div className="absolute inset-0 bg-black/50 opacity-0 hover:opacity-100 transition-opacity rounded-xl flex items-center justify-center">
-                      <span className="text-white text-sm">Нажмите для замены</span>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="absolute inset-0 flex flex-col items-center justify-center text-slate-400">
-                    <PhotoIcon className="w-8 h-8 mb-2" />
-                    <p className="text-sm font-medium">Перетащите изображение</p>
-                    <p className="text-xs">или нажмите для выбора</p>
-                    <p className="text-xs mt-1 text-slate-500">JPG, PNG, GIF до 5MB</p>
-                  </div>
+            {/* Basic Info */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {/* Никнейм (обязательное поле) */}
+              <div>
+                <label className="block text-sm font-medium text-slate-300 mb-2">
+                  Никнейм *
+                </label>
+                <div className="relative">
+                  <UserIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-slate-400" />
+                  <input
+                    type="text"
+                    value={formData.nickname}
+                    onChange={(e) => handleChange('nickname', e.target.value)}
+                    placeholder="Ваш никнейм"
+                    className={`w-full pl-10 pr-16 py-3 bg-slate-700/50 border rounded-xl text-white placeholder-slate-400 focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all ${
+                      errors.nickname ? 'border-red-500' : 'border-slate-600/50'
+                    }`}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => handleChange('nickname', generateRandomNickname())}
+                    className="absolute right-3 top-1/2 transform -translate-y-1/2 text-purple-400 hover:text-purple-300 transition-colors"
+                    title="Сгенерировать случайный никнейм"
+                  >
+                    <SparklesIcon className="w-5 h-5" />
+                  </button>
+                </div>
+                {errors.nickname && (
+                  <p className="text-red-400 text-sm mt-1">{errors.nickname}</p>
                 )}
-                
+              </div>
+
+              {/* Полное имя */}
+              <div>
+                <label className="block text-sm font-medium text-slate-300 mb-2">
+                  Полное имя
+                </label>
                 <input
-                  ref={fileInputRef}
-                  type="file"
-                  accept="image/*"
-                  onChange={handleFileSelect}
-                  className="hidden"
+                  type="text"
+                  value={formData.fullName}
+                  onChange={(e) => handleChange('fullName', e.target.value)}
+                  placeholder="Ваше имя"
+                  className="w-full px-4 py-3 bg-slate-700/50 border border-slate-600/50 rounded-xl text-white placeholder-slate-400 focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all"
                 />
               </div>
-              
-              {uploadError && (
-                <p className="text-red-400 text-sm mt-1">{uploadError}</p>
-              )}
             </div>
 
             {/* Описание */}
@@ -345,6 +338,61 @@ export default function ProfileSetupModal({
                 rows={3}
                 className="w-full px-4 py-3 bg-slate-700/50 border border-slate-600/50 rounded-xl text-white placeholder-slate-400 focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all resize-none"
               />
+            </div>
+
+            {/* Social Links */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div>
+                <label className="block text-sm font-medium text-slate-300 mb-2">
+                  Веб-сайт
+                </label>
+                <input
+                  type="url"
+                  value={formData.website}
+                  onChange={(e) => handleChange('website', e.target.value)}
+                  placeholder="https://example.com"
+                  className="w-full px-4 py-3 bg-slate-700/50 border border-slate-600/50 rounded-xl text-white placeholder-slate-400 focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-slate-300 mb-2">
+                  Twitter
+                </label>
+                <input
+                  type="text"
+                  value={formData.twitter}
+                  onChange={(e) => handleChange('twitter', e.target.value)}
+                  placeholder="@username"
+                  className="w-full px-4 py-3 bg-slate-700/50 border border-slate-600/50 rounded-xl text-white placeholder-slate-400 focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-slate-300 mb-2">
+                  Telegram
+                </label>
+                <input
+                  type="text"
+                  value={formData.telegram}
+                  onChange={(e) => handleChange('telegram', e.target.value)}
+                  placeholder="@username"
+                  className="w-full px-4 py-3 bg-slate-700/50 border border-slate-600/50 rounded-xl text-white placeholder-slate-400 focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-slate-300 mb-2">
+                  Местоположение
+                </label>
+                <input
+                  type="text"
+                  value={formData.location}
+                  onChange={(e) => handleChange('location', e.target.value)}
+                  placeholder="Город, Страна"
+                  className="w-full px-4 py-3 bg-slate-700/50 border border-slate-600/50 rounded-xl text-white placeholder-slate-400 focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all"
+                />
+              </div>
             </div>
 
             {/* Wallet Info */}
