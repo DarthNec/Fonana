@@ -106,12 +106,12 @@ export default function RecommendedCreators() {
         {creators.map((creator) => (
           <div
             key={creator.id}
-            className="flex-shrink-0 w-80 group relative overflow-hidden rounded-3xl bg-gradient-to-br from-slate-800/40 to-slate-900/60 backdrop-blur-xl border border-slate-700/50 hover:border-purple-500/30 transition-all duration-500 hover:transform hover:scale-[1.02]"
+            className="flex-shrink-0 w-80 h-[320px] group relative overflow-hidden rounded-3xl bg-gradient-to-br from-slate-800/40 to-slate-900/60 backdrop-blur-xl border border-slate-700/50 hover:border-purple-500/30 transition-all duration-500 hover:transform hover:scale-[1.02] flex flex-col"
           >
             {/* Hover glow effect */}
             <div className="absolute -inset-1 bg-gradient-to-r from-purple-600/20 to-pink-600/20 rounded-3xl opacity-0 group-hover:opacity-100 blur-xl transition-opacity duration-500"></div>
             
-            <div className="relative z-10 p-4">
+            <div className="relative z-10 p-4 flex flex-col h-full">
               {/* Cover Image */}
               <div className="relative h-32 rounded-2xl overflow-hidden mb-4 bg-gradient-to-br from-purple-900/20 to-pink-900/20">
                 <div className="w-full h-full bg-gradient-to-br from-purple-600/20 to-pink-600/20 flex items-center justify-center">
@@ -154,12 +154,16 @@ export default function RecommendedCreators() {
               </div>
 
               {/* Bio */}
-              {creator.bio && (
-                <p className="text-slate-300 text-xs mb-3 line-clamp-2">{creator.bio}</p>
-              )}
+              <div className="flex-grow">
+                {creator.bio ? (
+                  <p className="text-slate-300 text-xs mb-3 line-clamp-2">{creator.bio}</p>
+                ) : (
+                  <p className="text-slate-300 text-xs mb-3 opacity-0">Placeholder</p>
+                )}
+              </div>
 
               {/* Action Buttons */}
-              <div className="flex gap-2">
+              <div className="flex gap-2 mt-auto">
                 <Link
                   href={`/creator/${creator.id}`}
                   className="flex-1 bg-gradient-to-r from-purple-600 to-pink-600 text-white px-4 py-2 rounded-xl font-semibold text-sm text-center transform hover:scale-105 transition-all duration-300 hover:shadow-lg hover:shadow-purple-500/25"

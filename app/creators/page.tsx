@@ -1,8 +1,8 @@
 'use client'
 
-import CreatorsExplorer from '../../components/CreatorsExplorer'
-import SubscriptionsCarousel from '../../components/SubscriptionsCarousel'
-import RecommendedCreators from '../../components/RecommendedCreators'
+import CreatorsExplorer from '@/components/CreatorsExplorer'
+import SubscriptionsCarousel from '@/components/SubscriptionsCarousel'
+import RecommendedCreators from '@/components/RecommendedCreators'
 
 export default function CreatorsPage() {
   return (
@@ -19,26 +19,52 @@ export default function CreatorsPage() {
             </h1>
           </div>
           
-          {/* Subscriptions Section */}
-          <div className="mb-12">
-            <h2 className="text-2xl font-bold text-white mb-6 text-center">
-              Ваши подписки
-            </h2>
-            <SubscriptionsCarousel />
-          </div>
-
           {/* Recommended Section */}
           <div className="mb-12">
-            <h2 className="text-2xl font-bold text-white mb-6 text-center">
-              Рекомендованное
-            </h2>
+            <div className="mb-6">
+              <div className="flex items-center justify-center gap-3 mb-2">
+                <div className="h-px w-12 bg-gradient-to-r from-transparent to-purple-500"></div>
+                <h2 className="text-2xl font-bold text-white text-center">
+                  Рекомендации для вас
+                </h2>
+                <div className="h-px w-12 bg-gradient-to-l from-transparent to-pink-500"></div>
+              </div>
+              <p className="text-sm text-slate-400 text-center">Авторы, которые могут вас заинтересовать</p>
+            </div>
             <RecommendedCreators />
+          </div>
+
+          {/* Subscriptions Section */}
+          <div className="mb-12">
+            <div className="mb-6">
+              <div className="flex items-center justify-center gap-3 mb-2">
+                <div className="h-px w-12 bg-gradient-to-r from-transparent to-purple-500"></div>
+                <h2 className="text-2xl font-bold text-white text-center">
+                  Ваши подписки
+                </h2>
+                <div className="h-px w-12 bg-gradient-to-l from-transparent to-pink-500"></div>
+              </div>
+              <p className="text-sm text-slate-400 text-center">Авторы, на которых вы подписаны</p>
+            </div>
+            <SubscriptionsCarousel />
           </div>
         </div>
       </section>
 
       {/* Creators Explorer */}
-      <CreatorsExplorer />
+      <section className="py-8">
+        <div className="container mx-auto px-4 mb-6">
+          <div className="flex items-center justify-center gap-3 mb-2">
+            <div className="h-px w-12 bg-gradient-to-r from-transparent to-purple-500"></div>
+            <h2 className="text-2xl font-bold text-white text-center">
+              Все авторы
+            </h2>
+            <div className="h-px w-12 bg-gradient-to-l from-transparent to-pink-500"></div>
+          </div>
+          <p className="text-sm text-slate-400 text-center">Откройте для себя новых талантливых креаторов</p>
+        </div>
+        <CreatorsExplorer />
+      </section>
     </div>
   )
 } 

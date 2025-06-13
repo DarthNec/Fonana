@@ -50,8 +50,15 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
+    console.log('Received post data:', body)
     
     if (!body.creatorWallet || !body.title || !body.content || !body.type) {
+      console.log('Missing fields:', {
+        creatorWallet: !!body.creatorWallet,
+        title: !!body.title,
+        content: !!body.content,
+        type: !!body.type
+      })
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
     }
 

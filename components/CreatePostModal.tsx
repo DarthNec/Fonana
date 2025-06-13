@@ -182,12 +182,19 @@ export default function CreatePostModal({ onPostCreated, onClose }: CreatePostMo
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     
+    console.log('Starting form submission...')
+    console.log('Connected:', connected)
+    console.log('PublicKey:', publicKey?.toString())
+    console.log('Form data:', formData)
+    
     if (!connected || !publicKey) {
       toast.error('Подключите кошелек')
       return
     }
 
     if (!formData.title.trim() || !formData.content.trim()) {
+      console.log('Title:', formData.title)
+      console.log('Content:', formData.content)
       toast.error('Заполните название и описание')
       return
     }
@@ -220,7 +227,7 @@ export default function CreatePostModal({ onPostCreated, onClose }: CreatePostMo
 
       // Создаем пост
       const postData = {
-        wallet: publicKey.toString(),
+        creatorWallet: publicKey.toString(),
         title: formData.title,
         content: formData.content,
         type: formData.type,
@@ -235,12 +242,17 @@ export default function CreatePostModal({ onPostCreated, onClose }: CreatePostMo
         tier: formData.accessType
       }
 
+      console.log('Sending post data:', postData)
+      
+      const bodyString = JSON.stringify(postData)
+      console.log('JSON body:', bodyString)
+
       const response = await fetch('/api/posts', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(postData)
+        body: bodyString
       })
 
       if (!response.ok) {

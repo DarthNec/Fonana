@@ -40,11 +40,20 @@ cp -r public $LOCAL_DEPLOY_DIR/
 cp -r components $LOCAL_DEPLOY_DIR/
 cp -r lib $LOCAL_DEPLOY_DIR/
 cp -r app $LOCAL_DEPLOY_DIR/
+cp -r prisma $LOCAL_DEPLOY_DIR/
 cp package*.json $LOCAL_DEPLOY_DIR/
 cp next.config.js $LOCAL_DEPLOY_DIR/
 cp tailwind.config.js $LOCAL_DEPLOY_DIR/
 cp postcss.config.js $LOCAL_DEPLOY_DIR/
 cp tsconfig.json $LOCAL_DEPLOY_DIR/
+
+# Copy .env file if exists
+if [ -f .env ]; then
+    cp .env $LOCAL_DEPLOY_DIR/
+fi
+if [ -f .env.local ]; then
+    cp .env.local $LOCAL_DEPLOY_DIR/
+fi
 
 # Create start script for server
 cat > $LOCAL_DEPLOY_DIR/start.sh << 'EOF'
@@ -54,8 +63,16 @@ echo "🚀 Starting Fonana on server..."
 # Install dependencies if needed
 if [ ! -d "node_modules" ]; then
     echo "📦 Installing dependencies..."
-    npm install --production
+    npm install
 fi
+
+# Generate Prisma client
+echo "🔧 Generating Prisma client..."
+npx prisma generate
+
+# Apply database migrations
+echo "🗄️ Applying database migrations..."
+npx prisma migrate deploy
 
 # Kill existing process
 pkill -f "next"
@@ -115,7 +132,7 @@ ssh -p $SERVER_PORT $SERVER_USER@$SERVER_IP << 'ENDSSH'
     tar -xzf /tmp/fonana-deploy.tar.gz
     
     # Install dependencies
-    npm install --production
+    npm install
     
     # Start application
     chmod +x start.sh stop.sh
