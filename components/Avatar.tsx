@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import Image from 'next/image'
-import AvatarGenerator from './AvatarGenerator'
+import AvatarFallback from './AvatarFallback'
 
 interface AvatarProps {
   src?: string | null
@@ -22,13 +22,13 @@ export default function Avatar({
   rounded = '2xl'
 }: AvatarProps) {
   const [imageError, setImageError] = useState(false)
+  const [generatorError, setGeneratorError] = useState(false)
   
-  // Проверяем, является ли src внешней ссылкой или локальным файлом
-  const isExternalUrl = src?.startsWith('http://') || src?.startsWith('https://')
-  const isValidLocalImage = src && !isExternalUrl && src.includes('/avatars/') && (src.includes('.jpg') || src.includes('.png') || src.includes('.webp'))
+  // Проверяем, является ли src валидным локальным изображением
+  const isValidLocalImage = src && src.includes('/avatars/') && (src.includes('.jpg') || src.includes('.png') || src.includes('.webp'))
   
-  // Если это внешняя ссылка или невалидный локальный путь, используем генератор
-  const shouldUseGenerator = !src || imageError || isExternalUrl || !isValidLocalImage
+  // Если нет валидного изображения, используем DiceBear
+  const shouldUseGenerator = !src || !isValidLocalImage || imageError
   
   const roundedClasses = {
     'full': 'rounded-full',
@@ -37,16 +37,42 @@ export default function Avatar({
     '3xl': 'rounded-3xl'
   }
   
-  if (shouldUseGenerator) {
+  // Если генератор не сработал или нет seed, показываем fallback
+  if (generatorError || (shouldUseGenerator && !seed)) {
     return (
-      <AvatarGenerator 
-        seed={seed} 
+      <AvatarFallback 
+        seed={seed || alt || 'user'} 
         size={size} 
         className={`${roundedClasses[rounded]} ${className}`}
       />
     )
   }
   
+  // Используем DiceBear API
+  if (shouldUseGenerator) {
+    // Генерируем цвет фона на основе seed
+    const backgroundColor = generateBackgroundColor(seed)
+    const avatarUrl = `https://api.dicebear.com/9.x/avataaars/svg?seed=${encodeURIComponent(seed)}&backgroundColor=${backgroundColor}`
+    
+    return (
+      <div 
+        className={`relative overflow-hidden ${roundedClasses[rounded]} ${className}`}
+        style={{ width: size, height: size }}
+      >
+        <Image
+          src={avatarUrl}
+          alt={alt}
+          width={size}
+          height={size}
+          className="w-full h-full"
+          unoptimized
+          onError={() => setGeneratorError(true)}
+        />
+      </div>
+    )
+  }
+  
+  // Показываем локальное изображение
   return (
     <div 
       className={`relative overflow-hidden ${roundedClasses[rounded]} ${className}`}
@@ -62,4 +88,28 @@ export default function Avatar({
       />
     </div>
   )
+}
+
+// Генерация цвета фона
+function generateBackgroundColor(str: string): string {
+  const colors = [
+    'b6e3f4', // Soft Blue
+    'c0aede', // Soft Purple  
+    'd1d4f9', // Soft Lavender
+    'ffd5dc', // Soft Pink
+    'ffdfbf', // Soft Peach
+    'c9f0d6', // Soft Mint
+    'f4c7ab', // Soft Orange
+    'a8e6cf', // Soft Green
+    'ffd3b6', // Soft Coral
+    'dcedc1', // Soft Lime
+  ]
+  
+  let hash = 0
+  for (let i = 0; i < str.length; i++) {
+    hash = ((hash << 5) - hash) + str.charCodeAt(i)
+    hash = hash & hash
+  }
+  
+  return colors[Math.abs(hash) % colors.length]
 } 

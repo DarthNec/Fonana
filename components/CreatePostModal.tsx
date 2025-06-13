@@ -15,7 +15,8 @@ import {
   UsersIcon,
   CurrencyDollarIcon,
   SparklesIcon,
-  LockClosedIcon
+  LockClosedIcon,
+  StarIcon
 } from '@heroicons/react/24/outline'
 
 const categories = [
@@ -44,7 +45,7 @@ export default function CreatePostModal({ onPostCreated, onClose }: CreatePostMo
     file: null as File | null,
     preview: '',
     type: 'text' as 'text' | 'image' | 'video' | 'audio',
-    accessType: 'free' as 'free' | 'subscribers' | 'premium' | 'paid',
+    accessType: 'free' as 'free' | 'subscribers' | 'premium' | 'paid' | 'vip',
     price: 0,
     currency: 'SOL' as 'SOL' | 'USDC'
   })
@@ -67,23 +68,30 @@ export default function CreatePostModal({ onPostCreated, onClose }: CreatePostMo
     { 
       value: 'subscribers', 
       label: 'Для подписчиков', 
-      desc: 'Только подписчики',
+      desc: 'Basic и выше',
       icon: UsersIcon,
       color: 'from-blue-500 to-cyan-500'
     },
     { 
       value: 'premium', 
-      label: 'VIP подписчики', 
-      desc: 'Только VIP',
+      label: 'Premium', 
+      desc: 'Premium и VIP',
       icon: SparklesIcon,
       color: 'from-purple-500 to-pink-500'
+    },
+    { 
+      value: 'vip', 
+      label: 'VIP контент', 
+      desc: 'Только VIP',
+      icon: StarIcon,
+      color: 'from-yellow-500 to-orange-500'
     },
     { 
       value: 'paid', 
       label: 'Платный', 
       desc: 'Разовая покупка',
       icon: CurrencyDollarIcon,
-      color: 'from-yellow-500 to-orange-500'
+      color: 'from-red-500 to-rose-500'
     }
   ]
 
@@ -223,7 +231,8 @@ export default function CreatePostModal({ onPostCreated, onClose }: CreatePostMo
         isLocked: formData.accessType !== 'free',
         price: formData.accessType === 'paid' ? formData.price : undefined,
         currency: formData.accessType === 'paid' ? formData.currency : undefined,
-        isPremium: formData.accessType === 'premium'
+        isPremium: formData.accessType === 'vip',
+        tier: formData.accessType
       }
 
       const response = await fetch('/api/posts', {
@@ -565,7 +574,7 @@ export default function CreatePostModal({ onPostCreated, onClose }: CreatePostMo
                 </>
               ) : (
                 <>
-                  <SparklesIcon className="w-5 h-5" />
+                  <LockClosedIcon className="w-5 h-5" />
                   Опубликовать
                 </>
               )}

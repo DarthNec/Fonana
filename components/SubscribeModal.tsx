@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import Image from 'next/image'
+import Avatar from './Avatar'
 import { 
   CheckIcon,
   SparklesIcon,
@@ -37,6 +37,7 @@ interface SubscribeModalProps {
     posts?: number
     category?: string
   }
+  preferredTier?: 'basic' | 'premium' | 'vip'
   onClose: () => void
   onSuccess?: () => void
 }
@@ -44,19 +45,32 @@ interface SubscribeModalProps {
 const getSubscriptionTiers = (creatorCategory?: string): SubscriptionTier[] => {
   const baseTiers = [
     {
+      id: 'free',
+      name: 'Free',
+      price: 0,
+      currency: 'SOL',
+      duration: 'forever',
+      description: 'Бесплатная подписка',
+      features: [
+        'Доступ к бесплатным постам',
+        'Возможность лайкать и комментировать',
+        'Уведомления о новом контенте'
+      ],
+      color: 'from-slate-400 to-slate-600'
+    },
+    {
       id: 'basic',
       name: 'Basic',
       price: 0.05,
       currency: 'SOL',
       duration: 'month',
-      description: 'Доступ к базовому контенту',
+      description: 'Базовая подписка',
       features: [
-        'Доступ к публичным постам',
-        'Участие в чате сообщества',
-        'Ежемесячные стримы',
-        'Базовое взаимодействие с автором'
+        'Все возможности Free',
+        'Доступ к контенту для подписчиков',
+        'Участие в чате сообщества'
       ],
-      color: 'from-gray-400 to-gray-600'
+      color: 'from-blue-400 to-blue-600'
     },
     {
       id: 'premium',
@@ -64,17 +78,15 @@ const getSubscriptionTiers = (creatorCategory?: string): SubscriptionTier[] => {
       price: 0.15,
       currency: 'SOL',
       duration: 'month',
-      description: 'Расширенный доступ с эксклюзивным контентом',
+      description: 'Премиум подписка',
       features: [
         'Все возможности Basic',
-        'Эксклюзивный премиум контент',
-        'Еженедельные приватные стримы',
-        'Приоритет в комментариях',
-        'Личные сообщения',
+        'Доступ к премиум контенту',
+        'Приоритетная поддержка',
         'Ранний доступ к новому контенту'
       ],
       popular: true,
-      color: 'from-indigo-500 to-purple-600'
+      color: 'from-purple-500 to-pink-600'
     },
     {
       id: 'vip',
@@ -82,15 +94,12 @@ const getSubscriptionTiers = (creatorCategory?: string): SubscriptionTier[] => {
       price: 0.35,
       currency: 'SOL',
       duration: 'month',
-      description: 'Максимальный доступ с личным взаимодействием',
+      description: 'VIP подписка',
       features: [
         'Все возможности Premium',
-        'Персональные видео сообщения',
-        'Видеозвонки один на один (ежемесячно)',
-        'Запросы на кастомный контент',
-        'Доступ за кулисы',
-        'Эксклюзивные NFT дропы',
-        'Персональный обзор портфолио'
+        'Доступ к VIP контенту',
+        'Персональное общение с автором',
+        'Эксклюзивные бонусы'
       ],
       color: 'from-yellow-400 to-orange-500'
     }
@@ -99,10 +108,10 @@ const getSubscriptionTiers = (creatorCategory?: string): SubscriptionTier[] => {
   return baseTiers
 }
 
-export default function SubscribeModal({ creator, onClose, onSuccess }: SubscribeModalProps) {
+export default function SubscribeModal({ creator, preferredTier, onClose, onSuccess }: SubscribeModalProps) {
   const { connected, publicKey } = useWallet()
   const subscriptionTiers = getSubscriptionTiers(creator.category)
-  const [selectedTier, setSelectedTier] = useState(subscriptionTiers[1].id)
+  const [selectedTier, setSelectedTier] = useState(preferredTier || subscriptionTiers[1].id)
   const [showInCarousel, setShowInCarousel] = useState(true)
   const [isProcessing, setIsProcessing] = useState(false)
 
@@ -122,17 +131,47 @@ export default function SubscribeModal({ creator, onClose, onSuccess }: Subscrib
       return
     }
 
+    if (!publicKey) {
+      toast.error('Кошелек не подключен')
+      return
+    }
+
     setIsProcessing(true)
     
     try {
-      // Здесь будет логика оплаты через Solana
-      await new Promise(resolve => setTimeout(resolve, 2000))
+      // Получаем ID текущего пользователя
+      const userResponse = await fetch(`/api/user?wallet=${publicKey.toString()}`)
+      const userData = await userResponse.json()
+      
+      if (!userData.user) {
+        throw new Error('Пользователь не найден')
+      }
+
+      // Создаем подписку
+      const response = await fetch('/api/subscriptions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          userId: userData.user.id,
+          creatorId: creator.id,
+          plan: selectedSubscription?.name || 'Premium',
+          price: selectedSubscription?.price || 0.15,
+        }),
+      })
+
+      if (!response.ok) {
+        const error = await response.json()
+        throw new Error(error.error || 'Ошибка при создании подписки')
+      }
       
       toast.success(`Вы успешно подписались на ${creator.name}!`)
       onSuccess?.()
       onClose()
     } catch (error) {
-      toast.error('Ошибка при оформлении подписки')
+      console.error('Error subscribing:', error)
+      toast.error(error instanceof Error ? error.message : 'Ошибка при оформлении подписки')
     } finally {
       setIsProcessing(false)
     }
@@ -144,15 +183,14 @@ export default function SubscribeModal({ creator, onClose, onSuccess }: Subscrib
         {/* Header */}
         <div className="sticky top-0 bg-slate-900/95 backdrop-blur-xl border-b border-slate-700/50 p-6 flex items-center justify-between">
           <div className="flex items-center gap-4">
-            <div className="w-12 h-12 rounded-xl overflow-hidden border-2 border-purple-500/30">
-              <Image
-                src={creator.avatar}
-                alt={creator.name}
-                width={48}
-                height={48}
-                className="object-cover"
-              />
-            </div>
+            <Avatar
+              src={creator.avatar}
+              alt={creator.name}
+              seed={creator.username}
+              size={48}
+              rounded="xl"
+              className="border-2 border-purple-500/30"
+            />
             <div>
               <div className="flex items-center gap-2">
                 <h2 className="text-xl font-bold text-white">
@@ -189,20 +227,22 @@ export default function SubscribeModal({ creator, onClose, onSuccess }: Subscrib
               </span>
             </h3>
             
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
               {subscriptionTiers.map((tier) => {
                 const isSelected = selectedTier === tier.id
                 
                 return (
                   <div
                     key={tier.id}
-                    className={`relative border-2 rounded-2xl cursor-pointer transition-all duration-300 hover:scale-105 bg-slate-800/50 backdrop-blur-sm p-6 ${
+                    className={`relative border-2 rounded-2xl cursor-pointer transition-all duration-300 hover:scale-105 bg-slate-800/50 backdrop-blur-sm p-4 ${
                       isSelected 
-                        ? tier.id === 'basic' 
-                          ? 'border-gray-500 shadow-xl shadow-gray-500/25'
-                          : tier.id === 'vip'
-                            ? 'border-yellow-500 shadow-xl shadow-yellow-500/25'
-                            : 'border-purple-500 shadow-xl shadow-purple-500/25'
+                        ? tier.id === 'free'
+                          ? 'border-slate-500 shadow-xl shadow-slate-500/25'
+                          : tier.id === 'basic'
+                            ? 'border-blue-500 shadow-xl shadow-blue-500/25'
+                            : tier.id === 'vip'
+                              ? 'border-yellow-500 shadow-xl shadow-yellow-500/25'
+                              : 'border-purple-500 shadow-xl shadow-purple-500/25'
                         : 'border-slate-600/50 hover:border-slate-500/50'
                     } ${tier.popular ? 'ring-2 ring-purple-500/50' : ''}`}
                     onClick={() => setSelectedTier(tier.id)}
@@ -241,7 +281,7 @@ export default function SubscribeModal({ creator, onClose, onSuccess }: Subscrib
                     </div>
 
                     <ul className="space-y-2">
-                      {tier.features.slice(0, 4).map((feature, index) => (
+                      {tier.features.map((feature, index) => (
                         <li key={index} className="flex items-start gap-2">
                           <CheckIcon className="w-4 h-4 text-green-400 mt-0.5 flex-shrink-0" />
                           <span className="text-slate-300 text-sm">
@@ -249,11 +289,6 @@ export default function SubscribeModal({ creator, onClose, onSuccess }: Subscrib
                           </span>
                         </li>
                       ))}
-                      {tier.features.length > 4 && (
-                        <li className="text-slate-400 text-sm text-center">
-                          +{tier.features.length - 4} больше...
-                        </li>
-                      )}
                     </ul>
                   </div>
                 )
@@ -287,8 +322,10 @@ export default function SubscribeModal({ creator, onClose, onSuccess }: Subscrib
               onClick={handleSubscribe}
               disabled={isProcessing || !connected}
               className={`flex-1 py-4 px-8 rounded-xl font-bold text-lg transition-all duration-300 transform hover:scale-105 text-white ${
-                selectedTier === 'basic'
+                selectedTier === 'free'
                   ? 'bg-gradient-to-r from-gray-500 to-gray-600 hover:from-gray-600 hover:to-gray-700'
+                  : selectedTier === 'basic'
+                  ? 'bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700'
                   : selectedTier === 'vip'
                   ? 'bg-gradient-to-r from-yellow-500 to-orange-500 hover:from-yellow-600 hover:to-orange-600'
                   : 'bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700'
@@ -302,7 +339,9 @@ export default function SubscribeModal({ creator, onClose, onSuccess }: Subscrib
               ) : !connected ? (
                 'Подключите кошелек'
               ) : (
-                `Подписаться за ${selectedSubscription?.price} ${selectedSubscription?.currency}/мес`
+                selectedSubscription?.price === 0 
+                  ? 'Подписаться бесплатно'
+                  : `Подписаться за ${selectedSubscription?.price} ${selectedSubscription?.currency}/мес`
               )}
             </button>
             

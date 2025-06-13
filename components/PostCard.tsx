@@ -1,9 +1,10 @@
 'use client'
 
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
 import Avatar from './Avatar'
+import { toast } from 'react-hot-toast'
 import { 
   HeartIcon, 
   ChatBubbleLeftIcon, 
@@ -29,7 +30,7 @@ interface Creator {
 }
 
 interface Comment {
-  id: number
+  id: string
   user: {
     name: string
     username: string
@@ -44,7 +45,7 @@ interface Comment {
 }
 
 interface PostCardProps {
-  id: number
+  id: string | number
   creator: Creator
   title: string
   content: string
@@ -61,49 +62,11 @@ interface PostCardProps {
   isPremium?: boolean
   isSubscribed?: boolean
   showCreator?: boolean
+  onSubscribeClick?: (creatorData: any, preferredTier?: 'basic' | 'premium' | 'vip') => void
+  onPurchaseClick?: (postData: any) => void
 }
 
-// Mock comments data
-const mockComments: Comment[] = [
-  {
-    id: 1,
-    user: {
-      name: 'Alex Blockchain',
-      username: 'alexblockchain',
-      avatar: null,
-      isVerified: false
-    },
-    content: 'Выглядит потрясающе! Когда будет минт?',
-    createdAt: '2024-01-15T11:00:00Z',
-    likes: 5,
-    replies: [
-      {
-        id: 11,
-        user: {
-          name: 'Anna Crypto',
-          username: 'annacrypto',
-          avatar: null,
-          isVerified: true
-        },
-        content: 'Спасибо! Планируем запуск на следующей неделе 🚀',
-        createdAt: '2024-01-15T11:05:00Z',
-        likes: 8
-      }
-    ]
-  },
-  {
-    id: 2,
-    user: {
-      name: 'Crypto Marina',
-      username: 'cryptomarina',
-      avatar: null,
-      isVerified: true
-    },
-    content: 'Анна, твои работы всегда на высшем уровне! Обязательно буду участвовать в минте 🚀',
-    createdAt: '2024-01-15T11:15:00Z',
-    likes: 12
-  }
-]
+
 
 export default function PostCard({
   id,
@@ -122,94 +85,220 @@ export default function PostCard({
   tags,
   isPremium = false,
   isSubscribed = false,
-  showCreator = true
+  showCreator = true,
+  onSubscribeClick,
+  onPurchaseClick
 }: PostCardProps) {
-  const [isLiked, setIsLiked] = useState(false)
-  const [likesCount, setLikesCount] = useState(likes)
-  const [showComments, setShowComments] = useState(false)
-  const [newComment, setNewComment] = useState('')
-  const [commentsData, setCommentsData] = useState(mockComments)
-  const [replyTo, setReplyTo] = useState<number | null>(null)
-  const [replyContent, setReplyContent] = useState('')
   const { user } = useUser()
+  const [likesCount, setLikesCount] = useState(likes)
+  const [isLiked, setIsLiked] = useState(false)
+  const [showComments, setShowComments] = useState(false)
+  const [commentsData, setCommentsData] = useState<Comment[]>([])
+  const [newComment, setNewComment] = useState('')
+  const [replyTo, setReplyTo] = useState<string | null>(null)
+  const [replyContent, setReplyContent] = useState('')
+  const [isLoadingLike, setIsLoadingLike] = useState(false)
+  const [isLoadingComments, setIsLoadingComments] = useState(false)
 
-  const handleLike = () => {
-    setIsLiked(!isLiked)
-    setLikesCount(prev => isLiked ? prev - 1 : prev + 1)
-  }
+  // Загружаем статус лайка при монтировании
+  useEffect(() => {
+    if (user?.id && id) {
+      checkLikeStatus()
+    }
+  }, [user?.id, id])
 
-  const handleCommentLike = (commentId: number) => {
-    setCommentsData(prev => prev.map(comment => 
-      comment.id === commentId 
-        ? { 
-            ...comment, 
-            likes: comment.likes + (comment.isLiked ? -1 : 1), 
-            isLiked: !comment.isLiked 
-          }
-        : comment
-    ))
-  }
+  // Загружаем комментарии при открытии
+  useEffect(() => {
+    if (showComments && id) {
+      loadComments()
+    }
+  }, [showComments, id])
 
-  const handleReplyLike = (commentId: number, replyId: number) => {
-    setCommentsData(prev => prev.map(comment => 
-      comment.id === commentId 
-        ? {
-            ...comment,
-            replies: comment.replies?.map(reply =>
-              reply.id === replyId
-                ? {
-                    ...reply,
-                    likes: reply.likes + (reply.isLiked ? -1 : 1),
-                    isLiked: !reply.isLiked
-                  }
-                : reply
-            ) || []
-          }
-        : comment
-    ))
-  }
-
-  const handleAddComment = () => {
-    if (newComment.trim()) {
-      const comment: Comment = {
-        id: Date.now(),
-        user: {
-          name: 'You',
-          username: 'you',
-          avatar: null,
-          isVerified: false
-        },
-        content: newComment,
-        createdAt: new Date().toISOString(),
-        likes: 0
+  const checkLikeStatus = async () => {
+    try {
+      const response = await fetch(`/api/posts/${id}/like?userId=${user?.id}`)
+      if (response.ok) {
+        const data = await response.json()
+        setIsLiked(data.isLiked)
+        setLikesCount(data.likesCount)
       }
-      setCommentsData([...commentsData, comment])
-      setNewComment('')
+    } catch (error) {
+      console.error('Error checking like status:', error)
     }
   }
 
-  const handleAddReply = (commentId: number) => {
-    if (replyContent.trim()) {
-      const reply: Comment = {
-        id: Date.now(),
-        user: {
-          name: 'You',
-          username: 'you',
-          avatar: null,
-          isVerified: false
-        },
-        content: replyContent,
-        createdAt: new Date().toISOString(),
-        likes: 0
+  const loadComments = async () => {
+    setIsLoadingComments(true)
+    try {
+      const response = await fetch(`/api/posts/${id}/comments`)
+      if (response.ok) {
+        const data = await response.json()
+        setCommentsData(data.comments)
       }
-      
-      setCommentsData(prev => prev.map(comment => 
-        comment.id === commentId 
-          ? { ...comment, replies: [...(comment.replies || []), reply] }
-          : comment
-      ))
-      setReplyContent('')
-      setReplyTo(null)
+    } catch (error) {
+      console.error('Error loading comments:', error)
+    } finally {
+      setIsLoadingComments(false)
+    }
+  }
+
+  const handleLike = async () => {
+    if (!user?.id) {
+      toast.error('Войдите, чтобы оставить лайк')
+      return
+    }
+
+    setIsLoadingLike(true)
+    try {
+      const response = await fetch(`/api/posts/${id}/like`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId: user.id })
+      })
+
+      if (response.ok) {
+        const data = await response.json()
+        setIsLiked(data.isLiked)
+        setLikesCount(data.likesCount)
+      }
+    } catch (error) {
+      console.error('Error toggling like:', error)
+      toast.error('Ошибка при обновлении лайка')
+    } finally {
+      setIsLoadingLike(false)
+    }
+  }
+
+  const handleCommentLike = async (commentId: string) => {
+    if (!user?.id) {
+      toast.error('Войдите, чтобы оставить лайк')
+      return
+    }
+
+    try {
+      const response = await fetch(`/api/comments/${commentId}/like`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId: user.id })
+      })
+
+      if (response.ok) {
+        const data = await response.json()
+        setCommentsData(prev => prev.map(comment => 
+          comment.id === commentId 
+            ? { 
+                ...comment, 
+                likes: data.likesCount,
+                isLiked: data.isLiked 
+              }
+            : comment
+        ))
+      }
+    } catch (error) {
+      console.error('Error toggling comment like:', error)
+      toast.error('Ошибка при обновлении лайка')
+    }
+  }
+
+  const handleReplyLike = async (commentId: string, replyId: string) => {
+    if (!user?.id) {
+      toast.error('Войдите, чтобы оставить лайк')
+      return
+    }
+
+    try {
+      const response = await fetch(`/api/comments/${replyId}/like`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId: user.id })
+      })
+
+      if (response.ok) {
+        const data = await response.json()
+        setCommentsData(prev => prev.map(comment => 
+          comment.id === commentId 
+            ? {
+                ...comment,
+                replies: comment.replies?.map(reply =>
+                  reply.id === replyId
+                    ? {
+                        ...reply,
+                        likes: data.likesCount,
+                        isLiked: data.isLiked
+                      }
+                    : reply
+                ) || []
+              }
+            : comment
+        ))
+      }
+    } catch (error) {
+      console.error('Error toggling reply like:', error)
+      toast.error('Ошибка при обновлении лайка')
+    }
+  }
+
+  const handleAddComment = async () => {
+    if (!user?.id) {
+      toast.error('Войдите, чтобы оставить комментарий')
+      return
+    }
+
+    if (!newComment.trim()) return
+
+    try {
+      const response = await fetch(`/api/posts/${id}/comments`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userId: user.id,
+          content: newComment
+        })
+      })
+
+      if (response.ok) {
+        const data = await response.json()
+        setCommentsData([...commentsData, data.comment])
+        setNewComment('')
+      }
+    } catch (error) {
+      console.error('Error adding comment:', error)
+      toast.error('Ошибка при добавлении комментария')
+    }
+  }
+
+  const handleAddReply = async (commentId: string) => {
+    if (!user?.id) {
+      toast.error('Войдите, чтобы ответить')
+      return
+    }
+
+    if (!replyContent.trim()) return
+
+    try {
+      const response = await fetch(`/api/posts/${id}/comments`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userId: user.id,
+          content: replyContent,
+          parentId: commentId
+        })
+      })
+
+      if (response.ok) {
+        const data = await response.json()
+        setCommentsData(prev => prev.map(comment => 
+          comment.id === commentId 
+            ? { ...comment, replies: [...(comment.replies || []), data.comment] }
+            : comment
+        ))
+        setReplyContent('')
+        setReplyTo(null)
+      }
+    } catch (error) {
+      console.error('Error adding reply:', error)
+      toast.error('Ошибка при добавлении ответа')
     }
   }
 
@@ -225,19 +314,37 @@ export default function PostCard({
 
   // Логика доступа к контенту:
   // - Бесплатный контент видят все
-  // - Контент для подписчиков видят обычные и VIP подписчики
+  // - Контент для подписчиков видят обычные, премиум и VIP подписчики
+  // - Премиум контент видят премиум и VIP подписчики  
   // - VIP контент видят только VIP подписчики
   // - Платный контент требует разовой оплаты
   const userSubscriptionLevel = user?.subscriptionType || 'free'
-  const canViewContent = 
-    !isLocked || // Бесплатный контент
-    (isSubscribed && !isPremium) || // Контент для обычных подписчиков
-    (isPremium && userSubscriptionLevel === 'vip') || // VIP контент для VIP подписчиков
-    (userSubscriptionLevel === 'vip' && !price) // VIP видит весь контент кроме платного
   
-  const needsPayment = isLocked && price && !canViewContent
-  const isVipContent = isLocked && isPremium && !price // VIP контент - заблокирован, премиум, но без цены
-  const isSubscriberContent = isLocked && !isPremium && !price // Контент для подписчиков - заблокирован, не премиум, без цены
+  // Определяем уровень контента
+  const contentLevel = isPremium ? 'vip' : isLocked ? 'basic' : 'free'
+  
+  const canViewContent = (() => {
+    // Бесплатный контент видят все
+    if (!isLocked && !isPremium) return true
+    
+    // Платный контент требует покупки
+    if (price && price > 0) return false
+    
+    // Проверяем уровень подписки
+    if (!isSubscribed) return false
+    
+    // Контент для подписчиков (basic)
+    if (isLocked && !isPremium) return true
+    
+    // VIP контент только для VIP
+    if (isPremium) return userSubscriptionLevel === 'vip'
+    
+    return false
+  })()
+  
+  const needsPayment = isLocked && price && price > 0
+  const isVipContent = isLocked && isPremium && !price
+  const isSubscriberContent = isLocked && !isPremium && !price
 
   return (
     <article className={`group relative overflow-hidden rounded-3xl bg-gradient-to-br from-slate-800/40 to-slate-900/60 backdrop-blur-xl border border-slate-700/50 transition-all duration-500 mb-8 ${
@@ -358,7 +465,35 @@ export default function PostCard({
                     {price} {currency}
                   </div>
                 )}
-                <button className="px-6 py-3 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white rounded-xl font-medium transition-all transform hover:scale-105">
+                <button 
+                  onClick={() => {
+                    if (needsPayment) {
+                      onPurchaseClick?.({
+                        id: id,
+                        title: title,
+                        price: price || 0,
+                        currency: currency || 'SOL',
+                        creator: {
+                          id: creator.id,
+                          name: creator.name,
+                          username: creator.username,
+                          avatar: creator.avatar,
+                          isVerified: creator.isVerified
+                        }
+                      })
+                    } else {
+                      const preferredTier = isVipContent ? 'vip' : 'basic'
+                      onSubscribeClick?.({
+                        id: creator.id,
+                        name: creator.name,
+                        username: creator.username,
+                        avatar: creator.avatar || '',
+                        isVerified: creator.isVerified
+                      }, preferredTier as 'basic' | 'premium' | 'vip')
+                    }
+                  }}
+                  className="px-6 py-3 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white rounded-xl font-medium transition-all transform hover:scale-105"
+                >
                   {needsPayment 
                     ? `Купить за ${price} ${currency}`
                     : isVipContent 

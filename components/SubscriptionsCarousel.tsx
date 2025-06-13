@@ -5,63 +5,86 @@ import Link from 'next/link'
 import Image from 'next/image'
 import Avatar from './Avatar'
 import { CheckBadgeIcon, ChevronLeftIcon, ChevronRightIcon, EyeIcon, EyeSlashIcon, SparklesIcon } from '@heroicons/react/24/outline'
-import { getCreatorById, getAllCreators, type Creator } from '../lib/mockData'
 import { useUser } from '@/lib/hooks/useUser'
 import SubscribeModal from './SubscribeModal'
+import { useWallet } from '@solana/wallet-adapter-react'
+import toast from 'react-hot-toast'
 
 interface SubscriptionInfo {
-  creatorId: number
+  creatorId: string
   isVisible: boolean
   subscriptionTier: string
   subscribedAt: string
 }
 
-// Mock data for user subscriptions - using real creator IDs
-const mockUserSubscriptions: SubscriptionInfo[] = []
+interface Creator {
+  id: string
+  name: string
+  username: string
+  description: string
+  avatar: string | null
+  coverImage: string
+  isVerified: boolean
+  subscribers: number
+  posts: number
+  tags: string[]
+  monthlyEarnings: string
+  createdAt: string
+}
 
 export default function SubscriptionsCarousel() {
   const { user } = useUser()
-  const [subscriptions, setSubscriptions] = useState<SubscriptionInfo[]>([])
+  const { publicKey } = useWallet()
+  const [subscriptions, setSubscriptions] = useState<any[]>([])
   const [showSettings, setShowSettings] = useState(false)
   const [showSubscribeModal, setShowSubscribeModal] = useState(false)
-  const [selectedCreator, setSelectedCreator] = useState<any>(null)
-  const [recommendations, setRecommendations] = useState<any[]>([])
+  const [selectedCreator, setSelectedCreator] = useState<Creator | null>(null)
+  const [recommendations, setRecommendations] = useState<Creator[]>([])
+  const [loading, setLoading] = useState(true)
   const scrollContainerRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    loadRecommendations()
+  }, [])
 
   useEffect(() => {
     // Загружаем подписки пользователя
     if (user) {
-      // Здесь будет реальная загрузка подписок из базы
-      setSubscriptions(mockUserSubscriptions)
+      loadUserSubscriptions()
     }
-
-    // Загружаем рекомендации
-    loadRecommendations()
   }, [user])
 
-  const loadRecommendations = () => {
-    // Получаем всех креаторов и сортируем по популярности
-    const allCreators = getAllCreators()
-    const sortedCreators = allCreators
-      .sort((a: Creator, b: Creator) => b.subscribers - a.subscribers)
-      .slice(0, 10) // Топ 10 креаторов
-    
-    // Перемешиваем и берем 5 случайных из топ-10
-    const shuffled = sortedCreators.sort(() => 0.5 - Math.random())
-    setRecommendations(shuffled.slice(0, 5))
+  const loadRecommendations = async () => {
+    try {
+      setLoading(true)
+      const response = await fetch('/api/creators/recommendations?limit=5')
+      const data = await response.json()
+      
+      if (response.ok) {
+        setRecommendations(data.recommendations || [])
+      } else {
+        console.error('Failed to load recommendations')
+      }
+    } catch (error) {
+      console.error('Error fetching recommendations:', error)
+    } finally {
+      setLoading(false)
+    }
   }
 
-  // Show only visible creators
-  const visibleSubscriptions = subscriptions.filter(sub => sub.isVisible)
-
-  const toggleVisibility = (creatorId: number) => {
-    setSubscriptions(prev => 
-      prev.map(sub => 
-        sub.creatorId === creatorId 
-          ? { ...sub, isVisible: !sub.isVisible }
-          : sub
-      )
-    )
+  const loadUserSubscriptions = async () => {
+    if (!user) return
+    
+    try {
+      const response = await fetch(`/api/subscriptions?userId=${user.id}`)
+      const data = await response.json()
+      
+      if (response.ok && data.subscriptions) {
+        setSubscriptions(data.subscriptions)
+      }
+    } catch (error) {
+      console.error('Error fetching subscriptions:', error)
+    }
   }
 
   const scrollLeft = () => {
@@ -76,13 +99,27 @@ export default function SubscriptionsCarousel() {
     }
   }
 
-  const handleSubscribeClick = (creator: any) => {
+  const handleSubscribeClick = (creator: Creator) => {
+    if (!publicKey) {
+      toast.error('Подключите кошелек для подписки')
+      return
+    }
     setSelectedCreator(creator)
     setShowSubscribeModal(true)
   }
 
+  if (loading) {
+    return (
+      <div className="container mx-auto px-4">
+        <div className="text-center">
+          <p className="text-slate-400">Загрузка рекомендаций...</p>
+        </div>
+      </div>
+    )
+  }
+
   // Если нет подписок, показываем рекомендации
-  if (visibleSubscriptions.length === 0 && recommendations.length > 0) {
+  if (subscriptions.length === 0 && recommendations.length > 0) {
     return (
       <div className="container mx-auto px-4">
         <div className="text-center mb-6">
@@ -129,21 +166,20 @@ export default function SubscriptionsCarousel() {
                 <div className="relative z-10 p-4">
                   {/* Cover Image */}
                   <div className="relative h-32 rounded-2xl overflow-hidden mb-4 bg-gradient-to-br from-purple-900/20 to-pink-900/20">
-                    <Image
-                      src={creator.coverImage}
-                      alt={`${creator.name} cover`}
-                      fill
-                      className="object-cover group-hover:scale-110 transition-transform duration-700"
-                      onError={(e) => {
-                        e.currentTarget.style.display = 'none'
-                        e.currentTarget.nextElementSibling?.classList.remove('hidden')
-                      }}
-                    />
-                    <div className="hidden absolute inset-0 bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center">
-                      <span className="text-white font-bold text-6xl">
-                        {creator.name.charAt(0).toUpperCase()}
-                      </span>
-                    </div>
+                    {!creator.coverImage || creator.coverImage.includes('api/og') ? (
+                      <div className="w-full h-full bg-gradient-to-br from-purple-600/20 to-pink-600/20 flex items-center justify-center">
+                        <span className="text-4xl font-bold text-white/50">
+                          {creator.name.charAt(0).toUpperCase()}
+                        </span>
+                      </div>
+                    ) : (
+                      <Image
+                        src={creator.coverImage}
+                        alt={`${creator.name} cover`}
+                        fill
+                        className="object-cover group-hover:scale-110 transition-transform duration-700"
+                      />
+                    )}
                     <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent"></div>
                     
                     {/* Recommendation badge */}
@@ -204,14 +240,20 @@ export default function SubscriptionsCarousel() {
         {/* Subscribe Modal */}
         {showSubscribeModal && selectedCreator && (
           <SubscribeModal
-            creator={selectedCreator}
+            creator={{
+              ...selectedCreator,
+              avatar: selectedCreator.avatar || '/avatars/default.png'
+            }}
             onClose={() => {
               setShowSubscribeModal(false)
               setSelectedCreator(null)
             }}
             onSuccess={() => {
               // Обновляем список подписок
+              loadUserSubscriptions()
               loadRecommendations()
+              setShowSubscribeModal(false)
+              setSelectedCreator(null)
             }}
           />
         )}
@@ -219,13 +261,12 @@ export default function SubscriptionsCarousel() {
     )
   }
 
-  // Обычное отображение подписок
+  // TODO: Реализовать отображение подписок пользователя
+  // Пока показываем только рекомендации
   return (
     <div className="container mx-auto px-4">
-      {/* Carousel */}
       <div className="relative">
-        {/* Navigation Buttons */}
-        {visibleSubscriptions.length > 4 && (
+        {subscriptions.length > 4 && (
           <>
             <button
               onClick={scrollLeft}
@@ -243,224 +284,85 @@ export default function SubscriptionsCarousel() {
           </>
         )}
 
-        {/* Scrollable Container */}
         <div
           ref={scrollContainerRef}
           className="flex gap-6 overflow-x-auto scrollbar-hide pb-2"
           style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
         >
-          {visibleSubscriptions.map((sub) => {
-            const creator = getCreatorById(sub.creatorId)
-            if (!creator) return null
-            
-            return (
-              <div
-                key={creator.id}
-                className="flex-shrink-0 w-80 group relative overflow-hidden rounded-3xl bg-gradient-to-br from-slate-800/40 to-slate-900/60 backdrop-blur-xl border border-slate-700/50 hover:border-purple-500/30 transition-all duration-500 hover:transform hover:scale-[1.02]"
-              >
-                {/* Hover glow effect */}
-                <div className="absolute -inset-1 bg-gradient-to-r from-purple-600/20 to-pink-600/20 rounded-3xl opacity-0 group-hover:opacity-100 blur-xl transition-opacity duration-500"></div>
-                
-                <div className="relative z-10 p-4">
-                  {/* Cover Image */}
-                  <div className="relative h-32 rounded-2xl overflow-hidden mb-4 bg-gradient-to-br from-purple-900/20 to-pink-900/20">
-                    <Image
-                      src={creator.coverImage}
-                      alt={`${creator.name} cover`}
-                      fill
-                      className="object-cover group-hover:scale-110 transition-transform duration-700"
-                      onError={(e) => {
-                        e.currentTarget.style.display = 'none'
-                        e.currentTarget.nextElementSibling?.classList.remove('hidden')
-                      }}
-                    />
-                    <div className="hidden absolute inset-0 bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center">
-                      <span className="text-white font-bold text-6xl">
-                        {creator.name.charAt(0).toUpperCase()}
-                      </span>
-                    </div>
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent"></div>
-                    
-                    {/* Visibility Toggle Button */}
-                    <button
-                      onClick={(e) => {
-                        e.preventDefault()
-                        e.stopPropagation()
-                        toggleVisibility(creator.id)
-                      }}
-                      className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity w-6 h-6 bg-slate-800/90 backdrop-blur-sm rounded-full flex items-center justify-center text-slate-400 hover:text-white"
-                      title="Hide from carousel"
-                    >
-                      <EyeSlashIcon className="w-3 h-3" />
-                    </button>
+          {subscriptions.map((subscription) => (
+            <div
+              key={subscription.id}
+              className="flex-shrink-0 w-80 group relative overflow-hidden rounded-3xl bg-gradient-to-br from-slate-800/40 to-slate-900/60 backdrop-blur-xl border border-slate-700/50 hover:border-purple-500/30 transition-all duration-500 hover:transform hover:scale-[1.02]"
+            >
+              {/* Hover glow effect */}
+              <div className="absolute -inset-1 bg-gradient-to-r from-purple-600/20 to-pink-600/20 rounded-3xl opacity-0 group-hover:opacity-100 blur-xl transition-opacity duration-500"></div>
+              
+              <div className="relative z-10 p-4">
+                {/* Cover Image */}
+                <div className="relative h-32 rounded-2xl overflow-hidden mb-4 bg-gradient-to-br from-purple-900/20 to-pink-900/20">
+                  <div className="w-full h-full bg-gradient-to-br from-purple-600/20 to-pink-600/20 flex items-center justify-center">
+                    <span className="text-4xl font-bold text-white/50">
+                      {(subscription.creator.fullName || subscription.creator.nickname || 'C').charAt(0).toUpperCase()}
+                    </span>
                   </div>
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent"></div>
+                  
+                  {/* Subscription tier badge */}
+                  <div className={`absolute top-2 right-2 px-2 py-1 backdrop-blur-sm rounded-full text-xs text-white font-medium ${
+                    subscription.plan === 'VIP' 
+                      ? 'bg-yellow-500/80' 
+                      : subscription.plan === 'Premium' 
+                      ? 'bg-purple-600/80'
+                      : 'bg-blue-600/80'
+                  }`}>
+                    {subscription.plan}
+                  </div>
+                </div>
 
-                  {/* Avatar & Info */}
-                  <div className="flex items-start gap-3 mb-3">
-                    <div className="relative flex-shrink-0">
-                      <div className="w-12 h-12 rounded-2xl overflow-hidden border-2 border-purple-500/30 bg-gradient-to-br from-purple-500/20 to-pink-500/20">
-                        <Avatar
-                          src={creator.avatar}
-                          alt={creator.name}
-                          seed={creator.username}
-                          size={48}
-                          rounded="2xl"
-                        />
-                      </div>
-                    </div>
-
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 mb-1">
-                        <h3 className="font-bold text-white truncate group-hover:text-purple-300 transition-colors text-sm">
-                          {creator.name}
-                        </h3>
-                        {creator.isVerified && (
-                          <CheckBadgeIcon className="w-4 h-4 text-blue-400 flex-shrink-0" />
-                        )}
-                      </div>
-                      <p className="text-slate-400 text-xs truncate">@{creator.username}</p>
+                {/* Avatar & Info */}
+                <div className="flex items-start gap-3 mb-3">
+                  <div className="relative flex-shrink-0">
+                    <div className="w-12 h-12 rounded-2xl overflow-hidden border-2 border-purple-500/30 bg-gradient-to-br from-purple-500/20 to-pink-500/20">
+                      <Avatar
+                        src={subscription.creator.avatar}
+                        alt={subscription.creator.fullName || subscription.creator.nickname}
+                        seed={subscription.creator.nickname || subscription.creator.wallet}
+                        size={48}
+                        rounded="2xl"
+                      />
                     </div>
                   </div>
 
-                  {/* Action Button */}
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 mb-1">
+                      <h3 className="font-bold text-white truncate group-hover:text-purple-300 transition-colors text-sm">
+                        {subscription.creator.fullName || subscription.creator.nickname || 'Creator'}
+                      </h3>
+                      {subscription.creator.isVerified && (
+                        <CheckBadgeIcon className="w-4 h-4 text-blue-400 flex-shrink-0" />
+                      )}
+                    </div>
+                    <p className="text-slate-400 text-xs truncate">@{subscription.creator.nickname || subscription.creator.wallet.slice(0, 6) + '...'}</p>
+                    <p className="text-slate-500 text-xs mt-1">
+                      Подписан с {new Date(subscription.subscribedAt).toLocaleDateString('ru-RU')}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Action Buttons */}
+                <div className="flex gap-2">
                   <Link
-                    href={`/creator/${creator.id}`}
-                    className="w-full group/btn block"
+                    href={`/creator/${subscription.creatorId}`}
+                    className="flex-1 bg-gradient-to-r from-purple-600 to-pink-600 text-white px-4 py-2 rounded-xl font-semibold text-sm text-center transform hover:scale-105 transition-all duration-300 hover:shadow-lg hover:shadow-purple-500/25"
                   >
-                    <div className="bg-gradient-to-r from-purple-600 to-pink-600 text-white px-4 py-2 rounded-xl font-semibold text-sm text-center transform group-hover/btn:scale-105 transition-all duration-300 hover:shadow-lg hover:shadow-purple-500/25">
-                      Смотреть
-                    </div>
+                    Перейти к контенту
                   </Link>
                 </div>
               </div>
-            )
-          })}
-
-          {/* Manage hidden subscriptions */}
-          {subscriptions.filter(sub => !sub.isVisible).length > 0 && (
-            <div className="flex-shrink-0 w-80 flex items-center justify-center">
-              <button
-                onClick={() => setShowSettings(true)}
-                className="w-full h-full min-h-[280px] rounded-3xl border-2 border-dashed border-slate-600/50 hover:border-slate-500/50 transition-colors bg-slate-800/20 backdrop-blur-sm flex flex-col items-center justify-center gap-4 group"
-              >
-                <div className="w-16 h-16 rounded-2xl border-2 border-dashed border-slate-600/50 group-hover:border-slate-500/50 transition-colors flex items-center justify-center">
-                  <span className="text-slate-500 group-hover:text-slate-400 text-xl font-bold">
-                    +{subscriptions.filter(sub => !sub.isVisible).length}
-                  </span>
-                </div>
-                <div>
-                  <p className="text-slate-500 group-hover:text-slate-400 font-medium mb-1">Скрытые</p>
-                  <p className="text-slate-600 text-sm">Нажмите для настройки</p>
-                </div>
-              </button>
             </div>
-          )}
+          ))}
         </div>
       </div>
-
-      {/* Settings Modal */}
-      {showSettings && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-slate-800/90 backdrop-blur-xl rounded-3xl border border-slate-700/50 p-6 max-w-2xl w-full max-h-[80vh] overflow-y-auto">
-            <div className="flex items-center justify-between mb-6">
-              <h3 className="text-2xl font-bold text-white">Управление подписками</h3>
-              <button
-                onClick={() => setShowSettings(false)}
-                className="w-8 h-8 bg-slate-700/50 hover:bg-slate-600/50 rounded-xl flex items-center justify-center text-slate-400 hover:text-white transition-colors"
-              >
-                ✕
-              </button>
-            </div>
-            
-            <p className="text-slate-400 mb-6">
-              Настройте, какие авторы отображаются в карусели подписок
-            </p>
-
-            <div className="space-y-4">
-              {subscriptions.map((sub) => {
-                const creator = getCreatorById(sub.creatorId)
-                if (!creator) return null
-                
-                return (
-                  <div
-                    key={creator.id}
-                    className="flex items-center gap-4 p-4 bg-slate-700/30 rounded-2xl border border-slate-600/50"
-                  >
-                    {/* Avatar */}
-                    <div className="w-12 h-12 rounded-xl overflow-hidden border-2 border-purple-500/30 bg-gradient-to-br from-purple-500/20 to-pink-500/20 flex-shrink-0">
-                      <Avatar
-                        src={creator.avatar}
-                        alt={creator.name}
-                        seed={creator.username}
-                        size={48}
-                        rounded="xl"
-                      />
-                    </div>
-
-                    {/* Info */}
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 mb-1">
-                        <h4 className="font-semibold text-white truncate">
-                          {creator.name}
-                        </h4>
-                        {creator.isVerified && (
-                          <CheckBadgeIcon className="w-4 h-4 text-blue-400 flex-shrink-0" />
-                        )}
-                      </div>
-                      <p className="text-slate-400 text-sm">@{creator.username}</p>
-                    </div>
-
-                    {/* Toggle */}
-                    <div className="flex items-center gap-3">
-                      <span className={`text-sm font-medium ${sub.isVisible ? 'text-green-400' : 'text-slate-500'}`}>
-                        {sub.isVisible ? 'Видимый' : 'Скрытый'}
-                      </span>
-                      <button
-                        onClick={() => toggleVisibility(creator.id)}
-                        className={`relative w-12 h-6 rounded-full transition-colors ${
-                          sub.isVisible ? 'bg-purple-600' : 'bg-slate-600'
-                        }`}
-                      >
-                        <div
-                          className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow-sm transition-transform ${
-                            sub.isVisible ? 'translate-x-6' : 'translate-x-0.5'
-                          }`}
-                        />
-                      </button>
-                    </div>
-                  </div>
-                )
-              })}
-            </div>
-
-            <div className="mt-6 p-4 bg-slate-700/30 rounded-2xl border border-slate-600/50">
-              <h4 className="font-semibold text-white mb-2 flex items-center gap-2">
-                <EyeIcon className="w-5 h-5 text-purple-400" />
-                О видимости в карусели
-              </h4>
-              <p className="text-slate-300 text-sm leading-relaxed">
-                Скрытые авторы не будут отображаться в карусели подписок. 
-                Вы по-прежнему будете подписаны и сможете получить доступ к их контенту.
-              </p>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Subscribe Modal */}
-      {showSubscribeModal && selectedCreator && (
-        <SubscribeModal
-          creator={selectedCreator}
-          onClose={() => {
-            setShowSubscribeModal(false)
-            setSelectedCreator(null)
-          }}
-          onSuccess={() => {
-            // Обновляем список подписок
-            loadRecommendations()
-          }}
-        />
-      )}
     </div>
   )
 } 

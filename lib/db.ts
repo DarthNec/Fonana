@@ -30,16 +30,9 @@ export async function createOrUpdateUser(wallet: string, data?: {
 }
 
 export async function getUserByWallet(wallet: string) {
-  return await prisma.user.findUnique({
+  return prisma.user.findUnique({
     where: { wallet },
     include: {
-      posts: {
-        orderBy: { createdAt: 'desc' },
-        take: 10,
-      },
-      subscriptions: {
-        where: { isActive: true },
-      },
       _count: {
         select: {
           posts: true,

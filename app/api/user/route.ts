@@ -1,17 +1,39 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createOrUpdateUser, getUserByWallet, updateUserProfile, deleteUser } from '@/lib/db'
+import { PrismaClient } from '@prisma/client'
 
-// GET /api/user?wallet=ADDRESS - получить пользователя
+const prisma = new PrismaClient()
+
+// GET /api/user?wallet=ADDRESS или /api/user?id=ID - получить пользователя
 export async function GET(request: NextRequest) {
   try {
     const searchParams = request.nextUrl.searchParams
     const wallet = searchParams.get('wallet')
+    const id = searchParams.get('id')
 
-    if (!wallet) {
-      return NextResponse.json({ error: 'Wallet address required' }, { status: 400 })
+    if (!wallet && !id) {
+      return NextResponse.json({ error: 'Wallet address or ID required' }, { status: 400 })
     }
 
-    const user = await getUserByWallet(wallet)
+    let user
+    if (id) {
+      // Получаем пользователя по ID
+      user = await prisma.user.findUnique({
+        where: { id },
+        include: {
+          _count: {
+            select: {
+              posts: true,
+              followers: true,
+              follows: true,
+            },
+          },
+        },
+      })
+    } else if (wallet) {
+      // Получаем пользователя по wallet
+      user = await getUserByWallet(wallet)
+    }
     
     if (!user) {
       return NextResponse.json({ error: 'User not found' }, { status: 404 })
@@ -34,12 +56,23 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Wallet address required' }, { status: 400 })
     }
 
-    // Создаем пользователя если его нет, или возвращаем существующего
-    const user = await createOrUpdateUser(wallet)
-
+    // Сначала проверяем, существует ли пользователь
+    const existingUser = await getUserByWallet(wallet)
+    
+    if (existingUser) {
+      // Пользователь уже существует - возвращаем его
+      return NextResponse.json({ 
+        user: existingUser,
+        isNewUser: false
+      })
+    }
+    
+    // Создаем нового пользователя
+    const newUser = await createOrUpdateUser(wallet)
+    
     return NextResponse.json({ 
-      user,
-      isNewUser: !user.nickname // Если нет никнейма - значит новый пользователь
+      user: newUser,
+      isNewUser: true // Только что созданный пользователь
     })
   } catch (error) {
     console.error('Error creating/updating user:', error)

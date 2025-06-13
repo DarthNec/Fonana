@@ -4,6 +4,8 @@ import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { useUser } from '@/lib/hooks/useUser'
 import PostCard from '@/components/PostCard'
+import SubscribeModal from '@/components/SubscribeModal'
+import PurchaseModal from '@/components/PurchaseModal'
 import { 
   SparklesIcon, 
   FireIcon, 
@@ -26,6 +28,13 @@ export default function FeedPage() {
   const [isLoading, setIsLoading] = useState(true)
   const [selectedCategory, setSelectedCategory] = useState('All')
   const [sortBy, setSortBy] = useState<'latest' | 'popular' | 'following'>('latest')
+  
+  // Состояние для модалок
+  const [showSubscribeModal, setShowSubscribeModal] = useState(false)
+  const [showPurchaseModal, setShowPurchaseModal] = useState(false)
+  const [selectedCreator, setSelectedCreator] = useState<any>(null)
+  const [selectedPost, setSelectedPost] = useState<any>(null)
+  const [preferredTier, setPreferredTier] = useState<'basic' | 'premium' | 'vip'>('basic')
 
   useEffect(() => {
     loadPosts()
@@ -65,7 +74,7 @@ export default function FeedPage() {
         likes: post._count?.likes || 0,
         comments: post._count?.comments || 0,
         createdAt: post.createdAt,
-        tags: post.tags?.map((t: any) => t.tag.name) || [],
+        tags: post.tags || [],
         isSubscribed: false // TODO: проверить подписку
       }))
 
@@ -76,6 +85,17 @@ export default function FeedPage() {
     } finally {
       setIsLoading(false)
     }
+  }
+
+  const handleSubscribeClick = (creatorData: any, tier: 'basic' | 'premium' | 'vip' = 'basic') => {
+    setSelectedCreator(creatorData)
+    setPreferredTier(tier)
+    setShowSubscribeModal(true)
+  }
+
+  const handlePurchaseClick = (postData: any) => {
+    setSelectedPost(postData)
+    setShowPurchaseModal(true)
   }
 
   const filteredPosts = posts.filter(post => 
@@ -191,6 +211,8 @@ export default function FeedPage() {
                 key={post.id}
                 {...post}
                 showCreator={true}
+                onSubscribeClick={handleSubscribeClick}
+                onPurchaseClick={handlePurchaseClick}
               />
             ))}
           </div>
@@ -205,6 +227,30 @@ export default function FeedPage() {
           </div>
         )}
       </div>
+
+      {/* Модалки вынесены наружу */}
+      {showSubscribeModal && selectedCreator && (
+        <SubscribeModal
+          creator={selectedCreator}
+          preferredTier={preferredTier}
+          onClose={() => setShowSubscribeModal(false)}
+          onSuccess={() => {
+            setShowSubscribeModal(false)
+            loadPosts() // Перезагружаем посты после подписки
+          }}
+        />
+      )}
+
+      {showPurchaseModal && selectedPost && (
+        <PurchaseModal
+          post={selectedPost}
+          onClose={() => setShowPurchaseModal(false)}
+          onSuccess={() => {
+            setShowPurchaseModal(false)
+            loadPosts() // Перезагружаем посты после покупки
+          }}
+        />
+      )}
     </div>
   )
 } 

@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
 import { useRouter, usePathname } from 'next/navigation'
+import Avatar from './Avatar'
 import { 
   HomeIcon, 
   UsersIcon, 
@@ -96,30 +97,20 @@ export function Navbar() {
             </div>
 
             {/* Profile */}
-            {connected && (
+            {connected && user && (
               <div className="relative">
                 <button
                   onClick={() => setIsProfileOpen(!isProfileOpen)}
-                  className="relative w-12 h-12 rounded-2xl overflow-hidden border-2 border-purple-500/30 bg-gradient-to-br from-purple-500/20 to-pink-500/20 hover:border-purple-500/50 transition-all duration-300 hover:scale-105"
+                  className="relative hover:scale-105 transition-transform duration-300"
                 >
-                  {user?.avatar ? (
-                    <img
-                      src={user.avatar}
-                      alt={user.nickname || 'Profile'}
-                      width={48}
-                      height={48}
-                      className="w-full h-full object-cover"
-                      onError={(e) => {
-                        // При ошибке загрузки показываем иконку
-                        e.currentTarget.style.display = 'none'
-                      }}
-                    />
-                  ) : null}
-                  {!user?.avatar && (
-                    <div className="w-full h-full bg-gradient-to-br from-purple-400 to-pink-400 flex items-center justify-center">
-                      <UserIcon className="w-6 h-6 text-white" />
-                    </div>
-                  )}
+                  <Avatar
+                    src={user.avatar}
+                    alt={user.nickname || 'Profile'}
+                    seed={user.nickname || user.wallet}
+                    size={48}
+                    rounded="2xl"
+                    className="border-2 border-purple-500/30 hover:border-purple-500/50"
+                  />
                 </button>
 
                 {/* Profile Dropdown */}
@@ -127,31 +118,20 @@ export function Navbar() {
                   <div className="absolute right-0 top-full mt-2 w-64 bg-slate-800/95 backdrop-blur-xl rounded-3xl border border-slate-700/50 shadow-2xl overflow-hidden">
                     <div className="p-6 border-b border-slate-700/50">
                       <div className="flex items-center gap-3">
-                        <div className="w-12 h-12 rounded-2xl overflow-hidden border border-purple-500/30 bg-gradient-to-br from-purple-500/20 to-pink-500/20">
-                          {user?.avatar ? (
-                            <img
-                              src={user.avatar}
-                              alt={user.nickname || 'Profile'}
-                              width={48}
-                              height={48}
-                              className="w-full h-full object-cover"
-                              onError={(e) => {
-                                e.currentTarget.style.display = 'none'
-                              }}
-                            />
-                          ) : null}
-                          {!user?.avatar && (
-                            <div className="w-full h-full bg-gradient-to-br from-purple-400 to-pink-400 flex items-center justify-center">
-                              <UserIcon className="w-6 h-6 text-white" />
-                            </div>
-                          )}
-                        </div>
+                        <Avatar
+                          src={user.avatar}
+                          alt={user.nickname || 'Profile'}
+                          seed={user.nickname || user.wallet}
+                          size={48}
+                          rounded="2xl"
+                          className="border border-purple-500/30"
+                        />
                         <div>
                           <div className="font-semibold text-white">
-                            {user?.fullName || user?.nickname || 'User'}
+                            {user.fullName || user.nickname || 'User'}
                           </div>
                           <div className="text-slate-400 text-sm">
-                            @{user?.nickname || 'user'}
+                            @{user.nickname || 'user'}
                           </div>
                         </div>
                       </div>

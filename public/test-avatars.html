@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Тест DiceBear Аватаров</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: #1a202c;
+            color: white;
+            padding: 20px;
+        }
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+            gap: 20px;
+            margin-top: 20px;
+        }
+        .avatar-card {
+            background: #2d3748;
+            padding: 15px;
+            border-radius: 10px;
+            text-align: center;
+        }
+        .avatar {
+            width: 80px;
+            height: 80px;
+            margin: 0 auto 10px;
+            border-radius: 10px;
+            overflow: hidden;
+        }
+        .avatar img {
+            width: 100%;
+            height: 100%;
+        }
+        .label {
+            font-size: 12px;
+            color: #a0aec0;
+            word-break: break-all;
+        }
+        h1 {
+            text-align: center;
+            color: #9f7aea;
+        }
+        .style-section {
+            margin: 40px 0;
+        }
+        .style-title {
+            font-size: 20px;
+            margin-bottom: 15px;
+            color: #ed8936;
+        }
+    </style>
+</head>
+<body>
+    <h1>Тест DiceBear API v9.x</h1>
+    
+    <div class="style-section">
+        <h2 class="style-title">Стиль: avataaars</h2>
+        <div class="grid" id="avataaars-grid"></div>
+    </div>
+    
+    <div class="style-section">
+        <h2 class="style-title">Стиль: bottts</h2>
+        <div class="grid" id="bottts-grid"></div>
+    </div>
+    
+    <div class="style-section">
+        <h2 class="style-title">Стиль: personas</h2>
+        <div class="grid" id="personas-grid"></div>
+    </div>
+    
+    <div class="style-section">
+        <h2 class="style-title">Стиль: lorelei</h2>
+        <div class="grid" id="lorelei-grid"></div>
+    </div>
+
+    <script>
+        const seeds = [
+            'artcreator',
+            'musicvibes',
+            'cryptotrader',
+            'fitnessqueen',
+            'defiexpert',
+            'gamerultimate',
+            'John Doe',
+            'Jane Smith',
+            '5FHneW46xGXgs5mUiveU4sbTyGBzmstUspZC92UhjJM694ty'
+        ];
+
+        const styles = ['avataaars', 'bottts', 'personas', 'lorelei'];
+        
+        const colors = [
+            'b6e3f4', 'c0aede', 'd1d4f9', 'ffd5dc', 'ffdfbf',
+            'c9f0d6', 'f4c7ab', 'a8e6cf', 'ffd3b6', 'dcedc1'
+        ];
+
+        styles.forEach(style => {
+            const grid = document.getElementById(`${style}-grid`);
+            
+            seeds.forEach((seed, index) => {
+                const card = document.createElement('div');
+                card.className = 'avatar-card';
+                
+                const avatarDiv = document.createElement('div');
+                avatarDiv.className = 'avatar';
+                
+                const img = document.createElement('img');
+                const bgColor = colors[index % colors.length];
+                img.src = `https://api.dicebear.com/9.x/${style}/svg?seed=${encodeURIComponent(seed)}&backgroundColor=${bgColor}`;
+                img.alt = seed;
+                img.onerror = function() {
+                    this.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iODAiIGhlaWdodD0iODAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CiAgPHJlY3Qgd2lkdGg9IjgwIiBoZWlnaHQ9IjgwIiBmaWxsPSIjNjY3ZWVhIi8+CiAgPHRleHQgeD0iNTAlIiB5PSI1MCUiIGZpbGw9IndoaXRlIiBmb250LXNpemU9IjMyIiBmb250LXdlaWdodD0iYm9sZCIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZHk9Ii4zZW0iPj88L3RleHQ+Cjwvc3ZnPg==';
+                };
+                
+                avatarDiv.appendChild(img);
+                
+                const label = document.createElement('div');
+                label.className = 'label';
+                label.textContent = seed;
+                
+                card.appendChild(avatarDiv);
+                card.appendChild(label);
+                grid.appendChild(card);
+            });
+        });
+    </script>
+</body>
+</html> 

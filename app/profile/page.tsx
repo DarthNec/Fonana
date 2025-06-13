@@ -19,10 +19,14 @@ import {
   WalletIcon,
   CalendarIcon,
   TrashIcon,
-  ExclamationTriangleIcon
+  ExclamationTriangleIcon,
+  CreditCardIcon
 } from '@heroicons/react/24/outline'
 import { CheckIcon } from '@heroicons/react/24/solid'
 import SubscriptionTiersSettings from '@/components/SubscriptionTiersSettings'
+import UserSubscriptions from '@/components/UserSubscriptions'
+import Avatar from '@/components/Avatar'
+import toast from 'react-hot-toast'
 
 interface UserProfile {
   id: string
@@ -47,9 +51,9 @@ interface UserProfile {
 }
 
 export default function ProfilePage() {
-  const { user, isLoading, deleteAccount } = useUser()
+  const { user, isLoading, deleteAccount, updateProfile } = useUser()
   const { disconnect } = useWallet()
-  const [activeTab, setActiveTab] = useState<'profile' | 'creator'>('profile')
+  const [activeTab, setActiveTab] = useState<'profile' | 'creator' | 'subscriptions'>('profile')
   
   const [formData, setFormData] = useState<UserProfile>({
     id: 'user-1',
@@ -77,6 +81,7 @@ export default function ProfilePage() {
   const [saved, setSaved] = useState(false)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
+  const [isSaving, setIsSaving] = useState(false)
 
   useEffect(() => {
     if (user) {
@@ -108,18 +113,58 @@ export default function ProfilePage() {
     }))
   }
 
-  const handleSave = () => {
-    console.log('Saving profile data:', formData)
-    setIsEditing(false)
-    setSaved(true)
-    setTimeout(() => setSaved(false), 3000)
+  const handleSave = async () => {
+    setIsSaving(true)
+    try {
+      await updateProfile({
+        nickname: formData.username,
+        fullName: formData.name,
+        bio: formData.bio,
+        avatar: formData.avatar,
+      })
+      
+      setSaved(true)
+      setTimeout(() => setSaved(false), 3000)
+      toast.success('Профиль обновлен')
+    } catch (error) {
+      console.error('Error saving profile:', error)
+      toast.error('Ошибка при сохранении профиля')
+    } finally {
+      setIsSaving(false)
+    }
   }
 
-  const handleAvatarChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleAvatarChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0]
     if (file) {
-      const url = URL.createObjectURL(file)
-      setFormData(prev => ({ ...prev, avatar: url }))
+      try {
+        // Загружаем файл на сервер
+        const formData = new FormData()
+        formData.append('file', file)
+        
+        const response = await fetch('/api/upload/avatar', {
+          method: 'POST',
+          body: formData
+        })
+        
+        const data = await response.json()
+        
+        if (!response.ok) {
+          throw new Error(data.error || 'Failed to upload avatar')
+        }
+        
+        const avatarUrl = data.avatarUrl
+        
+        // Обновляем состояние
+        setFormData(prev => ({ ...prev, avatar: avatarUrl }))
+        
+        // Сохраняем в базе данных
+        await updateProfile({ avatar: avatarUrl })
+        toast.success('Аватар обновлен')
+      } catch (error) {
+        console.error('Error updating avatar:', error)
+        toast.error(error instanceof Error ? error.message : 'Ошибка при обновлении аватара')
+      }
     }
   }
 
@@ -174,6 +219,16 @@ export default function ProfilePage() {
                 Профиль
               </button>
               <button
+                onClick={() => setActiveTab('subscriptions')}
+                className={`px-6 py-3 rounded-xl font-medium transition-all duration-300 ${
+                  activeTab === 'subscriptions'
+                    ? 'bg-gradient-to-r from-purple-500 to-pink-500 text-white shadow-lg'
+                    : 'text-slate-400 hover:text-white'
+                }`}
+              >
+                Подписки
+              </button>
+              <button
                 onClick={() => setActiveTab('creator')}
                 className={`px-6 py-3 rounded-xl font-medium transition-all duration-300 ${
                   activeTab === 'creator'
@@ -213,26 +268,13 @@ export default function ProfilePage() {
                   {/* Avatar Section */}
                   <div className="flex flex-col sm:flex-row items-center gap-6">
                     <div className="relative">
-                      {user?.avatar ? (
-                        <img 
-                          src={user.avatar} 
-                          alt={user.nickname || 'User avatar'}
-                          className="w-24 h-24 rounded-3xl object-cover border-2 border-purple-400/30"
-                          onError={(e) => {
-                            // Если изображение не загрузилось, показываем иконку
-                            const target = e.currentTarget as HTMLImageElement
-                            target.style.display = 'none'
-                            const iconDiv = target.nextSibling as HTMLElement
-                            if (iconDiv) iconDiv.style.display = 'flex'
-                          }}
-                        />
-                      ) : null}
-                      <div 
-                        className={`w-24 h-24 bg-gradient-to-r from-purple-400 to-pink-400 rounded-3xl flex items-center justify-center ${user?.avatar ? 'hidden' : ''}`}
-                        style={{ display: user?.avatar ? 'none' : 'flex' }}
-                      >
-                        <UserIcon className="w-12 h-12 text-white" />
-                      </div>
+                      <Avatar
+                        src={user?.avatar || formData.avatar}
+                        alt={user?.nickname || 'User avatar'}
+                        seed={user?.nickname || formData.username}
+                        size={96}
+                        rounded="3xl"
+                      />
                       <div className="absolute -bottom-2 -right-2 w-6 h-6 bg-gradient-to-r from-emerald-400 to-green-400 rounded-full border-2 border-slate-800"></div>
                     </div>
                     <div className="text-center sm:text-left">
@@ -442,9 +484,10 @@ export default function ProfilePage() {
               {/* Save Button */}
               <button
                 onClick={handleSave}
-                className="w-full px-6 py-4 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white font-bold rounded-2xl transition-all duration-300 hover:scale-105 hover:shadow-xl hover:shadow-purple-500/25"
+                disabled={isSaving}
+                className="w-full px-6 py-4 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white font-bold rounded-2xl transition-all duration-300 hover:scale-105 hover:shadow-xl hover:shadow-purple-500/25 disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                Сохранить изменения
+                {isSaving ? 'Сохранение...' : 'Сохранить изменения'}
               </button>
 
               {/* Danger Zone */}
@@ -469,6 +512,11 @@ export default function ProfilePage() {
               </div>
             </div>
           </div>
+          ) : activeTab === 'subscriptions' ? (
+            /* Subscriptions Tab */
+            <div className="max-w-5xl mx-auto">
+              <UserSubscriptions />
+            </div>
           ) : (
             /* Creator Settings Tab */
             <div className="max-w-5xl mx-auto">

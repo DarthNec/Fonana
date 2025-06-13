@@ -1,176 +1,363 @@
 'use client'
 
-import { useState } from 'react'
-import Link from 'next/link'
+import React, { useState, useEffect } from 'react'
 import Image from 'next/image'
+import Link from 'next/link'
 import Avatar from './Avatar'
-import { EyeIcon, EyeSlashIcon, UserIcon, CalendarIcon } from '@heroicons/react/24/outline'
-import { getCreatorById, mockUserSubscriptions } from '@/lib/mockData'
+import { useUser } from '@/lib/hooks/useUser'
+import { useWallet } from '@solana/wallet-adapter-react'
+import {
+  CheckBadgeIcon,
+  CreditCardIcon,
+  CalendarIcon,
+  TrashIcon,
+  ArrowUpIcon,
+  ArrowDownIcon,
+  SparklesIcon,
+  UserIcon
+} from '@heroicons/react/24/outline'
+import toast from 'react-hot-toast'
+
+interface Subscription {
+  id: string
+  creatorId: string
+  creator: {
+    id: string
+    nickname: string
+    fullName: string
+    avatar: string
+    isVerified: boolean
+  }
+  plan: string
+  price: number
+  currency: string
+  subscribedAt: string
+  validUntil: string
+  isActive: boolean
+}
 
 export default function UserSubscriptions() {
-  // Преобразуем данные из mockUserSubscriptions в формат для компонента
-  const convertedSubscriptions = mockUserSubscriptions.map((sub, index) => ({
-    id: index + 1,
-    creatorId: sub.creatorId,
-    subscriptionTier: sub.plan,
-    subscriptionPrice: `${sub.price} SOL`,
-    subscribedAt: sub.subscribedAt,
-    isPublicVisible: index !== 2, // Emma Charts будет скрыта, остальные видимы
-    expiresAt: sub.validUntil
-  }))
+  const { user } = useUser()
+  const { publicKey } = useWallet()
+  const [subscriptions, setSubscriptions] = useState<Subscription[]>([])
+  const [loading, setLoading] = useState(true)
+  const [selectedSub, setSelectedSub] = useState<string | null>(null)
+  const [showUpgradeModal, setShowUpgradeModal] = useState(false)
+  const [selectedUpgrade, setSelectedUpgrade] = useState<Subscription | null>(null)
 
-  const [subscriptions, setSubscriptions] = useState(convertedSubscriptions)
+  useEffect(() => {
+    if (user) {
+      fetchSubscriptions()
+    }
+  }, [user])
 
-  const toggleVisibility = (subscriptionId: number) => {
-    setSubscriptions(subs => 
-      subs.map(sub => 
-        sub.id === subscriptionId 
-          ? { ...sub, isPublicVisible: !sub.isPublicVisible }
-          : sub
-      )
-    )
-  }
+  const fetchSubscriptions = async () => {
+    if (!user) return
 
-  const getTierColor = (tier: string) => {
-    switch (tier) {
-      case 'Basic': return 'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400'
-      case 'Premium': return 'bg-indigo-100 text-indigo-800 dark:bg-indigo-900/20 dark:text-indigo-400'
-      case 'VIP': return 'bg-purple-100 text-purple-800 dark:bg-purple-900/20 dark:text-purple-400'
-      default: return 'bg-gray-100 text-gray-800 dark:bg-gray-900/20 dark:text-gray-400'
+    try {
+      setLoading(true)
+      const response = await fetch(`/api/subscriptions?userId=${user.id}`)
+      const data = await response.json()
+      
+      if (response.ok) {
+        setSubscriptions(data.subscriptions || [])
+      } else {
+        toast.error('Ошибка загрузки подписок')
+      }
+    } catch (error) {
+      console.error('Error fetching subscriptions:', error)
+      toast.error('Ошибка загрузки подписок')
+    } finally {
+      setLoading(false)
     }
   }
 
+  const handleUnsubscribe = async (subscriptionId: string) => {
+    try {
+      const response = await fetch(`/api/subscriptions/${subscriptionId}`, {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      })
+
+      if (response.ok) {
+        toast.success('Подписка отменена')
+        fetchSubscriptions() // Обновляем список
+      } else {
+        toast.error('Ошибка при отмене подписки')
+      }
+    } catch (error) {
+      console.error('Error cancelling subscription:', error)
+      toast.error('Ошибка при отмене подписки')
+    }
+  }
+
+  const handleUpgradeTier = async (subscriptionId: string, newTier: string, newPrice: number) => {
+    try {
+      const response = await fetch(`/api/subscriptions/${subscriptionId}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          plan: newTier,
+          price: newPrice
+        })
+      })
+
+      if (response.ok) {
+        toast.success(`Подписка обновлена до ${newTier}`)
+        fetchSubscriptions()
+        setShowUpgradeModal(false)
+        setSelectedUpgrade(null)
+      } else {
+        toast.error('Ошибка при обновлении подписки')
+      }
+    } catch (error) {
+      console.error('Error upgrading subscription:', error)
+      toast.error('Ошибка при обновлении подписки')
+    }
+  }
+
+  const getTierColor = (tier: string) => {
+    switch (tier.toLowerCase()) {
+      case 'basic':
+        return 'from-gray-400 to-gray-600'
+      case 'premium':
+        return 'from-purple-500 to-pink-500'
+      case 'vip':
+        return 'from-yellow-400 to-orange-500'
+      default:
+        return 'from-blue-400 to-cyan-400'
+    }
+  }
+
+  const getTierIcon = (tier: string) => {
+    switch (tier.toLowerCase()) {
+      case 'basic':
+        return '⭐'
+      case 'premium':
+        return '💎'
+      case 'vip':
+        return '👑'
+      default:
+        return '✨'
+    }
+  }
+
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString('ru-RU', {
+      day: 'numeric',
+      month: 'long',
+      year: 'numeric'
+    })
+  }
+
+  const getDaysLeft = (validUntil: string) => {
+    const now = new Date()
+    const until = new Date(validUntil)
+    const diff = Math.ceil((until.getTime() - now.getTime()) / (1000 * 60 * 60 * 24))
+    return diff
+  }
+
+  if (loading) {
+    return (
+      <div className="bg-slate-800/50 backdrop-blur-xl border border-slate-700/50 rounded-3xl p-8">
+        <div className="text-center text-slate-400">
+          Загрузка подписок...
+        </div>
+      </div>
+    )
+  }
+
   if (subscriptions.length === 0) {
-    return null
+    return (
+      <div className="bg-slate-800/50 backdrop-blur-xl border border-slate-700/50 rounded-3xl p-8">
+        <div className="text-center">
+          <SparklesIcon className="w-16 h-16 text-slate-600 mx-auto mb-4" />
+          <h3 className="text-xl font-bold text-white mb-2">У вас пока нет активных подписок</h3>
+          <p className="text-slate-400">Исследуйте авторов и подпишитесь на интересный контент</p>
+        </div>
+      </div>
+    )
   }
 
   return (
-    <section className="section-padding bg-gradient-to-br from-indigo-50 to-white dark:from-slate-900 dark:to-slate-800">
-      <div className="container-modern">
-        <div className="flex items-center justify-between mb-8">
-          <div>
-            <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
-              My Subscriptions
-            </h2>
-            <p className="text-muted">
-              Manage your subscriptions and their visibility
-            </p>
+    <>
+      <div className="bg-slate-800/50 backdrop-blur-xl border border-slate-700/50 rounded-3xl p-8">
+        <h2 className="text-2xl font-bold text-white mb-8 flex items-center gap-3">
+          <div className="w-8 h-8 bg-gradient-to-r from-purple-400 to-pink-400 rounded-lg flex items-center justify-center">
+            <CreditCardIcon className="w-5 h-5 text-white" />
           </div>
-          <div className="text-sm text-muted">
-            {subscriptions.length} active subscriptions
-          </div>
-        </div>
+          Мои подписки
+        </h2>
 
-        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+        <div className="space-y-4">
           {subscriptions.map((subscription) => {
-            const creator = getCreatorById(subscription.creatorId)
-            if (!creator) return null
-
+            const daysLeft = getDaysLeft(subscription.validUntil)
+            const isExpiringSoon = daysLeft <= 7
+            
             return (
               <div
                 key={subscription.id}
-                className="relative bg-white dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6 hover:shadow-lg transition-all duration-300"
+                className="bg-slate-700/30 rounded-2xl p-6 hover:bg-slate-700/50 transition-all duration-300"
               >
-                {/* Индикатор видимости */}
-                <div className="absolute top-4 right-4">
-                  <button
-                    onClick={() => toggleVisibility(subscription.id)}
-                    className={`p-2 rounded-lg transition-colors ${
-                      subscription.isPublicVisible
-                        ? 'bg-green-100 text-green-600 hover:bg-green-200 dark:bg-green-900/20 dark:text-green-400'
-                        : 'bg-gray-100 text-gray-400 hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-500'
-                    }`}
-                    title={subscription.isPublicVisible ? 'Hide from public view' : 'Show publicly'}
+                <div className="flex items-start gap-4">
+                  {/* Avatar */}
+                  <Link 
+                    href={`/creator/${subscription.creator.id}`}
+                    className="flex-shrink-0 transition-transform hover:scale-105"
                   >
-                    {subscription.isPublicVisible ? (
-                      <EyeIcon className="w-4 h-4" />
-                    ) : (
-                      <EyeSlashIcon className="w-4 h-4" />
-                    )}
-                  </button>
-                </div>
+                    <Avatar
+                      src={subscription.creator.avatar}
+                      alt={subscription.creator.fullName}
+                      seed={subscription.creator.nickname}
+                      size={64}
+                      rounded="xl"
+                    />
+                  </Link>
 
-                {/* Информация о создателе */}
-                <div className="flex items-start space-x-4 mb-4">
-                  <Avatar
-                    src={creator.avatar}
-                    alt={creator.name}
-                    seed={creator.username}
-                    size={48}
-                    rounded="full"
-                    className="flex-shrink-0"
-                  />
-                  <div className="min-w-0 flex-1">
-                    <Link
-                      href={`/creator/${creator.id}`}
-                      className="font-semibold text-gray-900 dark:text-white hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors"
-                    >
-                      {creator.name}
-                    </Link>
-                    <p className="text-sm text-muted">{creator.username}</p>
-                    <div className="flex items-center gap-2 mt-1">
-                      <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${getTierColor(subscription.subscriptionTier)}`}>
-                        {subscription.subscriptionTier}
-                      </span>
-                      <span className="text-xs text-muted">
-                        {subscription.subscriptionPrice}
-                      </span>
+                  {/* Info */}
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2 mb-1">
+                      <Link 
+                        href={`/creator/${subscription.creator.id}`}
+                        className="font-bold text-white text-lg hover:text-purple-400 transition-colors"
+                      >
+                        {subscription.creator.fullName || subscription.creator.nickname}
+                      </Link>
+                      {subscription.creator.isVerified && (
+                        <CheckBadgeIcon className="w-5 h-5 text-blue-400" />
+                      )}
                     </div>
-                  </div>
-                </div>
+                    <Link 
+                      href={`/creator/${subscription.creator.id}`}
+                      className="text-slate-400 text-sm mb-3 hover:text-slate-300 transition-colors inline-block"
+                    >
+                      @{subscription.creator.nickname}
+                    </Link>
 
-                {/* Детали подписки */}
-                <div className="space-y-2 text-sm text-muted">
-                  <div className="flex items-center gap-2">
-                    <CalendarIcon className="w-4 h-4" />
-                    <span>Subscribed since {new Date(subscription.subscribedAt).toLocaleDateString('en-US')}</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <UserIcon className="w-4 h-4" />
-                    <span>Valid until {new Date(subscription.expiresAt).toLocaleDateString('en-US')}</span>
-                  </div>
-                </div>
+                    {/* Subscription Details */}
+                    <div className="flex flex-wrap items-center gap-4 mb-4">
+                      {/* Tier Badge */}
+                      <div className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-sm font-medium text-white bg-gradient-to-r ${getTierColor(subscription.plan)}`}>
+                        <span>{getTierIcon(subscription.plan)}</span>
+                        <span>{subscription.plan}</span>
+                      </div>
 
-                {/* Быстрые действия */}
-                <div className="flex gap-2 mt-4">
-                  <Link
-                    href={`/creator/${creator.id}`}
-                    className="flex-1 px-3 py-2 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 transition-colors text-center"
-                  >
-                    View
-                  </Link>
-                  <Link
-                    href={`/creator/${creator.id}/subscribe`}
-                    className="px-3 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 text-sm font-medium rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
-                  >
-                    Manage
-                  </Link>
-                </div>
+                      {/* Price */}
+                      <div className="flex items-center gap-1 text-slate-300">
+                        <span className="font-semibold">{subscription.price}</span>
+                        <span className="text-sm">{subscription.currency}/мес</span>
+                      </div>
 
-                {/* Статус видимости */}
-                <div className="mt-3 pt-3 border-t border-gray-200 dark:border-gray-700">
-                  <div className="flex items-center justify-between text-xs text-muted">
-                    <span>Public visibility:</span>
-                    <span className={subscription.isPublicVisible ? 'text-green-600 dark:text-green-400' : 'text-gray-400'}>
-                      {subscription.isPublicVisible ? 'Enabled' : 'Disabled'}
-                    </span>
+                      {/* Days Left */}
+                      <div className={`flex items-center gap-2 ${isExpiringSoon ? 'text-orange-400' : 'text-slate-400'}`}>
+                        <CalendarIcon className="w-4 h-4" />
+                        <span className="text-sm">
+                          {daysLeft > 0 ? `Осталось ${daysLeft} дн.` : 'Истекла'}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Actions */}
+                    <div className="flex flex-wrap gap-2">
+                      {/* View Profile */}
+                      <Link
+                        href={`/creator/${subscription.creator.id}`}
+                        className="inline-flex items-center gap-2 px-4 py-2 bg-blue-500/20 hover:bg-blue-500/30 text-blue-300 rounded-xl text-sm font-medium transition-all"
+                      >
+                        <UserIcon className="w-4 h-4" />
+                        Перейти к профилю
+                      </Link>
+
+                      {/* Upgrade/Downgrade */}
+                      <button
+                        onClick={() => {
+                          setSelectedUpgrade(subscription)
+                          setShowUpgradeModal(true)
+                        }}
+                        className="inline-flex items-center gap-2 px-4 py-2 bg-purple-500/20 hover:bg-purple-500/30 text-purple-300 rounded-xl text-sm font-medium transition-all"
+                      >
+                        <ArrowUpIcon className="w-4 h-4" />
+                        Изменить тариф
+                      </button>
+
+                      {/* Cancel */}
+                      <button
+                        onClick={() => {
+                          if (confirm('Вы уверены, что хотите отменить подписку?')) {
+                            handleUnsubscribe(subscription.id)
+                          }
+                        }}
+                        className="inline-flex items-center gap-2 px-4 py-2 bg-red-500/20 hover:bg-red-500/30 text-red-300 rounded-xl text-sm font-medium transition-all"
+                      >
+                        <TrashIcon className="w-4 h-4" />
+                        Отменить
+                      </button>
+                    </div>
                   </div>
                 </div>
               </div>
             )
           })}
         </div>
-
-        {/* Кнопка для поиска новых креаторов */}
-        <div className="mt-8 text-center">
-          <Link
-            href="#creators"
-            className="inline-flex items-center px-6 py-3 border border-transparent text-base font-medium rounded-lg text-white bg-indigo-600 hover:bg-indigo-700 transition-colors"
-          >
-            Discover New Creators
-          </Link>
-        </div>
       </div>
-    </section>
+
+      {/* Upgrade Modal */}
+      {showUpgradeModal && selectedUpgrade && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-slate-800 rounded-3xl p-8 max-w-md w-full">
+            <h3 className="text-2xl font-bold text-white mb-6">Изменить тариф подписки</h3>
+            
+            <div className="mb-6">
+              <p className="text-slate-400 mb-2">Текущий тариф:</p>
+              <div className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-sm font-medium text-white bg-gradient-to-r ${getTierColor(selectedUpgrade.plan)}`}>
+                <span>{getTierIcon(selectedUpgrade.plan)}</span>
+                <span>{selectedUpgrade.plan}</span>
+              </div>
+            </div>
+
+            <div className="space-y-3 mb-6">
+              {['Basic', 'Premium', 'VIP'].map((tier) => {
+                if (tier.toLowerCase() === selectedUpgrade.plan.toLowerCase()) return null
+                
+                const price = tier === 'Basic' ? 0.05 : tier === 'Premium' ? 0.15 : 0.35
+                
+                return (
+                  <button
+                    key={tier}
+                    onClick={() => handleUpgradeTier(selectedUpgrade.id, tier, price)}
+                    className="w-full p-4 bg-slate-700/50 hover:bg-slate-700 rounded-xl transition-all flex items-center justify-between group"
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-sm font-medium text-white bg-gradient-to-r ${getTierColor(tier)}`}>
+                        <span>{getTierIcon(tier)}</span>
+                        <span>{tier}</span>
+                      </div>
+                      <span className="text-slate-300">
+                        {price} SOL/мес
+                      </span>
+                    </div>
+                    <ArrowUpIcon className="w-5 h-5 text-slate-500 group-hover:text-white transition-colors" />
+                  </button>
+                )
+              })}
+            </div>
+
+            <button
+              onClick={() => {
+                setShowUpgradeModal(false)
+                setSelectedUpgrade(null)
+              }}
+              className="w-full px-6 py-3 bg-slate-700 hover:bg-slate-600 text-white rounded-xl font-medium transition-all"
+            >
+              Отмена
+            </button>
+          </div>
+        </div>
+      )}
+    </>
   )
 } 

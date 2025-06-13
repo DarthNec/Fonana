@@ -2,6 +2,7 @@
 
 import CreatorsExplorer from '../../components/CreatorsExplorer'
 import SubscriptionsCarousel from '../../components/SubscriptionsCarousel'
+import RecommendedCreators from '../../components/RecommendedCreators'
 
 export default function CreatorsPage() {
   return (
@@ -24,6 +25,14 @@ export default function CreatorsPage() {
               Ваши подписки
             </h2>
             <SubscriptionsCarousel />
+          </div>
+
+          {/* Recommended Section */}
+          <div className="mb-12">
+            <h2 className="text-2xl font-bold text-white mb-6 text-center">
+              Рекомендованное
+            </h2>
+            <RecommendedCreators />
           </div>
         </div>
       </section>
