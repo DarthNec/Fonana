@@ -1,0 +1,28 @@
+[Unit]
+Description=Fonana Next.js Application
+After=network.target
+
+[Service]
+Type=exec
+User=root
+WorkingDirectory=/var/www/fonana
+Environment=NODE_ENV=production
+Environment=PORT=3001
+Environment=HOSTNAME=0.0.0.0
+Environment=DATABASE_URL=file:./prisma/dev.db
+ExecStart=/bin/bash /var/www/fonana/start_fonana.sh
+Environment=PATH=/root/.nvm/versions/node/v20.19.2/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+Restart=always
+RestartSec=10
+StandardOutput=journal
+StandardError=journal
+
+# Security settings
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/www/fonana
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target 

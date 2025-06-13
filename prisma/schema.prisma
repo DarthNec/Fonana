@@ -1,0 +1,184 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String   @id @default(cuid())
+  wallet    String   @unique // Адрес кошелька - уникальный идентификатор
+  nickname  String?  // Никнейм пользователя
+  fullName  String?  // Полное имя пользователя
+  bio       String?  // Описание профиля
+  avatar    String?  // URL аватара
+  website   String?  // Личный сайт
+  twitter   String?  // Twitter профиль
+  telegram  String?  // Telegram профиль
+  location  String?  // Местоположение
+  
+  // Системные поля
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  // Настройки профиля
+  isVerified Boolean @default(false)
+  isCreator  Boolean @default(false)
+  
+  // Статистика
+  followersCount Int @default(0)
+  followingCount Int @default(0)
+  postsCount     Int @default(0)
+  
+  // Связи
+  posts         Post[]
+  subscriptions Subscription[]
+  comments      Comment[]
+  likes         Like[]
+  follows       Follow[] @relation("UserFollows")
+  followers     Follow[] @relation("UserFollowers")
+  
+  @@map("users")
+}
+
+model Post {
+  id          String   @id @default(cuid())
+  creatorId   String
+  title       String
+  content     String
+  type        String   // 'text', 'image', 'video', 'audio'
+  category    String?  // 'Art', 'Music', 'Gaming', etc.
+  thumbnail   String?  // URL превью
+  mediaUrl    String?  // URL медиа файла
+  
+  // Доступ и монетизация
+  isLocked    Boolean  @default(false)
+  isPremium   Boolean  @default(false) // VIP контент
+  price       Float?   // Цена в SOL
+  currency    String   @default("SOL")
+  
+  // Статистика
+  likesCount    Int @default(0)
+  commentsCount Int @default(0)
+  viewsCount    Int @default(0)
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  // Связи
+  creator  User      @relation(fields: [creatorId], references: [id], onDelete: Cascade)
+  comments Comment[]
+  likes    Like[]
+  tags     PostTag[]
+  
+  @@map("posts")
+}
+
+model Tag {
+  id    String @id @default(cuid())
+  name  String @unique
+  posts PostTag[]
+  
+  @@map("tags")
+}
+
+model PostTag {
+  postId String
+  tagId  String
+  
+  post Post @relation(fields: [postId], references: [id], onDelete: Cascade)
+  tag  Tag  @relation(fields: [tagId], references: [id], onDelete: Cascade)
+  
+  @@id([postId, tagId])
+  @@map("post_tags")
+}
+
+model Comment {
+  id      String @id @default(cuid())
+  postId  String
+  userId  String
+  content String
+  
+  // Анонимность
+  isAnonymous Boolean @default(false)
+  
+  // Статистика
+  likesCount Int @default(0)
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  // Ответы на комментарии
+  parentId String?
+  parent   Comment? @relation("CommentReplies", fields: [parentId], references: [id])
+  replies  Comment[] @relation("CommentReplies")
+  
+  // Связи
+  post Post @relation(fields: [postId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  likes Like[]
+  
+  @@map("comments")
+}
+
+model Like {
+  id     String @id @default(cuid())
+  userId String
+  postId String?
+  commentId String?
+  
+  createdAt DateTime @default(now())
+  
+  // Связи
+  user    User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  post    Post?    @relation(fields: [postId], references: [id], onDelete: Cascade)
+  comment Comment? @relation(fields: [commentId], references: [id], onDelete: Cascade)
+  
+  // Уникальность - один лайк на пост/комментарий от пользователя
+  @@unique([userId, postId])
+  @@unique([userId, commentId])
+  @@map("likes")
+}
+
+model Subscription {
+  id        String   @id @default(cuid())
+  userId    String   // Кто подписался
+  creatorId String   // На кого подписался
+  plan      String   // 'Basic', 'Premium', 'VIP'
+  price     Float    // Цена подписки
+  currency  String   @default("SOL")
+  
+  subscribedAt DateTime @default(now())
+  validUntil   DateTime
+  isActive     Boolean  @default(true)
+  
+  // Транзакция
+  txSignature String? // Подпись транзакции Solana
+  
+  // Связи
+  user    User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  // Note: creator связь через User таблицу
+  
+  @@unique([userId, creatorId]) // Одна активная подписка на автора
+  @@map("subscriptions")
+}
+
+model Follow {
+  id          String @id @default(cuid())
+  followerId  String // Кто подписывается
+  followingId String // На кого подписывается
+  
+  createdAt DateTime @default(now())
+  
+  // Связи
+  follower  User @relation("UserFollows", fields: [followerId], references: [id], onDelete: Cascade)
+  following User @relation("UserFollowers", fields: [followingId], references: [id], onDelete: Cascade)
+  
+  @@unique([followerId, followingId])
+  @@map("follows")
+}
