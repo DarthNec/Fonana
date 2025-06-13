@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { EyeIcon, EyeSlashIcon, UserIcon } from '@heroicons/react/24/outline'
 import { getCreatorById } from '@/lib/mockData'
 import Image from 'next/image'
+import Avatar from './Avatar'
 
 interface Subscription {
   id: number
@@ -105,14 +106,13 @@ export default function SubscriptionManager() {
             return (
               <div key={subscription.id} className="bg-slate-700/50 border border-slate-600/50 rounded-2xl p-6 hover:border-slate-500/50 transition-all duration-300">
                 <div className="flex items-start gap-4 mb-4">
-                  <div className="relative w-12 h-12 rounded-xl overflow-hidden">
-                    <Image
-                      src={creator.avatar}
-                      alt={creator.name}
-                      fill
-                      className="object-cover"
-                    />
-                  </div>
+                  <Avatar
+                    src={creator.avatar}
+                    alt={creator.name}
+                    seed={creator.username}
+                    size={48}
+                    rounded="xl"
+                  />
                   <div className="flex-1">
                     <h4 className="font-semibold text-white">{creator.name}</h4>
                     <p className="text-slate-400 text-sm">@{creator.username}</p>
@@ -156,14 +156,14 @@ export default function SubscriptionManager() {
               return (
                 <div key={subscription.id} className="bg-slate-700/30 border border-slate-600/30 rounded-2xl p-6 opacity-60 hover:opacity-80 transition-all duration-300">
                   <div className="flex items-start gap-4 mb-4">
-                    <div className="relative w-12 h-12 rounded-xl overflow-hidden">
-                      <Image
-                        src={creator.avatar}
-                        alt={creator.name}
-                        fill
-                        className="object-cover grayscale"
-                      />
-                    </div>
+                    <Avatar
+                      src={creator.avatar}
+                      alt={creator.name}
+                      seed={creator.username}
+                      size={48}
+                      rounded="xl"
+                      className="grayscale"
+                    />
                     <div className="flex-1">
                       <h4 className="font-semibold text-white">{creator.name}</h4>
                       <p className="text-slate-400 text-sm">@{creator.username}</p>

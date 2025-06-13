@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import Image from 'next/image'
+import Avatar from './Avatar'
 import { HeartIcon, ChatBubbleLeftIcon, CheckBadgeIcon, UserIcon } from '@heroicons/react/24/outline'
 import { HeartIcon as HeartSolidIcon } from '@heroicons/react/24/solid'
 import { Comment, getCommentsByPostId, addComment, mockUsers } from '@/lib/mockData'
@@ -46,12 +47,12 @@ function CommentItem({ comment, level = 0 }: CommentItemProps) {
               <span className="text-gray-600 dark:text-gray-400 text-xs font-bold">?</span>
             </div>
           ) : (
-            <Image
+            <Avatar
               src={comment.userAvatar}
               alt={comment.username}
-              width={40}
-              height={40}
-              className="rounded-full"
+              seed={comment.username}
+              size={40}
+              rounded="full"
             />
           )}
         </div>

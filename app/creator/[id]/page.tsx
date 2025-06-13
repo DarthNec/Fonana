@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { notFound } from 'next/navigation'
 import Image from 'next/image'
 import Link from 'next/link'
+import Avatar from '@/components/Avatar'
 import { 
   CalendarIcon, 
   MapPinIcon,
@@ -87,12 +88,12 @@ export default function CreatorPage({ params }: CreatorPageProps) {
               {/* Avatar */}
               <div className="relative mx-auto lg:mx-0">
                 <div className="w-32 h-32 lg:w-40 lg:h-40 rounded-3xl overflow-hidden border-4 border-white/20 bg-gradient-to-br from-purple-500/20 to-pink-500/20 backdrop-blur-sm">
-                  <Image
+                  <Avatar
                     src={creator.avatar}
                     alt={creator.name}
-                    width={160}
-                    height={160}
-                    className="object-cover"
+                    seed={creator.username}
+                    size={160}
+                    rounded="3xl"
                   />
                 </div>
                 {/* Online indicator */}

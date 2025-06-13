@@ -3,6 +3,7 @@
 import React, { useState, useRef, useEffect } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
+import Avatar from './Avatar'
 import { CheckBadgeIcon, ChevronLeftIcon, ChevronRightIcon, EyeIcon, EyeSlashIcon, SparklesIcon } from '@heroicons/react/24/outline'
 import { getCreatorById, getAllCreators, type Creator } from '../lib/mockData'
 import { useUser } from '@/lib/hooks/useUser'
@@ -155,20 +156,13 @@ export default function SubscriptionsCarousel() {
                   <div className="flex items-start gap-3 mb-3">
                     <div className="relative flex-shrink-0">
                       <div className="w-12 h-12 rounded-2xl overflow-hidden border-2 border-purple-500/30 bg-gradient-to-br from-purple-500/20 to-pink-500/20">
-                        <Image
+                        <Avatar
                           src={creator.avatar}
                           alt={creator.name}
-                          width={48}
-                          height={48}
-                          className="object-cover"
-                          onError={(e) => {
-                            e.currentTarget.style.display = 'none'
-                            e.currentTarget.nextElementSibling?.classList.remove('hidden')
-                          }}
+                          seed={creator.username}
+                          size={48}
+                          rounded="2xl"
                         />
-                        <div className="hidden absolute inset-0 flex items-center justify-center text-white font-bold text-sm bg-gradient-to-br from-purple-500 to-pink-500">
-                          {creator.name.charAt(0).toUpperCase()}
-                        </div>
                       </div>
                     </div>
 
@@ -305,20 +299,13 @@ export default function SubscriptionsCarousel() {
                   <div className="flex items-start gap-3 mb-3">
                     <div className="relative flex-shrink-0">
                       <div className="w-12 h-12 rounded-2xl overflow-hidden border-2 border-purple-500/30 bg-gradient-to-br from-purple-500/20 to-pink-500/20">
-                        <Image
+                        <Avatar
                           src={creator.avatar}
                           alt={creator.name}
-                          width={48}
-                          height={48}
-                          className="object-cover"
-                          onError={(e) => {
-                            e.currentTarget.style.display = 'none'
-                            e.currentTarget.nextElementSibling?.classList.remove('hidden')
-                          }}
+                          seed={creator.username}
+                          size={48}
+                          rounded="2xl"
                         />
-                        <div className="hidden absolute inset-0 flex items-center justify-center text-white font-bold text-sm bg-gradient-to-br from-purple-500 to-pink-500">
-                          {creator.name.charAt(0).toUpperCase()}
-                        </div>
                       </div>
                     </div>
 
@@ -401,20 +388,13 @@ export default function SubscriptionsCarousel() {
                   >
                     {/* Avatar */}
                     <div className="w-12 h-12 rounded-xl overflow-hidden border-2 border-purple-500/30 bg-gradient-to-br from-purple-500/20 to-pink-500/20 flex-shrink-0">
-                      <Image
+                      <Avatar
                         src={creator.avatar}
                         alt={creator.name}
-                        width={48}
-                        height={48}
-                        className="object-cover"
-                        onError={(e) => {
-                          e.currentTarget.style.display = 'none'
-                          e.currentTarget.nextElementSibling?.classList.remove('hidden')
-                        }}
+                        seed={creator.username}
+                        size={48}
+                        rounded="xl"
                       />
-                      <div className="hidden absolute inset-0 flex items-center justify-center text-white font-bold bg-gradient-to-br from-purple-500 to-pink-500">
-                        {creator.name.charAt(0).toUpperCase()}
-                      </div>
                     </div>
 
                     {/* Info */}

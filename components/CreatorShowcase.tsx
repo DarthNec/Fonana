@@ -1,6 +1,7 @@
 'use client'
 
 import { StarIcon } from '@heroicons/react/24/solid'
+import Avatar from './Avatar'
 
 const creators = [
   {
@@ -52,10 +53,13 @@ export function CreatorShowcase() {
           {creators.map((creator) => (
             <div key={creator.id} className="crypto-card hover:scale-105 transition-transform duration-300">
               <div className="flex items-center gap-4 mb-4">
-                <img
-                  className="h-16 w-16 rounded-full object-cover ring-2 ring-primary-500"
+                <Avatar
+                  className="ring-2 ring-primary-500"
                   src={creator.avatar}
                   alt={creator.name}
+                  seed={creator.name}
+                  size={64}
+                  rounded="full"
                 />
                 <div>
                   <h3 className="text-lg font-semibold text-gray-900 dark:text-white">

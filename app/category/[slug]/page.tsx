@@ -3,6 +3,7 @@
 import { notFound } from 'next/navigation'
 import Image from 'next/image'
 import Link from 'next/link'
+import Avatar from '@/components/Avatar'
 import { StarIcon, CheckBadgeIcon } from '@heroicons/react/24/solid'
 import { UsersIcon, CurrencyDollarIcon } from '@heroicons/react/24/outline'
 import { getCreatorsByCategory } from '@/lib/mockData'
@@ -133,12 +134,12 @@ export default function CategoryPage({ params }: CategoryPageProps) {
                 <div className="flex items-start gap-4 mb-4">
                   <div className="relative">
                     <div className="w-12 h-12 rounded-full overflow-hidden border-2 border-white dark:border-gray-700 -mt-8 relative z-10">
-                      <Image
+                      <Avatar
                         src={creator.avatar}
                         alt={creator.name}
-                        width={48}
-                        height={48}
-                        className="object-cover"
+                        seed={creator.username}
+                        size={48}
+                        rounded="full"
                       />
                     </div>
                   </div>

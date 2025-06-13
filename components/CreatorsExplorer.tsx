@@ -3,6 +3,7 @@
 import React, { useState } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
+import Avatar from './Avatar'
 import { CheckBadgeIcon, PlayIcon, UserPlusIcon, HeartIcon } from '@heroicons/react/24/outline'
 import { HeartIcon as HeartSolidIcon } from '@heroicons/react/24/solid'
 import { creatorsData, isUserSubscribedTo } from '../lib/mockData'
@@ -110,12 +111,12 @@ export default function CreatorsExplorer() {
                   <div className="flex items-start gap-4 mb-4">
                     <div className="relative flex-shrink-0">
                       <div className="w-16 h-16 rounded-2xl overflow-hidden border-2 border-purple-500/30 bg-gradient-to-br from-purple-500/20 to-pink-500/20">
-                        <Image
+                        <Avatar
                           src={creator.avatar}
                           alt={creator.name}
-                          width={64}
-                          height={64}
-                          className="object-cover"
+                          seed={creator.username}
+                          size={64}
+                          rounded="2xl"
                         />
                       </div>
                     </div>

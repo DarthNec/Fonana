@@ -4,6 +4,7 @@ import { notFound } from 'next/navigation'
 import { useState } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
+import Avatar from '@/components/Avatar'
 import { 
   CheckIcon,
   SparklesIcon,
@@ -166,12 +167,12 @@ export default function SubscribePage({ params }: SubscribePageProps) {
         <div className="bg-slate-800/50 backdrop-blur-sm border border-slate-700/50 rounded-3xl p-8 shadow-xl mb-8">
           <div className="flex items-center gap-6 mb-8">
             <div className="w-20 h-20 rounded-2xl overflow-hidden border-2 border-purple-500/30">
-              <Image
+              <Avatar
                 src={creator.avatar}
                 alt={creator.name}
-                width={80}
-                height={80}
-                className="object-cover"
+                seed={creator.username}
+                size={80}
+                rounded="2xl"
               />
             </div>
             <div>
