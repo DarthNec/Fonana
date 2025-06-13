@@ -1,6 +1,7 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   images: {
+    unoptimized: true,
     remotePatterns: [
       {
         protocol: 'https',
@@ -16,7 +17,19 @@ const nextConfig = {
       },
       {
         protocol: 'https',
+        hostname: 'localhost',
+      },
+      {
+        protocol: 'https',
         hostname: 'api.dicebear.com',
+      },
+      {
+        protocol: 'https',
+        hostname: 'fonana.me',
+      },
+      {
+        protocol: 'https',
+        hostname: 'www.fonana.me',
       },
     ],
   },

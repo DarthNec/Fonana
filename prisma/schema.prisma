@@ -14,6 +14,7 @@ model User {
   fullName       String?
   bio            String?
   avatar         String?
+  backgroundImage String?
   website        String?
   twitter        String?
   telegram       String?

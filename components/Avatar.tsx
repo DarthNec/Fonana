@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import Image from 'next/image'
 import AvatarFallback from './AvatarFallback'
 
@@ -24,8 +24,14 @@ export default function Avatar({
   const [imageError, setImageError] = useState(false)
   const [generatorError, setGeneratorError] = useState(false)
   
+  // Сбрасываем ошибки при изменении src
+  useEffect(() => {
+    setImageError(false)
+    setGeneratorError(false)
+  }, [src])
+  
   // Проверяем, является ли src валидным локальным изображением
-  const isValidLocalImage = src && src.includes('/avatars/') && (src.includes('.jpg') || src.includes('.png') || src.includes('.webp'))
+  const isValidLocalImage = src && src.includes('/avatars/') && (src.includes('.jpg') || src.includes('.png') || src.includes('.webp') || src.includes('.jpeg'))
   
   // Если нет валидного изображения, используем DiceBear
   const shouldUseGenerator = !src || !isValidLocalImage || imageError

@@ -55,6 +55,7 @@ export async function GET(request: NextRequest) {
         username: creator.nickname || creator.wallet.slice(0, 8),
         description: creator.bio || 'Контент-криейтор на платформе Fonana',
         avatar: creator.avatar || null,
+        backgroundImage: creator.backgroundImage || null,
         coverImage: `/api/og?title=${encodeURIComponent(creator.fullName || creator.nickname || 'Creator')}`,
         isVerified: creator.isVerified,
         followersCount: creator._count.followers,

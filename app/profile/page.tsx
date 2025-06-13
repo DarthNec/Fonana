@@ -34,6 +34,7 @@ interface UserProfile {
   username: string
   email: string
   avatar: string
+  backgroundImage: string
   bio: string
   isAnonymous: boolean
   notifications: {
@@ -51,30 +52,31 @@ interface UserProfile {
 }
 
 export default function ProfilePage() {
-  const { user, isLoading, deleteAccount, updateProfile } = useUser()
+  const { user, isLoading, deleteAccount, updateProfile, refreshUser } = useUser()
   const { disconnect } = useWallet()
   const [activeTab, setActiveTab] = useState<'profile' | 'creator' | 'subscriptions'>('profile')
   
   const [formData, setFormData] = useState<UserProfile>({
-    id: 'user-1',
-    name: 'User',
-    username: 'user',
+    id: user?.id || '',
+    name: user?.fullName || '',
+    username: user?.nickname || '',
     email: '',
-    avatar: '',
-    bio: '',
+    avatar: user?.avatar || '',
+    backgroundImage: user?.backgroundImage || '',
+    bio: user?.bio || '',
     isAnonymous: false,
     notifications: {
       comments: true,
-      likes: false,
+      likes: true,
       newPosts: true,
-      subscriptions: true
+      subscriptions: true,
     },
     privacy: {
       showActivity: true,
       allowMessages: true,
-      showOnline: false
+      showOnline: true,
     },
-    theme: 'dark'
+    theme: 'dark',
   })
 
   const [isEditing, setIsEditing] = useState(false)
@@ -121,6 +123,7 @@ export default function ProfilePage() {
         fullName: formData.name,
         bio: formData.bio,
         avatar: formData.avatar,
+        backgroundImage: formData.backgroundImage,
       })
       
       setSaved(true)
@@ -160,10 +163,52 @@ export default function ProfilePage() {
         
         // Сохраняем в базе данных
         await updateProfile({ avatar: avatarUrl })
+        
+        // Обновляем данные пользователя
+        await refreshUser()
+        
         toast.success('Аватар обновлен')
       } catch (error) {
         console.error('Error updating avatar:', error)
         toast.error(error instanceof Error ? error.message : 'Ошибка при обновлении аватара')
+      }
+    }
+  }
+
+  const handleBackgroundChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0]
+    if (file) {
+      try {
+        // Загружаем файл на сервер
+        const formData = new FormData()
+        formData.append('file', file)
+        
+        const response = await fetch('/api/upload/background', {
+          method: 'POST',
+          body: formData
+        })
+        
+        const data = await response.json()
+        
+        if (!response.ok) {
+          throw new Error(data.error || 'Failed to upload background')
+        }
+        
+        const backgroundUrl = data.backgroundUrl
+        
+        // Обновляем состояние
+        setFormData(prev => ({ ...prev, backgroundImage: backgroundUrl }))
+        
+        // Сохраняем в базе данных
+        await updateProfile({ backgroundImage: backgroundUrl })
+        
+        // Обновляем данные пользователя
+        await refreshUser()
+        
+        toast.success('Фоновое изображение обновлено')
+      } catch (error) {
+        console.error('Error updating background:', error)
+        toast.error(error instanceof Error ? error.message : 'Ошибка при обновлении фона')
       }
     }
   }
@@ -269,7 +314,7 @@ export default function ProfilePage() {
                   <div className="flex flex-col sm:flex-row items-center gap-6">
                     <div className="relative">
                       <Avatar
-                        src={user?.avatar || formData.avatar}
+                        src={formData.avatar ? `${formData.avatar}?t=${Date.now()}` : user?.avatar}
                         alt={user?.nickname || 'User avatar'}
                         seed={user?.nickname || formData.username}
                         size={96}
@@ -284,6 +329,32 @@ export default function ProfilePage() {
                         <input type="file" className="hidden" accept="image/*" onChange={handleAvatarChange} />
                       </label>
                       <p className="text-slate-400 text-sm mt-2">JPG, PNG до 5MB</p>
+                    </div>
+                  </div>
+
+                  {/* Background Image Section */}
+                  <div className="border-t border-slate-700/50 pt-8">
+                    <h3 className="text-lg font-semibold text-white mb-4">Фоновое изображение профиля</h3>
+                    <div className="space-y-4">
+                      {/* Preview */}
+                      {(formData.backgroundImage || user?.backgroundImage) && (
+                        <div className="relative w-full h-40 rounded-2xl overflow-hidden mb-4">
+                          <img 
+                            src={formData.backgroundImage || user?.backgroundImage} 
+                            alt="Profile background" 
+                            className="w-full h-full object-cover"
+                          />
+                          <div className="absolute inset-0 bg-gradient-to-t from-slate-900/60 to-transparent"></div>
+                        </div>
+                      )}
+                      
+                      {/* Upload Button */}
+                      <label className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600 text-white rounded-2xl font-medium transition-all duration-300 hover:scale-105 cursor-pointer">
+                        <PhotoIcon className="w-5 h-5" />
+                        {(formData.backgroundImage || user?.backgroundImage) ? 'Изменить фон' : 'Загрузить фон'}
+                        <input type="file" className="hidden" accept="image/*" onChange={handleBackgroundChange} />
+                      </label>
+                      <p className="text-slate-400 text-sm">Рекомендуемый размер: 1920x400px, JPG или PNG до 10MB</p>
                     </div>
                   </div>
 

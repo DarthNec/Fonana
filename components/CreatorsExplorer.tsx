@@ -18,6 +18,7 @@ interface Creator {
   username: string
   description: string
   avatar: string | null
+  backgroundImage?: string | null
   coverImage: string
   isVerified: boolean
   subscribers: number
@@ -173,7 +174,14 @@ export default function CreatorsExplorer() {
                   <div className="relative z-10 p-6">
                     {/* Cover Image */}
                     <div className="relative h-40 rounded-2xl overflow-hidden mb-4 bg-gradient-to-br from-purple-900/20 to-pink-900/20">
-                      {!creator.coverImage || creator.coverImage.includes('api/og') ? (
+                      {creator.backgroundImage ? (
+                        <Image
+                          src={creator.backgroundImage}
+                          alt={`${creator.name} background`}
+                          fill
+                          className="object-cover group-hover:scale-110 transition-transform duration-700"
+                        />
+                      ) : !creator.coverImage || creator.coverImage.includes('api/og') ? (
                         <div className="w-full h-full bg-gradient-to-br from-purple-600/20 to-pink-600/20 flex items-center justify-center">
                           <span className="text-4xl font-bold text-white/50">
                             {creator.name.charAt(0).toUpperCase()}

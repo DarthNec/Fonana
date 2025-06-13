@@ -25,11 +25,11 @@ export default function CreatorsPage() {
               <div className="flex items-center justify-center gap-3 mb-2">
                 <div className="h-px w-12 bg-gradient-to-r from-transparent to-purple-500"></div>
                 <h2 className="text-2xl font-bold text-white text-center">
-                  Рекомендации для вас
+                  Ваши подписки
                 </h2>
                 <div className="h-px w-12 bg-gradient-to-l from-transparent to-pink-500"></div>
               </div>
-              <p className="text-sm text-slate-400 text-center">Авторы, которые могут вас заинтересовать</p>
+              <p className="text-sm text-slate-400 text-center">Авторы, на которых вы подписаны</p>
             </div>
             <RecommendedCreators />
           </div>
@@ -40,11 +40,11 @@ export default function CreatorsPage() {
               <div className="flex items-center justify-center gap-3 mb-2">
                 <div className="h-px w-12 bg-gradient-to-r from-transparent to-purple-500"></div>
                 <h2 className="text-2xl font-bold text-white text-center">
-                  Ваши подписки
+                  Рекомендации для вас
                 </h2>
                 <div className="h-px w-12 bg-gradient-to-l from-transparent to-pink-500"></div>
               </div>
-              <p className="text-sm text-slate-400 text-center">Авторы, на которых вы подписаны</p>
+              <p className="text-sm text-slate-400 text-center">Авторы, которые могут вас заинтересовать</p>
             </div>
             <SubscriptionsCarousel />
           </div>

@@ -14,6 +14,7 @@ export async function createOrUpdateUser(wallet: string, data?: {
   fullName?: string
   bio?: string
   avatar?: string
+  backgroundImage?: string
   website?: string
   twitter?: string
   telegram?: string
@@ -49,6 +50,7 @@ export async function updateUserProfile(wallet: string, data: {
   fullName?: string
   bio?: string
   avatar?: string
+  backgroundImage?: string
   website?: string
   twitter?: string
   telegram?: string

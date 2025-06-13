@@ -10,6 +10,7 @@ export interface User {
   fullName?: string
   bio?: string
   avatar?: string
+  backgroundImage?: string
   website?: string
   twitter?: string
   telegram?: string
@@ -75,6 +76,7 @@ export function useUser() {
     fullName?: string
     bio?: string
     avatar?: string
+    backgroundImage?: string
     website?: string
     twitter?: string
     telegram?: string
