@@ -25,6 +25,7 @@ export async function createOrUpdateUser(wallet: string, data?: {
     update: data ? { ...data, updatedAt: new Date() } : {},
     create: {
       wallet,
+      isCreator: true,
       ...data,
     },
   })
