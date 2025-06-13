@@ -4,6 +4,7 @@ import { StarIcon, HeartIcon, EyeIcon } from '@heroicons/react/24/solid'
 import { UsersIcon, CurrencyDollarIcon } from '@heroicons/react/24/outline'
 import Link from 'next/link'
 import Image from 'next/image'
+import Avatar from './Avatar'
 import { getFeaturedCreators, getCreatorsByCategory } from '@/lib/mockData'
 
 // Используем данные из mockData
@@ -15,7 +16,7 @@ const oldFeaturedCreators = [
     id: 1,
     name: 'Anna Crypto',
     username: '@annacrypto',
-    avatar: 'https://images.unsplash.com/photo-1494790108755-2616c18fe645?w=150&h=150&fit=crop&crop=face',
+    avatar: null,
     category: 'DeFi & Investing',
     description: 'Sharing cryptocurrency investment strategies and DeFi protocol insights',
     subscribers: 12500,
@@ -30,7 +31,7 @@ const oldFeaturedCreators = [
     id: 2,
     name: 'Alex NFT',
     username: '@alexnft',
-    avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&h=150&fit=crop&crop=face',
+    avatar: null,
     category: 'NFT & Art',
     description: 'Creating unique NFT collections and teaching digital art design',
     subscribers: 8900,
@@ -45,7 +46,7 @@ const oldFeaturedCreators = [
     id: 3,
     name: 'Maria Blockchain',
     username: '@mariachain',
-    avatar: 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=150&h=150&fit=crop&crop=face',
+    avatar: null,
     category: 'Web3 Education',
     description: 'Explaining complex blockchain concepts in simple terms',
     subscribers: 15700,
@@ -60,7 +61,7 @@ const oldFeaturedCreators = [
     id: 4,
     name: 'David Trader',
     username: '@davidtrade',
-    avatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150&h=150&fit=crop&crop=face',
+    avatar: null,
     category: 'Trading',
     description: 'Daily trading signals and technical analysis education',
     subscribers: 9800,
@@ -75,7 +76,7 @@ const oldFeaturedCreators = [
     id: 5,
     name: 'Sophia Meta',
     username: '@sophiameta',
-    avatar: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=150&h=150&fit=crop&crop=face',
+    avatar: null,
     category: 'Metaverse',
     description: 'Exploring virtual worlds and creating content about the future of internet',
     subscribers: 6400,
@@ -90,7 +91,7 @@ const oldFeaturedCreators = [
     id: 6,
     name: 'Ivan GameFi',
     username: '@ivangamefi',
-    avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150&h=150&fit=crop&crop=face',
+    avatar: null,
     category: 'GameFi',
     description: 'Blockchain game reviews and GameFi earning strategies',
     subscribers: 11200,
@@ -105,7 +106,7 @@ const oldFeaturedCreators = [
     id: 7,
     name: 'Elena Intimate',
     username: '@elena_intimate',
-    avatar: 'https://images.unsplash.com/photo-1531123897727-8f129e1688ce?w=150&h=150&fit=crop&crop=face',
+    avatar: null,
     category: 'Intimate',
     description: 'Artistic photography and intimate portraits with minimalist aesthetics',
     subscribers: 7800,
@@ -120,7 +121,7 @@ const oldFeaturedCreators = [
     id: 8,
     name: 'Victoria Lifestyle',
     username: '@victoria_lifestyle',
-    avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&h=150&fit=crop&crop=face',
+    avatar: null,
     category: 'Lifestyle',
     description: 'Exclusive lifestyle content and creative imagery for art enthusiasts',
     subscribers: 5600,
@@ -210,12 +211,12 @@ export default function CreatorsFeed({ selectedTopic }: { selectedTopic?: string
                 <div className="flex items-start gap-4 mb-4">
                   <div className="relative">
                     <div className="w-12 h-12 rounded-full overflow-hidden border-2 border-white dark:border-gray-700 -mt-8 relative z-10">
-                      <Image
+                      <Avatar
                         src={creator.avatar}
                         alt={creator.name}
-                        width={48}
-                        height={48}
-                        className="object-cover"
+                        seed={creator.username}
+                        size={48}
+                        rounded="full"
                       />
                     </div>
                   </div>

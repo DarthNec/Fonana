@@ -14,7 +14,7 @@ export default function AvatarDemoPage() {
       id: 1,
       name: 'Demo Creator',
       username: 'democreator',
-      avatar: 'https://images.unsplash.com/photo-1517841905240-472988babdf9?w=150&h=150&fit=crop&crop=face',
+      avatar: null,
       isVerified: true
     },
     title: 'Demo Post для тестирования аватаров',

@@ -6,7 +6,11 @@ import { Navbar } from '../components/Navbar'
 import { UserProvider } from '../components/UserProvider'
 import { Toaster } from 'react-hot-toast'
 
-const inter = Inter({ subsets: ['latin'] })
+const inter = Inter({ 
+  subsets: ['latin', 'cyrillic'],
+  weight: ['300', '400', '500', '600', '700', '800'],
+  variable: '--font-inter',
+})
 
 export const metadata: Metadata = {
   title: 'Fonana - Web3 Creator Platform',

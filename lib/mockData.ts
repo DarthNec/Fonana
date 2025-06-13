@@ -4,7 +4,7 @@ export interface Creator {
   id: number
   name: string
   username: string
-  avatar: string
+  avatar: string | null
   category: string
   description: string
   subscribers: number
@@ -45,7 +45,7 @@ export interface Comment {
   postId: number
   userId: number
   username: string
-  userAvatar: string
+  userAvatar: string | null
   content: string
   createdAt: string
   likes: number
@@ -57,7 +57,7 @@ export interface Comment {
 export interface User {
   id: number
   username: string
-  avatar: string
+  avatar: string | null
   isVerified: boolean
 }
 
@@ -67,7 +67,7 @@ export const creatorsData: Creator[] = [
     id: 1,
     name: 'Anna Crypto',
     username: '@annacrypto',
-    avatar: 'https://images.unsplash.com/photo-1517841905240-472988babdf9?w=150&h=150&fit=crop&crop=face',
+    avatar: null, // Будет использоваться генератор аватаров
     category: 'DeFi',
     description: 'DeFi analyst sharing investment strategies and protocol deep dives',
     subscribers: 12500,
@@ -85,7 +85,7 @@ export const creatorsData: Creator[] = [
     id: 2,
     name: 'Marcus DeFi',
     username: '@marcusdefi',
-    avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&h=150&fit=crop&crop=face',
+    avatar: null,
     category: 'DeFi',
     description: 'Yield farming expert and liquidity pool strategist',
     subscribers: 8900,
@@ -102,7 +102,7 @@ export const creatorsData: Creator[] = [
     id: 3,
     name: 'Sarah Protocol',
     username: '@sarahprotocol',
-    avatar: 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=150&h=150&fit=crop&crop=face',
+    avatar: null,
     category: 'DeFi',
     description: 'Smart contract auditor and DeFi security researcher',
     subscribers: 6700,
@@ -121,7 +121,7 @@ export const creatorsData: Creator[] = [
     id: 4,
     name: 'Alex NFT',
     username: '@alexnft',
-    avatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150&h=150&fit=crop&crop=face',
+    avatar: null,
     category: 'NFT',
     description: 'Digital artist creating unique NFT collections and teaching digital art',
     subscribers: 15700,
@@ -139,7 +139,7 @@ export const creatorsData: Creator[] = [
     id: 5,
     name: 'Luna Collectibles',
     username: '@lunacollectibles',
-    avatar: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=150&h=150&fit=crop&crop=face',
+    avatar: null,
     category: 'NFT',
     description: 'NFT collector and marketplace analyst, sharing alpha on upcoming drops',
     subscribers: 9800,
@@ -156,7 +156,7 @@ export const creatorsData: Creator[] = [
     id: 6,
     name: 'Phoenix Creator',
     username: '@phoenixcreator',
-    avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150&h=150&fit=crop&crop=face',
+    avatar: null,
     category: 'NFT',
     description: '3D artist specializing in metaverse-ready NFT avatars and environments',
     subscribers: 11200,
@@ -175,7 +175,7 @@ export const creatorsData: Creator[] = [
     id: 7,
     name: 'David Trader',
     username: '@davidtrade',
-    avatar: 'https://images.unsplash.com/photo-1560250097-0b93528c311a?w=150&h=150&fit=crop&crop=face',
+    avatar: null,
     category: 'Trading',
     description: 'Professional trader sharing daily signals and technical analysis',
     subscribers: 18900,
@@ -192,7 +192,7 @@ export const creatorsData: Creator[] = [
     id: 8,
     name: 'Emma Charts',
     username: '@emmacharts',
-    avatar: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=150&h=150&fit=crop&crop=face',
+    avatar: null,
     category: 'Trading',
     description: 'Chart pattern expert and swing trading strategist',
     subscribers: 7300,
@@ -211,7 +211,7 @@ export const creatorsData: Creator[] = [
     id: 9,
     name: 'Ryan GameFi',
     username: '@ryangamefi',
-    avatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150&h=150&fit=crop&crop=face',
+    avatar: null,
     category: 'GameFi',
     description: 'Blockchain gaming expert and P2E guild leader',
     subscribers: 13400,
@@ -228,7 +228,7 @@ export const creatorsData: Creator[] = [
     id: 10,
     name: 'Zoe Gaming',
     username: '@zoegaming',
-    avatar: 'https://images.unsplash.com/photo-1487412720507-e7ab37603c6f?w=150&h=150&fit=crop&crop=face',
+    avatar: null,
     category: 'GameFi',
     description: 'Professional gamer and blockchain game reviewer',
     subscribers: 9600,
@@ -247,7 +247,7 @@ export const creatorsData: Creator[] = [
     id: 11,
     name: 'Elena Intimate',
     username: '@elena_intimate',
-    avatar: 'https://images.unsplash.com/photo-1531123897727-8f129e1688ce?w=150&h=150&fit=crop&crop=face',
+    avatar: null,
     category: 'Intimate',
     description: 'Artistic photographer creating intimate portraits with minimalist aesthetics',
     subscribers: 7800,
@@ -264,7 +264,7 @@ export const creatorsData: Creator[] = [
     id: 12,
     name: 'Victoria Lifestyle',
     username: '@victoria_lifestyle',
-    avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&h=150&fit=crop&crop=face',
+    avatar: null,
     category: 'Lifestyle',
     description: 'Lifestyle creator sharing exclusive content and personal moments',
     subscribers: 5600,
@@ -281,7 +281,7 @@ export const creatorsData: Creator[] = [
     id: 13,
     name: 'Aria Wellness',
     username: '@ariawellness',
-    avatar: 'https://images.unsplash.com/photo-1524504388940-b1c1722653e1?w=150&h=150&fit=crop&crop=face',
+    avatar: null,
     category: 'Intimate',
     description: 'Wellness coach and mindfulness practitioner creating intimate content about self-care',
     subscribers: 4200,
@@ -300,7 +300,7 @@ export const creatorsData: Creator[] = [
     id: 14,
     name: 'Maria Blockchain',
     username: '@mariachain',
-    avatar: 'https://images.unsplash.com/photo-1517841905240-472988babdf9?w=150&h=150&fit=crop&crop=face',
+    avatar: null,
     category: 'Education',
     description: 'Blockchain educator explaining Web3 concepts in simple terms',
     subscribers: 15700,
@@ -317,7 +317,7 @@ export const creatorsData: Creator[] = [
     id: 15,
     name: 'Tech Teacher Tom',
     username: '@techtom',
-    avatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150&h=150&fit=crop&crop=face',
+    avatar: null,
     category: 'Technology',
     description: 'Software engineer teaching smart contract development and Web3 programming',
     subscribers: 11900,
@@ -2599,31 +2599,31 @@ export const mockUsers: User[] = [
   {
     id: 1,
     username: 'crypto_enthusiast',
-    avatar: 'https://images.unsplash.com/photo-1599566150163-29194dcaad36?w=40&h=40&fit=crop&crop=face',
+    avatar: null,
     isVerified: false
   },
   {
     id: 2,
     username: 'defi_hunter',
-    avatar: 'https://images.unsplash.com/photo-1527980965255-d3b416303d12?w=40&h=40&fit=crop&crop=face',
+    avatar: null,
     isVerified: true
   },
   {
     id: 3,
     username: 'nft_collector',
-    avatar: 'https://images.unsplash.com/photo-1494790108755-2616b612b786?w=40&h=40&fit=crop&crop=face',
+    avatar: null,
     isVerified: false
   },
   {
     id: 4,
     username: 'trading_pro',
-    avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=40&h=40&fit=crop&crop=face',
+    avatar: null,
     isVerified: true
   },
   {
     id: 5,
     username: 'yield_farmer',
-    avatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=40&h=40&fit=crop&crop=face',
+    avatar: null,
     isVerified: false
   }
 ]
@@ -2636,7 +2636,7 @@ export const mockComments: Comment[] = [
     postId: 1,
     userId: 2,
     username: 'defi_hunter',
-    userAvatar: 'https://images.unsplash.com/photo-1527980965255-d3b416303d12?w=40&h=40&fit=crop&crop=face',
+    userAvatar: null,
     content: 'Отличный анализ! Особенно интересна часть про Uniswap V3 концентрированную ликвидность.',
     createdAt: '2024-12-15T10:30:00Z',
     likes: 12,
@@ -2647,7 +2647,7 @@ export const mockComments: Comment[] = [
         postId: 1,
         userId: 1,
         username: 'crypto_enthusiast',
-        userAvatar: 'https://images.unsplash.com/photo-1599566150163-29194dcaad36?w=40&h=40&fit=crop&crop=face',
+        userAvatar: null,
         content: 'Согласен! Anna всегда делает качественный контент',
         createdAt: '2024-12-15T11:15:00Z',
         likes: 3,
@@ -2660,7 +2660,7 @@ export const mockComments: Comment[] = [
     postId: 1,
     userId: 5,
     username: 'yield_farmer',
-    userAvatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=40&h=40&fit=crop&crop=face',
+    userAvatar: null,
     content: 'Можете посоветовать оптимальную стратегию для начинающих в yield farming?',
     createdAt: '2024-12-15T12:45:00Z',
     likes: 7,
@@ -2671,7 +2671,7 @@ export const mockComments: Comment[] = [
     postId: 1,
     userId: 4,
     username: 'trading_pro',
-    userAvatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=40&h=40&fit=crop&crop=face',
+    userAvatar: null,
     content: 'Спасибо за детальный разбор рисков! Очень важная информация для новичков.',
     createdAt: '2024-12-15T14:20:00Z',
     likes: 15,
@@ -2684,7 +2684,7 @@ export const mockComments: Comment[] = [
     postId: 4,
     userId: 3,
     username: 'nft_collector',
-    userAvatar: 'https://images.unsplash.com/photo-1494790108755-2616b612b786?w=40&h=40&fit=crop&crop=face',
+    userAvatar: null,
     content: 'Потрясающая коллекция! Когда планируете минт?',
     createdAt: '2024-12-15T09:15:00Z',
     likes: 8,
@@ -2695,7 +2695,7 @@ export const mockComments: Comment[] = [
     postId: 4,
     userId: 1,
     username: 'crypto_enthusiast',
-    userAvatar: 'https://images.unsplash.com/photo-1599566150163-29194dcaad36?w=40&h=40&fit=crop&crop=face',
+    userAvatar: null,
     content: 'Какой софт используете для создания NFT арта?',
     createdAt: '2024-12-15T10:00:00Z',
     likes: 5,
@@ -2706,7 +2706,7 @@ export const mockComments: Comment[] = [
         postId: 4,
         userId: 2,
         username: 'defi_hunter',
-        userAvatar: 'https://images.unsplash.com/photo-1527980965255-d3b416303d12?w=40&h=40&fit=crop&crop=face',
+        userAvatar: null,
         content: 'Обычно используют Blender, Photoshop или Procreate',
         createdAt: '2024-12-15T10:30:00Z',
         likes: 2,
@@ -2721,7 +2721,7 @@ export const mockComments: Comment[] = [
     postId: 1,
     userId: 3,
     username: 'nft_collector',
-    userAvatar: 'https://images.unsplash.com/photo-1494790108755-2616b612b786?w=40&h=40&fit=crop&crop=face',
+    userAvatar: null,
     content: 'Интересно, а есть ли риски потери средств при стейкинге в малоизвестных протоколах?',
     createdAt: '2024-12-15T16:30:00Z',
     likes: 4,
@@ -2733,7 +2733,7 @@ export const mockComments: Comment[] = [
     postId: 4,
     userId: 5,
     username: 'yield_farmer',
-    userAvatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=40&h=40&fit=crop&crop=face',
+    userAvatar: null,
     content: 'Предпочитаю оставаться анонимным, но хочу сказать, что это один из лучших NFT проектов которые я видел!',
     createdAt: '2024-12-15T17:15:00Z',
     likes: 9,
@@ -2745,7 +2745,7 @@ export const mockComments: Comment[] = [
     postId: 1,
     userId: 4,
     username: 'trading_pro',
-    userAvatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=40&h=40&fit=crop&crop=face',
+    userAvatar: null,
     content: 'Не хочу светить свой профиль, но скажу что уже зарабатываю на этих стратегиях. Спасибо!',
     createdAt: '2024-12-15T18:45:00Z',
     likes: 11,

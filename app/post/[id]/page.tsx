@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { useParams } from 'next/navigation'
 import Image from 'next/image'
 import Link from 'next/link'
+import Avatar from '@/components/Avatar'
 import { 
   HeartIcon, 
   ChatBubbleLeftIcon, 
@@ -23,7 +24,7 @@ const mockPost = {
     id: 1,
     name: 'Anna Crypto',
     username: 'annacrypto',
-    avatar: '/avatars/anna.jpg',
+    avatar: null,
     isVerified: true
   },
   title: 'Мой новый NFT проект готов к запуску!',
@@ -45,7 +46,7 @@ const mockComments = [
     user: {
       name: 'Alex Blockchain',
       username: 'alexblockchain',
-      avatar: '/avatars/alex.jpg',
+      avatar: null,
       isVerified: false
     },
     content: 'Выглядит потрясающе! Когда будет минт?',
@@ -57,7 +58,7 @@ const mockComments = [
     user: {
       name: 'Crypto Marina',
       username: 'cryptomarina',
-      avatar: '/avatars/marina.jpg',
+      avatar: null,
       isVerified: true
     },
     content: 'Анна, твои работы всегда на высшем уровне! Обязательно буду участвовать в минте 🚀',
@@ -96,7 +97,7 @@ export default function PostPage() {
         user: {
           name: 'You',
           username: 'you',
-          avatar: '/avatars/default.jpg',
+          avatar: null,
           isVerified: false
         },
         content: newComment,
@@ -141,12 +142,12 @@ export default function PostPage() {
             <div className="flex items-center gap-4 p-6 pb-4">
               <Link href={`/creator/${mockPost.creator.id}`} className="flex items-center gap-4 group/creator">
                 <div className="relative w-16 h-16 rounded-2xl overflow-hidden border border-purple-500/30 bg-gradient-to-br from-purple-500/20 to-pink-500/20">
-                  <Image
-                    src={mockPost.creator.avatar || '/avatars/default.jpg'}
+                  <Avatar
+                    src={mockPost.creator.avatar}
                     alt={mockPost.creator.name}
-                    width={64}
-                    height={64}
-                    className="object-cover"
+                    seed={mockPost.creator.username}
+                    size={64}
+                    rounded="2xl"
                   />
                 </div>
                 <div>
@@ -274,12 +275,12 @@ export default function PostPage() {
                 <div key={comment.id} className="bg-slate-700/20 backdrop-blur-sm border border-slate-600/30 rounded-2xl p-6 hover:bg-slate-700/30 transition-all duration-300">
                   <div className="flex gap-4">
                     <div className="relative w-12 h-12 rounded-2xl overflow-hidden border border-purple-500/20 bg-gradient-to-br from-purple-500/10 to-pink-500/10 flex-shrink-0">
-                      <Image
-                        src={comment.user.avatar || '/avatars/default.jpg'}
+                      <Avatar
+                        src={comment.user.avatar}
                         alt={comment.user.name}
-                        width={48}
-                        height={48}
-                        className="object-cover"
+                        seed={comment.user.username}
+                        size={48}
+                        rounded="2xl"
                       />
                     </div>
                     <div className="flex-1">

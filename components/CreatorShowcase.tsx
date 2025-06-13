@@ -9,7 +9,7 @@ const creators = [
     category: 'NFT Арт',
     subscribers: 1250,
     monthlyEarning: '4,500 USDC',
-    avatar: 'https://images.unsplash.com/photo-1494790108755-2616b612b786?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=2787&q=80',
+    avatar: null,
     rating: 4.9,
     description: 'Создаю уникальные NFT коллекции и обучаю цифровому искусству'
   },
@@ -19,7 +19,7 @@ const creators = [
     category: 'Крипто-образование',
     subscribers: 3420,
     monthlyEarning: '8,200 USDC',
-    avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=2787&q=80',
+    avatar: null,
     rating: 4.8,
     description: 'Делюсь знаниями о DeFi, торговле и инвестициях в криптовалюты'
   },
@@ -29,7 +29,7 @@ const creators = [
     category: 'Web3 Разработка',
     subscribers: 890,
     monthlyEarning: '3,100 USDC',
-    avatar: 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=2070&q=80',
+    avatar: null,
     rating: 5.0,
     description: 'Обучаю созданию dApps на Solana и Ethereum. Смарт-контракты и фронтенд'
   }

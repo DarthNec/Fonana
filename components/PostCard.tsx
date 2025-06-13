@@ -3,6 +3,7 @@
 import React, { useState } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
+import Avatar from './Avatar'
 import { 
   HeartIcon, 
   ChatBubbleLeftIcon, 
@@ -23,7 +24,7 @@ interface Creator {
   id: number
   name: string
   username: string
-  avatar: string
+  avatar: string | null
   isVerified: boolean
 }
 
@@ -32,7 +33,7 @@ interface Comment {
   user: {
     name: string
     username: string
-    avatar: string
+    avatar: string | null
     isVerified: boolean
   }
   content: string
@@ -69,7 +70,7 @@ const mockComments: Comment[] = [
     user: {
       name: 'Alex Blockchain',
       username: 'alexblockchain',
-      avatar: '/avatars/alex.jpg',
+      avatar: null,
       isVerified: false
     },
     content: 'Выглядит потрясающе! Когда будет минт?',
@@ -81,7 +82,7 @@ const mockComments: Comment[] = [
         user: {
           name: 'Anna Crypto',
           username: 'annacrypto',
-          avatar: '/avatars/anna.jpg',
+          avatar: null,
           isVerified: true
         },
         content: 'Спасибо! Планируем запуск на следующей неделе 🚀',
@@ -95,7 +96,7 @@ const mockComments: Comment[] = [
     user: {
       name: 'Crypto Marina',
       username: 'cryptomarina',
-      avatar: '/avatars/marina.jpg',
+      avatar: null,
       isVerified: true
     },
     content: 'Анна, твои работы всегда на высшем уровне! Обязательно буду участвовать в минте 🚀',
@@ -175,7 +176,7 @@ export default function PostCard({
         user: {
           name: 'You',
           username: 'you',
-          avatar: '/avatars/default.jpg',
+          avatar: null,
           isVerified: false
         },
         content: newComment,
@@ -194,7 +195,7 @@ export default function PostCard({
         user: {
           name: 'You',
           username: 'you',
-          avatar: '/avatars/default.jpg',
+          avatar: null,
           isVerified: false
         },
         content: replyContent,
@@ -265,12 +266,12 @@ export default function PostCard({
           <div className="flex items-center gap-3 p-6 pb-4">
             <Link href={`/creator/${creator.id}`} className="flex items-center gap-3 group/creator">
               <div className="relative w-12 h-12 rounded-2xl overflow-hidden border border-purple-500/30 bg-gradient-to-br from-purple-500/20 to-pink-500/20">
-                <Image
+                <Avatar
                   src={creator.avatar}
                   alt={creator.name}
-                  width={48}
-                  height={48}
-                  className="object-cover"
+                  seed={creator.username}
+                  size={48}
+                  rounded="2xl"
                 />
               </div>
               <div>
@@ -464,24 +465,14 @@ export default function PostCard({
             {/* Add Comment */}
             <div className="p-6 border-b border-slate-700/30">
               <div className="flex gap-3">
-                <div className="w-10 h-10 bg-gradient-to-r from-purple-500 to-pink-500 rounded-xl flex items-center justify-center flex-shrink-0">
-                  {user?.avatar ? (
-                    <img
-                      src={user.avatar}
-                      alt={user.nickname || 'Me'}
-                      width={40}
-                      height={40}
-                      className="w-full h-full rounded-xl object-cover"
-                      onError={(e) => {
-                        e.currentTarget.style.display = 'none'
-                        e.currentTarget.nextElementSibling?.classList.remove('hidden')
-                      }}
-                    />
-                  ) : null}
-                  <span className={`text-white font-bold text-sm ${user?.avatar ? 'hidden' : ''}`}>
-                    {user?.nickname?.charAt(0).toUpperCase() || 'Me'}
-                  </span>
-                </div>
+                <Avatar
+                  src={user?.avatar}
+                  alt={user?.nickname || 'Me'}
+                  seed={user?.nickname || 'user'}
+                  size={40}
+                  rounded="xl"
+                  className="flex-shrink-0"
+                />
                 <div className="flex-1">
                   <textarea
                     value={newComment}
@@ -510,22 +501,13 @@ export default function PostCard({
                 <div key={comment.id} className="p-4 border-b border-slate-700/20 last:border-b-0">
                   <div className="flex gap-3">
                                       <div className="relative w-10 h-10 rounded-xl overflow-hidden border border-purple-500/20 bg-gradient-to-br from-purple-500/10 to-pink-500/10 flex-shrink-0">
-                    {comment.user.avatar ? (
-                      <Image
-                        src={comment.user.avatar}
-                        alt={comment.user.name}
-                        width={40}
-                        height={40}
-                        className="object-cover"
-                        onError={(e) => {
-                          e.currentTarget.style.display = 'none'
-                          e.currentTarget.nextElementSibling?.classList.remove('hidden')
-                        }}
-                      />
-                    ) : null}
-                    <div className={`absolute inset-0 flex items-center justify-center text-white font-bold text-sm ${comment.user.avatar ? 'hidden' : ''}`}>
-                      {comment.user.name.charAt(0).toUpperCase()}
-                    </div>
+                    <Avatar
+                      src={comment.user.avatar}
+                      alt={comment.user.name}
+                      seed={comment.user.username}
+                      size={40}
+                      rounded="xl"
+                    />
                   </div>
                     <div className="flex-1">
                       <div className="flex items-center gap-2 mb-1">
@@ -597,22 +579,13 @@ export default function PostCard({
                           {comment.replies.map((reply) => (
                             <div key={reply.id} className="flex gap-2 pl-4 border-l-2 border-slate-700/50">
                                                           <div className="relative w-8 h-8 rounded-lg overflow-hidden border border-purple-500/20 bg-gradient-to-br from-purple-500/10 to-pink-500/10 flex-shrink-0">
-                              {reply.user.avatar ? (
-                                <Image
-                                  src={reply.user.avatar}
-                                  alt={reply.user.name}
-                                  width={32}
-                                  height={32}
-                                  className="object-cover"
-                                  onError={(e) => {
-                                    e.currentTarget.style.display = 'none'
-                                    e.currentTarget.nextElementSibling?.classList.remove('hidden')
-                                  }}
-                                />
-                              ) : null}
-                              <div className={`absolute inset-0 flex items-center justify-center text-white font-bold text-xs ${reply.user.avatar ? 'hidden' : ''}`}>
-                                {reply.user.name.charAt(0).toUpperCase()}
-                              </div>
+                              <Avatar
+                                src={reply.user.avatar}
+                                alt={reply.user.name}
+                                seed={reply.user.username}
+                                size={32}
+                                rounded="xl"
+                              />
                             </div>
                               <div className="flex-1">
                                 <div className="flex items-center gap-2 mb-1">
