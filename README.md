@@ -53,12 +53,16 @@ cd Fonana
 # Установить зависимости
 npm install
 
+# Настроить PostgreSQL (автоматически для macOS/Linux)
+./scripts/setup-local-postgres.sh
+# Или вручную - см. LOCAL_SYNC.md
+
 # Настроить переменные окружения
 cp env.example .env.local
 # Отредактируйте .env.local и добавьте DATABASE_URL
 
 # Применить миграции БД
-npx prisma migrate dev
+npx prisma migrate deploy
 
 # Запустить в режиме разработки
 npm run dev
