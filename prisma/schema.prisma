@@ -9,7 +9,10 @@ datasource db {
 
 model User {
   id             String         @id @default(cuid())
-  wallet         String         @unique
+  email          String?        @unique
+  emailVerified  DateTime?      @map("email_verified")
+  name           String?
+  image          String?
   nickname       String?        @unique
   fullName       String?
   bio            String?
@@ -26,6 +29,12 @@ model User {
   followersCount Int            @default(0)
   followingCount Int            @default(0)
   postsCount     Int            @default(0)
+  
+  // Wallet fields
+  wallet         String?        @unique
+  solanaWallet   String?        @unique @map("solana_wallet")
+  
+  // Relations
   comments       Comment[]
   follows        Follow[]       @relation("UserFollows")
   followers      Follow[]       @relation("UserFollowers")
@@ -36,8 +45,12 @@ model User {
 
   // Referral system
   referrerId     String?
-  referrer        User?            @relation("Referrals", fields: [referrerId], references: [id])
-  referrals       User[]           @relation("Referrals")
+  referrer       User?          @relation("Referrals", fields: [referrerId], references: [id])
+  referrals      User[]         @relation("Referrals")
+
+  // NextAuth
+  accounts       Account[]
+  sessions       Session[]
 
   @@map("users")
 }
@@ -131,8 +144,18 @@ model Subscription {
   validUntil   DateTime
   isActive     Boolean  @default(true)
   txSignature  String?
+  
+  // Payment details
+  paymentStatus    PaymentStatus @default(PENDING)
+  paymentAmount    Float?
+  platformFee      Float?
+  referrerFee      Float?
+  creatorAmount    Float?
+  
+  // Relations
   user         User     @relation("UserSubscriptions", fields: [userId], references: [id], onDelete: Cascade)
   creator      User     @relation("CreatorSubscriptions", fields: [creatorId], references: [id], onDelete: Cascade)
+  transactions Transaction[]
 
   @@unique([userId, creatorId])
   @@map("subscriptions")
@@ -148,4 +171,91 @@ model Follow {
 
   @@unique([followerId, followingId])
   @@map("follows")
+}
+
+// Transaction tracking model
+model Transaction {
+  id              String   @id @default(cuid())
+  subscriptionId  String?
+  subscription    Subscription? @relation(fields: [subscriptionId], references: [id])
+  
+  // Transaction details
+  txSignature     String   @unique
+  fromWallet      String
+  toWallet        String
+  amount          Float
+  currency        String   @default("SOL")
+  type            TransactionType
+  status          TransactionStatus @default(PENDING)
+  
+  // Fee distribution
+  platformFee     Float?
+  referrerFee     Float?
+  referrerWallet  String?
+  
+  // Metadata
+  metadata        Json?
+  errorMessage    String?
+  confirmedAt     DateTime?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  
+  @@map("transactions")
+}
+
+// Payment status enum
+enum PaymentStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+  REFUNDED
+}
+
+// Transaction type enum
+enum TransactionType {
+  SUBSCRIPTION
+  PLATFORM_FEE
+  REFERRER_FEE
+  WITHDRAWAL
+  REFUND
+}
+
+// Transaction status enum
+enum TransactionStatus {
+  PENDING
+  CONFIRMED
+  FAILED
+  EXPIRED
+}
+
+// NextAuth models
+model Account {
+  id                 String  @id @default(cuid())
+  userId             String  @map("user_id")
+  type               String
+  provider           String
+  providerAccountId  String  @map("provider_account_id")
+  refresh_token      String? @db.Text
+  access_token       String? @db.Text
+  expires_at         Int?
+  token_type         String?
+  scope              String?
+  id_token           String? @db.Text
+  session_state      String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@map("accounts")
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique @map("session_token")
+  userId       String   @map("user_id")
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("sessions")
 }
