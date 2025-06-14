@@ -5,22 +5,45 @@ export const dynamic = 'force-dynamic'
 
 const prisma = new PrismaClient()
 
+interface Activity {
+  id: string
+  type: 'subscription' | 'like' | 'comment'
+  user: {
+    id: string
+    nickname: string | null
+    fullName: string | null
+    avatar: string | null
+  }
+  createdAt: Date
+  plan?: string
+  post?: {
+    id: string
+    title: string
+  }
+  content?: string
+}
+
 // GET /api/user/activity - get recent activity for a creator
-export async function GET(req: Request) {
+export async function GET(request: NextRequest) {
   try {
-    const { searchParams } = new URL(req.url)
+    const searchParams = request.nextUrl.searchParams
     const creatorId = searchParams.get('creatorId')
     const limit = searchParams.get('limit') ? parseInt(searchParams.get('limit')!) : 10
 
     if (!creatorId) {
-      return NextResponse.json({ error: 'Creator ID is required' }, { status: 400 })
+      return NextResponse.json({ error: 'Creator ID required' }, { status: 400 })
     }
 
-    // Get recent subscriptions to this creator
+    // Get recent activities related to creator's content
+    const activities: Activity[] = []
+
+    // Get recent subscriptions
     const recentSubscriptions = await prisma.subscription.findMany({
       where: {
         creatorId,
-        isActive: true
+        subscribedAt: {
+          gte: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000) // Last 30 days
+        }
       },
       include: {
         user: {
@@ -32,9 +55,7 @@ export async function GET(req: Request) {
           }
         }
       },
-      orderBy: {
-        subscribedAt: 'desc'
-      },
+      orderBy: { subscribedAt: 'desc' },
       take: Math.floor(limit / 3)
     })
 
@@ -44,12 +65,14 @@ export async function GET(req: Request) {
       select: { id: true, title: true }
     })
     
-    const postIds = creatorPosts.map(post => post.id)
-    const postMap = Object.fromEntries(creatorPosts.map(p => [p.id, p]))
+    const postIds = creatorPosts.map(p => p.id)
     
     const recentLikes = await prisma.like.findMany({
       where: {
-        postId: { in: postIds }
+        postId: { in: postIds },
+        createdAt: {
+          gte: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)
+        }
       },
       include: {
         user: {
@@ -59,18 +82,25 @@ export async function GET(req: Request) {
             fullName: true,
             avatar: true
           }
+        },
+        post: {
+          select: {
+            id: true,
+            title: true
+          }
         }
       },
-      orderBy: {
-        createdAt: 'desc'
-      },
+      orderBy: { createdAt: 'desc' },
       take: Math.floor(limit / 3)
     })
 
     // Get recent comments on creator's posts
     const recentComments = await prisma.comment.findMany({
       where: {
-        postId: { in: postIds }
+        postId: { in: postIds },
+        createdAt: {
+          gte: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)
+        }
       },
       include: {
         user: {
@@ -80,56 +110,50 @@ export async function GET(req: Request) {
             fullName: true,
             avatar: true
           }
+        },
+        post: {
+          select: {
+            id: true,
+            title: true
+          }
         }
       },
-      orderBy: {
-        createdAt: 'desc'
-      },
+      orderBy: { createdAt: 'desc' },
       take: Math.floor(limit / 3)
     })
 
     // Format activities
-    const activities: any[] = []
-
-    // Add subscriptions
     recentSubscriptions.forEach(sub => {
       activities.push({
-        id: `sub-${sub.id}`,
+        id: `sub_${sub.id}`,
         type: 'subscription',
         user: sub.user,
         createdAt: sub.subscribedAt,
-        subscription: {
-          plan: sub.plan,
-          price: sub.price
-        }
+        plan: sub.plan
       })
     })
 
-    // Add likes
     recentLikes.forEach(like => {
-      if (like.postId && postMap[like.postId]) {
+      if (like.post) {
         activities.push({
-          id: `like-${like.id}`,
+          id: `like_${like.id}`,
           type: 'like',
           user: like.user,
-          createdAt: like.createdAt,
-          post: postMap[like.postId]
+          post: like.post,
+          createdAt: like.createdAt
         })
       }
     })
 
-    // Add comments
     recentComments.forEach(comment => {
-      if (comment.postId && postMap[comment.postId]) {
+      if (comment.post) {
         activities.push({
-          id: `comment-${comment.id}`,
+          id: `comment_${comment.id}`,
           type: 'comment',
           user: comment.user,
+          post: comment.post,
           createdAt: comment.createdAt,
-          post: postMap[comment.postId],
-          comment: {
-            content: comment.content.substring(0, 100) + (comment.content.length > 100 ? '...' : '')
-          }
+          content: comment.content
         })
       }
     })
@@ -137,13 +161,13 @@ export async function GET(req: Request) {
     // Sort all activities by date
     activities.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
 
-    // Limit to requested amount
+    // Take only requested limit
     const limitedActivities = activities.slice(0, limit)
 
     return NextResponse.json({ activities: limitedActivities })
   } catch (error) {
-    console.error('Error fetching activity:', error)
-    return NextResponse.json({ error: 'Failed to fetch activity' }, { status: 500 })
+    console.error('Error fetching activities:', error)
+    return NextResponse.json({ error: 'Failed to fetch activities' }, { status: 500 })
   } finally {
     await prisma.$disconnect()
   }

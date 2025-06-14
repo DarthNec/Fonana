@@ -5,60 +5,101 @@ const prisma = new PrismaClient()
 
 export const dynamic = 'force-dynamic'
 
-// GET /api/subscriptions?userId=...
+// GET /api/subscriptions?userId=... или /api/subscriptions?creatorId=...
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url)
     const userId = searchParams.get('userId')
+    const creatorId = searchParams.get('creatorId')
 
-    if (!userId) {
-      return NextResponse.json(
-        { error: 'userId is required' },
-        { status: 400 }
-      )
-    }
-
-    // Получаем все подписки пользователя с информацией об авторах
-    const subscriptions = await prisma.subscription.findMany({
-      where: {
-        userId: userId,
-      },
-      orderBy: {
-        subscribedAt: 'desc'
-      }
-    })
-
-    // Для каждой подписки получаем информацию об авторе
-    const subscriptionsWithCreators = await Promise.all(
-      subscriptions.map(async (sub) => {
-        const creator = await prisma.user.findUnique({
-          where: { id: sub.creatorId },
-          select: {
-            id: true,
-            nickname: true,
-            fullName: true,
-            avatar: true,
-            isVerified: true,
+    // Если указан creatorId, возвращаем подписчиков создателя
+    if (creatorId) {
+      const subscriptions = await prisma.subscription.findMany({
+        where: {
+          creatorId: creatorId,
+        },
+        include: {
+          user: {
+            select: {
+              id: true,
+              nickname: true,
+              fullName: true,
+              avatar: true,
+              wallet: true
+            }
           }
-        })
-
-        return {
-          id: sub.id,
-          creatorId: sub.creatorId,
-          creator: creator,
-          plan: sub.plan,
-          price: sub.price,
-          currency: sub.currency,
-          subscribedAt: sub.subscribedAt.toISOString(),
-          validUntil: sub.validUntil.toISOString(),
-          isActive: sub.isActive && new Date(sub.validUntil) > new Date()
+        },
+        orderBy: {
+          subscribedAt: 'desc'
         }
       })
-    )
 
-    return NextResponse.json({
-      subscriptions: subscriptionsWithCreators
-    })
+      const formattedSubscriptions = subscriptions.map(sub => ({
+        id: sub.id,
+        userId: sub.userId,
+        user: sub.user,
+        plan: sub.plan,
+        price: sub.price,
+        currency: sub.currency,
+        subscribedAt: sub.subscribedAt.toISOString(),
+        validUntil: sub.validUntil.toISOString(),
+        isActive: sub.isActive && new Date(sub.validUntil) > new Date()
+      }))
+
+      return NextResponse.json({
+        subscriptions: formattedSubscriptions
+      })
+    }
+
+    // Если указан userId, возвращаем подписки пользователя
+    if (userId) {
+      // Получаем все подписки пользователя с информацией об авторах
+      const subscriptions = await prisma.subscription.findMany({
+        where: {
+          userId: userId,
+        },
+        orderBy: {
+          subscribedAt: 'desc'
+        }
+      })
+
+      // Для каждой подписки получаем информацию об авторе
+      const subscriptionsWithCreators = await Promise.all(
+        subscriptions.map(async (sub) => {
+          const creator = await prisma.user.findUnique({
+            where: { id: sub.creatorId },
+            select: {
+              id: true,
+              nickname: true,
+              fullName: true,
+              avatar: true,
+              isVerified: true,
+            }
+          })
+
+          return {
+            id: sub.id,
+            creatorId: sub.creatorId,
+            creator: creator,
+            plan: sub.plan,
+            price: sub.price,
+            currency: sub.currency,
+            subscribedAt: sub.subscribedAt.toISOString(),
+            validUntil: sub.validUntil.toISOString(),
+            isActive: sub.isActive && new Date(sub.validUntil) > new Date()
+          }
+        })
+      )
+
+      return NextResponse.json({
+        subscriptions: subscriptionsWithCreators
+      })
+    }
+
+    return NextResponse.json(
+      { error: 'userId or creatorId is required' },
+      { status: 400 }
+    )
   } catch (error) {
     console.error('Error fetching subscriptions:', error)
     return NextResponse.json(

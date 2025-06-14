@@ -37,6 +37,26 @@ export default function SubscriptionManager() {
     }
   }, [user])
 
+  // Load visibility preferences from localStorage
+  useEffect(() => {
+    if (user && subscriptions.length > 0) {
+      const savedVisibility = localStorage.getItem(`sub_visibility_${user.id}`)
+      if (savedVisibility) {
+        try {
+          const hiddenIds = JSON.parse(savedVisibility)
+          setSubscriptions(subs => 
+            subs.map(sub => ({
+              ...sub,
+              isPublicVisible: !hiddenIds.includes(sub.id)
+            }))
+          )
+        } catch (error) {
+          console.error('Error loading visibility preferences:', error)
+        }
+      }
+    }
+  }, [user, subscriptions.length])
+
   const fetchSubscriptions = async () => {
     if (!user) return
 
@@ -64,16 +84,25 @@ export default function SubscriptionManager() {
   }
 
   const toggleVisibility = async (subscriptionId: string) => {
-    setSubscriptions(subs => 
-      subs.map(sub => 
+    setSubscriptions(subs => {
+      const updated = subs.map(sub => 
         sub.id === subscriptionId 
           ? { ...sub, isPublicVisible: !sub.isPublicVisible }
           : sub
       )
-    )
+      
+      // Save hidden subscription IDs to localStorage
+      if (user) {
+        const hiddenIds = updated
+          .filter(sub => !sub.isPublicVisible)
+          .map(sub => sub.id)
+        localStorage.setItem(`sub_visibility_${user.id}`, JSON.stringify(hiddenIds))
+      }
+      
+      return updated
+    })
     
-    // TODO: Save visibility preference to backend
-    // This would be an API call to update the subscription visibility preference
+    toast.success('Visibility updated')
   }
 
   const getTierColor = (tier: string) => {

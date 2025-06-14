@@ -36,6 +36,7 @@ export default function CreatorsExplorer() {
   const [creators, setCreators] = useState<Creator[]>([])
   const [loading, setLoading] = useState(true)
   const [subscribedCreatorIds, setSubscribedCreatorIds] = useState<string[]>([])
+  const [hiddenCreatorIds, setHiddenCreatorIds] = useState<string[]>([])
   const { publicKey } = useWallet()
   const [activeTab, setActiveTab] = useState<'subscriptions' | 'recommendations' | 'all'>('subscriptions')
 
@@ -44,7 +45,7 @@ export default function CreatorsExplorer() {
     fetchCreators()
   }, [])
 
-  // Load user subscriptions
+  // Load user subscriptions and visibility preferences
   useEffect(() => {
     if (publicKey) {
       fetchUserSubscriptions()
@@ -91,6 +92,26 @@ export default function CreatorsExplorer() {
         if (subsResponse.ok) {
           setSubscribedCreatorIds(subsData.subscribedCreatorIds || [])
         }
+        
+        // Load hidden subscription IDs from localStorage
+        const savedVisibility = localStorage.getItem(`sub_visibility_${userData.user.id}`)
+        if (savedVisibility) {
+          try {
+            const hiddenSubIds = JSON.parse(savedVisibility)
+            // Get full subscriptions to map subscription IDs to creator IDs
+            const fullSubsResponse = await fetch(`/api/subscriptions?userId=${userData.user.id}`)
+            const fullSubsData = await fullSubsResponse.json()
+            
+            if (fullSubsResponse.ok) {
+              const hiddenCreators = fullSubsData.subscriptions
+                .filter((sub: any) => hiddenSubIds.includes(sub.id))
+                .map((sub: any) => sub.creatorId)
+              setHiddenCreatorIds(hiddenCreators)
+            }
+          } catch (error) {
+            console.error('Error loading visibility preferences:', error)
+          }
+        }
       }
     } catch (error) {
       console.error('Error fetching subscriptions:', error)
@@ -123,8 +144,10 @@ export default function CreatorsExplorer() {
     let filtered = creators
 
     if (activeTab === 'subscriptions') {
-      // Показываем только тех, на кого подписан пользователь
-      filtered = creators.filter(creator => isUserSubscribedTo(creator.id))
+      // Показываем только тех, на кого подписан пользователь и кто не скрыт
+      filtered = creators.filter(creator => 
+        isUserSubscribedTo(creator.id) && !hiddenCreatorIds.includes(creator.id)
+      )
     } else if (activeTab === 'recommendations') {
       // Показываем рекомендации - случайные 6 авторов, на которых НЕ подписан
       const notSubscribed = creators.filter(creator => !isUserSubscribedTo(creator.id))

@@ -78,13 +78,33 @@ export default function Dashboard() {
         setRecentPosts(formattedPosts)
       }
 
-      // Load stats (for now using user data, can be expanded)
+      // Load stats from database
       if (user) {
+        // Get total posts count
+        const allPostsResponse = await fetch(`/api/posts?creatorId=${user.id}`)
+        const allPostsData = await allPostsResponse.json()
+        const totalPosts = allPostsData.posts?.length || 0
+        
+        // Get subscribers count
+        const subscribersResponse = await fetch(`/api/subscriptions?creatorId=${user.id}`)
+        const subscribersData = await subscribersResponse.json()
+        const activeSubscribers = subscribersData.subscriptions?.filter((sub: any) => sub.isActive).length || 0
+        
+        // Calculate total revenue from subscriptions
+        const totalRevenue = subscribersData.subscriptions?.reduce((sum: number, sub: any) => {
+          return sum + (sub.price || 0)
+        }, 0) || 0
+        
+        // Calculate total views from all posts
+        const totalViews = allPostsData.posts?.reduce((sum: number, post: any) => {
+          return sum + (post.viewsCount || 0)
+        }, 0) || 0
+
         setStats({
-          totalRevenue: 0, // TODO: Calculate from transactions
-          subscribers: 0, // TODO: Load subscribers count from API
-          views: 0, // TODO: Implement views tracking
-          postsCount: recentPosts.length // Using loaded posts count for now
+          totalRevenue,
+          subscribers: activeSubscribers,
+          views: totalViews,
+          postsCount: totalPosts
         })
       }
 
@@ -299,7 +319,7 @@ export default function Dashboard() {
               </Link>
 
               <Link 
-                href="/creators" 
+                href="/analytics" 
                 className="group bg-gradient-to-r from-emerald-500 to-green-500 hover:from-emerald-600 hover:to-green-600 rounded-2xl p-6 transition-all duration-300 hover:scale-105 hover:shadow-xl hover:shadow-emerald-500/25"
               >
                 <div className="flex items-center gap-4">
