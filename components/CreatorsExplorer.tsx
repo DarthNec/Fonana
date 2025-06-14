@@ -171,7 +171,7 @@ export default function CreatorsExplorer() {
     return (
       <div 
         key={creator.id} 
-        className="group relative overflow-hidden rounded-3xl bg-white dark:bg-gradient-to-br dark:from-slate-900/80 dark:to-slate-950/90 backdrop-blur-xl border border-gray-200 dark:border-slate-700/50 hover:border-purple-500/50 dark:hover:border-purple-500/30 transition-all duration-500 hover:transform hover:scale-[1.02] h-full flex flex-col"
+        className="group relative overflow-hidden rounded-3xl bg-white dark:bg-slate-900 backdrop-blur-xl border border-gray-200 dark:border-slate-700/50 hover:border-purple-500/50 dark:hover:border-purple-500/30 transition-all duration-500 hover:transform hover:scale-[1.02] h-full flex flex-col"
       >
         {/* Hover glow effect */}
         <div className="absolute -inset-1 bg-gradient-to-r from-purple-600/20 to-pink-600/20 rounded-3xl opacity-0 group-hover:opacity-100 blur-xl transition-opacity duration-500"></div>
