@@ -14,6 +14,8 @@ export async function GET(req: Request) {
     const creatorId = searchParams.get('creatorId')
     const limit = searchParams.get('limit') ? parseInt(searchParams.get('limit')!) : undefined
 
+    console.log('[API/posts] Request params:', { userWallet, creatorId, limit })
+
     let where = {}
     
     // If creatorId is specified, filter by creator
@@ -49,6 +51,9 @@ export async function GET(req: Request) {
     let currentUser = null
     if (userWallet) {
       currentUser = await getUserByWallet(userWallet)
+      console.log('[API/posts] Current user:', currentUser?.id, currentUser?.nickname)
+    } else {
+      console.log('[API/posts] No userWallet provided')
     }
 
     // Получаем подписки текущего пользователя
@@ -63,6 +68,7 @@ export async function GET(req: Request) {
         select: { creatorId: true }
       })
       userSubscriptions = subscriptions.map(sub => sub.creatorId)
+      console.log('[API/posts] User subscriptions:', userSubscriptions.length, 'active subscriptions')
     }
 
     // Форматируем посты для фронтенда
@@ -72,6 +78,8 @@ export async function GET(req: Request) {
       
       // Если пост заблокирован и пользователь не подписан и это не его пост - скрываем контент
       const shouldHideContent = post.isLocked && !isSubscribed && !isCreatorPost
+
+      console.log(`[API/posts] Post "${post.title}" - locked: ${post.isLocked}, subscribed: ${isSubscribed}, shouldHide: ${shouldHideContent}`)
 
       return {
         ...post,
@@ -92,6 +100,7 @@ export async function GET(req: Request) {
       }
     })
 
+    console.log('[API/posts] Returning', formattedPosts.length, 'posts')
     return NextResponse.json({ posts: formattedPosts })
   } catch (error) {
     console.error('Error fetching posts:', error)

@@ -44,10 +44,15 @@ export default function FeedPage() {
     try {
       setIsLoading(true)
       
+      console.log('[Feed] Loading posts, user:', user?.id, user?.wallet)
+      
       // Add current user's wallet to request
       const params = new URLSearchParams()
       if (user?.wallet) {
         params.append('userWallet', user.wallet)
+        console.log('[Feed] Sending userWallet:', user.wallet)
+      } else {
+        console.log('[Feed] No user wallet available')
       }
       
       const response = await fetch(`/api/posts?${params.toString()}`)
@@ -244,7 +249,11 @@ export default function FeedPage() {
           onClose={() => setShowSubscribeModal(false)}
           onSuccess={() => {
             setShowSubscribeModal(false)
-            loadPosts() // Reload posts after subscription
+            // Add delay to allow database to update
+            setTimeout(() => {
+              console.log('[Feed] Reloading posts after subscription')
+              loadPosts()
+            }, 1000) // 1 second delay
           }}
         />
       )}
@@ -255,7 +264,11 @@ export default function FeedPage() {
           onClose={() => setShowPurchaseModal(false)}
           onSuccess={() => {
             setShowPurchaseModal(false)
-            loadPosts() // Reload posts after purchase
+            // Add delay to allow database to update
+            setTimeout(() => {
+              console.log('[Feed] Reloading posts after purchase')
+              loadPosts()
+            }, 1000) // 1 second delay
           }}
         />
       )}
