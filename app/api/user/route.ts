@@ -84,8 +84,12 @@ export async function POST(request: NextRequest) {
       })
     }
     
+    // Проверяем cookie с реферером
+    const referrerCookie = request.cookies.get('fonana_referrer')
+    let referrerNickname = referrerCookie?.value
+    
     // Создаем нового пользователя
-    const newUser = await createOrUpdateUser(wallet)
+    const newUser = await createOrUpdateUser(wallet, undefined, referrerNickname)
     
     return NextResponse.json({ 
       user: newUser,

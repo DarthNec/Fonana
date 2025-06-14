@@ -10,7 +10,7 @@ datasource db {
 model User {
   id             String         @id @default(cuid())
   wallet         String         @unique
-  nickname       String?
+  nickname       String?        @unique
   fullName       String?
   bio            String?
   avatar         String?
@@ -33,6 +33,11 @@ model User {
   posts          Post[]
   subscriptions  Subscription[]  @relation("UserSubscriptions")
   subscribers    Subscription[]  @relation("CreatorSubscriptions")
+
+  // Referral system
+  referrerId     String?
+  referrer        User?            @relation("Referrals", fields: [referrerId], references: [id])
+  referrals       User[]           @relation("Referrals")
 
   @@map("users")
 }

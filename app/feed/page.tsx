@@ -71,6 +71,7 @@ export default function FeedPage() {
           id: post.creator.id,
           name: post.creator.nickname || post.creator.wallet.slice(0, 6) + '...',
           username: post.creator.wallet.slice(0, 6) + '...' + post.creator.wallet.slice(-4),
+          nickname: post.creator.nickname,
           avatar: post.creator.avatar || '/default-avatar.png',
           isVerified: false
         },

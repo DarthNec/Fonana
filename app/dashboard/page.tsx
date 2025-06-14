@@ -287,7 +287,7 @@ export default function Dashboard() {
               Quick Actions
             </h2>
             
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
               <Link 
                 href="/create" 
                 className="group bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 rounded-2xl p-6 transition-all duration-300 hover:scale-105 hover:shadow-xl hover:shadow-purple-500/25"
@@ -329,6 +329,21 @@ export default function Dashboard() {
                   <div>
                     <h3 className="text-white font-bold text-lg">Analytics</h3>
                     <p className="text-emerald-200 text-sm">View statistics</p>
+                  </div>
+                </div>
+              </Link>
+
+              <Link 
+                href="/dashboard/referrals" 
+                className="group bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 rounded-2xl p-6 transition-all duration-300 hover:scale-105 hover:shadow-xl hover:shadow-orange-500/25"
+              >
+                <div className="flex items-center gap-4">
+                  <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center">
+                    <UsersIcon className="w-6 h-6 text-white" />
+                  </div>
+                  <div>
+                    <h3 className="text-white font-bold text-lg">Referrals</h3>
+                    <p className="text-orange-200 text-sm">Invite friends</p>
                   </div>
                 </div>
               </Link>

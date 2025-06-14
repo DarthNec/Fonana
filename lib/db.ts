@@ -19,13 +19,25 @@ export async function createOrUpdateUser(wallet: string, data?: {
   twitter?: string
   telegram?: string
   location?: string
-}) {
+}, referrerNickname?: string) {
+  // If referrer nickname is provided, try to find the referrer
+  let referrerId: string | undefined
+  if (referrerNickname) {
+    const referrer = await prisma.user.findFirst({
+      where: { nickname: referrerNickname }
+    })
+    if (referrer) {
+      referrerId = referrer.id
+    }
+  }
+
   return await prisma.user.upsert({
     where: { wallet },
     update: data ? { ...data, updatedAt: new Date() } : {},
     create: {
       wallet,
       isCreator: true,
+      referrerId,
       ...data,
     },
   })

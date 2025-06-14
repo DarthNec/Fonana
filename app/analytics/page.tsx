@@ -234,7 +234,7 @@ export default function AnalyticsPage() {
             <>
               {/* Key Metrics */}
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-12">
-                <div className="bg-white dark:bg-gradient-to-br dark:from-emerald-500/10 dark:to-teal-500/10 backdrop-blur-xl border border-gray-200 dark:border-emerald-500/20 rounded-3xl p-6 shadow-lg">
+                <div className="bg-white dark:bg-slate-800/50 backdrop-blur-xl border border-gray-200 dark:border-emerald-500/20 rounded-3xl p-6 shadow-lg dark:from-emerald-500/10 dark:to-teal-500/10 dark:bg-gradient-to-br">
                   <div className="flex items-center justify-between mb-4">
                     <div className="w-12 h-12 bg-gradient-to-r from-emerald-500 to-teal-500 rounded-2xl flex items-center justify-center">
                       <CurrencyDollarIcon className="w-6 h-6 text-white" />
@@ -249,7 +249,7 @@ export default function AnalyticsPage() {
                   <p className="text-gray-500 dark:text-slate-500 text-xs mt-1">${analyticsData.revenue.monthly.toFixed(2)}/month</p>
                 </div>
 
-                <div className="bg-white dark:bg-gradient-to-br dark:from-blue-500/10 dark:to-indigo-500/10 backdrop-blur-xl border border-gray-200 dark:border-blue-500/20 rounded-3xl p-6 shadow-lg">
+                <div className="bg-white dark:bg-slate-800/50 backdrop-blur-xl border border-gray-200 dark:border-blue-500/20 rounded-3xl p-6 shadow-lg dark:from-blue-500/10 dark:to-indigo-500/10 dark:bg-gradient-to-br">
                   <div className="flex items-center justify-between mb-4">
                     <div className="w-12 h-12 bg-gradient-to-r from-blue-500 to-indigo-500 rounded-2xl flex items-center justify-center">
                       <UsersIcon className="w-6 h-6 text-white" />
@@ -264,7 +264,7 @@ export default function AnalyticsPage() {
                   <p className="text-gray-500 dark:text-slate-500 text-xs mt-1">{analyticsData.subscribers.active} active</p>
                 </div>
 
-                <div className="bg-white dark:bg-gradient-to-br dark:from-purple-500/10 dark:to-pink-500/10 backdrop-blur-xl border border-gray-200 dark:border-purple-500/20 rounded-3xl p-6 shadow-lg">
+                <div className="bg-white dark:bg-slate-800/50 backdrop-blur-xl border border-gray-200 dark:border-purple-500/20 rounded-3xl p-6 shadow-lg dark:from-purple-500/10 dark:to-pink-500/10 dark:bg-gradient-to-br">
                   <div className="flex items-center justify-between mb-4">
                     <div className="w-12 h-12 bg-gradient-to-r from-purple-500 to-pink-500 rounded-2xl flex items-center justify-center">
                       <DocumentTextIcon className="w-6 h-6 text-white" />
@@ -278,7 +278,7 @@ export default function AnalyticsPage() {
                   <p className="text-gray-500 dark:text-slate-500 text-xs mt-1">{analyticsData.content.views} total views</p>
                 </div>
 
-                <div className="bg-white dark:bg-gradient-to-br dark:from-orange-500/10 dark:to-red-500/10 backdrop-blur-xl border border-gray-200 dark:border-orange-500/20 rounded-3xl p-6 shadow-lg">
+                <div className="bg-white dark:bg-slate-800/50 backdrop-blur-xl border border-gray-200 dark:border-orange-500/20 rounded-3xl p-6 shadow-lg dark:from-orange-500/10 dark:to-red-500/10 dark:bg-gradient-to-br">
                   <div className="flex items-center justify-between mb-4">
                     <div className="w-12 h-12 bg-gradient-to-r from-orange-500 to-red-500 rounded-2xl flex items-center justify-center">
                       <HeartIcon className="w-6 h-6 text-white" />
