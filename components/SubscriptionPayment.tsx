@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useWallet } from '@solana/wallet-adapter-react'
 import { WalletMultiButton } from '@solana/wallet-adapter-react-ui'
 import { 
@@ -37,7 +37,27 @@ export function SubscriptionPayment({
   const { publicKey, sendTransaction, connected } = useWallet()
   const [selectedPlan, setSelectedPlan] = useState(plans[0]?.id || '')
   const [isProcessing, setIsProcessing] = useState(false)
+  const [creatorData, setCreatorData] = useState<any>(null)
   const { toast } = useToast()
+
+  useEffect(() => {
+    // Загружаем полные данные создателя при монтировании
+    if (creatorId) {
+      fetchCreatorData()
+    }
+  }, [creatorId])
+
+  const fetchCreatorData = async () => {
+    try {
+      const response = await fetch(`/api/user?id=${creatorId}`)
+      const data = await response.json()
+      if (data.user) {
+        setCreatorData(data.user)
+      }
+    } catch (error) {
+      console.error('Error fetching creator data:', error)
+    }
+  }
 
   const handleSubscribe = async () => {
     if (!publicKey || !connected) {
@@ -52,7 +72,12 @@ export function SubscriptionPayment({
     const plan = plans.find(p => p.id === selectedPlan)
     if (!plan) return
 
-    if (!isValidSolanaAddress(creatorWallet)) {
+    // Используем данные создателя для определения кошельков
+    const finalCreatorWallet = creatorData?.solanaWallet || creatorData?.wallet || creatorWallet
+    const finalReferrerWallet = creatorData?.referrer?.solanaWallet || creatorData?.referrer?.wallet || referrerWallet
+    const finalHasReferrer = creatorData?.referrerId && finalReferrerWallet && isValidSolanaAddress(finalReferrerWallet)
+
+    if (!isValidSolanaAddress(finalCreatorWallet)) {
       toast({
         title: 'Ошибка',
         description: 'Некорректный адрес кошелька создателя',
@@ -67,9 +92,9 @@ export function SubscriptionPayment({
       // Calculate payment distribution
       const distribution = calculatePaymentDistribution(
         plan.price,
-        creatorWallet,
-        hasReferrer,
-        referrerWallet
+        finalCreatorWallet,
+        finalHasReferrer,
+        finalReferrerWallet
       )
 
       // Create transaction
@@ -91,7 +116,9 @@ export function SubscriptionPayment({
           creatorId,
           plan: plan.id,
           price: plan.price,
-          signature
+          signature,
+          hasReferrer: finalHasReferrer,
+          distribution
         })
       })
 
@@ -120,6 +147,11 @@ export function SubscriptionPayment({
       setIsProcessing(false)
     }
   }
+
+  // Определяем реальное распределение платежа на основе загруженных данных
+  const realHasReferrer = creatorData?.referrerId && creatorData?.referrer && 
+    (creatorData.referrer.solanaWallet || creatorData.referrer.wallet) &&
+    isValidSolanaAddress(creatorData.referrer.solanaWallet || creatorData.referrer.wallet)
 
   return (
     <div className="space-y-6">
@@ -150,8 +182,8 @@ export function SubscriptionPayment({
                     {selectedPlan === plan.id && (
                       <div className="text-xs text-gray-500 mt-1">
                         <p>Создатель: {formatSolAmount(plan.price * 0.9)}</p>
-                        <p>Платформа: {formatSolAmount(plan.price * (hasReferrer ? 0.05 : 0.1))}</p>
-                        {hasReferrer && (
+                        <p>Платформа: {formatSolAmount(plan.price * (realHasReferrer ? 0.05 : 0.1))}</p>
+                        {realHasReferrer && (
                           <p>Реферер: {formatSolAmount(plan.price * 0.05)}</p>
                         )}
                       </div>

@@ -104,4 +104,48 @@ export function lamportsToSol(lamports: number): number {
 // Convert SOL to lamports
 export function solToLamports(sol: number): number {
   return Math.floor(sol * LAMPORTS_PER_SOL)
+}
+
+export async function createPostPurchaseTransaction(
+  payerPublicKey: PublicKey,
+  distribution: PaymentDistribution
+): Promise<Transaction> {
+  const transaction = new Transaction()
+  
+  // Get recent blockhash
+  const { blockhash } = await getConnection().getLatestBlockhash()
+  transaction.recentBlockhash = blockhash
+  transaction.feePayer = payerPublicKey
+  
+  // Transfer to creator
+  transaction.add(
+    SystemProgram.transfer({
+      fromPubkey: payerPublicKey,
+      toPubkey: new PublicKey(distribution.creatorWallet),
+      lamports: Math.floor(distribution.creatorAmount * LAMPORTS_PER_SOL)
+    })
+  )
+  
+  // Transfer platform fee
+  const platformWallet = new PublicKey(PLATFORM_WALLET)
+  transaction.add(
+    SystemProgram.transfer({
+      fromPubkey: payerPublicKey,
+      toPubkey: platformWallet,
+      lamports: Math.floor(distribution.platformAmount * LAMPORTS_PER_SOL)
+    })
+  )
+  
+  // Transfer referrer fee if applicable
+  if (distribution.referrerWallet && distribution.referrerAmount) {
+    transaction.add(
+      SystemProgram.transfer({
+        fromPubkey: payerPublicKey,
+        toPubkey: new PublicKey(distribution.referrerWallet),
+        lamports: Math.floor(distribution.referrerAmount * LAMPORTS_PER_SOL)
+      })
+    )
+  }
+  
+  return transaction
 } 

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import Avatar from './Avatar'
 import { 
   XMarkIcon,
@@ -10,7 +10,15 @@ import {
 } from '@heroicons/react/24/outline'
 import { CheckBadgeIcon } from '@heroicons/react/24/solid'
 import { useWallet } from '@solana/wallet-adapter-react'
+import { WalletMultiButton } from '@solana/wallet-adapter-react-ui'
 import { toast } from 'react-hot-toast'
+import { 
+  createPostPurchaseTransaction, 
+  calculatePaymentDistribution,
+  formatSolAmount 
+} from '@/lib/solana/payments'
+import { isValidSolanaAddress } from '@/lib/solana/validation'
+import { connection } from '@/lib/solana/connection'
 
 interface PurchaseModalProps {
   post: {
@@ -24,6 +32,13 @@ interface PurchaseModalProps {
       username: string
       avatar: string | null
       isVerified?: boolean
+      wallet?: string | null
+      solanaWallet?: string | null
+      referrerId?: string | null
+      referrer?: {
+        solanaWallet?: string | null
+        wallet?: string | null
+      } | null
     }
   }
   onClose: () => void
@@ -31,26 +46,96 @@ interface PurchaseModalProps {
 }
 
 export default function PurchaseModal({ post, onClose, onSuccess }: PurchaseModalProps) {
-  const { connected, publicKey } = useWallet()
+  const { connected, publicKey, sendTransaction } = useWallet()
   const [isProcessing, setIsProcessing] = useState(false)
+  const [creatorData, setCreatorData] = useState<any>(null)
+  
+  useEffect(() => {
+    // Загружаем полные данные создателя при открытии модала
+    if (post.creator.id) {
+      fetchCreatorData()
+    }
+  }, [post.creator.id])
+  
+  const fetchCreatorData = async () => {
+    try {
+      const response = await fetch(`/api/user?id=${post.creator.id}`)
+      const data = await response.json()
+      if (data.user) {
+        setCreatorData(data.user)
+      }
+    } catch (error) {
+      console.error('Error fetching creator data:', error)
+    }
+  }
 
   const handlePurchase = async () => {
-    if (!connected) {
+    if (!connected || !publicKey) {
       toast.error('Пожалуйста, подключите кошелек')
       return
     }
+    
+    // Определяем кошелек создателя
+    const creatorWallet = creatorData?.solanaWallet || creatorData?.wallet || post.creator.solanaWallet || post.creator.wallet
+    if (!creatorWallet || !isValidSolanaAddress(creatorWallet)) {
+      toast.error('Некорректный адрес кошелька создателя')
+      return
+    }
+    
+    // Определяем кошелек реферера если есть
+    const referrerWallet = creatorData?.referrer?.solanaWallet || creatorData?.referrer?.wallet
+    const hasReferrer = creatorData?.referrerId && referrerWallet && isValidSolanaAddress(referrerWallet)
 
     setIsProcessing(true)
     
     try {
-      // TODO: Здесь будет логика оплаты через Solana
-      await new Promise(resolve => setTimeout(resolve, 2000))
+      // Рассчитываем распределение платежа
+      const distribution = calculatePaymentDistribution(
+        post.price,
+        creatorWallet,
+        hasReferrer,
+        referrerWallet
+      )
+      
+      // Создаем транзакцию
+      const transaction = await createPostPurchaseTransaction(
+        publicKey,
+        distribution
+      )
+      
+      // Отправляем транзакцию
+      const signature = await sendTransaction(transaction, connection)
+      
+      console.log('Transaction sent:', signature)
+      
+      // Обрабатываем платеж на бэкенде
+      const response = await fetch('/api/posts/process-payment', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          postId: post.id,
+          userId: publicKey.toString(),
+          price: post.price,
+          currency: post.currency,
+          signature,
+          creatorId: post.creator.id,
+          hasReferrer,
+          distribution
+        })
+      })
+      
+      const data = await response.json()
+      
+      if (!response.ok) {
+        throw new Error(data.error || 'Ошибка обработки платежа')
+      }
       
       toast.success('Контент успешно приобретен!')
       onSuccess?.()
       onClose()
     } catch (error) {
-      toast.error('Ошибка при покупке контента')
+      console.error('Payment error:', error)
+      toast.error(error instanceof Error ? error.message : 'Ошибка при покупке контента')
     } finally {
       setIsProcessing(false)
     }
@@ -99,6 +184,15 @@ export default function PurchaseModal({ post, onClose, onSuccess }: PurchaseModa
 
         {/* Content */}
         <div className="p-6">
+          {/* Wallet Connect */}
+          {!connected && (
+            <div className="mb-6">
+              <div className="flex justify-center">
+                <WalletMultiButton />
+              </div>
+            </div>
+          )}
+          
           {/* Post Title */}
           <div className="mb-6">
             <h3 className="text-lg font-semibold text-white mb-2">
@@ -121,6 +215,17 @@ export default function PurchaseModal({ post, onClose, onSuccess }: PurchaseModa
                 {post.currency}
               </span>
             </div>
+            
+            {/* Payment Distribution */}
+            {connected && (
+              <div className="mt-4 text-xs text-slate-500 space-y-1">
+                <p>Создатель: {formatSolAmount(post.price * 0.9)}</p>
+                <p>Платформа: {formatSolAmount(post.price * (creatorData?.referrerId ? 0.05 : 0.1))}</p>
+                {creatorData?.referrerId && (
+                  <p>Реферер: {formatSolAmount(post.price * 0.05)}</p>
+                )}
+              </div>
+            )}
           </div>
 
           {/* Features */}

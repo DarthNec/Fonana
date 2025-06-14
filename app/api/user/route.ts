@@ -22,6 +22,15 @@ export async function GET(request: NextRequest) {
       user = await prisma.user.findUnique({
         where: { id },
         include: {
+          referrer: {
+            select: {
+              id: true,
+              nickname: true,
+              fullName: true,
+              wallet: true,
+              solanaWallet: true
+            }
+          },
           _count: {
             select: {
               posts: true,
@@ -36,6 +45,15 @@ export async function GET(request: NextRequest) {
       user = await prisma.user.findFirst({
         where: { nickname },
         include: {
+          referrer: {
+            select: {
+              id: true,
+              nickname: true,
+              fullName: true,
+              wallet: true,
+              solanaWallet: true
+            }
+          },
           _count: {
             select: {
               posts: true,
@@ -46,8 +64,33 @@ export async function GET(request: NextRequest) {
         },
       })
     } else if (wallet) {
-      // Получаем пользователя по wallet
-      user = await getUserByWallet(wallet)
+      // Получаем пользователя по wallet с полной информацией
+      user = await prisma.user.findFirst({
+        where: {
+          OR: [
+            { wallet: wallet },
+            { solanaWallet: wallet }
+          ]
+        },
+        include: {
+          referrer: {
+            select: {
+              id: true,
+              nickname: true,
+              fullName: true,
+              wallet: true,
+              solanaWallet: true
+            }
+          },
+          _count: {
+            select: {
+              posts: true,
+              followers: true,
+              follows: true,
+            },
+          },
+        },
+      })
     }
     
     if (!user) {
