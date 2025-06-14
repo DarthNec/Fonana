@@ -1,12 +1,9 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { useWallet } from '@/lib/contexts/WalletContext'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Badge } from '@/components/ui/badge'
+import { useUser } from '@/lib/hooks/useUser'
 import { Users, Copy, CheckCircle } from 'lucide-react'
-import { Button } from '@/components/ui/button'
-import { toast } from 'sonner'
+import toast from 'react-hot-toast'
 import Link from 'next/link'
 import { User } from '@prisma/client'
 
@@ -16,7 +13,7 @@ interface ReferralUser extends User {
 }
 
 export default function ReferralsPage() {
-  const { user } = useWallet()
+  const { user } = useUser()
   const [referrals, setReferrals] = useState<ReferralUser[]>([])
   const [loading, setLoading] = useState(true)
   const [copied, setCopied] = useState(false)
@@ -74,167 +71,143 @@ export default function ReferralsPage() {
       
       {/* Реферальная ссылка */}
       {user?.nickname ? (
-        <Card className="mb-6 dark:bg-slate-800/50">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Users className="h-5 w-5" />
-              Ваша реферальная ссылка
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="flex items-center gap-2">
-              <input
-                type="text"
-                value={referralLink || ''}
-                readOnly
-                className="flex-1 px-3 py-2 bg-slate-100 dark:bg-slate-900 rounded-md text-sm"
-              />
-              <Button
-                onClick={copyToClipboard}
-                variant="outline"
-                size="sm"
-                className="flex items-center gap-2"
-              >
-                {copied ? (
-                  <>
-                    <CheckCircle className="h-4 w-4" />
-                    Скопировано
-                  </>
-                ) : (
-                  <>
-                    <Copy className="h-4 w-4" />
-                    Копировать
-                  </>
-                )}
-              </Button>
-            </div>
-            <p className="text-sm text-muted-foreground mt-2">
-              Поделитесь этой ссылкой с друзьями. Когда они зарегистрируются, 
-              они будут отображаться в вашем списке рефералов.
-            </p>
-          </CardContent>
-        </Card>
+        <div className="mb-6 bg-white dark:bg-slate-800/50 rounded-lg p-6">
+          <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
+            <Users className="h-5 w-5" />
+            Ваша реферальная ссылка
+          </h2>
+          <div className="flex items-center gap-2">
+            <input
+              type="text"
+              value={referralLink || ''}
+              readOnly
+              className="flex-1 px-3 py-2 bg-slate-100 dark:bg-slate-900 rounded-md text-sm"
+            />
+            <button
+              onClick={copyToClipboard}
+              className="flex items-center gap-2 px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+            >
+              {copied ? (
+                <>
+                  <CheckCircle className="h-4 w-4" />
+                  Скопировано
+                </>
+              ) : (
+                <>
+                  <Copy className="h-4 w-4" />
+                  Копировать
+                </>
+              )}
+            </button>
+          </div>
+          <p className="text-sm text-gray-600 dark:text-gray-400 mt-2">
+            Поделитесь этой ссылкой с друзьями. Когда они зарегистрируются, 
+            они будут отображаться в вашем списке рефералов.
+          </p>
+        </div>
       ) : (
-        <Card className="mb-6 dark:bg-slate-800/50">
-          <CardHeader>
-            <CardTitle>Настройте никнейм</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-muted-foreground mb-4">
-              Чтобы использовать реферальную программу, сначала настройте свой никнейм в профиле.
-            </p>
-            <Link href="/profile">
-              <Button>Перейти в профиль</Button>
-            </Link>
-          </CardContent>
-        </Card>
+        <div className="mb-6 bg-white dark:bg-slate-800/50 rounded-lg p-6">
+          <h2 className="text-xl font-bold mb-4">Настройте никнейм</h2>
+          <p className="text-gray-600 dark:text-gray-400 mb-4">
+            Чтобы использовать реферальную программу, сначала настройте свой никнейм в профиле.
+          </p>
+          <Link href="/profile">
+            <button className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-md transition-colors">
+              Перейти в профиль
+            </button>
+          </Link>
+        </div>
       )}
 
       {/* Статистика */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-        <Card className="dark:bg-slate-800/50">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">
-              Всего рефералов
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{referrals.length}</div>
-          </CardContent>
-        </Card>
+        <div className="bg-white dark:bg-slate-800/50 rounded-lg p-6">
+          <h3 className="text-sm font-medium text-gray-600 dark:text-gray-400 mb-2">
+            Всего рефералов
+          </h3>
+          <div className="text-2xl font-bold">{referrals.length}</div>
+        </div>
 
-        <Card className="dark:bg-slate-800/50">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">
-              Активных криейторов
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">
-              {referrals.filter(r => r.posts.length > 0).length}
-            </div>
-          </CardContent>
-        </Card>
+        <div className="bg-white dark:bg-slate-800/50 rounded-lg p-6">
+          <h3 className="text-sm font-medium text-gray-600 dark:text-gray-400 mb-2">
+            Активных криейторов
+          </h3>
+          <div className="text-2xl font-bold">
+            {referrals.filter(r => r.posts.length > 0).length}
+          </div>
+        </div>
 
-        <Card className="dark:bg-slate-800/50">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">
-              Общее количество подписчиков
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">
-              {referrals.reduce((sum, r) => sum + r.followers.length, 0)}
-            </div>
-          </CardContent>
-        </Card>
+        <div className="bg-white dark:bg-slate-800/50 rounded-lg p-6">
+          <h3 className="text-sm font-medium text-gray-600 dark:text-gray-400 mb-2">
+            Общее количество подписчиков
+          </h3>
+          <div className="text-2xl font-bold">
+            {referrals.reduce((sum, r) => sum + r.followers.length, 0)}
+          </div>
+        </div>
       </div>
 
       {/* Список рефералов */}
-      <Card className="dark:bg-slate-800/50">
-        <CardHeader>
-          <CardTitle>Ваши рефералы</CardTitle>
-        </CardHeader>
-        <CardContent>
-          {loading ? (
-            <div className="text-center py-8 text-muted-foreground">
-              Загрузка...
-            </div>
-          ) : referrals.length === 0 ? (
-            <div className="text-center py-8 text-muted-foreground">
-              У вас пока нет рефералов. Поделитесь своей ссылкой, чтобы пригласить друзей!
-            </div>
-          ) : (
-            <div className="space-y-4">
-              {referrals.map((referral) => (
-                <div
-                  key={referral.id}
-                  className="flex items-center justify-between p-4 rounded-lg border dark:border-slate-700"
-                >
-                  <div className="flex items-center gap-3">
-                    {referral.avatar ? (
-                      <img
-                        src={referral.avatar}
-                        alt={referral.nickname || 'User'}
-                        className="h-10 w-10 rounded-full object-cover"
-                      />
-                    ) : (
-                      <div className="h-10 w-10 rounded-full bg-gradient-to-br from-purple-500 to-pink-500" />
-                    )}
-                    <div>
-                      <div className="font-medium">
-                        {referral.nickname || referral.wallet.slice(0, 8) + '...'}
-                      </div>
-                      <div className="text-sm text-muted-foreground">
-                        Зарегистрирован {formatDate(referral.createdAt.toString())}
-                      </div>
+      <div className="bg-white dark:bg-slate-800/50 rounded-lg p-6">
+        <h2 className="text-xl font-bold mb-4">Ваши рефералы</h2>
+        {loading ? (
+          <div className="text-center py-8 text-gray-600 dark:text-gray-400">
+            Загрузка...
+          </div>
+        ) : referrals.length === 0 ? (
+          <div className="text-center py-8 text-gray-600 dark:text-gray-400">
+            У вас пока нет рефералов. Поделитесь своей ссылкой, чтобы пригласить друзей!
+          </div>
+        ) : (
+          <div className="space-y-4">
+            {referrals.map((referral) => (
+              <div
+                key={referral.id}
+                className="flex items-center justify-between p-4 rounded-lg border border-gray-200 dark:border-slate-700"
+              >
+                <div className="flex items-center gap-3">
+                  {referral.avatar ? (
+                    <img
+                      src={referral.avatar}
+                      alt={referral.nickname || 'User'}
+                      className="h-10 w-10 rounded-full object-cover"
+                    />
+                  ) : (
+                    <div className="h-10 w-10 rounded-full bg-gradient-to-br from-purple-500 to-pink-500" />
+                  )}
+                  <div>
+                    <div className="font-medium">
+                      {referral.nickname || referral.wallet.slice(0, 8) + '...'}
+                    </div>
+                    <div className="text-sm text-gray-600 dark:text-gray-400">
+                      Зарегистрирован {formatDate(referral.createdAt.toString())}
                     </div>
                   </div>
-                  <div className="flex items-center gap-2">
-                    {referral.posts.length > 0 && (
-                      <Badge variant="secondary">
-                        {referral.posts.length} постов
-                      </Badge>
-                    )}
-                    {referral.followers.length > 0 && (
-                      <Badge variant="secondary">
-                        {referral.followers.length} подписчиков
-                      </Badge>
-                    )}
-                    <Link
-                      href={referral.nickname ? `/${referral.nickname}` : `/creator/${referral.id}`}
-                    >
-                      <Button variant="ghost" size="sm">
-                        Профиль
-                      </Button>
-                    </Link>
-                  </div>
                 </div>
-              ))}
-            </div>
-          )}
-        </CardContent>
-      </Card>
+                <div className="flex items-center gap-2">
+                  {referral.posts.length > 0 && (
+                    <span className="px-2 py-1 bg-gray-100 dark:bg-gray-700 rounded text-sm">
+                      {referral.posts.length} постов
+                    </span>
+                  )}
+                  {referral.followers.length > 0 && (
+                    <span className="px-2 py-1 bg-gray-100 dark:bg-gray-700 rounded text-sm">
+                      {referral.followers.length} подписчиков
+                    </span>
+                  )}
+                  <Link
+                    href={referral.nickname ? `/${referral.nickname}` : `/creator/${referral.id}`}
+                  >
+                    <button className="px-3 py-1 text-sm hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition-colors">
+                      Профиль
+                    </button>
+                  </Link>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
     </div>
   )
 } 
