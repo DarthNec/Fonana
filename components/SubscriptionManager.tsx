@@ -1,65 +1,69 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { EyeIcon, EyeSlashIcon, UserIcon } from '@heroicons/react/24/outline'
-import { getCreatorById } from '@/lib/mockData'
 import Image from 'next/image'
 import Avatar from './Avatar'
+import { useUser } from '@/lib/hooks/useUser'
+import toast from 'react-hot-toast'
 
 interface Subscription {
-  id: number
-  creatorId: number
-  subscriptionTier: string
-  subscriptionPrice: string
+  id: string
+  creatorId: string
+  creator: {
+    id: string
+    nickname: string
+    fullName: string
+    avatar: string
+    isVerified: boolean
+  }
+  plan: string
+  price: number
+  currency: string
   subscribedAt: string
-  isPublicVisible: boolean
-  expiresAt: string
+  validUntil: string
+  isActive: boolean
+  isPublicVisible?: boolean
 }
 
-// Mock data for all user subscriptions
-const mockSubscriptions: Subscription[] = [
-  {
-    id: 1,
-    creatorId: 1,
-    subscriptionTier: 'Premium',
-    subscriptionPrice: '1.5 SOL',
-    subscribedAt: '2024-01-15',
-    isPublicVisible: true,
-    expiresAt: '2024-07-15'
-  },
-  {
-    id: 2,
-    creatorId: 2,
-    subscriptionTier: 'Basic',
-    subscriptionPrice: '0.5 SOL',
-    subscribedAt: '2024-02-01',
-    isPublicVisible: true,
-    expiresAt: '2024-08-01'
-  },
-  {
-    id: 3,
-    creatorId: 3,
-    subscriptionTier: 'VIP',
-    subscriptionPrice: '3.0 SOL',
-    subscribedAt: '2024-01-20',
-    isPublicVisible: false,
-    expiresAt: '2024-07-20'
-  },
-  {
-    id: 4,
-    creatorId: 4,
-    subscriptionTier: 'Premium',
-    subscriptionPrice: '2.0 SOL',
-    subscribedAt: '2024-03-01',
-    isPublicVisible: true,
-    expiresAt: '2024-09-01'
-  }
-]
-
 export default function SubscriptionManager() {
-  const [subscriptions, setSubscriptions] = useState<Subscription[]>(mockSubscriptions)
+  const { user } = useUser()
+  const [subscriptions, setSubscriptions] = useState<Subscription[]>([])
+  const [loading, setLoading] = useState(true)
 
-  const toggleVisibility = (subscriptionId: number) => {
+  useEffect(() => {
+    if (user) {
+      fetchSubscriptions()
+    }
+  }, [user])
+
+  const fetchSubscriptions = async () => {
+    if (!user) return
+
+    try {
+      setLoading(true)
+      const response = await fetch(`/api/subscriptions?userId=${user.id}`)
+      const data = await response.json()
+      
+      if (response.ok) {
+        // Add isPublicVisible property to each subscription (default true)
+        const subsWithVisibility = (data.subscriptions || []).map((sub: Subscription) => ({
+          ...sub,
+          isPublicVisible: sub.isPublicVisible !== false
+        }))
+        setSubscriptions(subsWithVisibility)
+      } else {
+        toast.error('Error loading subscriptions')
+      }
+    } catch (error) {
+      console.error('Error fetching subscriptions:', error)
+      toast.error('Error loading subscriptions')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const toggleVisibility = async (subscriptionId: string) => {
     setSubscriptions(subs => 
       subs.map(sub => 
         sub.id === subscriptionId 
@@ -67,19 +71,47 @@ export default function SubscriptionManager() {
           : sub
       )
     )
+    
+    // TODO: Save visibility preference to backend
+    // This would be an API call to update the subscription visibility preference
   }
 
   const getTierColor = (tier: string) => {
-    switch (tier) {
-      case 'Basic': return 'bg-gray-500/20 text-gray-300 border border-gray-500/30'
-      case 'Premium': return 'bg-purple-500/20 text-purple-300 border border-purple-500/30'
-      case 'VIP': return 'bg-yellow-500/20 text-yellow-300 border border-yellow-500/30'
+    switch (tier.toLowerCase()) {
+      case 'basic': return 'bg-gray-500/20 text-gray-300 border border-gray-500/30'
+      case 'premium': return 'bg-purple-500/20 text-purple-300 border border-purple-500/30'
+      case 'vip': return 'bg-yellow-500/20 text-yellow-300 border border-yellow-500/30'
       default: return 'bg-slate-500/20 text-slate-300 border border-slate-500/30'
     }
   }
 
   const visibleSubscriptions = subscriptions.filter(sub => sub.isPublicVisible)
   const hiddenSubscriptions = subscriptions.filter(sub => !sub.isPublicVisible)
+
+  if (loading) {
+    return (
+      <div className="bg-slate-800/50 backdrop-blur-xl border border-slate-700/50 rounded-3xl p-8">
+        <div className="text-center text-slate-400">
+          Loading subscriptions...
+        </div>
+      </div>
+    )
+  }
+
+  if (subscriptions.length === 0) {
+    return (
+      <div className="bg-slate-800/50 backdrop-blur-xl border border-slate-700/50 rounded-3xl p-8">
+        <div className="text-center">
+          <h2 className="text-2xl font-bold text-white mb-4">
+            Subscription Management
+          </h2>
+          <p className="text-slate-400">
+            You don't have any active subscriptions yet
+          </p>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="bg-slate-800/50 backdrop-blur-xl border border-slate-700/50 rounded-3xl p-8">
@@ -100,7 +132,7 @@ export default function SubscriptionManager() {
         </h3>
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
           {visibleSubscriptions.map(subscription => {
-            const creator = getCreatorById(subscription.creatorId)
+            const creator = subscription.creator
             if (!creator) return null
 
             return (
@@ -108,16 +140,16 @@ export default function SubscriptionManager() {
                 <div className="flex items-start gap-4 mb-4">
                   <Avatar
                     src={creator.avatar}
-                    alt={creator.name}
-                    seed={creator.username}
+                    alt={creator.fullName || creator.nickname}
+                    seed={creator.nickname}
                     size={48}
                     rounded="xl"
                   />
                   <div className="flex-1">
-                    <h4 className="font-semibold text-white">{creator.name}</h4>
-                    <p className="text-slate-400 text-sm">@{creator.username}</p>
-                    <span className={`inline-block px-2 py-1 rounded-full text-xs font-medium mt-2 ${getTierColor(subscription.subscriptionTier)}`}>
-                      {subscription.subscriptionTier} - {subscription.subscriptionPrice}
+                    <h4 className="font-semibold text-white">{creator.fullName || creator.nickname}</h4>
+                    <p className="text-slate-400 text-sm">@{creator.nickname}</p>
+                    <span className={`inline-block px-2 py-1 rounded-full text-xs font-medium mt-2 ${getTierColor(subscription.plan)}`}>
+                      {subscription.plan} - {subscription.price} {subscription.currency}
                     </span>
                   </div>
                 </div>
@@ -125,7 +157,7 @@ export default function SubscriptionManager() {
                 <div className="flex items-center justify-between">
                   <div className="text-xs text-slate-400">
                     <div>Subscribed: {new Date(subscription.subscribedAt).toLocaleDateString()}</div>
-                    <div>Valid until: {new Date(subscription.expiresAt).toLocaleDateString()}</div>
+                    <div>Valid until: {new Date(subscription.validUntil).toLocaleDateString()}</div>
                   </div>
                   <button
                     onClick={() => toggleVisibility(subscription.id)}
@@ -150,7 +182,7 @@ export default function SubscriptionManager() {
           </h3>
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
             {hiddenSubscriptions.map(subscription => {
-              const creator = getCreatorById(subscription.creatorId)
+              const creator = subscription.creator
               if (!creator) return null
 
               return (
@@ -158,17 +190,17 @@ export default function SubscriptionManager() {
                   <div className="flex items-start gap-4 mb-4">
                     <Avatar
                       src={creator.avatar}
-                      alt={creator.name}
-                      seed={creator.username}
+                      alt={creator.fullName || creator.nickname}
+                      seed={creator.nickname}
                       size={48}
                       rounded="xl"
                       className="grayscale"
                     />
                     <div className="flex-1">
-                      <h4 className="font-semibold text-white">{creator.name}</h4>
-                      <p className="text-slate-400 text-sm">@{creator.username}</p>
-                      <span className={`inline-block px-2 py-1 rounded-full text-xs font-medium mt-2 ${getTierColor(subscription.subscriptionTier)}`}>
-                        {subscription.subscriptionTier} - {subscription.subscriptionPrice}
+                      <h4 className="font-semibold text-white">{creator.fullName || creator.nickname}</h4>
+                      <p className="text-slate-400 text-sm">@{creator.nickname}</p>
+                      <span className={`inline-block px-2 py-1 rounded-full text-xs font-medium mt-2 ${getTierColor(subscription.plan)}`}>
+                        {subscription.plan} - {subscription.price} {subscription.currency}
                       </span>
                     </div>
                   </div>
@@ -176,7 +208,7 @@ export default function SubscriptionManager() {
                   <div className="flex items-center justify-between">
                     <div className="text-xs text-slate-400">
                       <div>Subscribed: {new Date(subscription.subscribedAt).toLocaleDateString()}</div>
-                      <div>Valid until: {new Date(subscription.expiresAt).toLocaleDateString()}</div>
+                      <div>Valid until: {new Date(subscription.validUntil).toLocaleDateString()}</div>
                     </div>
                     <button
                       onClick={() => toggleVisibility(subscription.id)}

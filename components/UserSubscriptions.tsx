@@ -62,11 +62,11 @@ export default function UserSubscriptions() {
       if (response.ok) {
         setSubscriptions(data.subscriptions || [])
       } else {
-        toast.error('Ошибка загрузки подписок')
+        toast.error('Error loading subscriptions')
       }
     } catch (error) {
       console.error('Error fetching subscriptions:', error)
-      toast.error('Ошибка загрузки подписок')
+      toast.error('Error loading subscriptions')
     } finally {
       setLoading(false)
     }
@@ -82,14 +82,14 @@ export default function UserSubscriptions() {
       })
 
       if (response.ok) {
-        toast.success('Подписка отменена')
-        fetchSubscriptions() // Обновляем список
+        toast.success('Subscription cancelled')
+        fetchSubscriptions() // Refresh the list
       } else {
-        toast.error('Ошибка при отмене подписки')
+        toast.error('Error cancelling subscription')
       }
     } catch (error) {
       console.error('Error cancelling subscription:', error)
-      toast.error('Ошибка при отмене подписки')
+      toast.error('Error cancelling subscription')
     }
   }
 
@@ -107,16 +107,16 @@ export default function UserSubscriptions() {
       })
 
       if (response.ok) {
-        toast.success(`Подписка обновлена до ${newTier}`)
+        toast.success(`Subscription upgraded to ${newTier}`)
         fetchSubscriptions()
         setShowUpgradeModal(false)
         setSelectedUpgrade(null)
       } else {
-        toast.error('Ошибка при обновлении подписки')
+        toast.error('Error upgrading subscription')
       }
     } catch (error) {
       console.error('Error upgrading subscription:', error)
-      toast.error('Ошибка при обновлении подписки')
+      toast.error('Error upgrading subscription')
     }
   }
 
@@ -147,7 +147,7 @@ export default function UserSubscriptions() {
   }
 
   const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('ru-RU', {
+    return new Date(dateString).toLocaleDateString('en-US', {
       day: 'numeric',
       month: 'long',
       year: 'numeric'
@@ -165,7 +165,7 @@ export default function UserSubscriptions() {
     return (
       <div className="bg-slate-800/50 backdrop-blur-xl border border-slate-700/50 rounded-3xl p-8">
         <div className="text-center text-slate-400">
-          Загрузка подписок...
+          Loading subscriptions...
         </div>
       </div>
     )
@@ -176,8 +176,8 @@ export default function UserSubscriptions() {
       <div className="bg-slate-800/50 backdrop-blur-xl border border-slate-700/50 rounded-3xl p-8">
         <div className="text-center">
           <SparklesIcon className="w-16 h-16 text-slate-600 mx-auto mb-4" />
-          <h3 className="text-xl font-bold text-white mb-2">У вас пока нет активных подписок</h3>
-          <p className="text-slate-400">Исследуйте авторов и подпишитесь на интересный контент</p>
+          <h3 className="text-xl font-bold text-white mb-2">You don't have any active subscriptions</h3>
+          <p className="text-slate-400">Explore creators and subscribe to interesting content</p>
         </div>
       </div>
     )
@@ -190,7 +190,7 @@ export default function UserSubscriptions() {
           <div className="w-8 h-8 bg-gradient-to-r from-purple-400 to-pink-400 rounded-lg flex items-center justify-center">
             <CreditCardIcon className="w-5 h-5 text-white" />
           </div>
-          Мои подписки
+          My Subscriptions
         </h2>
 
         <div className="space-y-4">
@@ -249,14 +249,14 @@ export default function UserSubscriptions() {
                       {/* Price */}
                       <div className="flex items-center gap-1 text-slate-300">
                         <span className="font-semibold">{subscription.price}</span>
-                        <span className="text-sm">{subscription.currency}/мес</span>
+                        <span className="text-sm">{subscription.currency}/mo</span>
                       </div>
 
                       {/* Days Left */}
                       <div className={`flex items-center gap-2 ${isExpiringSoon ? 'text-orange-400' : 'text-slate-400'}`}>
                         <CalendarIcon className="w-4 h-4" />
                         <span className="text-sm">
-                          {daysLeft > 0 ? `Осталось ${daysLeft} дн.` : 'Истекла'}
+                          {daysLeft > 0 ? `${daysLeft} days left` : 'Expired'}
                         </span>
                       </div>
                     </div>
@@ -269,7 +269,7 @@ export default function UserSubscriptions() {
                         className="inline-flex items-center gap-2 px-4 py-2 bg-blue-500/20 hover:bg-blue-500/30 text-blue-300 rounded-xl text-sm font-medium transition-all"
                       >
                         <UserIcon className="w-4 h-4" />
-                        Перейти к профилю
+                        View Profile
                       </Link>
 
                       {/* Upgrade/Downgrade */}
@@ -281,20 +281,20 @@ export default function UserSubscriptions() {
                         className="inline-flex items-center gap-2 px-4 py-2 bg-purple-500/20 hover:bg-purple-500/30 text-purple-300 rounded-xl text-sm font-medium transition-all"
                       >
                         <ArrowUpIcon className="w-4 h-4" />
-                        Изменить тариф
+                        Change Tier
                       </button>
 
                       {/* Cancel */}
                       <button
                         onClick={() => {
-                          if (confirm('Вы уверены, что хотите отменить подписку?')) {
+                          if (confirm('Are you sure you want to cancel this subscription?')) {
                             handleUnsubscribe(subscription.id)
                           }
                         }}
                         className="inline-flex items-center gap-2 px-4 py-2 bg-red-500/20 hover:bg-red-500/30 text-red-300 rounded-xl text-sm font-medium transition-all"
                       >
                         <TrashIcon className="w-4 h-4" />
-                        Отменить
+                        Cancel
                       </button>
                     </div>
                   </div>
@@ -309,10 +309,10 @@ export default function UserSubscriptions() {
       {showUpgradeModal && selectedUpgrade && (
         <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
           <div className="bg-slate-800 rounded-3xl p-8 max-w-md w-full">
-            <h3 className="text-2xl font-bold text-white mb-6">Изменить тариф подписки</h3>
+            <h3 className="text-2xl font-bold text-white mb-6">Change Subscription Tier</h3>
             
             <div className="mb-6">
-              <p className="text-slate-400 mb-2">Текущий тариф:</p>
+              <p className="text-slate-400 mb-2">Current tier:</p>
               <div className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-sm font-medium text-white bg-gradient-to-r ${getTierColor(selectedUpgrade.plan)}`}>
                 <span>{getTierIcon(selectedUpgrade.plan)}</span>
                 <span>{selectedUpgrade.plan}</span>
@@ -337,7 +337,7 @@ export default function UserSubscriptions() {
                         <span>{tier}</span>
                       </div>
                       <span className="text-slate-300">
-                        {price} SOL/мес
+                        {price} SOL/mo
                       </span>
                     </div>
                     <ArrowUpIcon className="w-5 h-5 text-slate-500 group-hover:text-white transition-colors" />
@@ -353,7 +353,7 @@ export default function UserSubscriptions() {
               }}
               className="w-full px-6 py-3 bg-slate-700 hover:bg-slate-600 text-white rounded-xl font-medium transition-all"
             >
-              Отмена
+              Cancel
             </button>
           </div>
         </div>

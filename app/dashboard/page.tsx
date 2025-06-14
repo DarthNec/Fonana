@@ -88,7 +88,60 @@ export default function Dashboard() {
         })
       }
 
-      // TODO: Load recent activity from API
+      // Load recent activity
+      try {
+        const activityResponse = await fetch(`/api/user/activity?creatorId=${user?.id}&limit=10`)
+        if (activityResponse.ok) {
+          const activityData = await activityResponse.json()
+          
+          // Format activity data
+          const formattedActivity = activityData.activities?.map((activity: any) => {
+            let icon, color, action
+            
+            switch(activity.type) {
+              case 'subscription':
+                icon = UsersIcon
+                color = 'text-emerald-400'
+                action = 'subscribed to your channel'
+                break
+              case 'like':
+                icon = HeartIcon
+                color = 'text-red-400'
+                action = `liked your post "${activity.post?.title || 'post'}"`
+                break
+              case 'comment':
+                icon = ChatBubbleLeftEllipsisIcon
+                color = 'text-blue-400'
+                action = `commented on "${activity.post?.title || 'post'}"`
+                break
+              case 'tip':
+                icon = GiftIcon
+                color = 'text-yellow-400'
+                action = `sent you ${activity.amount || 0} SOL tip`
+                break
+              default:
+                icon = StarIcon
+                color = 'text-purple-400'
+                action = activity.action || 'interacted with your content'
+            }
+            
+            return {
+              id: activity.id,
+              user: activity.user?.fullName || activity.user?.nickname || 'Anonymous',
+              action,
+              time: formatTimeAgo(activity.createdAt),
+              icon,
+              color,
+              type: activity.type
+            }
+          }) || []
+          
+          setRecentActivity(formattedActivity)
+        }
+      } catch (error) {
+        console.error('Error loading activity:', error)
+        // Activity is optional, so we don't show an error toast
+      }
       
     } catch (error) {
       console.error('Error loading dashboard data:', error)
@@ -96,6 +149,18 @@ export default function Dashboard() {
     } finally {
       setIsLoading(false)
     }
+  }
+
+  const formatTimeAgo = (dateString: string) => {
+    const date = new Date(dateString)
+    const now = new Date()
+    const seconds = Math.floor((now.getTime() - date.getTime()) / 1000)
+    
+    if (seconds < 60) return 'just now'
+    if (seconds < 3600) return `${Math.floor(seconds / 60)} minutes ago`
+    if (seconds < 86400) return `${Math.floor(seconds / 3600)} hours ago`
+    if (seconds < 604800) return `${Math.floor(seconds / 86400)} days ago`
+    return date.toLocaleDateString()
   }
 
   const displayStats = [

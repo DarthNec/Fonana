@@ -32,33 +32,33 @@ interface SubscriptionTier {
 
 const defaultFeatures = {
   basic: [
-    { id: 'basic-1', text: 'Доступ к публичным постам', enabled: true },
-    { id: 'basic-2', text: 'Участие в чате сообщества', enabled: true },
-    { id: 'basic-3', text: 'Ежемесячные стримы', enabled: true },
-    { id: 'basic-4', text: 'Базовое взаимодействие с автором', enabled: true },
-    { id: 'basic-5', text: 'Доступ к архиву контента', enabled: false },
-    { id: 'basic-6', text: 'Значок подписчика', enabled: false }
+    { id: 'basic-1', text: 'Access to public posts', enabled: true },
+    { id: 'basic-2', text: 'Community chat participation', enabled: true },
+    { id: 'basic-3', text: 'Monthly streams', enabled: true },
+    { id: 'basic-4', text: 'Basic creator interaction', enabled: true },
+    { id: 'basic-5', text: 'Content archive access', enabled: false },
+    { id: 'basic-6', text: 'Subscriber badge', enabled: false }
   ],
   premium: [
-    { id: 'premium-1', text: 'Все возможности Basic', enabled: true },
-    { id: 'premium-2', text: 'Эксклюзивный премиум контент', enabled: true },
-    { id: 'premium-3', text: 'Еженедельные приватные стримы', enabled: true },
-    { id: 'premium-4', text: 'Приоритет в комментариях', enabled: true },
-    { id: 'premium-5', text: 'Личные сообщения', enabled: true },
-    { id: 'premium-6', text: 'Ранний доступ к новому контенту', enabled: true },
-    { id: 'premium-7', text: 'Скидки на мерч', enabled: false },
-    { id: 'premium-8', text: 'Голосование за контент', enabled: false }
+    { id: 'premium-1', text: 'All Basic features', enabled: true },
+    { id: 'premium-2', text: 'Exclusive premium content', enabled: true },
+    { id: 'premium-3', text: 'Weekly private streams', enabled: true },
+    { id: 'premium-4', text: 'Priority in comments', enabled: true },
+    { id: 'premium-5', text: 'Private messages', enabled: true },
+    { id: 'premium-6', text: 'Early access to new content', enabled: true },
+    { id: 'premium-7', text: 'Merch discounts', enabled: false },
+    { id: 'premium-8', text: 'Content voting', enabled: false }
   ],
   vip: [
-    { id: 'vip-1', text: 'Все возможности Premium', enabled: true },
-    { id: 'vip-2', text: 'Персональные видео сообщения', enabled: true },
-    { id: 'vip-3', text: 'Видеозвонки один на один (ежемесячно)', enabled: true },
-    { id: 'vip-4', text: 'Запросы на кастомный контент', enabled: true },
-    { id: 'vip-5', text: 'Доступ за кулисы', enabled: true },
-    { id: 'vip-6', text: 'Эксклюзивные NFT дропы', enabled: true },
-    { id: 'vip-7', text: 'Персональный обзор портфолио', enabled: false },
-    { id: 'vip-8', text: 'Приглашение на закрытые мероприятия', enabled: false },
-    { id: 'vip-9', text: 'Упоминание в контенте', enabled: false }
+    { id: 'vip-1', text: 'All Premium features', enabled: true },
+    { id: 'vip-2', text: 'Personal video messages', enabled: true },
+    { id: 'vip-3', text: 'One-on-one video calls (monthly)', enabled: true },
+    { id: 'vip-4', text: 'Custom content requests', enabled: true },
+    { id: 'vip-5', text: 'Behind the scenes access', enabled: true },
+    { id: 'vip-6', text: 'Exclusive NFT drops', enabled: true },
+    { id: 'vip-7', text: 'Personal portfolio review', enabled: false },
+    { id: 'vip-8', text: 'Private event invitations', enabled: false },
+    { id: 'vip-9', text: 'Shoutouts in content', enabled: false }
   ]
 }
 
@@ -69,7 +69,7 @@ export default function SubscriptionTiersSettings() {
       name: 'Basic',
       price: 0.05,
       currency: 'SOL',
-      description: 'Доступ к базовому контенту',
+      description: 'Access to basic content',
       features: [...defaultFeatures.basic],
       color: 'from-gray-400 to-gray-600',
       icon: CurrencyDollarIcon,
@@ -80,7 +80,7 @@ export default function SubscriptionTiersSettings() {
       name: 'Premium',
       price: 0.15,
       currency: 'SOL',
-      description: 'Расширенный доступ с эксклюзивным контентом',
+      description: 'Extended access with exclusive content',
       features: [...defaultFeatures.premium],
       color: 'from-indigo-500 to-purple-600',
       icon: SparklesIcon,
@@ -91,7 +91,7 @@ export default function SubscriptionTiersSettings() {
       name: 'VIP',
       price: 0.35,
       currency: 'SOL',
-      description: 'Максимальный доступ с личным взаимодействием',
+      description: 'Maximum access with personal interaction',
       features: [...defaultFeatures.vip],
       color: 'from-yellow-400 to-orange-500',
       icon: HeartIcon,
@@ -118,7 +118,7 @@ export default function SubscriptionTiersSettings() {
     const tierToToggle = tiers.find(t => t.id === tierId)
     
     if (tierToToggle?.enabled && enabledCount <= 1) {
-      toast.error('Должен быть активен хотя бы один тарифный план')
+      toast.error('At least one tier must be active')
       return
     }
 
@@ -174,8 +174,8 @@ export default function SubscriptionTiersSettings() {
   }
 
   const applyRecommendedSettings = () => {
-    // Применяем рекомендованные настройки для разных типов контента
-    const contentType = 'standard' // Здесь можно определить тип контента автора
+    // Apply recommended settings for different content types
+    const contentType = 'standard' // Here you can determine the author's content type
     
     if (contentType === 'standard') {
       setTiers([
@@ -197,14 +197,14 @@ export default function SubscriptionTiersSettings() {
       ])
     }
     
-    toast.success('Применены рекомендованные настройки')
+    toast.success('Recommended settings applied')
     setShowRecommendations(false)
   }
 
   const saveTiers = () => {
-    // Здесь будет сохранение в базу данных
+    // Here would be saving to database
     console.log('Saving tiers:', tiers)
-    toast.success('Настройки тарифов сохранены!')
+    toast.success('Tier settings saved!')
   }
 
   return (
@@ -214,7 +214,7 @@ export default function SubscriptionTiersSettings() {
           <div className="w-8 h-8 bg-gradient-to-r from-purple-400 to-pink-400 rounded-lg flex items-center justify-center">
             <SparklesIcon className="w-5 h-5 text-white" />
           </div>
-          Настройки тарифных планов
+          Subscription Tier Settings
         </h2>
         
         <button
@@ -222,7 +222,7 @@ export default function SubscriptionTiersSettings() {
           className="px-4 py-2 bg-purple-500/20 hover:bg-purple-500/30 text-purple-300 rounded-xl font-medium transition-all duration-300 flex items-center gap-2"
         >
           <InformationCircleIcon className="w-5 h-5" />
-          Рекомендации
+          Recommendations
         </button>
       </div>
 
@@ -230,30 +230,30 @@ export default function SubscriptionTiersSettings() {
       {showRecommendations && (
         <div className="mb-8 p-6 bg-purple-500/10 border border-purple-500/20 rounded-2xl">
           <h3 className="text-lg font-semibold text-purple-300 mb-4">
-            Рекомендованные настройки для вашего типа контента
+            Recommended settings for your content type
           </h3>
           <p className="text-purple-200 mb-4">
-            Основываясь на вашей категории и типе контента, мы рекомендуем следующие настройки:
+            Based on your category and content type, we recommend the following settings:
           </p>
           <ul className="space-y-2 text-purple-100 mb-6">
             <li className="flex items-start gap-2">
               <CheckIcon className="w-5 h-5 text-purple-400 mt-0.5" />
-              <span>Basic (0.05 SOL): 4 основные функции для новых подписчиков</span>
+              <span>Basic (0.05 SOL): 4 core features for new subscribers</span>
             </li>
             <li className="flex items-start gap-2">
               <CheckIcon className="w-5 h-5 text-purple-400 mt-0.5" />
-              <span>Premium (0.15 SOL): 6 расширенных функций для активных фанатов</span>
+              <span>Premium (0.15 SOL): 6 extended features for active fans</span>
             </li>
             <li className="flex items-start gap-2">
               <CheckIcon className="w-5 h-5 text-purple-400 mt-0.5" />
-              <span>VIP (0.35 SOL): 7 эксклюзивных функций для самых преданных</span>
+              <span>VIP (0.35 SOL): 7 exclusive features for the most dedicated</span>
             </li>
           </ul>
           <button
             onClick={applyRecommendedSettings}
             className="px-6 py-3 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white rounded-xl font-medium transition-all duration-300 hover:scale-105"
           >
-            Применить рекомендации
+            Apply recommendations
           </button>
         </div>
       )}
@@ -278,7 +278,7 @@ export default function SubscriptionTiersSettings() {
                 <div>
                   <h3 className="text-xl font-bold text-white">{tier.name}</h3>
                   <p className="text-slate-400 text-sm">
-                    {tier.enabled ? 'Активен' : 'Отключен'}
+                    {tier.enabled ? 'Active' : 'Disabled'}
                   </p>
                 </div>
               </div>
@@ -303,7 +303,7 @@ export default function SubscriptionTiersSettings() {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
                   <div>
                     <label className="block text-sm font-medium text-slate-300 mb-2">
-                      Цена (SOL/месяц)
+                      Price (SOL/month)
                     </label>
                     <input
                       type="number"
@@ -317,14 +317,14 @@ export default function SubscriptionTiersSettings() {
                   
                   <div>
                     <label className="block text-sm font-medium text-slate-300 mb-2">
-                      Описание
+                      Description
                     </label>
                     <input
                       type="text"
                       value={tier.description}
                       onChange={(e) => updateTierDescription(tier.id, e.target.value)}
                       className="w-full px-4 py-2 bg-slate-700/50 border border-slate-600/50 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-purple-400"
-                      placeholder="Краткое описание тарифа"
+                      placeholder="Brief tier description"
                     />
                   </div>
                 </div>
@@ -332,7 +332,7 @@ export default function SubscriptionTiersSettings() {
                 {/* Features */}
                 <div>
                   <h4 className="text-sm font-medium text-slate-300 mb-3">
-                    Возможности тарифа
+                    Tier features
                   </h4>
                   <div className="space-y-2">
                     {tier.features.map((feature) => (
@@ -388,7 +388,7 @@ export default function SubscriptionTiersSettings() {
                       <input
                         name="feature"
                         type="text"
-                        placeholder="Добавить свою возможность"
+                        placeholder="Add custom feature"
                         className="flex-1 px-4 py-2 bg-slate-700/50 border border-slate-600/50 rounded-xl text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-purple-400"
                       />
                       <button
@@ -412,7 +412,7 @@ export default function SubscriptionTiersSettings() {
           onClick={saveTiers}
           className="px-8 py-3 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white rounded-xl font-bold transition-all duration-300 hover:scale-105 hover:shadow-xl hover:shadow-purple-500/25"
         >
-          Сохранить настройки тарифов
+          Save tier settings
         </button>
       </div>
     </div>
