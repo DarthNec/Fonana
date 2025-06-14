@@ -171,12 +171,12 @@ export default function CreatorsExplorer() {
     return (
       <div 
         key={creator.id} 
-        className="group relative overflow-hidden rounded-3xl bg-gradient-to-br from-slate-800/40 to-slate-900/60 backdrop-blur-xl border border-slate-700/50 hover:border-purple-500/30 transition-all duration-500 hover:transform hover:scale-[1.02]"
+        className="group relative overflow-hidden rounded-3xl bg-gradient-to-br from-slate-800/40 to-slate-900/60 backdrop-blur-xl border border-slate-700/50 hover:border-purple-500/30 transition-all duration-500 hover:transform hover:scale-[1.02] h-full flex flex-col"
       >
         {/* Hover glow effect */}
         <div className="absolute -inset-1 bg-gradient-to-r from-purple-600/20 to-pink-600/20 rounded-3xl opacity-0 group-hover:opacity-100 blur-xl transition-opacity duration-500"></div>
         
-        <div className="relative z-10 p-6">
+        <div className="relative z-10 p-6 flex flex-col h-full">
           {/* Cover Image */}
           <div className="relative h-40 rounded-2xl overflow-hidden mb-4 bg-gradient-to-br from-purple-900/20 to-pink-900/20">
             {creator.backgroundImage ? (
@@ -243,45 +243,48 @@ export default function CreatorsExplorer() {
             </div>
           </div>
 
-          {/* Description */}
-          <p className="text-slate-300 text-sm leading-relaxed mb-4 line-clamp-2">
-            {creator.description}
-          </p>
+          {/* Content section with flex-grow to push buttons to bottom */}
+          <div className="flex-1 flex flex-col">
+            {/* Description */}
+            <p className="text-slate-300 text-sm leading-relaxed mb-4 line-clamp-2">
+              {creator.description}
+            </p>
 
-          {/* Tags */}
-          <div className="flex flex-wrap gap-2 mb-6">
-            {creator.tags.slice(0, 2).map((tag) => (
-              <span
-                key={tag}
-                className="px-3 py-1 bg-gradient-to-r from-purple-500/20 to-pink-500/20 text-purple-300 text-xs font-medium rounded-full border border-purple-500/30"
-              >
-                {tag}
-              </span>
-            ))}
-            {creator.tags.length > 2 && (
-              <span className="px-3 py-1 bg-slate-700/50 text-slate-400 text-xs font-medium rounded-full">
-                +{creator.tags.length - 2}
-              </span>
-            )}
+            {/* Tags */}
+            <div className="flex flex-wrap gap-2 mb-6">
+              {creator.tags.slice(0, 2).map((tag) => (
+                <span
+                  key={tag}
+                  className="px-3 py-1 bg-gradient-to-r from-purple-500/20 to-pink-500/20 text-purple-300 text-xs font-medium rounded-full border border-purple-500/30"
+                >
+                  {tag}
+                </span>
+              ))}
+              {creator.tags.length > 2 && (
+                <span className="px-3 py-1 bg-slate-700/50 text-slate-400 text-xs font-medium rounded-full">
+                  +{creator.tags.length - 2}
+                </span>
+              )}
+            </div>
+
+            {/* Monthly Earnings - push to bottom with mt-auto */}
+            <div className="flex items-center justify-between mb-6 mt-auto">
+              <div>
+                <p className="text-slate-400 text-xs mb-1">Monthly earnings</p>
+                <p className="text-green-400 font-bold text-lg">
+                  {creator.monthlyEarnings}
+                </p>
+              </div>
+              <div className="text-right">
+                <p className="text-slate-400 text-xs mb-1">Posts</p>
+                <p className="text-white font-semibold">
+                  {creator.posts}
+                </p>
+              </div>
+            </div>
           </div>
 
-          {/* Monthly Earnings */}
-          <div className="flex items-center justify-between mb-6">
-            <div>
-              <p className="text-slate-400 text-xs mb-1">Monthly earnings</p>
-              <p className="text-green-400 font-bold text-lg">
-                {creator.monthlyEarnings}
-              </p>
-            </div>
-            <div className="text-right">
-              <p className="text-slate-400 text-xs mb-1">Posts</p>
-              <p className="text-white font-semibold">
-                {creator.posts}
-              </p>
-            </div>
-          </div>
-
-          {/* Action Buttons */}
+          {/* Action Buttons - now always at the bottom */}
           <div className="flex gap-3">
             {isSubscribed ? (
               // Show "Watch" button for subscribed users

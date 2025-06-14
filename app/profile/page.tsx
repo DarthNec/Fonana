@@ -27,6 +27,7 @@ import SubscriptionTiersSettings from '@/components/SubscriptionTiersSettings'
 import UserSubscriptions from '@/components/UserSubscriptions'
 import Avatar from '@/components/Avatar'
 import toast from 'react-hot-toast'
+import { useTheme } from '@/lib/contexts/ThemeContext'
 
 interface UserProfile {
   id: string
@@ -54,6 +55,7 @@ interface UserProfile {
 export default function ProfilePage() {
   const { user, isLoading, deleteAccount, updateProfile, refreshUser } = useUser()
   const { disconnect } = useWallet()
+  const { theme: currentTheme, setTheme } = useTheme()
   const [activeTab, setActiveTab] = useState<'profile' | 'creator' | 'subscriptions'>('profile')
   
   const [formData, setFormData] = useState<UserProfile>({
@@ -76,7 +78,7 @@ export default function ProfilePage() {
       allowMessages: true,
       showOnline: true,
     },
-    theme: 'dark',
+    theme: currentTheme || 'dark',
   })
 
   const [isEditing, setIsEditing] = useState(false)
@@ -99,6 +101,9 @@ export default function ProfilePage() {
   }, [user])
 
   const handleInputChange = (field: string, value: any) => {
+    if (field === 'theme') {
+      setTheme(value as 'light' | 'dark' | 'auto')
+    }
     setFormData(prev => ({
       ...prev,
       [field]: value

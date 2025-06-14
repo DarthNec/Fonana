@@ -1,16 +1,13 @@
 import type { Metadata } from 'next'
 import { Inter } from 'next/font/google'
 import './globals.css'
-import { WalletProvider } from '../components/WalletProvider'
-import { Navbar } from '../components/Navbar'
-import { UserProvider } from '../components/UserProvider'
+import { WalletProvider } from '@/components/WalletProvider'
+import { UserProvider } from '@/components/UserProvider'
+import { Navbar } from '@/components/Navbar'
 import { Toaster } from 'react-hot-toast'
+import { ThemeProvider } from '@/lib/contexts/ThemeContext'
 
-const inter = Inter({ 
-  subsets: ['latin', 'cyrillic'],
-  weight: ['300', '400', '500', '600', '700', '800'],
-  variable: '--font-inter',
-})
+const inter = Inter({ subsets: ['latin'] })
 
 export const metadata: Metadata = {
   title: 'Fonana - Web3 Creator Platform',
@@ -25,26 +22,28 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <body className={inter.className}>
-        <WalletProvider>
-          <UserProvider>
-            <div className="min-h-screen bg-gray-50 dark:bg-slate-900">
-              <Navbar />
-              <main className="pt-0">
-                {children}
-              </main>
-            </div>
-            <Toaster 
-              position="top-right"
-              toastOptions={{
-                style: {
-                  background: '#1e293b',
-                  color: '#fff',
-                  border: '1px solid #334155',
-                },
-              }}
-            />
-          </UserProvider>
-        </WalletProvider>
+        <ThemeProvider>
+          <WalletProvider>
+            <UserProvider>
+              <div className="min-h-screen bg-gray-50 dark:bg-slate-900">
+                <Navbar />
+                <main className="pt-0">
+                  {children}
+                </main>
+              </div>
+              <Toaster
+                position="top-right"
+                toastOptions={{
+                  style: {
+                    background: '#1e293b',
+                    color: '#fff',
+                    border: '1px solid #334155',
+                  },
+                }}
+              />
+            </UserProvider>
+          </WalletProvider>
+        </ThemeProvider>
       </body>
     </html>
   )

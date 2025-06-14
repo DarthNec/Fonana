@@ -48,15 +48,87 @@
 }
 
 /* Light theme override */
+.light {
+  --background: 248 250 252; /* slate-50 */
+  --background-secondary: 241 245 249; /* slate-100 */
+  --foreground: 15 23 42; /* slate-900 */
+  --foreground-secondary: 71 85 105; /* slate-600 */
+  --card: 255 255 255;
+  --card-hover: 248 250 252;
+  --glass: 255 255 255;
+  --glass-border: 203 213 225; /* slate-300 */
+  
+  /* Light theme accent adjustments */
+  --primary: 99 102 241;
+  --primary-glow: 129 140 248;
+  --secondary: 147 51 234;
+  --accent: 16 185 129;
+  --warning: 245 158 11;
+  --danger: 239 68 68;
+  
+  /* Adjusted neon colors for light theme */
+  --neon-blue: 59 130 246;
+  --neon-purple: 147 51 234;
+  --neon-green: 16 185 129;
+  --neon-pink: 236 72 153;
+  
+  /* Light theme gradients */
+  --gradient-primary: linear-gradient(135deg, rgb(99 102 241) 0%, rgb(147 51 234) 100%);
+  --gradient-secondary: linear-gradient(135deg, rgb(16 185 129) 0%, rgb(59 130 246) 100%);
+  --gradient-accent: linear-gradient(135deg, rgb(236 72 153) 0%, rgb(245 158 11) 100%);
+  
+  /* Light theme shadows */
+  --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+  --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.05), 0 2px 4px -2px rgb(0 0 0 / 0.05);
+  --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.05), 0 4px 6px -4px rgb(0 0 0 / 0.05);
+  --shadow-xl: 0 20px 25px -5px rgb(0 0 0 / 0.05), 0 8px 10px -6px rgb(0 0 0 / 0.05);
+  --shadow-neon: 0 0 20px rgb(99 102 241 / 0.2), 0 0 40px rgb(99 102 241 / 0.05);
+}
+
+/* Light theme specific adjustments */
+.light body::before {
+  background: 
+    radial-gradient(circle at 20% 80%, rgb(99 102 241 / 0.05) 0%, transparent 50%),
+    radial-gradient(circle at 80% 20%, rgb(147 51 234 / 0.05) 0%, transparent 50%),
+    radial-gradient(circle at 40% 40%, rgb(16 185 129 / 0.03) 0%, transparent 50%);
+}
+
+.light .glass {
+  background: rgb(var(--glass) / 0.7);
+  box-shadow: 
+    inset 0 1px 0 rgb(255 255 255 / 0.9),
+    0 0 20px rgb(0 0 0 / 0.03);
+}
+
+.light .navbar {
+  background: rgb(var(--glass) / 0.8);
+  box-shadow: 
+    inset 0 1px 0 rgb(255 255 255 / 0.9),
+    0 8px 32px rgb(0 0 0 / 0.05);
+}
+
+.light .card-neon {
+  box-shadow: 
+    var(--shadow-lg),
+    0 0 20px rgb(var(--primary) / 0.05);
+}
+
+.light .btn-primary {
+  box-shadow: 
+    var(--shadow-lg),
+    0 0 20px rgb(var(--primary) / 0.15);
+}
+
 @media (prefers-color-scheme: light) {
-  :root {
-    --background: 249 250 251;
-    --background-secondary: 243 244 246;
-    --foreground: 17 24 39;
-    --foreground-secondary: 75 85 99;
+  :root:not(.dark) {
+    --background: 248 250 252;
+    --background-secondary: 241 245 249;
+    --foreground: 15 23 42;
+    --foreground-secondary: 71 85 105;
     --card: 255 255 255;
+    --card-hover: 248 250 252;
     --glass: 255 255 255;
-    --glass-border: 209 213 219;
+    --glass-border: 203 213 225;
   }
 }
 

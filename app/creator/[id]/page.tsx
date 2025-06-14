@@ -29,6 +29,7 @@ interface Creator {
   fullName: string
   bio: string
   avatar: string | null
+  backgroundImage: string | null
   website: string | null
   twitter: string | null
   telegram: string | null
@@ -210,119 +211,136 @@ export default function CreatorPage() {
           </button>
 
           {/* Profile Header */}
-          <div className="bg-slate-800/50 backdrop-blur-xl border border-slate-700/50 rounded-3xl p-8 mb-8">
-            <div className="flex flex-col md:flex-row items-start md:items-center gap-8">
-              {/* Avatar */}
-              <Avatar
-                src={creator.avatar}
-                alt={creator.fullName || creator.nickname}
-                seed={creator.nickname || creator.wallet}
-                size={128}
-                rounded="3xl"
-                className="border-4 border-purple-500/30"
-              />
-
-              {/* Info */}
-              <div className="flex-1">
-                <div className="flex items-center gap-3 mb-2">
-                  <h1 className="text-3xl font-bold text-white">
-                    {creator.fullName || creator.nickname}
-                  </h1>
-                  {creator.isVerified && (
-                    <CheckBadgeIcon className="w-8 h-8 text-blue-400" />
-                  )}
+          <div className="bg-slate-800/50 backdrop-blur-xl border border-slate-700/50 rounded-3xl overflow-hidden mb-8">
+            {/* Background Image with Gradient Overlay */}
+            <div className="relative">
+              {creator.backgroundImage && (
+                <div className="absolute inset-0">
+                  <img
+                    src={creator.backgroundImage}
+                    alt={`${creator.nickname} background`}
+                    className="w-full h-full object-cover"
+                  />
+                  {/* Gradient overlay for readability */}
+                  <div className="absolute inset-0 bg-gradient-to-t from-slate-900 via-slate-900/80 to-slate-900/40"></div>
                 </div>
-                <p className="text-slate-400 mb-4">@{creator.nickname}</p>
-                
-                {creator.bio && (
-                  <p className="text-slate-300 mb-6 max-w-2xl">{creator.bio}</p>
+              )}
+              
+              <div className="relative p-8">
+                <div className="flex flex-col md:flex-row items-start md:items-center gap-8">
+                  {/* Avatar */}
+                  <Avatar
+                    src={creator.avatar}
+                    alt={creator.fullName || creator.nickname}
+                    seed={creator.nickname || creator.wallet}
+                    size={128}
+                    rounded="3xl"
+                    className="border-4 border-purple-500/30"
+                  />
+
+                  {/* Info */}
+                  <div className="flex-1">
+                    <div className="flex items-center gap-3 mb-2">
+                      <h1 className="text-3xl font-bold text-white">
+                        {creator.fullName || creator.nickname}
+                      </h1>
+                      {creator.isVerified && (
+                        <CheckBadgeIcon className="w-8 h-8 text-blue-400" />
+                      )}
+                    </div>
+                    <p className="text-slate-400 mb-4">@{creator.nickname}</p>
+                    
+                    {creator.bio && (
+                      <p className="text-slate-300 mb-6 max-w-2xl">{creator.bio}</p>
+                    )}
+
+                    {/* Stats */}
+                    <div className="flex flex-wrap items-center gap-6 mb-6">
+                      <div className="flex items-center gap-2">
+                        <UsersIcon className="w-5 h-5 text-slate-400" />
+                        <span className="text-white font-semibold">{creator.followersCount}</span>
+                        <span className="text-slate-400">followers</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <DocumentTextIcon className="w-5 h-5 text-slate-400" />
+                        <span className="text-white font-semibold">{creator.postsCount}</span>
+                        <span className="text-slate-400">posts</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <CalendarIcon className="w-5 h-5 text-slate-400" />
+                        <span className="text-slate-400">Created {formatDate(creator.createdAt)}</span>
+                      </div>
+                    </div>
+
+                    {/* Actions */}
+                    <div className="flex flex-wrap gap-4">
+                      {creator.id !== user?.id && (
+                        <>
+                          <button
+                            onClick={() => setShowSubscribeModal(true)}
+                            className="px-6 py-3 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white font-semibold rounded-xl transition-all transform hover:scale-105"
+                          >
+                            {isSubscribed ? 'Manage subscription' : 'Subscribe'}
+                          </button>
+                          <button
+                            onClick={handleFollow}
+                            className={`px-6 py-3 border rounded-xl font-semibold transition-all ${
+                              isFollowing
+                                ? 'border-purple-500 text-purple-400 hover:bg-purple-500/10'
+                                : 'border-slate-600 text-slate-300 hover:text-white hover:border-slate-500'
+                            }`}
+                          >
+                            {isFollowing ? 'Reading' : 'Read'}
+                          </button>
+                        </>
+                      )}
+                      <button className="p-3 border border-slate-600 text-slate-300 hover:text-white hover:border-slate-500 rounded-xl transition-all">
+                        <ShareIcon className="w-6 h-6" />
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Links */}
+                {(creator.website || creator.twitter || creator.telegram) && (
+                  <div className="mt-6 pt-6 border-t border-slate-700/50 flex flex-wrap gap-4">
+                    {creator.website && (
+                      <a
+                        href={creator.website}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center gap-2 text-slate-400 hover:text-white transition-colors"
+                      >
+                        <LinkIcon className="w-5 h-5" />
+                        Website
+                      </a>
+                    )}
+                    {creator.twitter && (
+                      <a
+                        href={`https://twitter.com/${creator.twitter}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center gap-2 text-slate-400 hover:text-white transition-colors"
+                      >
+                        <LinkIcon className="w-5 h-5" />
+                        Twitter
+                      </a>
+                    )}
+                    {creator.telegram && (
+                      <a
+                        href={`https://t.me/${creator.telegram}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center gap-2 text-slate-400 hover:text-white transition-colors"
+                      >
+                        <LinkIcon className="w-5 h-5" />
+                        Telegram
+                      </a>
+                    )}
+                  </div>
                 )}
-
-                {/* Stats */}
-                <div className="flex flex-wrap items-center gap-6 mb-6">
-                  <div className="flex items-center gap-2">
-                    <UsersIcon className="w-5 h-5 text-slate-400" />
-                    <span className="text-white font-semibold">{creator.followersCount}</span>
-                    <span className="text-slate-400">followers</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <DocumentTextIcon className="w-5 h-5 text-slate-400" />
-                    <span className="text-white font-semibold">{creator.postsCount}</span>
-                    <span className="text-slate-400">posts</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <CalendarIcon className="w-5 h-5 text-slate-400" />
-                    <span className="text-slate-400">Created {formatDate(creator.createdAt)}</span>
-                  </div>
-                </div>
-
-                {/* Actions */}
-                <div className="flex flex-wrap gap-4">
-                  {creator.id !== user?.id && (
-                    <>
-                      <button
-                        onClick={() => setShowSubscribeModal(true)}
-                        className="px-6 py-3 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white font-semibold rounded-xl transition-all transform hover:scale-105"
-                      >
-                        {isSubscribed ? 'Manage subscription' : 'Subscribe'}
-                      </button>
-                      <button
-                        onClick={handleFollow}
-                        className={`px-6 py-3 border rounded-xl font-semibold transition-all ${
-                          isFollowing
-                            ? 'border-purple-500 text-purple-400 hover:bg-purple-500/10'
-                            : 'border-slate-600 text-slate-300 hover:text-white hover:border-slate-500'
-                        }`}
-                      >
-                        {isFollowing ? 'Reading' : 'Read'}
-                      </button>
-                    </>
-                  )}
-                  <button className="p-3 border border-slate-600 text-slate-300 hover:text-white hover:border-slate-500 rounded-xl transition-all">
-                    <ShareIcon className="w-6 h-6" />
-                  </button>
-                </div>
               </div>
             </div>
-
-            {/* Links */}
-            {(creator.website || creator.twitter || creator.telegram) && (
-              <div className="mt-6 pt-6 border-t border-slate-700/50 flex flex-wrap gap-4">
-                {creator.website && (
-                  <a
-                    href={creator.website}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex items-center gap-2 text-slate-400 hover:text-white transition-colors"
-                  >
-                    <LinkIcon className="w-5 h-5" />
-                    Website
-                  </a>
-                )}
-                {creator.twitter && (
-                  <a
-                    href={`https://twitter.com/${creator.twitter}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex items-center gap-2 text-slate-400 hover:text-white transition-colors"
-                  >
-                    <LinkIcon className="w-5 h-5" />
-                    Twitter
-                  </a>
-                )}
-                {creator.telegram && (
-                  <a
-                    href={`https://t.me/${creator.telegram}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex items-center gap-2 text-slate-400 hover:text-white transition-colors"
-                  >
-                    <LinkIcon className="w-5 h-5" />
-                    Telegram
-                  </a>
-                )}
-              </div>
-            )}
           </div>
 
           {/* Tabs */}

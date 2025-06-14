@@ -150,19 +150,19 @@ export default function FeedPage() {
         {/* Filters and Sort */}
         <div className="mb-8 space-y-4">
           {/* Sort Options */}
-          <div className="flex items-center gap-4 mb-6">
+          <div className="flex items-center gap-2 sm:gap-4 mb-6 overflow-x-auto scrollbar-hide">
             {sortOptions.map((option) => (
               <button
                 key={option.id}
                 onClick={() => setSortBy(option.id as any)}
-                className={`px-6 py-3 rounded-xl font-medium transition-all flex items-center gap-2 ${
+                className={`px-4 sm:px-6 py-2 sm:py-3 rounded-xl font-medium transition-all flex items-center gap-2 whitespace-nowrap ${
                   sortBy === option.id
                     ? 'bg-gradient-to-r from-purple-500 to-pink-500 text-white shadow-lg shadow-purple-500/25'
                     : 'bg-slate-800/50 text-slate-400 hover:text-white hover:bg-slate-700/50'
                 }`}
               >
-                <option.icon className="w-5 h-5" />
-                {option.label}
+                <option.icon className="w-4 sm:w-5 h-4 sm:h-5" />
+                <span className="text-sm sm:text-base">{option.label}</span>
               </button>
             ))}
           </div>
@@ -173,12 +173,12 @@ export default function FeedPage() {
               <FunnelIcon className="w-5 h-5" />
               <span className="text-sm font-medium">Filter by categories</span>
             </div>
-            <div className="flex flex-wrap justify-center gap-2 max-w-4xl">
+            <div className="flex flex-wrap justify-center gap-2 max-w-4xl px-2 sm:px-0">
               {categories.map((category) => (
                 <button
                   key={category}
                   onClick={() => setSelectedCategory(category)}
-                  className={`px-4 py-2 rounded-full transition-all ${
+                  className={`px-3 sm:px-4 py-1.5 sm:py-2 text-sm rounded-full transition-all ${
                     selectedCategory === category
                       ? 'bg-purple-500/20 text-purple-300 border border-purple-500/50'
                       : 'bg-slate-800/50 text-slate-400 hover:text-white hover:bg-slate-700/50'
