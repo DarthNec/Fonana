@@ -82,7 +82,8 @@ export default function FeedPage() {
         comments: post._count?.comments || 0,
         createdAt: post.createdAt,
         tags: post.tags || [],
-        isSubscribed: post.isSubscribed || false
+        isSubscribed: post.isSubscribed || false,
+        shouldHideContent: post.shouldHideContent || false
       }))
 
       setPosts(formattedPosts)

@@ -61,6 +61,7 @@ interface PostCardProps {
   tags: string[]
   isPremium?: boolean
   isSubscribed?: boolean
+  shouldHideContent?: boolean
   showCreator?: boolean
   onSubscribeClick?: (creatorData: any, preferredTier?: 'basic' | 'premium' | 'vip') => void
   onPurchaseClick?: (postData: any) => void
@@ -85,6 +86,7 @@ export default function PostCard({
   tags,
   isPremium = false,
   isSubscribed = false,
+  shouldHideContent = false,
   showCreator = true,
   onSubscribeClick,
   onPurchaseClick
@@ -305,35 +307,8 @@ export default function PostCard({
     })
   }
 
-  // Content access logic:
-  // - Free content is visible to everyone
-  // - Subscriber content is visible to basic, premium and VIP subscribers
-  // - Premium content is visible to premium and VIP subscribers  
-  // - VIP content is visible only to VIP subscribers
-  // - Paid content requires one-time payment
-  const userSubscriptionLevel = user?.subscriptionType || 'free'
-  
-  // Determine content level
-  const contentLevel = isPremium ? 'vip' : isLocked ? 'basic' : 'free'
-  
-  const canViewContent = (() => {
-    // Free content is visible to everyone
-    if (!isLocked && !isPremium) return true
-    
-    // Paid content requires purchase
-    if (price && price > 0) return false
-    
-    // Check subscription level
-    if (!isSubscribed) return false
-    
-    // Subscriber content (basic)
-    if (isLocked && !isPremium) return true
-    
-    // VIP content only for VIP
-    if (isPremium) return userSubscriptionLevel === 'vip'
-    
-    return false
-  })()
+  // Use shouldHideContent flag from API instead of complex local logic
+  const canViewContent = !shouldHideContent
   
   const needsPayment = isLocked && price && price > 0
   const isVipContent = isLocked && isPremium && !price
