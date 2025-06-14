@@ -9,6 +9,8 @@ import { HeartIcon as HeartSolidIcon } from '@heroicons/react/24/solid'
 import SubscribeModal from './SubscribeModal'
 import { useWallet } from '@solana/wallet-adapter-react'
 import toast from 'react-hot-toast'
+import { useRouter } from 'next/navigation'
+import { getProfileLink } from '@/lib/utils/links'
 
 const categories = ['All', 'Art', 'Music', 'Gaming', 'Lifestyle', 'Fitness', 'Tech', 'DeFi', 'NFT', 'Trading', 'GameFi', 'Blockchain', 'Intimate']
 
@@ -39,6 +41,7 @@ export default function CreatorsExplorer() {
   const [hiddenCreatorIds, setHiddenCreatorIds] = useState<string[]>([])
   const { publicKey } = useWallet()
   const [activeTab, setActiveTab] = useState<'subscriptions' | 'recommendations' | 'all'>('subscriptions')
+  const router = useRouter()
 
   // Load creators list
   useEffect(() => {
@@ -289,7 +292,7 @@ export default function CreatorsExplorer() {
             {isSubscribed ? (
               // Show "Watch" button for subscribed users
               <Link
-                href={`/creator/${creator.id}`}
+                href={getProfileLink({ id: creator.id, nickname: creator.username })}
                 className="flex-1 group/btn"
               >
                 <div className="bg-gradient-to-r from-purple-600 to-pink-600 text-white px-4 py-3 rounded-2xl font-semibold text-sm flex items-center justify-center transform group-hover/btn:scale-105 transition-all duration-300 hover:shadow-lg hover:shadow-purple-500/25">
@@ -311,7 +314,7 @@ export default function CreatorsExplorer() {
             )}
             
             <Link
-              href={`/creator/${creator.id}`}
+              href={getProfileLink({ id: creator.id, nickname: creator.username })}
               className="group/btn"
             >
               <div className="bg-gray-100 dark:bg-slate-700/50 hover:bg-gray-200 dark:hover:bg-slate-600/50 text-gray-700 dark:text-slate-300 hover:text-gray-900 dark:hover:text-white px-4 py-3 rounded-2xl font-semibold text-sm border border-gray-200 dark:border-slate-600/50 hover:border-gray-300 dark:hover:border-purple-500/30 transform group-hover/btn:scale-105 transition-all duration-300 flex items-center justify-center">

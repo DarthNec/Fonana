@@ -6,6 +6,7 @@ import Link from 'next/link'
 import Avatar from './Avatar'
 import { useUser } from '@/lib/hooks/useUser'
 import { useWallet } from '@solana/wallet-adapter-react'
+import { getProfileLink } from '@/lib/utils/links'
 import {
   CheckBadgeIcon,
   CreditCardIcon,
@@ -206,7 +207,7 @@ export default function UserSubscriptions() {
                 <div className="flex items-start gap-4">
                   {/* Avatar */}
                   <Link 
-                    href={`/creator/${subscription.creator.id}`}
+                    href={getProfileLink({ id: subscription.creator.id, nickname: subscription.creator.nickname })}
                     className="flex-shrink-0 transition-transform hover:scale-105"
                   >
                     <Avatar
@@ -222,7 +223,7 @@ export default function UserSubscriptions() {
                   <div className="flex-1">
                     <div className="flex items-center gap-2 mb-1">
                       <Link 
-                        href={`/creator/${subscription.creator.id}`}
+                        href={getProfileLink({ id: subscription.creator.id, nickname: subscription.creator.nickname })}
                         className="font-bold text-gray-900 dark:text-white text-lg hover:text-purple-600 dark:hover:text-purple-400 transition-colors"
                       >
                         {subscription.creator.fullName || subscription.creator.nickname}
@@ -232,7 +233,7 @@ export default function UserSubscriptions() {
                       )}
                     </div>
                     <Link 
-                      href={`/creator/${subscription.creator.id}`}
+                      href={getProfileLink({ id: subscription.creator.id, nickname: subscription.creator.nickname })}
                       className="text-gray-600 dark:text-slate-400 text-sm mb-3 hover:text-gray-700 dark:hover:text-slate-300 transition-colors inline-block"
                     >
                       @{subscription.creator.nickname}
@@ -265,7 +266,7 @@ export default function UserSubscriptions() {
                     <div className="flex flex-wrap gap-2">
                       {/* View Profile */}
                       <Link
-                        href={`/creator/${subscription.creator.id}`}
+                        href={getProfileLink({ id: subscription.creator.id, nickname: subscription.creator.nickname })}
                         className="inline-flex items-center gap-2 px-4 py-2 bg-blue-500/20 hover:bg-blue-500/30 text-blue-700 dark:text-blue-300 rounded-xl text-sm font-medium transition-all"
                       >
                         <UserIcon className="w-4 h-4" />

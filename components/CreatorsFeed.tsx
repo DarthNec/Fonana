@@ -6,6 +6,7 @@ import Link from 'next/link'
 import Image from 'next/image'
 import Avatar from './Avatar'
 import { getFeaturedCreators, getCreatorsByCategory } from '@/lib/mockData'
+import { getProfileLink } from '@/lib/utils/links'
 
 // Используем данные из mockData
 const featuredCreators = getFeaturedCreators()
@@ -176,7 +177,7 @@ export default function CreatorsFeed({ selectedTopic }: { selectedTopic?: string
         ) : (
           <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
             {filteredCreators.map((creator) => (
-            <Link key={creator.id} href={`/creator/${creator.id}`} className="modern-card group hover:shadow-xl transition-all duration-300 hover:-translate-y-1 overflow-hidden block">
+            <Link key={creator.id} href={getProfileLink({ id: creator.id.toString(), nickname: creator.username.replace('@', '') })} className="modern-card group hover:shadow-xl transition-all duration-300 hover:-translate-y-1 overflow-hidden block">
               {/* Cover Image */}
               <div className="relative h-32 bg-gradient-to-r from-indigo-500 to-purple-600 overflow-hidden">
                 <Image

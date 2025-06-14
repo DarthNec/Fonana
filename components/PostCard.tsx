@@ -20,11 +20,13 @@ import {
 } from '@heroicons/react/24/outline'
 import { HeartIcon as HeartSolidIcon } from '@heroicons/react/24/solid'
 import { useUser } from '@/lib/hooks/useUser'
+import { getProfileLink } from '@/lib/utils/links'
 
 interface Creator {
-  id: number
+  id: string
   name: string
   username: string
+  nickname?: string
   avatar: string | null
   isVerified: boolean
 }
@@ -337,7 +339,7 @@ export default function PostCard({
         {/* Creator Info Header */}
         {showCreator && (
           <div className="flex items-center gap-3 p-6 pb-4">
-            <Link href={`/creator/${creator.id}`} className="flex items-center gap-3 group/creator">
+            <Link href={getProfileLink({ id: creator.id, nickname: creator.nickname || creator.username })} className="flex items-center gap-3 group/creator">
               <div className="relative w-12 h-12 rounded-2xl overflow-hidden border border-purple-500/30 bg-gradient-to-br from-purple-500/20 to-pink-500/20">
                 <Avatar
                   src={creator.avatar}

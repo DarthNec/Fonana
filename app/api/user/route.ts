@@ -4,15 +4,16 @@ import { PrismaClient } from '@prisma/client'
 
 const prisma = new PrismaClient()
 
-// GET /api/user?wallet=ADDRESS или /api/user?id=ID - получить пользователя
+// GET /api/user?wallet=ADDRESS или /api/user?id=ID или /api/user?nickname=NICKNAME - получить пользователя
 export async function GET(request: NextRequest) {
   try {
     const searchParams = request.nextUrl.searchParams
     const wallet = searchParams.get('wallet')
     const id = searchParams.get('id')
+    const nickname = searchParams.get('nickname')
 
-    if (!wallet && !id) {
-      return NextResponse.json({ error: 'Wallet address or ID required' }, { status: 400 })
+    if (!wallet && !id && !nickname) {
+      return NextResponse.json({ error: 'Wallet address, ID or nickname required' }, { status: 400 })
     }
 
     let user
@@ -20,6 +21,20 @@ export async function GET(request: NextRequest) {
       // Получаем пользователя по ID
       user = await prisma.user.findUnique({
         where: { id },
+        include: {
+          _count: {
+            select: {
+              posts: true,
+              followers: true,
+              follows: true,
+            },
+          },
+        },
+      })
+    } else if (nickname) {
+      // Получаем пользователя по никнейму
+      user = await prisma.user.findFirst({
+        where: { nickname },
         include: {
           _count: {
             select: {
@@ -43,6 +58,8 @@ export async function GET(request: NextRequest) {
   } catch (error) {
     console.error('Error getting user:', error)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+  } finally {
+    await prisma.$disconnect()
   }
 }
 
