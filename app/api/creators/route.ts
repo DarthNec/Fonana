@@ -60,7 +60,7 @@ export async function GET(request: NextRequest) {
           fullName: creator.fullName,
           bio: creator.bio,
           name: creator.fullName || creator.nickname || 'Неизвестный автор',
-          username: creator.nickname || creator.wallet.slice(0, 8),
+          username: creator.nickname || creator.wallet?.slice(0, 8) || 'user',
           description: creator.bio || 'Контент-криейтор на платформе Fonana',
           avatar: creator.avatar || null,
           backgroundImage: creator.backgroundImage || null,
