@@ -415,10 +415,10 @@ export default function CreatePostModal({ onPostCreated, onClose }: CreatePostMo
                 <select
                   value={formData.category}
                   onChange={(e) => setFormData(prev => ({ ...prev, category: e.target.value }))}
-                  className="w-full px-4 py-2 bg-white dark:bg-slate-800/50 border border-gray-300 dark:border-slate-700 rounded-xl text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                  className="w-full px-4 py-2 bg-white dark:bg-slate-800/50 border border-gray-300 dark:border-slate-600/50 rounded-xl text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent font-sans"
                 >
                   {categories.map((category) => (
-                    <option key={category} value={category} className="bg-white dark:bg-slate-800 text-gray-900 dark:text-white">
+                    <option key={category} value={category} className="bg-white dark:bg-slate-800 text-gray-900 dark:text-white font-sans">
                       {category}
                     </option>
                   ))}
@@ -561,10 +561,10 @@ export default function CreatePostModal({ onPostCreated, onClose }: CreatePostMo
                     <select
                       value={formData.currency}
                       onChange={(e) => setFormData(prev => ({ ...prev, currency: e.target.value as 'SOL' | 'USDC' }))}
-                      className="w-full px-4 py-2 bg-white dark:bg-slate-800/50 border border-gray-300 dark:border-slate-700 rounded-xl text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                      className="w-full px-4 py-2 bg-white dark:bg-slate-800/50 border border-gray-300 dark:border-slate-600/50 rounded-xl text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent font-sans"
                     >
-                      <option value="SOL">SOL</option>
-                      <option value="USDC">USDC</option>
+                      <option value="SOL" className="font-sans">SOL</option>
+                      <option value="USDC" className="font-sans">USDC</option>
                     </select>
                   </div>
                 </div>

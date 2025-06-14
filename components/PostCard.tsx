@@ -313,7 +313,7 @@ export default function PostCard({
   const isSubscriberContent = isLocked && !isPremium && !price
 
   return (
-    <article className={`group relative overflow-hidden rounded-3xl bg-white dark:bg-gradient-to-br dark:from-slate-800/40 dark:to-slate-900/60 backdrop-blur-xl border border-gray-200 dark:border-slate-700/50 transition-all duration-500 mb-8 ${
+    <article className={`group relative overflow-hidden rounded-3xl bg-white dark:bg-gradient-to-br dark:from-slate-900/80 dark:to-slate-950/90 backdrop-blur-xl border border-gray-200 dark:border-slate-700/50 transition-all duration-500 mb-8 ${
       needsPayment 
         ? 'hover:border-yellow-500/50 dark:hover:border-yellow-500/30'
         : isVipContent

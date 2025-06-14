@@ -208,9 +208,9 @@ export default function SubscriptionTiersSettings() {
   }
 
   return (
-    <div className="bg-slate-800/50 backdrop-blur-xl border border-slate-700/50 rounded-3xl p-8">
+    <div className="bg-white dark:bg-slate-800/50 backdrop-blur-xl border border-gray-200 dark:border-slate-700/50 rounded-3xl p-8 shadow-lg">
       <div className="flex items-center justify-between mb-8">
-        <h2 className="text-2xl font-bold text-white flex items-center gap-3">
+        <h2 className="text-2xl font-bold text-gray-900 dark:text-white flex items-center gap-3">
           <div className="w-8 h-8 bg-gradient-to-r from-purple-400 to-pink-400 rounded-lg flex items-center justify-center">
             <SparklesIcon className="w-5 h-5 text-white" />
           </div>
@@ -219,7 +219,7 @@ export default function SubscriptionTiersSettings() {
         
         <button
           onClick={() => setShowRecommendations(!showRecommendations)}
-          className="px-4 py-2 bg-purple-500/20 hover:bg-purple-500/30 text-purple-300 rounded-xl font-medium transition-all duration-300 flex items-center gap-2"
+          className="px-4 py-2 bg-purple-500/20 hover:bg-purple-500/30 text-purple-700 dark:text-purple-300 rounded-xl font-medium transition-all duration-300 flex items-center gap-2"
         >
           <InformationCircleIcon className="w-5 h-5" />
           Recommendations
@@ -228,24 +228,24 @@ export default function SubscriptionTiersSettings() {
 
       {/* Recommendations */}
       {showRecommendations && (
-        <div className="mb-8 p-6 bg-purple-500/10 border border-purple-500/20 rounded-2xl">
-          <h3 className="text-lg font-semibold text-purple-300 mb-4">
+        <div className="mb-8 p-6 bg-purple-50 dark:bg-purple-500/10 border border-purple-200 dark:border-purple-500/20 rounded-2xl">
+          <h3 className="text-lg font-semibold text-purple-700 dark:text-purple-300 mb-4">
             Recommended settings for your content type
           </h3>
-          <p className="text-purple-200 mb-4">
+          <p className="text-purple-600 dark:text-purple-200 mb-4">
             Based on your category and content type, we recommend the following settings:
           </p>
-          <ul className="space-y-2 text-purple-100 mb-6">
+          <ul className="space-y-2 text-purple-700 dark:text-purple-100 mb-6">
             <li className="flex items-start gap-2">
-              <CheckIcon className="w-5 h-5 text-purple-400 mt-0.5" />
+              <CheckIcon className="w-5 h-5 text-purple-600 dark:text-purple-400 mt-0.5" />
               <span>Basic (0.05 SOL): 4 core features for new subscribers</span>
             </li>
             <li className="flex items-start gap-2">
-              <CheckIcon className="w-5 h-5 text-purple-400 mt-0.5" />
+              <CheckIcon className="w-5 h-5 text-purple-600 dark:text-purple-400 mt-0.5" />
               <span>Premium (0.15 SOL): 6 extended features for active fans</span>
             </li>
             <li className="flex items-start gap-2">
-              <CheckIcon className="w-5 h-5 text-purple-400 mt-0.5" />
+              <CheckIcon className="w-5 h-5 text-purple-600 dark:text-purple-400 mt-0.5" />
               <span>VIP (0.35 SOL): 7 exclusive features for the most dedicated</span>
             </li>
           </ul>
@@ -265,8 +265,8 @@ export default function SubscriptionTiersSettings() {
             key={tier.id}
             className={`border rounded-2xl p-6 transition-all duration-300 ${
               tier.enabled 
-                ? 'border-slate-600/50 bg-slate-700/30' 
-                : 'border-slate-700/30 bg-slate-800/30 opacity-60'
+                ? 'border-gray-200 dark:border-slate-600/50 bg-gray-50 dark:bg-slate-700/30' 
+                : 'border-gray-300 dark:border-slate-700/30 bg-gray-100 dark:bg-slate-800/30 opacity-60'
             }`}
           >
             {/* Tier Header */}
@@ -276,8 +276,8 @@ export default function SubscriptionTiersSettings() {
                   <tier.icon className="w-6 h-6 text-white" />
                 </div>
                 <div>
-                  <h3 className="text-xl font-bold text-white">{tier.name}</h3>
-                  <p className="text-slate-400 text-sm">
+                  <h3 className="text-xl font-bold text-gray-900 dark:text-white">{tier.name}</h3>
+                  <p className="text-gray-600 dark:text-slate-400 text-sm">
                     {tier.enabled ? 'Active' : 'Disabled'}
                   </p>
                 </div>
@@ -288,7 +288,7 @@ export default function SubscriptionTiersSettings() {
                 className={`relative inline-flex h-6 w-11 items-center rounded-full transition-all duration-300 ${
                   tier.enabled 
                     ? 'bg-gradient-to-r from-purple-500 to-pink-500' 
-                    : 'bg-slate-600'
+                    : 'bg-gray-300 dark:bg-slate-600'
                 }`}
               >
                 <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform duration-300 ${
@@ -302,7 +302,7 @@ export default function SubscriptionTiersSettings() {
                 {/* Price and Description */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
                   <div>
-                    <label className="block text-sm font-medium text-slate-300 mb-2">
+                    <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-2">
                       Price (SOL/month)
                     </label>
                     <input
@@ -311,19 +311,19 @@ export default function SubscriptionTiersSettings() {
                       onChange={(e) => updateTierPrice(tier.id, parseFloat(e.target.value) || 0)}
                       step="0.01"
                       min="0"
-                      className="w-full px-4 py-2 bg-slate-700/50 border border-slate-600/50 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-purple-400"
+                      className="w-full px-4 py-2 bg-white dark:bg-slate-700/50 border border-gray-300 dark:border-slate-600/50 rounded-xl text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-purple-400"
                     />
                   </div>
                   
                   <div>
-                    <label className="block text-sm font-medium text-slate-300 mb-2">
+                    <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-2">
                       Description
                     </label>
                     <input
                       type="text"
                       value={tier.description}
                       onChange={(e) => updateTierDescription(tier.id, e.target.value)}
-                      className="w-full px-4 py-2 bg-slate-700/50 border border-slate-600/50 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-purple-400"
+                      className="w-full px-4 py-2 bg-white dark:bg-slate-700/50 border border-gray-300 dark:border-slate-600/50 rounded-xl text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-purple-400"
                       placeholder="Brief tier description"
                     />
                   </div>
@@ -331,14 +331,14 @@ export default function SubscriptionTiersSettings() {
 
                 {/* Features */}
                 <div>
-                  <h4 className="text-sm font-medium text-slate-300 mb-3">
+                  <h4 className="text-sm font-medium text-gray-700 dark:text-slate-300 mb-3">
                     Tier features
                   </h4>
                   <div className="space-y-2">
                     {tier.features.map((feature) => (
                       <div
                         key={feature.id}
-                        className="flex items-center justify-between p-3 bg-slate-700/30 rounded-xl group hover:bg-slate-700/50 transition-all"
+                        className="flex items-center justify-between p-3 bg-white dark:bg-slate-700/30 rounded-xl group hover:bg-gray-100 dark:hover:bg-slate-700/50 transition-all"
                       >
                         <div className="flex items-center gap-3">
                           <button
@@ -346,7 +346,7 @@ export default function SubscriptionTiersSettings() {
                             className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-all ${
                               feature.enabled
                                 ? 'bg-purple-500 border-purple-500'
-                                : 'border-slate-500 hover:border-purple-400'
+                                : 'border-gray-400 dark:border-slate-500 hover:border-purple-400'
                             }`}
                           >
                             {feature.enabled && (
@@ -354,7 +354,7 @@ export default function SubscriptionTiersSettings() {
                             )}
                           </button>
                           <span className={`${
-                            feature.enabled ? 'text-white' : 'text-slate-400'
+                            feature.enabled ? 'text-gray-900 dark:text-white' : 'text-gray-600 dark:text-slate-400'
                           }`}>
                             {feature.text}
                           </span>
@@ -365,7 +365,7 @@ export default function SubscriptionTiersSettings() {
                             onClick={() => removeFeature(tier.id, feature.id)}
                             className="opacity-0 group-hover:opacity-100 p-1 hover:bg-red-500/20 rounded-lg transition-all"
                           >
-                            <TrashIcon className="w-4 h-4 text-red-400" />
+                            <TrashIcon className="w-4 h-4 text-red-500 dark:text-red-400" />
                           </button>
                         )}
                       </div>
@@ -389,11 +389,11 @@ export default function SubscriptionTiersSettings() {
                         name="feature"
                         type="text"
                         placeholder="Add custom feature"
-                        className="flex-1 px-4 py-2 bg-slate-700/50 border border-slate-600/50 rounded-xl text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-purple-400"
+                        className="flex-1 px-4 py-2 bg-white dark:bg-slate-700/50 border border-gray-300 dark:border-slate-600/50 rounded-xl text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-purple-400"
                       />
                       <button
                         type="submit"
-                        className="px-4 py-2 bg-purple-500/20 hover:bg-purple-500/30 text-purple-300 rounded-xl transition-all duration-300"
+                        className="px-4 py-2 bg-purple-500/20 hover:bg-purple-500/30 text-purple-700 dark:text-purple-300 rounded-xl transition-all duration-300"
                       >
                         <PlusIcon className="w-5 h-5" />
                       </button>

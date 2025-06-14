@@ -163,8 +163,8 @@ export default function UserSubscriptions() {
 
   if (loading) {
     return (
-      <div className="bg-slate-800/50 backdrop-blur-xl border border-slate-700/50 rounded-3xl p-8">
-        <div className="text-center text-slate-400">
+      <div className="bg-white dark:bg-slate-800/50 backdrop-blur-xl border border-gray-200 dark:border-slate-700/50 rounded-3xl p-8 shadow-lg">
+        <div className="text-center text-gray-600 dark:text-slate-400">
           Loading subscriptions...
         </div>
       </div>
@@ -173,11 +173,11 @@ export default function UserSubscriptions() {
 
   if (subscriptions.length === 0) {
     return (
-      <div className="bg-slate-800/50 backdrop-blur-xl border border-slate-700/50 rounded-3xl p-8">
+      <div className="bg-white dark:bg-slate-800/50 backdrop-blur-xl border border-gray-200 dark:border-slate-700/50 rounded-3xl p-8 shadow-lg">
         <div className="text-center">
-          <SparklesIcon className="w-16 h-16 text-slate-600 mx-auto mb-4" />
-          <h3 className="text-xl font-bold text-white mb-2">You don't have any active subscriptions</h3>
-          <p className="text-slate-400">Explore creators and subscribe to interesting content</p>
+          <SparklesIcon className="w-16 h-16 text-gray-400 dark:text-slate-600 mx-auto mb-4" />
+          <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2">You don't have any active subscriptions</h3>
+          <p className="text-gray-600 dark:text-slate-400">Explore creators and subscribe to interesting content</p>
         </div>
       </div>
     )
@@ -185,8 +185,8 @@ export default function UserSubscriptions() {
 
   return (
     <>
-      <div className="bg-slate-800/50 backdrop-blur-xl border border-slate-700/50 rounded-3xl p-8">
-        <h2 className="text-2xl font-bold text-white mb-8 flex items-center gap-3">
+      <div className="bg-white dark:bg-slate-800/50 backdrop-blur-xl border border-gray-200 dark:border-slate-700/50 rounded-3xl p-8 shadow-lg">
+        <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-8 flex items-center gap-3">
           <div className="w-8 h-8 bg-gradient-to-r from-purple-400 to-pink-400 rounded-lg flex items-center justify-center">
             <CreditCardIcon className="w-5 h-5 text-white" />
           </div>
@@ -201,7 +201,7 @@ export default function UserSubscriptions() {
             return (
               <div
                 key={subscription.id}
-                className="bg-slate-700/30 rounded-2xl p-6 hover:bg-slate-700/50 transition-all duration-300"
+                className="bg-gray-50 dark:bg-slate-700/30 rounded-2xl p-6 hover:bg-gray-100 dark:hover:bg-slate-700/50 transition-all duration-300"
               >
                 <div className="flex items-start gap-4">
                   {/* Avatar */}
@@ -223,17 +223,17 @@ export default function UserSubscriptions() {
                     <div className="flex items-center gap-2 mb-1">
                       <Link 
                         href={`/creator/${subscription.creator.id}`}
-                        className="font-bold text-white text-lg hover:text-purple-400 transition-colors"
+                        className="font-bold text-gray-900 dark:text-white text-lg hover:text-purple-600 dark:hover:text-purple-400 transition-colors"
                       >
                         {subscription.creator.fullName || subscription.creator.nickname}
                       </Link>
                       {subscription.creator.isVerified && (
-                        <CheckBadgeIcon className="w-5 h-5 text-blue-400" />
+                        <CheckBadgeIcon className="w-5 h-5 text-blue-500 dark:text-blue-400" />
                       )}
                     </div>
                     <Link 
                       href={`/creator/${subscription.creator.id}`}
-                      className="text-slate-400 text-sm mb-3 hover:text-slate-300 transition-colors inline-block"
+                      className="text-gray-600 dark:text-slate-400 text-sm mb-3 hover:text-gray-700 dark:hover:text-slate-300 transition-colors inline-block"
                     >
                       @{subscription.creator.nickname}
                     </Link>
@@ -247,13 +247,13 @@ export default function UserSubscriptions() {
                       </div>
 
                       {/* Price */}
-                      <div className="flex items-center gap-1 text-slate-300">
+                      <div className="flex items-center gap-1 text-gray-700 dark:text-slate-300">
                         <span className="font-semibold">{subscription.price}</span>
                         <span className="text-sm">{subscription.currency}/mo</span>
                       </div>
 
                       {/* Days Left */}
-                      <div className={`flex items-center gap-2 ${isExpiringSoon ? 'text-orange-400' : 'text-slate-400'}`}>
+                      <div className={`flex items-center gap-2 ${isExpiringSoon ? 'text-orange-600 dark:text-orange-400' : 'text-gray-600 dark:text-slate-400'}`}>
                         <CalendarIcon className="w-4 h-4" />
                         <span className="text-sm">
                           {daysLeft > 0 ? `${daysLeft} days left` : 'Expired'}
@@ -266,7 +266,7 @@ export default function UserSubscriptions() {
                       {/* View Profile */}
                       <Link
                         href={`/creator/${subscription.creator.id}`}
-                        className="inline-flex items-center gap-2 px-4 py-2 bg-blue-500/20 hover:bg-blue-500/30 text-blue-300 rounded-xl text-sm font-medium transition-all"
+                        className="inline-flex items-center gap-2 px-4 py-2 bg-blue-500/20 hover:bg-blue-500/30 text-blue-700 dark:text-blue-300 rounded-xl text-sm font-medium transition-all"
                       >
                         <UserIcon className="w-4 h-4" />
                         View Profile
@@ -278,7 +278,7 @@ export default function UserSubscriptions() {
                           setSelectedUpgrade(subscription)
                           setShowUpgradeModal(true)
                         }}
-                        className="inline-flex items-center gap-2 px-4 py-2 bg-purple-500/20 hover:bg-purple-500/30 text-purple-300 rounded-xl text-sm font-medium transition-all"
+                        className="inline-flex items-center gap-2 px-4 py-2 bg-purple-500/20 hover:bg-purple-500/30 text-purple-700 dark:text-purple-300 rounded-xl text-sm font-medium transition-all"
                       >
                         <ArrowUpIcon className="w-4 h-4" />
                         Change Tier
@@ -291,7 +291,7 @@ export default function UserSubscriptions() {
                             handleUnsubscribe(subscription.id)
                           }
                         }}
-                        className="inline-flex items-center gap-2 px-4 py-2 bg-red-500/20 hover:bg-red-500/30 text-red-300 rounded-xl text-sm font-medium transition-all"
+                        className="inline-flex items-center gap-2 px-4 py-2 bg-red-500/20 hover:bg-red-500/30 text-red-600 dark:text-red-300 rounded-xl text-sm font-medium transition-all"
                       >
                         <TrashIcon className="w-4 h-4" />
                         Cancel
@@ -308,11 +308,11 @@ export default function UserSubscriptions() {
       {/* Upgrade Modal */}
       {showUpgradeModal && selectedUpgrade && (
         <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-slate-800 rounded-3xl p-8 max-w-md w-full">
-            <h3 className="text-2xl font-bold text-white mb-6">Change Subscription Tier</h3>
+          <div className="bg-white dark:bg-slate-800 rounded-3xl p-8 max-w-md w-full border border-gray-200 dark:border-slate-700/50 shadow-2xl">
+            <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-6">Change Subscription Tier</h3>
             
             <div className="mb-6">
-              <p className="text-slate-400 mb-2">Current tier:</p>
+              <p className="text-gray-600 dark:text-slate-400 mb-2">Current tier:</p>
               <div className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-sm font-medium text-white bg-gradient-to-r ${getTierColor(selectedUpgrade.plan)}`}>
                 <span>{getTierIcon(selectedUpgrade.plan)}</span>
                 <span>{selectedUpgrade.plan}</span>
@@ -329,18 +329,18 @@ export default function UserSubscriptions() {
                   <button
                     key={tier}
                     onClick={() => handleUpgradeTier(selectedUpgrade.id, tier, price)}
-                    className="w-full p-4 bg-slate-700/50 hover:bg-slate-700 rounded-xl transition-all flex items-center justify-between group"
+                    className="w-full p-4 bg-gray-50 dark:bg-slate-700/50 hover:bg-gray-100 dark:hover:bg-slate-700 rounded-xl transition-all flex items-center justify-between group"
                   >
                     <div className="flex items-center gap-3">
                       <div className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-sm font-medium text-white bg-gradient-to-r ${getTierColor(tier)}`}>
                         <span>{getTierIcon(tier)}</span>
                         <span>{tier}</span>
                       </div>
-                      <span className="text-slate-300">
+                      <span className="text-gray-700 dark:text-slate-300">
                         {price} SOL/mo
                       </span>
                     </div>
-                    <ArrowUpIcon className="w-5 h-5 text-slate-500 group-hover:text-white transition-colors" />
+                    <ArrowUpIcon className="w-5 h-5 text-gray-400 dark:text-slate-500 group-hover:text-gray-900 dark:group-hover:text-white transition-colors" />
                   </button>
                 )
               })}
@@ -351,7 +351,7 @@ export default function UserSubscriptions() {
                 setShowUpgradeModal(false)
                 setSelectedUpgrade(null)
               }}
-              className="w-full px-6 py-3 bg-slate-700 hover:bg-slate-600 text-white rounded-xl font-medium transition-all"
+              className="w-full px-6 py-3 bg-gray-100 dark:bg-slate-700 hover:bg-gray-200 dark:hover:bg-slate-600 text-gray-700 dark:text-white rounded-xl font-medium transition-all"
             >
               Cancel
             </button>

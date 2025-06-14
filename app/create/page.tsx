@@ -174,7 +174,7 @@ export default function CreatePage() {
       </div>
 
       {/* Info Block */}
-      <div className="bg-purple-50/50 dark:bg-gradient-to-r dark:from-purple-900/20 dark:to-pink-900/20 backdrop-blur-sm border border-purple-200 dark:border-purple-500/30 rounded-2xl p-8">
+      <div className="bg-purple-50/50 dark:bg-slate-800/50 backdrop-blur-sm border border-purple-200 dark:border-slate-700/50 rounded-2xl p-8">
         <div className="flex items-start gap-4 mb-6">
           <div className="w-12 h-12 bg-gradient-to-r from-purple-500 to-pink-500 rounded-xl flex items-center justify-center flex-shrink-0">
             <span className="text-2xl">💡</span>
