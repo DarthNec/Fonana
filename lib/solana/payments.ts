@@ -4,7 +4,7 @@ import {
   SystemProgram,
   LAMPORTS_PER_SOL 
 } from '@solana/web3.js'
-import { connection } from './connection'
+import { getConnection } from './connection'
 
 export interface PaymentDistribution {
   creatorWallet: string
@@ -54,7 +54,7 @@ export async function createSubscriptionTransaction(
   const transaction = new Transaction()
   
   // Get recent blockhash
-  const { blockhash } = await connection.getLatestBlockhash()
+  const { blockhash } = await getConnection().getLatestBlockhash()
   transaction.recentBlockhash = blockhash
   transaction.feePayer = payerPublicKey
   

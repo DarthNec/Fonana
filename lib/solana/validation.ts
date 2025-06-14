@@ -1,5 +1,5 @@
 import { PublicKey } from '@solana/web3.js'
-import { connection } from './connection'
+import { getConnection } from './connection'
 import { lamportsToSol } from './payments'
 
 export interface TransactionValidation {
@@ -22,7 +22,7 @@ export async function validateTransaction(
 ): Promise<TransactionValidation> {
   try {
     // Get transaction details
-    const tx = await connection.getTransaction(signature, {
+    const tx = await getConnection().getTransaction(signature, {
       maxSupportedTransactionVersion: 0
     })
     
@@ -142,7 +142,7 @@ export async function waitForConfirmation(
   
   while (retries < maxRetries) {
     try {
-      const status = await connection.getSignatureStatus(signature)
+      const status = await getConnection().getSignatureStatus(signature)
       
       if (status.value?.confirmationStatus === 'confirmed' || 
           status.value?.confirmationStatus === 'finalized') {
