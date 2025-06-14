@@ -97,7 +97,7 @@ export default function CreatorPosts({ creatorId, showLocked = true, isSubscribe
             key={post.id}
             id={post.id}
             creator={{
-              id: creator.id,
+              id: creator.id.toString(),
               name: creator.name,
               username: creator.username,
               avatar: creator.avatar,

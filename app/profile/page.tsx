@@ -28,11 +28,14 @@ import UserSubscriptions from '@/components/UserSubscriptions'
 import Avatar from '@/components/Avatar'
 import toast from 'react-hot-toast'
 import { useTheme } from '@/lib/contexts/ThemeContext'
+import { isValidNickname, isReservedNickname } from '@/lib/utils/links'
+import { LinkIcon, CheckCircleIcon, XCircleIcon } from '@heroicons/react/24/outline'
 
 interface UserProfile {
   id: string
   name: string
   username: string
+  nickname: string
   email: string
   avatar: string
   backgroundImage: string
@@ -62,6 +65,7 @@ export default function ProfilePage() {
     id: user?.id || '',
     name: user?.fullName || '',
     username: user?.nickname || '',
+    nickname: user?.nickname || '',
     email: '',
     avatar: user?.avatar || '',
     backgroundImage: user?.backgroundImage || '',
@@ -86,6 +90,10 @@ export default function ProfilePage() {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
+  
+  // Nickname validation states
+  const [nicknameStatus, setNicknameStatus] = useState<'idle' | 'checking' | 'available' | 'taken' | 'invalid' | 'reserved'>('idle')
+  const [nicknameCheckTimeout, setNicknameCheckTimeout] = useState<NodeJS.Timeout | null>(null)
 
   useEffect(() => {
     if (user) {
@@ -94,16 +102,66 @@ export default function ProfilePage() {
         id: user.id,
         name: user.fullName || user.nickname || 'User',
         username: user.nickname || 'user',
+        nickname: user.nickname || '',
         avatar: user.avatar || '',
         bio: user.bio || '',
       }))
     }
   }, [user])
 
+  const checkNicknameAvailability = async (nickname: string) => {
+    if (!nickname || nickname === user?.nickname) {
+      setNicknameStatus('idle')
+      return
+    }
+
+    // Validate format
+    if (!isValidNickname(nickname)) {
+      setNicknameStatus('invalid')
+      return
+    }
+
+    // Check reserved names
+    if (isReservedNickname(nickname)) {
+      setNicknameStatus('reserved')
+      return
+    }
+
+    setNicknameStatus('checking')
+    
+    try {
+      const response = await fetch(`/api/user?nickname=${nickname}`)
+      const data = await response.json()
+      
+      if (data.user && data.user.id !== user?.id) {
+        setNicknameStatus('taken')
+      } else {
+        setNicknameStatus('available')
+      }
+    } catch (error) {
+      setNicknameStatus('idle')
+    }
+  }
+
   const handleInputChange = (field: string, value: any) => {
     if (field === 'theme') {
       setTheme(value as 'light' | 'dark' | 'auto')
     }
+    
+    if (field === 'nickname') {
+      // Clear previous timeout
+      if (nicknameCheckTimeout) {
+        clearTimeout(nicknameCheckTimeout)
+      }
+      
+      // Set new timeout to check after user stops typing
+      const timeout = setTimeout(() => {
+        checkNicknameAvailability(value)
+      }, 500)
+      
+      setNicknameCheckTimeout(timeout)
+    }
+    
     setFormData(prev => ({
       ...prev,
       [field]: value
@@ -121,10 +179,16 @@ export default function ProfilePage() {
   }
 
   const handleSave = async () => {
+    // Don't save if nickname is being checked or invalid
+    if (nicknameStatus === 'checking' || nicknameStatus === 'taken' || nicknameStatus === 'invalid' || nicknameStatus === 'reserved') {
+      toast.error('Please fix nickname issues before saving')
+      return
+    }
+    
     setIsSaving(true)
     try {
       await updateProfile({
-        nickname: formData.username,
+        nickname: formData.nickname,
         fullName: formData.name,
         bio: formData.bio,
         avatar: formData.avatar,
@@ -134,6 +198,7 @@ export default function ProfilePage() {
       setSaved(true)
       setTimeout(() => setSaved(false), 3000)
       toast.success('Profile updated')
+      await refreshUser()
     } catch (error) {
       console.error('Error saving profile:', error)
       toast.error('Error saving profile')
@@ -378,17 +443,77 @@ export default function ProfilePage() {
                       />
                     </div>
 
-                    <div>
+                    <div className="md:col-span-2">
                       <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-3">
-                        Username
+                        Profile URL / Nickname
                       </label>
-                      <input
-                        type="text"
-                        value={formData.username}
-                        onChange={(e) => handleInputChange('username', e.target.value)}
-                        className="w-full px-4 py-3 bg-white dark:bg-slate-700/50 border border-gray-300 dark:border-slate-600/50 rounded-2xl text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-purple-400 focus:border-transparent transition-all duration-300"
-                        placeholder="@username"
-                      />
+                      
+                      {/* Info box */}
+                      <div className="mb-4 p-4 bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-800 rounded-xl">
+                        <p className="text-sm text-purple-700 dark:text-purple-300">
+                          Choose a unique nickname for your short profile URL. Others can visit your profile at{' '}
+                          <span className="font-mono font-semibold">fonana.me/your-nickname</span>
+                        </p>
+                      </div>
+                      
+                      <div className="space-y-2">
+                        <div className="relative">
+                          <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                            <LinkIcon className="h-5 w-5 text-gray-400" />
+                          </div>
+                          <input
+                            type="text"
+                            value={formData.nickname}
+                            onChange={(e) => handleInputChange('nickname', e.target.value.toLowerCase().replace(/[^a-z0-9_-]/g, ''))}
+                            className={`w-full pl-10 pr-10 py-3 bg-white dark:bg-slate-700/50 border rounded-2xl text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-purple-400 focus:border-transparent transition-all duration-300 ${
+                              nicknameStatus === 'taken' || nicknameStatus === 'invalid' || nicknameStatus === 'reserved'
+                                ? 'border-red-500'
+                                : nicknameStatus === 'available'
+                                ? 'border-green-500'
+                                : 'border-gray-300 dark:border-slate-600/50'
+                            }`}
+                            placeholder="your-custom-name"
+                          />
+                          <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
+                            {nicknameStatus === 'checking' && (
+                              <div className="w-5 h-5 border-2 border-purple-500 border-t-transparent rounded-full animate-spin"></div>
+                            )}
+                            {nicknameStatus === 'available' && (
+                              <CheckCircleIcon className="h-5 w-5 text-green-500" />
+                            )}
+                            {(nicknameStatus === 'taken' || nicknameStatus === 'invalid' || nicknameStatus === 'reserved') && (
+                              <XCircleIcon className="h-5 w-5 text-red-500" />
+                            )}
+                          </div>
+                        </div>
+                        
+                        {/* Status messages */}
+                        {nicknameStatus === 'available' && (
+                          <p className="text-sm text-green-600 dark:text-green-400">
+                            ✓ fonana.me/{formData.nickname} is available!
+                          </p>
+                        )}
+                        {nicknameStatus === 'taken' && (
+                          <p className="text-sm text-red-600 dark:text-red-400">
+                            This nickname is already taken
+                          </p>
+                        )}
+                        {nicknameStatus === 'invalid' && (
+                          <p className="text-sm text-red-600 dark:text-red-400">
+                            Only letters, numbers, dash and underscore allowed
+                          </p>
+                        )}
+                        {nicknameStatus === 'reserved' && (
+                          <p className="text-sm text-red-600 dark:text-red-400">
+                            This nickname is reserved and cannot be used
+                          </p>
+                        )}
+                        {(!formData.nickname || formData.nickname === user?.nickname) && user?.nickname && (
+                          <p className="text-sm text-gray-600 dark:text-gray-400">
+                            Current: fonana.me/{user.nickname}
+                          </p>
+                        )}
+                      </div>
                     </div>
 
                     <div className="md:col-span-2">
@@ -416,6 +541,31 @@ export default function ProfilePage() {
                         placeholder="Tell us about yourself..."
                       />
                     </div>
+                  </div>
+                  
+                  {/* Save Button */}
+                  <div className="pt-6 border-t border-gray-200 dark:border-slate-700/50">
+                    <button
+                      onClick={handleSave}
+                      disabled={isSaving || nicknameStatus === 'checking'}
+                      className={`w-full px-6 py-4 rounded-2xl font-medium transition-all duration-300 flex items-center justify-center gap-2 ${
+                        isSaving || nicknameStatus === 'checking'
+                          ? 'bg-gray-300 dark:bg-slate-700 text-gray-500 dark:text-slate-400 cursor-not-allowed'
+                          : 'bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white transform hover:scale-105 hover:shadow-lg hover:shadow-purple-500/25'
+                      }`}
+                    >
+                      {isSaving ? (
+                        <>
+                          <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                          Saving...
+                        </>
+                      ) : (
+                        <>
+                          <CheckIcon className="w-5 h-5" />
+                          Save Profile
+                        </>
+                      )}
+                    </button>
                   </div>
                 </div>
               </div>
