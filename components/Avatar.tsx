@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from 'react'
 import Image from 'next/image'
-import AvatarFallback from './AvatarFallback'
 
 interface AvatarProps {
   src?: string | null
@@ -46,11 +45,14 @@ export default function Avatar({
   // Если генератор не сработал или нет seed, показываем fallback
   if (generatorError || (shouldUseGenerator && !seed)) {
     return (
-      <AvatarFallback 
-        seed={seed || alt || 'user'} 
-        size={size} 
-        className={`${roundedClasses[rounded]} ${className}`}
-      />
+      <div 
+        className={`${roundedClasses[rounded]} ${className} bg-gray-300 dark:bg-gray-600 flex items-center justify-center`}
+        style={{ width: size, height: size }}
+      >
+        <span className="text-gray-600 dark:text-gray-300 font-medium" style={{ fontSize: size * 0.4 }}>
+          {(seed || alt || 'U')[0].toUpperCase()}
+        </span>
+      </div>
     )
   }
   
