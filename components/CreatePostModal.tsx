@@ -296,17 +296,17 @@ export default function CreatePostModal({ onPostCreated, onClose }: CreatePostMo
 
   return (
     <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-start justify-center p-4 overflow-y-auto">
-      <div className="bg-gradient-to-br from-slate-800/95 to-slate-900/95 backdrop-blur-xl rounded-3xl max-w-4xl w-full my-8 border border-slate-700/50 shadow-2xl">
+      <div className="bg-white dark:bg-gradient-to-br dark:from-slate-800/95 dark:to-slate-900/95 backdrop-blur-xl rounded-3xl max-w-4xl w-full my-8 border border-gray-200 dark:border-slate-700/50 shadow-2xl">
         <form onSubmit={handleSubmit} className="p-6 lg:p-8 space-y-6">
           {/* Header */}
           <div className="flex items-center justify-between mb-6">
-            <h2 className="text-2xl font-bold bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent">
+            <h2 className="text-2xl font-bold bg-gradient-to-r from-purple-600 to-pink-600 dark:from-purple-400 dark:to-pink-400 bg-clip-text text-transparent">
               Create new post
             </h2>
             <button
               type="button"
               onClick={onClose}
-              className="p-2 hover:bg-slate-700/50 rounded-xl transition-colors text-slate-400 hover:text-white"
+              className="p-2 hover:bg-gray-100 dark:hover:bg-slate-700/50 rounded-xl transition-colors text-gray-600 dark:text-slate-400 hover:text-gray-900 dark:hover:text-white"
             >
               <XMarkIcon className="w-6 h-6" />
             </button>
@@ -317,7 +317,7 @@ export default function CreatePostModal({ onPostCreated, onClose }: CreatePostMo
             <div className="space-y-6">
               {/* Content type selection */}
               <div>
-                <label className="block text-sm font-medium text-slate-300 mb-3">
+                <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-3">
                   Content type
                 </label>
                 <div className="grid grid-cols-2 gap-3">
@@ -329,11 +329,11 @@ export default function CreatePostModal({ onPostCreated, onClose }: CreatePostMo
                       className={`p-3 rounded-xl border-2 transition-all flex items-center gap-2 ${
                         formData.type === type.id
                           ? 'border-purple-500 bg-purple-500/10'
-                          : 'border-slate-700 hover:border-slate-600 bg-slate-800/50'
+                          : 'border-gray-200 dark:border-slate-700 hover:border-gray-300 dark:hover:border-slate-600 bg-gray-50 dark:bg-slate-800/50'
                       }`}
                     >
-                      <type.icon className={`w-5 h-5 ${formData.type === type.id ? type.color : 'text-slate-400'}`} />
-                      <span className={`text-sm font-medium ${formData.type === type.id ? 'text-white' : 'text-slate-400'}`}>
+                      <type.icon className={`w-5 h-5 ${formData.type === type.id ? type.color : 'text-gray-600 dark:text-slate-400'}`} />
+                      <span className={`text-sm font-medium ${formData.type === type.id ? 'text-gray-900 dark:text-white' : 'text-gray-600 dark:text-slate-400'}`}>
                         {type.label}
                       </span>
                     </button>
@@ -347,7 +347,7 @@ export default function CreatePostModal({ onPostCreated, onClose }: CreatePostMo
                   onDrop={handleDrop}
                   onDragOver={(e) => e.preventDefault()}
                   onClick={() => fileInputRef.current?.click()}
-                  className="border-2 border-dashed border-slate-700 rounded-2xl p-6 text-center cursor-pointer hover:border-purple-500/50 transition-colors bg-slate-800/30"
+                  className="border-2 border-dashed border-gray-300 dark:border-slate-700 rounded-2xl p-6 text-center cursor-pointer hover:border-purple-500/50 transition-colors bg-gray-50 dark:bg-slate-800/30"
                 >
                   {formData.preview ? (
                     <div className="relative">
@@ -366,8 +366,8 @@ export default function CreatePostModal({ onPostCreated, onClose }: CreatePostMo
                         />
                       )}
                       {formData.type === 'audio' && (
-                        <div className="p-4 bg-slate-700/50 rounded-xl">
-                          <MusicalNoteIcon className="w-12 h-12 mx-auto text-pink-400 mb-2" />
+                        <div className="p-4 bg-gray-100 dark:bg-slate-700/50 rounded-xl">
+                          <MusicalNoteIcon className="w-12 h-12 mx-auto text-pink-500 dark:text-pink-400 mb-2" />
                           <audio src={formData.preview} controls className="w-full" />
                         </div>
                       )}
@@ -384,11 +384,11 @@ export default function CreatePostModal({ onPostCreated, onClose }: CreatePostMo
                     </div>
                   ) : (
                     <div>
-                      <PhotoIcon className="w-10 h-10 mx-auto text-slate-500 mb-2" />
-                      <p className="text-sm font-medium text-slate-300">
+                      <PhotoIcon className="w-10 h-10 mx-auto text-gray-400 dark:text-slate-500 mb-2" />
+                      <p className="text-sm font-medium text-gray-700 dark:text-slate-300">
                         Drag file or click
                       </p>
-                      <p className="text-xs text-slate-600 mt-1">
+                      <p className="text-xs text-gray-500 dark:text-slate-600 mt-1">
                         Max: {formData.type === 'video' ? '100MB' : formData.type === 'audio' ? '50MB' : '10MB'}
                       </p>
                     </div>
@@ -409,16 +409,16 @@ export default function CreatePostModal({ onPostCreated, onClose }: CreatePostMo
 
               {/* Category */}
               <div>
-                <label className="block text-sm font-medium text-slate-300 mb-2">
+                <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-2">
                   Category
                 </label>
                 <select
                   value={formData.category}
                   onChange={(e) => setFormData(prev => ({ ...prev, category: e.target.value }))}
-                  className="w-full px-4 py-2 bg-slate-800/50 border border-slate-700 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                  className="w-full px-4 py-2 bg-white dark:bg-slate-800/50 border border-gray-300 dark:border-slate-700 rounded-xl text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
                 >
                   {categories.map((category) => (
-                    <option key={category} value={category}>
+                    <option key={category} value={category} className="bg-white dark:bg-slate-800 text-gray-900 dark:text-white">
                       {category}
                     </option>
                   ))}
@@ -427,20 +427,20 @@ export default function CreatePostModal({ onPostCreated, onClose }: CreatePostMo
 
               {/* Tags */}
               <div>
-                <label className="block text-sm font-medium text-slate-300 mb-2">
+                <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-2">
                   Tags (max. 5)
                 </label>
                 <div className="flex flex-wrap gap-2 mb-2">
                   {formData.tags.map((tag) => (
                     <span
                       key={tag}
-                      className="px-3 py-1 bg-purple-500/20 text-purple-300 rounded-full text-sm flex items-center gap-1"
+                      className="px-3 py-1 bg-purple-500/20 text-purple-700 dark:text-purple-300 rounded-full text-sm flex items-center gap-1"
                     >
                       #{tag}
                       <button
                         type="button"
                         onClick={() => removeTag(tag)}
-                        className="hover:text-red-400"
+                        className="hover:text-red-500 dark:hover:text-red-400"
                       >
                         <XMarkIcon className="w-3 h-3" />
                       </button>
@@ -454,7 +454,7 @@ export default function CreatePostModal({ onPostCreated, onClose }: CreatePostMo
                       value={formData.currentTag}
                       onChange={(e) => setFormData(prev => ({ ...prev, currentTag: e.target.value }))}
                       onKeyPress={(e) => e.key === 'Enter' && (e.preventDefault(), addTag())}
-                      className="flex-1 px-3 py-1.5 bg-slate-800/50 border border-slate-700 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent text-sm"
+                      className="flex-1 px-3 py-1.5 bg-white dark:bg-slate-800/50 border border-gray-300 dark:border-slate-700 rounded-xl text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent text-sm"
                       placeholder="Add tag..."
                     />
                     <button
@@ -473,14 +473,14 @@ export default function CreatePostModal({ onPostCreated, onClose }: CreatePostMo
             <div className="space-y-6">
               {/* Title */}
               <div>
-                <label className="block text-sm font-medium text-slate-300 mb-2">
+                <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-2">
                   Title *
                 </label>
                 <input
                   type="text"
                   value={formData.title}
                   onChange={(e) => setFormData(prev => ({ ...prev, title: e.target.value }))}
-                  className="w-full px-4 py-2 bg-slate-800/50 border border-slate-700 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                  className="w-full px-4 py-2 bg-white dark:bg-slate-800/50 border border-gray-300 dark:border-slate-700 rounded-xl text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
                   placeholder="Enter post title"
                   maxLength={100}
                   required
@@ -489,26 +489,26 @@ export default function CreatePostModal({ onPostCreated, onClose }: CreatePostMo
 
               {/* Description */}
               <div>
-                <label className="block text-sm font-medium text-slate-300 mb-2">
+                <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-2">
                   Description *
                 </label>
                 <textarea
                   value={formData.content}
                   onChange={(e) => setFormData(prev => ({ ...prev, content: e.target.value }))}
-                  className="w-full px-4 py-2 bg-slate-800/50 border border-slate-700 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent resize-none"
+                  className="w-full px-4 py-2 bg-white dark:bg-slate-800/50 border border-gray-300 dark:border-slate-700 rounded-xl text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent resize-none"
                   rows={4}
                   placeholder="Describe your content..."
                   maxLength={2000}
                   required
                 />
-                <p className="text-xs text-slate-600 mt-1">
+                <p className="text-xs text-gray-500 dark:text-slate-600 mt-1">
                   {formData.content.length}/2000 characters
                 </p>
               </div>
 
               {/* Access type */}
               <div>
-                <label className="block text-sm font-medium text-slate-300 mb-3">
+                <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-3">
                   Content access
                 </label>
                 <div className="grid grid-cols-2 gap-3">
@@ -520,16 +520,16 @@ export default function CreatePostModal({ onPostCreated, onClose }: CreatePostMo
                       className={`p-3 rounded-xl border-2 text-left transition-all ${
                         formData.accessType === access.value
                           ? 'border-purple-500 bg-purple-500/10'
-                          : 'border-slate-700 hover:border-slate-600 bg-slate-800/50'
+                          : 'border-gray-200 dark:border-slate-700 hover:border-gray-300 dark:hover:border-slate-600 bg-gray-50 dark:bg-slate-800/50'
                       }`}
                     >
                       <div className="flex items-center gap-2 mb-1">
                         <div className={`p-1 rounded-lg bg-gradient-to-r ${access.color} bg-opacity-20`}>
                           <access.icon className="w-4 h-4 text-white" />
                         </div>
-                        <div className="font-medium text-white text-sm">{access.label}</div>
+                        <div className="font-medium text-gray-900 dark:text-white text-sm">{access.label}</div>
                       </div>
-                      <div className="text-xs text-slate-400 ml-7">{access.desc}</div>
+                      <div className="text-xs text-gray-600 dark:text-slate-400 ml-7">{access.desc}</div>
                     </button>
                   ))}
                 </div>
@@ -539,7 +539,7 @@ export default function CreatePostModal({ onPostCreated, onClose }: CreatePostMo
               {formData.accessType === 'paid' && (
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm font-medium text-slate-300 mb-2">
+                    <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-2">
                       Price
                     </label>
                     <input
@@ -549,19 +549,19 @@ export default function CreatePostModal({ onPostCreated, onClose }: CreatePostMo
                       max="1000"
                       value={formData.price}
                       onChange={(e) => setFormData(prev => ({ ...prev, price: parseFloat(e.target.value) || 0 }))}
-                      className="w-full px-4 py-2 bg-slate-800/50 border border-slate-700 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                      className="w-full px-4 py-2 bg-white dark:bg-slate-800/50 border border-gray-300 dark:border-slate-700 rounded-xl text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
                       placeholder="0.00"
                       required
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-slate-300 mb-2">
+                    <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-2">
                       Currency
                     </label>
                     <select
                       value={formData.currency}
                       onChange={(e) => setFormData(prev => ({ ...prev, currency: e.target.value as 'SOL' | 'USDC' }))}
-                      className="w-full px-4 py-2 bg-slate-800/50 border border-slate-700 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                      className="w-full px-4 py-2 bg-white dark:bg-slate-800/50 border border-gray-300 dark:border-slate-700 rounded-xl text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
                     >
                       <option value="SOL">SOL</option>
                       <option value="USDC">USDC</option>
@@ -573,7 +573,7 @@ export default function CreatePostModal({ onPostCreated, onClose }: CreatePostMo
           </div>
 
           {/* Buttons */}
-          <div className="flex gap-3 pt-4 border-t border-slate-700/50">
+          <div className="flex gap-3 pt-4 border-t border-gray-200 dark:border-slate-700/50">
             <button
               type="submit"
               disabled={isUploading || !connected}
@@ -594,7 +594,7 @@ export default function CreatePostModal({ onPostCreated, onClose }: CreatePostMo
             <button
               type="button"
               onClick={onClose}
-              className="px-6 py-3 bg-slate-700/50 hover:bg-slate-700 text-slate-300 hover:text-white font-medium rounded-xl transition-colors"
+              className="px-6 py-3 bg-gray-100 dark:bg-slate-700/50 hover:bg-gray-200 dark:hover:bg-slate-700 text-gray-700 dark:text-slate-300 hover:text-gray-900 dark:hover:text-white font-medium rounded-xl transition-colors"
             >
               Cancel
             </button>

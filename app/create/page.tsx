@@ -90,12 +90,12 @@ export default function CreatePage() {
   if (!connected) {
     return (
       <div className="min-h-screen flex items-center justify-center px-4 pt-16"> {/* Added pt-16 for navbar offset */}
-        <div className="bg-slate-800/50 backdrop-blur-sm border border-slate-700/50 rounded-3xl p-8 text-center max-w-md w-full">
+        <div className="bg-white dark:bg-slate-800/50 backdrop-blur-sm border border-gray-200 dark:border-slate-700/50 rounded-3xl p-8 text-center max-w-md w-full shadow-lg">
           <div className="w-20 h-20 bg-gradient-to-r from-purple-500 to-pink-500 rounded-2xl flex items-center justify-center mx-auto mb-6">
             <LockClosedIcon className="h-10 w-10 text-white" />
           </div>
-          <h3 className="text-2xl font-bold text-white mb-3">Wallet connection required</h3>
-          <p className="text-slate-400 text-lg">Connect your wallet to create content</p>
+          <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-3">Wallet connection required</h3>
+          <p className="text-gray-600 dark:text-slate-400 text-lg">Connect your wallet to create content</p>
         </div>
       </div>
     )
@@ -110,7 +110,7 @@ export default function CreatePage() {
             Create Content
           </span>
         </h1>
-        <p className="text-xl text-slate-400 max-w-3xl mx-auto">
+        <p className="text-xl text-gray-600 dark:text-slate-400 max-w-3xl mx-auto">
           Share your creativity and monetize content with blockchain
         </p>
       </div>
@@ -137,14 +137,14 @@ export default function CreatePage() {
           {contentTypes.map((type) => (
             <div
               key={type.type}
-              className={`bg-slate-800/50 backdrop-blur-sm border border-slate-700/50 rounded-3xl p-6 hover:shadow-2xl hover:${type.shadowColor} transition-all duration-500 group cursor-pointer`}
+              className={`bg-white dark:bg-slate-800/50 backdrop-blur-sm border border-gray-200 dark:border-slate-700/50 rounded-3xl p-6 hover:shadow-2xl hover:${type.shadowColor} transition-all duration-500 group cursor-pointer`}
               onClick={() => setShowCreateModal(true)}
             >
               <div className={`w-16 h-16 bg-gradient-to-r ${type.gradient} rounded-2xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform duration-300`}>
                 <type.icon className="w-8 h-8 text-white" />
               </div>
-              <h3 className="text-xl font-bold text-white mb-2">{type.name}</h3>
-              <p className="text-slate-400">{type.description}</p>
+              <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2">{type.name}</h3>
+              <p className="text-gray-600 dark:text-slate-400">{type.description}</p>
             </div>
           ))}
         </div>
@@ -161,58 +161,58 @@ export default function CreatePage() {
           {tips.map((tip, index) => (
             <div
               key={index}
-              className="bg-slate-800/50 backdrop-blur-sm border border-slate-700/50 rounded-3xl p-6 hover:shadow-xl transition-all duration-500"
+              className="bg-white dark:bg-slate-800/50 backdrop-blur-sm border border-gray-200 dark:border-slate-700/50 rounded-3xl p-6 hover:shadow-xl transition-all duration-500"
             >
               <div className={`w-12 h-12 bg-gradient-to-r ${tip.gradient} rounded-xl flex items-center justify-center mb-4`}>
                 <tip.icon className="w-6 h-6 text-white" />
               </div>
-              <h4 className="text-lg font-bold text-white mb-2">{tip.title}</h4>
-              <p className="text-slate-400">{tip.description}</p>
+              <h4 className="text-lg font-bold text-gray-900 dark:text-white mb-2">{tip.title}</h4>
+              <p className="text-gray-600 dark:text-slate-400">{tip.description}</p>
             </div>
           ))}
         </div>
       </div>
 
       {/* Info Block */}
-      <div className="bg-gradient-to-r from-purple-900/20 to-pink-900/20 backdrop-blur-sm border border-purple-500/30 rounded-2xl p-8">
+      <div className="bg-purple-50/50 dark:bg-gradient-to-r dark:from-purple-900/20 dark:to-pink-900/20 backdrop-blur-sm border border-purple-200 dark:border-purple-500/30 rounded-2xl p-8">
         <div className="flex items-start gap-4 mb-6">
           <div className="w-12 h-12 bg-gradient-to-r from-purple-500 to-pink-500 rounded-xl flex items-center justify-center flex-shrink-0">
             <span className="text-2xl">💡</span>
           </div>
           <div>
-            <h4 className="text-2xl font-bold text-white mb-2">
+            <h4 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
               Useful Information
             </h4>
-            <p className="text-slate-300">Important details for successful publishing</p>
+            <p className="text-gray-700 dark:text-slate-300">Important details for successful publishing</p>
           </div>
         </div>
         
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div className="space-y-4">
-            <div className="flex items-center gap-3 text-slate-300">
-              <div className="w-2 h-2 bg-gradient-to-r from-purple-400 to-pink-400 rounded-full"></div>
+            <div className="flex items-center gap-3 text-gray-700 dark:text-slate-300">
+              <div className="w-2 h-2 bg-gradient-to-r from-purple-600 to-pink-600 dark:from-purple-400 dark:to-pink-400 rounded-full"></div>
               <span>File size limited to 10MB for images</span>
             </div>
-            <div className="flex items-center gap-3 text-slate-300">
-              <div className="w-2 h-2 bg-gradient-to-r from-purple-400 to-pink-400 rounded-full"></div>
+            <div className="flex items-center gap-3 text-gray-700 dark:text-slate-300">
+              <div className="w-2 h-2 bg-gradient-to-r from-purple-600 to-pink-600 dark:from-purple-400 dark:to-pink-400 rounded-full"></div>
               <span>100MB for video content</span>
             </div>
-            <div className="flex items-center gap-3 text-slate-300">
-              <div className="w-2 h-2 bg-gradient-to-r from-purple-400 to-pink-400 rounded-full"></div>
+            <div className="flex items-center gap-3 text-gray-700 dark:text-slate-300">
+              <div className="w-2 h-2 bg-gradient-to-r from-purple-600 to-pink-600 dark:from-purple-400 dark:to-pink-400 rounded-full"></div>
               <span>50MB for audio files</span>
             </div>
           </div>
           <div className="space-y-4">
-            <div className="flex items-center gap-3 text-slate-300">
-              <div className="w-2 h-2 bg-gradient-to-r from-purple-400 to-pink-400 rounded-full"></div>
+            <div className="flex items-center gap-3 text-gray-700 dark:text-slate-300">
+              <div className="w-2 h-2 bg-gradient-to-r from-purple-600 to-pink-600 dark:from-purple-400 dark:to-pink-400 rounded-full"></div>
               <span>Content stored in decentralized network</span>
             </div>
-            <div className="flex items-center gap-3 text-slate-300">
-              <div className="w-2 h-2 bg-gradient-to-r from-purple-400 to-pink-400 rounded-full"></div>
+            <div className="flex items-center gap-3 text-gray-700 dark:text-slate-300">
+              <div className="w-2 h-2 bg-gradient-to-r from-purple-600 to-pink-600 dark:from-purple-400 dark:to-pink-400 rounded-full"></div>
               <span>Monetization via SOL and USDC cryptocurrencies</span>
             </div>
-            <div className="flex items-center gap-3 text-slate-300">
-              <div className="w-2 h-2 bg-gradient-to-r from-purple-400 to-pink-400 rounded-full"></div>
+            <div className="flex items-center gap-3 text-gray-700 dark:text-slate-300">
+              <div className="w-2 h-2 bg-gradient-to-r from-purple-600 to-pink-600 dark:from-purple-400 dark:to-pink-400 rounded-full"></div>
               <span>Flexible content access models</span>
             </div>
           </div>

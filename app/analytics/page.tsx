@@ -181,14 +181,14 @@ export default function AnalyticsPage() {
   ]
 
   return (
-    <div className="min-h-screen bg-slate-900 relative overflow-hidden">
+    <div className="min-h-screen bg-gray-50 dark:bg-slate-900 relative overflow-hidden">
       {/* Animated Background */}
       <div className="absolute inset-0 overflow-hidden">
         <div className="absolute -top-1/2 -left-1/2 w-full h-full">
-          <div className="w-96 h-96 bg-gradient-to-r from-purple-500/20 to-pink-500/20 rounded-full blur-3xl animate-pulse"></div>
+          <div className="w-96 h-96 bg-gradient-to-r from-purple-500/10 dark:from-purple-500/20 to-pink-500/10 dark:to-pink-500/20 rounded-full blur-3xl animate-pulse"></div>
         </div>
         <div className="absolute -bottom-1/2 -right-1/2 w-full h-full">
-          <div className="w-96 h-96 bg-gradient-to-r from-blue-500/20 to-cyan-500/20 rounded-full blur-3xl animate-pulse delay-1000"></div>
+          <div className="w-96 h-96 bg-gradient-to-r from-blue-500/10 dark:from-blue-500/20 to-cyan-500/10 dark:to-cyan-500/20 rounded-full blur-3xl animate-pulse delay-1000"></div>
         </div>
       </div>
 
@@ -197,16 +197,16 @@ export default function AnalyticsPage() {
           {/* Header */}
           <div className="flex items-center justify-between mb-12">
             <div>
-              <h1 className="text-4xl lg:text-6xl font-bold bg-gradient-to-r from-purple-400 via-pink-400 to-purple-400 bg-clip-text text-transparent mb-4">
+              <h1 className="text-4xl lg:text-6xl font-bold bg-gradient-to-r from-purple-600 via-pink-600 to-purple-600 dark:from-purple-400 dark:via-pink-400 dark:to-purple-400 bg-clip-text text-transparent mb-4">
                 Analytics
               </h1>
-              <p className="text-slate-400 text-lg">
+              <p className="text-gray-600 dark:text-slate-400 text-lg">
                 Track your content performance and audience growth
               </p>
             </div>
             
             {/* Time Range Selector */}
-            <div className="flex items-center gap-2 bg-slate-800/50 rounded-xl p-1">
+            <div className="flex items-center gap-2 bg-white dark:bg-slate-800/50 rounded-xl p-1 shadow-lg border border-gray-200 dark:border-slate-700/50">
               {timeRangeOptions.map((option) => (
                 <button
                   key={option.value}
@@ -214,7 +214,7 @@ export default function AnalyticsPage() {
                   className={`px-4 py-2 rounded-lg font-medium transition-all ${
                     timeRange === option.value
                       ? 'bg-gradient-to-r from-purple-500 to-pink-500 text-white'
-                      : 'text-slate-400 hover:text-white'
+                      : 'text-gray-600 dark:text-slate-400 hover:text-gray-900 dark:hover:text-white'
                   }`}
                 >
                   {option.label}
@@ -227,76 +227,76 @@ export default function AnalyticsPage() {
             <div className="flex items-center justify-center py-20">
               <div className="text-center">
                 <div className="w-16 h-16 border-4 border-purple-500/30 border-t-purple-500 rounded-full animate-spin mx-auto mb-4"></div>
-                <p className="text-slate-400">Loading analytics...</p>
+                <p className="text-gray-600 dark:text-slate-400">Loading analytics...</p>
               </div>
             </div>
           ) : (
             <>
               {/* Key Metrics */}
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-12">
-                <div className="bg-gradient-to-br from-emerald-500/10 to-teal-500/10 backdrop-blur-xl border border-emerald-500/20 rounded-3xl p-6">
+                <div className="bg-white dark:bg-gradient-to-br dark:from-emerald-500/10 dark:to-teal-500/10 backdrop-blur-xl border border-gray-200 dark:border-emerald-500/20 rounded-3xl p-6 shadow-lg">
                   <div className="flex items-center justify-between mb-4">
                     <div className="w-12 h-12 bg-gradient-to-r from-emerald-500 to-teal-500 rounded-2xl flex items-center justify-center">
                       <CurrencyDollarIcon className="w-6 h-6 text-white" />
                     </div>
                     <div className="flex items-center gap-2">
-                      <ArrowTrendingUpIcon className="w-4 h-4 text-emerald-400" />
-                      <span className="text-emerald-300 text-sm font-bold">+{analyticsData.revenue.growth}%</span>
+                      <ArrowTrendingUpIcon className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+                      <span className="text-emerald-700 dark:text-emerald-300 text-sm font-bold">+{analyticsData.revenue.growth}%</span>
                     </div>
                   </div>
-                  <p className="text-slate-400 text-sm mb-2">Total Revenue</p>
-                  <p className="text-white text-3xl font-bold">${analyticsData.revenue.total.toFixed(2)}</p>
-                  <p className="text-slate-500 text-xs mt-1">${analyticsData.revenue.monthly.toFixed(2)}/month</p>
+                  <p className="text-gray-600 dark:text-slate-400 text-sm mb-2">Total Revenue</p>
+                  <p className="text-gray-900 dark:text-white text-3xl font-bold">${analyticsData.revenue.total.toFixed(2)}</p>
+                  <p className="text-gray-500 dark:text-slate-500 text-xs mt-1">${analyticsData.revenue.monthly.toFixed(2)}/month</p>
                 </div>
 
-                <div className="bg-gradient-to-br from-blue-500/10 to-indigo-500/10 backdrop-blur-xl border border-blue-500/20 rounded-3xl p-6">
+                <div className="bg-white dark:bg-gradient-to-br dark:from-blue-500/10 dark:to-indigo-500/10 backdrop-blur-xl border border-gray-200 dark:border-blue-500/20 rounded-3xl p-6 shadow-lg">
                   <div className="flex items-center justify-between mb-4">
                     <div className="w-12 h-12 bg-gradient-to-r from-blue-500 to-indigo-500 rounded-2xl flex items-center justify-center">
                       <UsersIcon className="w-6 h-6 text-white" />
                     </div>
                     <div className="flex items-center gap-2">
-                      <ArrowTrendingUpIcon className="w-4 h-4 text-blue-400" />
-                      <span className="text-blue-300 text-sm font-bold">+{analyticsData.subscribers.growth}%</span>
+                      <ArrowTrendingUpIcon className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+                      <span className="text-blue-700 dark:text-blue-300 text-sm font-bold">+{analyticsData.subscribers.growth}%</span>
                     </div>
                   </div>
-                  <p className="text-slate-400 text-sm mb-2">Subscribers</p>
-                  <p className="text-white text-3xl font-bold">{analyticsData.subscribers.total}</p>
-                  <p className="text-slate-500 text-xs mt-1">{analyticsData.subscribers.active} active</p>
+                  <p className="text-gray-600 dark:text-slate-400 text-sm mb-2">Subscribers</p>
+                  <p className="text-gray-900 dark:text-white text-3xl font-bold">{analyticsData.subscribers.total}</p>
+                  <p className="text-gray-500 dark:text-slate-500 text-xs mt-1">{analyticsData.subscribers.active} active</p>
                 </div>
 
-                <div className="bg-gradient-to-br from-purple-500/10 to-pink-500/10 backdrop-blur-xl border border-purple-500/20 rounded-3xl p-6">
+                <div className="bg-white dark:bg-gradient-to-br dark:from-purple-500/10 dark:to-pink-500/10 backdrop-blur-xl border border-gray-200 dark:border-purple-500/20 rounded-3xl p-6 shadow-lg">
                   <div className="flex items-center justify-between mb-4">
                     <div className="w-12 h-12 bg-gradient-to-r from-purple-500 to-pink-500 rounded-2xl flex items-center justify-center">
                       <DocumentTextIcon className="w-6 h-6 text-white" />
                     </div>
-                    <div className="text-purple-300 text-sm">
+                    <div className="text-purple-700 dark:text-purple-300 text-sm">
                       {analyticsData.content.avgViews} avg views
                     </div>
                   </div>
-                  <p className="text-slate-400 text-sm mb-2">Content</p>
-                  <p className="text-white text-3xl font-bold">{analyticsData.content.posts}</p>
-                  <p className="text-slate-500 text-xs mt-1">{analyticsData.content.views} total views</p>
+                  <p className="text-gray-600 dark:text-slate-400 text-sm mb-2">Content</p>
+                  <p className="text-gray-900 dark:text-white text-3xl font-bold">{analyticsData.content.posts}</p>
+                  <p className="text-gray-500 dark:text-slate-500 text-xs mt-1">{analyticsData.content.views} total views</p>
                 </div>
 
-                <div className="bg-gradient-to-br from-orange-500/10 to-red-500/10 backdrop-blur-xl border border-orange-500/20 rounded-3xl p-6">
+                <div className="bg-white dark:bg-gradient-to-br dark:from-orange-500/10 dark:to-red-500/10 backdrop-blur-xl border border-gray-200 dark:border-orange-500/20 rounded-3xl p-6 shadow-lg">
                   <div className="flex items-center justify-between mb-4">
                     <div className="w-12 h-12 bg-gradient-to-r from-orange-500 to-red-500 rounded-2xl flex items-center justify-center">
                       <HeartIcon className="w-6 h-6 text-white" />
                     </div>
-                    <div className="text-orange-300 text-sm">
+                    <div className="text-orange-700 dark:text-orange-300 text-sm">
                       {analyticsData.content.engagement.toFixed(1)}% rate
                     </div>
                   </div>
-                  <p className="text-slate-400 text-sm mb-2">Engagement</p>
-                  <p className="text-white text-3xl font-bold">{analyticsData.engagement.likes + analyticsData.engagement.comments}</p>
-                  <p className="text-slate-500 text-xs mt-1">{analyticsData.engagement.likes} likes, {analyticsData.engagement.comments} comments</p>
+                  <p className="text-gray-600 dark:text-slate-400 text-sm mb-2">Engagement</p>
+                  <p className="text-gray-900 dark:text-white text-3xl font-bold">{analyticsData.engagement.likes + analyticsData.engagement.comments}</p>
+                  <p className="text-gray-500 dark:text-slate-500 text-xs mt-1">{analyticsData.engagement.likes} likes, {analyticsData.engagement.comments} comments</p>
                 </div>
               </div>
 
               <div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
                 {/* Top Performing Posts */}
-                <div className="bg-slate-800/50 backdrop-blur-xl border border-slate-700/50 rounded-3xl p-8">
-                  <h2 className="text-2xl font-bold text-white mb-8 flex items-center gap-3">
+                <div className="bg-white dark:bg-slate-800/50 backdrop-blur-xl border border-gray-200 dark:border-slate-700/50 rounded-3xl p-8 shadow-lg">
+                  <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-8 flex items-center gap-3">
                     <div className="w-8 h-8 bg-gradient-to-r from-purple-400 to-pink-400 rounded-lg flex items-center justify-center">
                       <ChartBarIcon className="w-5 h-5 text-white" />
                     </div>
@@ -306,22 +306,22 @@ export default function AnalyticsPage() {
                   {analyticsData.topPosts.length > 0 ? (
                     <div className="space-y-4">
                       {analyticsData.topPosts.map((post, index) => (
-                        <div key={post.id} className="bg-slate-700/30 rounded-2xl p-4 hover:bg-slate-700/50 transition-all">
+                        <div key={post.id} className="bg-gray-50 dark:bg-slate-700/30 rounded-2xl p-4 hover:bg-gray-100 dark:hover:bg-slate-700/50 transition-all">
                           <div className="flex items-center justify-between mb-2">
-                            <h3 className="text-white font-medium flex-1 mr-4">{post.title}</h3>
-                            <span className="text-purple-400 font-bold">#{index + 1}</span>
+                            <h3 className="text-gray-900 dark:text-white font-medium flex-1 mr-4">{post.title}</h3>
+                            <span className="text-purple-600 dark:text-purple-400 font-bold">#{index + 1}</span>
                           </div>
-                          <div className="flex items-center gap-6 text-sm text-slate-400">
+                          <div className="flex items-center gap-6 text-sm text-gray-600 dark:text-slate-400">
                             <div className="flex items-center gap-2">
                               <EyeIcon className="w-4 h-4" />
                               <span>{post.views}</span>
                             </div>
                             <div className="flex items-center gap-2">
-                              <HeartIcon className="w-4 h-4 text-red-400" />
+                              <HeartIcon className="w-4 h-4 text-red-500 dark:text-red-400" />
                               <span>{post.likes}</span>
                             </div>
                             <div className="flex items-center gap-2">
-                              <ChatBubbleLeftEllipsisIcon className="w-4 h-4 text-blue-400" />
+                              <ChatBubbleLeftEllipsisIcon className="w-4 h-4 text-blue-500 dark:text-blue-400" />
                               <span>{post.comments}</span>
                             </div>
                           </div>
@@ -330,14 +330,14 @@ export default function AnalyticsPage() {
                     </div>
                   ) : (
                     <div className="text-center py-8">
-                      <p className="text-slate-400">No posts yet</p>
+                      <p className="text-gray-600 dark:text-slate-400">No posts yet</p>
                     </div>
                   )}
                 </div>
 
                 {/* Recent Feedback */}
-                <div className="bg-slate-800/50 backdrop-blur-xl border border-slate-700/50 rounded-3xl p-8">
-                  <h2 className="text-2xl font-bold text-white mb-8 flex items-center gap-3">
+                <div className="bg-white dark:bg-slate-800/50 backdrop-blur-xl border border-gray-200 dark:border-slate-700/50 rounded-3xl p-8 shadow-lg">
+                  <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-8 flex items-center gap-3">
                     <div className="w-8 h-8 bg-gradient-to-r from-blue-400 to-cyan-400 rounded-lg flex items-center justify-center">
                       <ChatBubbleLeftEllipsisIcon className="w-5 h-5 text-white" />
                     </div>
@@ -347,7 +347,7 @@ export default function AnalyticsPage() {
                   {analyticsData.recentFeedback.length > 0 ? (
                     <div className="space-y-4 max-h-96 overflow-y-auto">
                       {analyticsData.recentFeedback.map((feedback) => (
-                        <div key={feedback.id} className="bg-slate-700/30 rounded-2xl p-4 hover:bg-slate-700/50 transition-all">
+                        <div key={feedback.id} className="bg-gray-50 dark:bg-slate-700/30 rounded-2xl p-4 hover:bg-gray-100 dark:hover:bg-slate-700/50 transition-all">
                           <div className="flex items-start gap-3">
                             <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${
                               feedback.type === 'comment' ? 'bg-blue-500/20' :
@@ -355,27 +355,27 @@ export default function AnalyticsPage() {
                               'bg-emerald-500/20'
                             }`}>
                               {feedback.type === 'comment' ? (
-                                <ChatBubbleLeftEllipsisIcon className="w-5 h-5 text-blue-400" />
+                                <ChatBubbleLeftEllipsisIcon className="w-5 h-5 text-blue-500 dark:text-blue-400" />
                               ) : feedback.type === 'like' ? (
-                                <HeartIcon className="w-5 h-5 text-red-400" />
+                                <HeartIcon className="w-5 h-5 text-red-500 dark:text-red-400" />
                               ) : (
-                                <UsersIcon className="w-5 h-5 text-emerald-400" />
+                                <UsersIcon className="w-5 h-5 text-emerald-500 dark:text-emerald-400" />
                               )}
                             </div>
                             <div className="flex-1">
-                              <p className="text-white text-sm">
-                                <span className="font-medium text-purple-300">{feedback.user}</span>
+                              <p className="text-gray-900 dark:text-white text-sm">
+                                <span className="font-medium text-purple-600 dark:text-purple-300">{feedback.user}</span>
                                 {feedback.type === 'comment' && ' commented on '}
                                 {feedback.type === 'like' && ' liked '}
                                 {feedback.type === 'subscription' && ' subscribed'}
                                 {feedback.postTitle && (
-                                  <span className="text-slate-300">"{feedback.postTitle}"</span>
+                                  <span className="text-gray-700 dark:text-slate-300">"{feedback.postTitle}"</span>
                                 )}
                               </p>
                               {feedback.content && (
-                                <p className="text-slate-400 text-sm mt-1">{feedback.content}</p>
+                                <p className="text-gray-600 dark:text-slate-400 text-sm mt-1">{feedback.content}</p>
                               )}
-                              <p className="text-slate-500 text-xs mt-1">{formatDate(feedback.createdAt)}</p>
+                              <p className="text-gray-500 dark:text-slate-500 text-xs mt-1">{formatDate(feedback.createdAt)}</p>
                             </div>
                           </div>
                         </div>
@@ -383,7 +383,7 @@ export default function AnalyticsPage() {
                     </div>
                   ) : (
                     <div className="text-center py-8">
-                      <p className="text-slate-400">No feedback yet</p>
+                      <p className="text-gray-600 dark:text-slate-400">No feedback yet</p>
                     </div>
                   )}
                 </div>

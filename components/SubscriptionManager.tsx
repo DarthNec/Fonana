@@ -107,10 +107,10 @@ export default function SubscriptionManager() {
 
   const getTierColor = (tier: string) => {
     switch (tier.toLowerCase()) {
-      case 'basic': return 'bg-gray-500/20 text-gray-300 border border-gray-500/30'
-      case 'premium': return 'bg-purple-500/20 text-purple-300 border border-purple-500/30'
-      case 'vip': return 'bg-yellow-500/20 text-yellow-300 border border-yellow-500/30'
-      default: return 'bg-slate-500/20 text-slate-300 border border-slate-500/30'
+      case 'basic': return 'bg-gray-500/20 text-gray-700 dark:text-gray-300 border border-gray-500/30'
+      case 'premium': return 'bg-purple-500/20 text-purple-700 dark:text-purple-300 border border-purple-500/30'
+      case 'vip': return 'bg-yellow-500/20 text-yellow-700 dark:text-yellow-300 border border-yellow-500/30'
+      default: return 'bg-slate-500/20 text-slate-700 dark:text-slate-300 border border-slate-500/30'
     }
   }
 
@@ -119,8 +119,8 @@ export default function SubscriptionManager() {
 
   if (loading) {
     return (
-      <div className="bg-slate-800/50 backdrop-blur-xl border border-slate-700/50 rounded-3xl p-8">
-        <div className="text-center text-slate-400">
+      <div className="bg-white dark:bg-slate-800/50 backdrop-blur-xl border border-gray-200 dark:border-slate-700/50 rounded-3xl p-8 shadow-lg">
+        <div className="text-center text-gray-600 dark:text-slate-400">
           Loading subscriptions...
         </div>
       </div>
@@ -129,12 +129,12 @@ export default function SubscriptionManager() {
 
   if (subscriptions.length === 0) {
     return (
-      <div className="bg-slate-800/50 backdrop-blur-xl border border-slate-700/50 rounded-3xl p-8">
+      <div className="bg-white dark:bg-slate-800/50 backdrop-blur-xl border border-gray-200 dark:border-slate-700/50 rounded-3xl p-8 shadow-lg">
         <div className="text-center">
-          <h2 className="text-2xl font-bold text-white mb-4">
+          <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">
             Subscription Management
           </h2>
-          <p className="text-slate-400">
+          <p className="text-gray-600 dark:text-slate-400">
             You don't have any active subscriptions yet
           </p>
         </div>
@@ -143,20 +143,20 @@ export default function SubscriptionManager() {
   }
 
   return (
-    <div className="bg-slate-800/50 backdrop-blur-xl border border-slate-700/50 rounded-3xl p-8">
+    <div className="bg-white dark:bg-slate-800/50 backdrop-blur-xl border border-gray-200 dark:border-slate-700/50 rounded-3xl p-8 shadow-lg">
       <div className="text-center mb-8">
-        <h2 className="text-2xl font-bold text-white mb-4">
+        <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">
           Subscription Management
         </h2>
-        <p className="text-slate-300">
+        <p className="text-gray-700 dark:text-slate-300">
           Configure which creators are displayed in your subscription carousel
         </p>
       </div>
 
       {/* Visible subscriptions */}
       <div className="mb-8">
-        <h3 className="text-xl font-bold text-white mb-4 flex items-center gap-3">
-          <EyeIcon className="w-6 h-6 text-green-400" />
+        <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-4 flex items-center gap-3">
+          <EyeIcon className="w-6 h-6 text-green-600 dark:text-green-400" />
           Visible ({visibleSubscriptions.length})
         </h3>
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
@@ -165,7 +165,7 @@ export default function SubscriptionManager() {
             if (!creator) return null
 
             return (
-              <div key={subscription.id} className="bg-slate-700/50 border border-slate-600/50 rounded-2xl p-6 hover:border-slate-500/50 transition-all duration-300">
+              <div key={subscription.id} className="bg-gray-50 dark:bg-slate-700/50 border border-gray-200 dark:border-slate-600/50 rounded-2xl p-6 hover:border-gray-300 dark:hover:border-slate-500/50 transition-all duration-300">
                 <div className="flex items-start gap-4 mb-4">
                   <Avatar
                     src={creator.avatar}
@@ -175,8 +175,8 @@ export default function SubscriptionManager() {
                     rounded="xl"
                   />
                   <div className="flex-1">
-                    <h4 className="font-semibold text-white">{creator.fullName || creator.nickname}</h4>
-                    <p className="text-slate-400 text-sm">@{creator.nickname}</p>
+                    <h4 className="font-semibold text-gray-900 dark:text-white">{creator.fullName || creator.nickname}</h4>
+                    <p className="text-gray-600 dark:text-slate-400 text-sm">@{creator.nickname}</p>
                     <span className={`inline-block px-2 py-1 rounded-full text-xs font-medium mt-2 ${getTierColor(subscription.plan)}`}>
                       {subscription.plan} - {subscription.price} {subscription.currency}
                     </span>
@@ -184,13 +184,13 @@ export default function SubscriptionManager() {
                 </div>
                 
                 <div className="flex items-center justify-between">
-                  <div className="text-xs text-slate-400">
+                  <div className="text-xs text-gray-600 dark:text-slate-400">
                     <div>Subscribed: {new Date(subscription.subscribedAt).toLocaleDateString()}</div>
                     <div>Valid until: {new Date(subscription.validUntil).toLocaleDateString()}</div>
                   </div>
                   <button
                     onClick={() => toggleVisibility(subscription.id)}
-                    className="p-2 bg-red-500/20 text-red-400 hover:bg-red-500/30 rounded-lg transition-colors"
+                    className="p-2 bg-red-500/20 text-red-600 dark:text-red-400 hover:bg-red-500/30 rounded-lg transition-colors"
                     title="Hide from carousel"
                   >
                     <EyeSlashIcon className="w-4 h-4" />
@@ -205,8 +205,8 @@ export default function SubscriptionManager() {
       {/* Hidden subscriptions */}
       {hiddenSubscriptions.length > 0 && (
         <div>
-          <h3 className="text-xl font-bold text-white mb-4 flex items-center gap-3">
-            <EyeSlashIcon className="w-6 h-6 text-red-400" />
+          <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-4 flex items-center gap-3">
+            <EyeSlashIcon className="w-6 h-6 text-red-600 dark:text-red-400" />
             Hidden ({hiddenSubscriptions.length})
           </h3>
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
@@ -215,7 +215,7 @@ export default function SubscriptionManager() {
               if (!creator) return null
 
               return (
-                <div key={subscription.id} className="bg-slate-700/30 border border-slate-600/30 rounded-2xl p-6 opacity-60 hover:opacity-80 transition-all duration-300">
+                <div key={subscription.id} className="bg-gray-100 dark:bg-slate-700/30 border border-gray-200 dark:border-slate-600/30 rounded-2xl p-6 opacity-60 hover:opacity-80 transition-all duration-300">
                   <div className="flex items-start gap-4 mb-4">
                     <Avatar
                       src={creator.avatar}
@@ -226,8 +226,8 @@ export default function SubscriptionManager() {
                       className="grayscale"
                     />
                     <div className="flex-1">
-                      <h4 className="font-semibold text-white">{creator.fullName || creator.nickname}</h4>
-                      <p className="text-slate-400 text-sm">@{creator.nickname}</p>
+                      <h4 className="font-semibold text-gray-900 dark:text-white">{creator.fullName || creator.nickname}</h4>
+                      <p className="text-gray-600 dark:text-slate-400 text-sm">@{creator.nickname}</p>
                       <span className={`inline-block px-2 py-1 rounded-full text-xs font-medium mt-2 ${getTierColor(subscription.plan)}`}>
                         {subscription.plan} - {subscription.price} {subscription.currency}
                       </span>
@@ -235,13 +235,13 @@ export default function SubscriptionManager() {
                   </div>
                   
                   <div className="flex items-center justify-between">
-                    <div className="text-xs text-slate-400">
+                    <div className="text-xs text-gray-600 dark:text-slate-400">
                       <div>Subscribed: {new Date(subscription.subscribedAt).toLocaleDateString()}</div>
                       <div>Valid until: {new Date(subscription.validUntil).toLocaleDateString()}</div>
                     </div>
                     <button
                       onClick={() => toggleVisibility(subscription.id)}
-                      className="p-2 bg-green-500/20 text-green-400 hover:bg-green-500/30 rounded-lg transition-colors"
+                      className="p-2 bg-green-500/20 text-green-600 dark:text-green-400 hover:bg-green-500/30 rounded-lg transition-colors"
                       title="Show in carousel"
                     >
                       <EyeIcon className="w-4 h-4" />
