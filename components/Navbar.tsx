@@ -48,7 +48,7 @@ export function Navbar() {
   return (
     <nav className={`fixed top-0 left-0 right-0 z-50 transition-all duration-500 ${
       isScrolled 
-        ? 'bg-slate-900/80 backdrop-blur-xl border-b border-slate-700/50' 
+        ? 'bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl border-b border-gray-200 dark:border-slate-700/50' 
         : 'bg-transparent'
     }`}>
       <div className="container mx-auto px-4">
@@ -56,8 +56,8 @@ export function Navbar() {
           {/* Logo */}
           <Link href="/" className="flex items-center gap-3 group">
             <div className="relative w-10 h-10 rounded-2xl bg-gradient-to-br from-purple-600 to-pink-600 p-0.5 group-hover:scale-110 transition-transform duration-300">
-              <div className="w-full h-full bg-slate-900 rounded-2xl flex items-center justify-center">
-                <span className="text-white font-black text-lg">F</span>
+              <div className="w-full h-full bg-white dark:bg-slate-900 rounded-2xl flex items-center justify-center">
+                <span className="text-gray-900 dark:text-white font-black text-lg">F</span>
               </div>
             </div>
             <span className="text-2xl font-black bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent">
@@ -74,7 +74,7 @@ export function Navbar() {
                 className={`flex items-center gap-2 px-6 py-3 rounded-2xl font-semibold transition-all duration-300 transform hover:scale-105 ${
                   isActive(item.href)
                     ? 'bg-gradient-to-r from-purple-600 to-pink-600 text-white shadow-lg shadow-purple-500/25'
-                    : 'text-slate-300 hover:text-white hover:bg-slate-800/50'
+                    : 'text-gray-600 dark:text-slate-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-slate-800/50'
                 }`}
               >
                 <item.icon className="w-5 h-5" />
@@ -86,7 +86,7 @@ export function Navbar() {
           {/* Desktop Actions */}
           <div className="hidden md:flex items-center gap-4">
             {/* Notifications */}
-            <button className="relative p-3 text-slate-300 hover:text-white rounded-2xl hover:bg-slate-800/50 transition-all duration-300">
+            <button className="relative p-3 text-gray-600 dark:text-slate-300 hover:text-gray-900 dark:hover:text-white rounded-2xl hover:bg-gray-100 dark:hover:bg-slate-800/50 transition-all duration-300">
               <BellIcon className="w-6 h-6" />
               <span className="absolute top-2 right-2 w-2 h-2 bg-red-500 rounded-full"></span>
             </button>
@@ -115,8 +115,8 @@ export function Navbar() {
 
                 {/* Profile Dropdown */}
                 {isProfileOpen && (
-                  <div className="absolute right-0 top-full mt-2 w-64 bg-slate-800/95 backdrop-blur-xl rounded-3xl border border-slate-700/50 shadow-2xl overflow-hidden">
-                    <div className="p-6 border-b border-slate-700/50">
+                  <div className="absolute right-0 top-full mt-2 w-64 bg-white dark:bg-slate-800/95 backdrop-blur-xl rounded-3xl border border-gray-200 dark:border-slate-700/50 shadow-2xl overflow-hidden">
+                    <div className="p-6 border-b border-gray-200 dark:border-slate-700/50">
                       <div className="flex items-center gap-3">
                         <Avatar
                           src={user.avatar}
@@ -127,10 +127,10 @@ export function Navbar() {
                           className="border border-purple-500/30"
                         />
                         <div>
-                          <div className="font-semibold text-white">
+                          <div className="font-semibold text-gray-900 dark:text-white">
                             {user.fullName || user.nickname || 'User'}
                           </div>
-                          <div className="text-slate-400 text-sm">
+                          <div className="text-gray-600 dark:text-slate-400 text-sm">
                             @{user.nickname || 'user'}
                           </div>
                         </div>
@@ -140,7 +140,7 @@ export function Navbar() {
                     <div className="p-2">
                       <Link
                         href="/profile"
-                        className="flex items-center gap-3 px-4 py-3 text-slate-300 hover:text-white hover:bg-slate-700/50 rounded-2xl transition-colors"
+                        className="flex items-center gap-3 px-4 py-3 text-gray-600 dark:text-slate-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-slate-700/50 rounded-2xl transition-colors"
                         onClick={() => setIsProfileOpen(false)}
                       >
                         <UserIcon className="w-5 h-5" />
@@ -148,7 +148,7 @@ export function Navbar() {
                       </Link>
                       <Link
                         href="/dashboard"
-                        className="flex items-center gap-3 px-4 py-3 text-slate-300 hover:text-white hover:bg-slate-700/50 rounded-2xl transition-colors"
+                        className="flex items-center gap-3 px-4 py-3 text-gray-600 dark:text-slate-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-slate-700/50 rounded-2xl transition-colors"
                         onClick={() => setIsProfileOpen(false)}
                       >
                         <Cog6ToothIcon className="w-5 h-5" />
@@ -159,7 +159,7 @@ export function Navbar() {
                           disconnect()
                           setIsProfileOpen(false)
                         }}
-                        className="w-full flex items-center gap-3 px-4 py-3 text-slate-300 hover:text-red-400 hover:bg-slate-700/50 rounded-2xl transition-colors"
+                        className="w-full flex items-center gap-3 px-4 py-3 text-gray-600 dark:text-slate-300 hover:text-red-500 dark:hover:text-red-400 hover:bg-gray-100 dark:hover:bg-slate-700/50 rounded-2xl transition-colors"
                       >
                         <ArrowRightOnRectangleIcon className="w-5 h-5" />
                         Logout
@@ -174,7 +174,7 @@ export function Navbar() {
           {/* Mobile Menu Button */}
           <button
             onClick={() => setIsOpen(!isOpen)}
-            className="md:hidden p-3 text-slate-300 hover:text-white rounded-2xl hover:bg-slate-800/50 transition-all duration-300"
+            className="md:hidden p-3 text-gray-600 dark:text-slate-300 hover:text-gray-900 dark:hover:text-white rounded-2xl hover:bg-gray-100 dark:hover:bg-slate-800/50 transition-all duration-300"
           >
             {isOpen ? (
               <XMarkIcon className="w-6 h-6" />
@@ -186,7 +186,7 @@ export function Navbar() {
 
         {/* Mobile Menu */}
         {isOpen && (
-          <div className="md:hidden absolute top-full left-0 right-0 bg-slate-900/95 backdrop-blur-xl border-b border-slate-700/50">
+          <div className="md:hidden absolute top-full left-0 right-0 bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl border-b border-gray-200 dark:border-slate-700/50">
             <div className="p-4 space-y-2">
               {navigation.map((item) => (
                 <Link
@@ -196,7 +196,7 @@ export function Navbar() {
                   className={`flex items-center gap-3 px-4 py-3 rounded-2xl font-semibold transition-all duration-300 ${
                     isActive(item.href)
                       ? 'bg-gradient-to-r from-purple-600 to-pink-600 text-white'
-                      : 'text-slate-300 hover:text-white hover:bg-slate-800/50'
+                      : 'text-gray-600 dark:text-slate-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-slate-800/50'
                   }`}
                 >
                   <item.icon className="w-5 h-5" />
@@ -204,7 +204,7 @@ export function Navbar() {
                 </Link>
               ))}
               
-              <div className="pt-4 border-t border-slate-700/50">
+              <div className="pt-4 border-t border-gray-200 dark:border-slate-700/50">
                 <div className="wallet-adapter-button-wrapper mb-4">
                   <WalletMultiButton />
                 </div>
@@ -213,14 +213,14 @@ export function Navbar() {
                   <div className="space-y-2">
                     <Link
                       href="/profile"
-                      className="flex items-center gap-3 px-4 py-3 text-slate-300 hover:text-white hover:bg-slate-800/50 rounded-2xl transition-colors"
+                      className="flex items-center gap-3 px-4 py-3 text-gray-600 dark:text-slate-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-slate-800/50 rounded-2xl transition-colors"
                     >
                       <UserIcon className="w-5 h-5" />
                       Profile
                     </Link>
                     <Link
                       href="/dashboard"
-                      className="flex items-center gap-3 px-4 py-3 text-slate-300 hover:text-white hover:bg-slate-800/50 rounded-2xl transition-colors"
+                      className="flex items-center gap-3 px-4 py-3 text-gray-600 dark:text-slate-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-slate-800/50 rounded-2xl transition-colors"
                     >
                       <Cog6ToothIcon className="w-5 h-5" />
                       Dashboard

@@ -67,8 +67,6 @@ interface PostCardProps {
   onPurchaseClick?: (postData: any) => void
 }
 
-
-
 export default function PostCard({
   id,
   creator,
@@ -315,14 +313,14 @@ export default function PostCard({
   const isSubscriberContent = isLocked && !isPremium && !price
 
   return (
-    <article className={`group relative overflow-hidden rounded-3xl bg-gradient-to-br from-slate-800/40 to-slate-900/60 backdrop-blur-xl border border-slate-700/50 transition-all duration-500 mb-8 ${
+    <article className={`group relative overflow-hidden rounded-3xl bg-white dark:bg-gradient-to-br dark:from-slate-800/40 dark:to-slate-900/60 backdrop-blur-xl border border-gray-200 dark:border-slate-700/50 transition-all duration-500 mb-8 ${
       needsPayment 
-        ? 'hover:border-yellow-500/30'
+        ? 'hover:border-yellow-500/50 dark:hover:border-yellow-500/30'
         : isVipContent
-        ? 'hover:border-purple-500/30'
+        ? 'hover:border-purple-500/50 dark:hover:border-purple-500/30'
         : isSubscriberContent
-        ? 'hover:border-blue-500/30'
-        : 'hover:border-green-500/30'
+        ? 'hover:border-blue-500/50 dark:hover:border-blue-500/30'
+        : 'hover:border-green-500/50 dark:hover:border-green-500/30'
     }`}>
       {/* Hover glow effect */}
       <div className={`absolute -inset-1 rounded-3xl opacity-0 group-hover:opacity-100 blur-xl transition-opacity duration-500 ${
@@ -351,18 +349,18 @@ export default function PostCard({
               </div>
               <div>
                 <div className="flex items-center gap-2">
-                  <h3 className="font-semibold text-white group-hover/creator:text-purple-300 transition-colors">
+                  <h3 className="font-semibold text-gray-900 dark:text-white group-hover/creator:text-purple-600 dark:group-hover/creator:text-purple-300 transition-colors">
                     {creator.name}
                   </h3>
                   {creator.isVerified && (
-                    <CheckBadgeIcon className="w-4 h-4 text-blue-400" />
+                    <CheckBadgeIcon className="w-4 h-4 text-blue-500 dark:text-blue-400" />
                   )}
                 </div>
-                <p className="text-slate-400 text-sm">@{creator.username}</p>
+                <p className="text-gray-600 dark:text-slate-400 text-sm">@{creator.username}</p>
               </div>
             </Link>
             
-            <div className="ml-auto text-slate-400 text-sm">
+            <div className="ml-auto text-gray-600 dark:text-slate-400 text-sm">
               {formatDate(createdAt)}
             </div>
           </div>
@@ -372,13 +370,13 @@ export default function PostCard({
         <div className={`px-6 ${!showCreator ? 'pt-6' : ''}`}>
           {/* Category Badge */}
           {category && (
-            <div className="inline-flex items-center gap-2 px-3 py-1 bg-gradient-to-r from-blue-500/20 to-cyan-500/20 text-blue-300 text-xs font-medium rounded-full border border-blue-500/30 mb-3">
+            <div className="inline-flex items-center gap-2 px-3 py-1 bg-gradient-to-r from-blue-500/20 to-cyan-500/20 text-blue-700 dark:text-blue-300 text-xs font-medium rounded-full border border-blue-500/30 mb-3">
               {category}
             </div>
           )}
           
           {/* Title */}
-          <h2 className="text-xl font-bold text-white mb-3 leading-tight">
+          <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-3 leading-tight">
             {title}
           </h2>
 
@@ -387,7 +385,7 @@ export default function PostCard({
             <>
               {/* Content Preview */}
               <div className="mb-4">
-                <p className="text-slate-300 leading-relaxed line-clamp-3">
+                <p className="text-gray-700 dark:text-slate-300 leading-relaxed line-clamp-3">
                   {content}
                 </p>
               </div>
@@ -403,7 +401,7 @@ export default function PostCard({
                   {type === 'video' && (
                     <div className="absolute inset-0 flex items-center justify-center">
                       <div className="w-16 h-16 bg-black/50 backdrop-blur-sm rounded-full flex items-center justify-center hover:scale-110 transition-transform">
-                        <PlayIcon className="w-8 h-8 text-white ml-1" />
+                        <PlayIcon className="w-8 h-8 text-white" />
                       </div>
                     </div>
                   )}
@@ -412,13 +410,13 @@ export default function PostCard({
             </>
           ) : (
             /* Locked Content */
-            <div className="relative -mx-6 mb-4 bg-gradient-to-br from-slate-800/50 to-slate-900/70 backdrop-blur-sm border-y border-slate-700/50">
+            <div className="relative -mx-6 mb-4 bg-gradient-to-br from-gray-100 dark:from-slate-800/50 to-gray-50 dark:to-slate-900/70 backdrop-blur-sm border-y border-gray-200 dark:border-slate-700/50">
               <div className="py-16 px-6 text-center">
-                <LockClosedIcon className="w-16 h-16 text-slate-500 mx-auto mb-4" />
-                <div className="text-slate-300 font-semibold text-lg mb-2">
+                <LockClosedIcon className="w-16 h-16 text-gray-400 dark:text-slate-500 mx-auto mb-4" />
+                <div className="text-gray-900 dark:text-slate-300 font-semibold text-lg mb-2">
                   {needsPayment ? 'Paid Content' : isVipContent ? 'VIP Content' : isSubscriberContent ? 'Subscribers Only' : 'Locked Content'}
                 </div>
-                <p className="text-slate-400 text-sm mb-4 max-w-sm mx-auto">
+                <p className="text-gray-600 dark:text-slate-400 text-sm mb-4 max-w-sm mx-auto">
                   {needsPayment 
                     ? 'Purchase access to this content' 
                     : isVipContent 
@@ -429,7 +427,7 @@ export default function PostCard({
                   }
                 </p>
                 {needsPayment && (
-                  <div className="text-purple-400 font-bold text-2xl mb-4">
+                  <div className="text-purple-600 dark:text-purple-400 font-bold text-2xl mb-4">
                     {price} {currency}
                   </div>
                 )}
@@ -477,21 +475,21 @@ export default function PostCard({
           {(isLocked || isPremium) && (
             <div className={`inline-flex items-center gap-2 px-3 py-1 text-sm font-medium rounded-full mb-4 ${
               needsPayment 
-                ? 'bg-gradient-to-r from-yellow-500/20 to-orange-500/20 text-yellow-300 border border-yellow-500/30'
+                ? 'bg-gradient-to-r from-yellow-500/20 to-orange-500/20 text-yellow-700 dark:text-yellow-300 border border-yellow-500/30'
                 : isVipContent
-                ? 'bg-gradient-to-r from-purple-500/20 to-pink-500/20 text-purple-300 border border-purple-500/30'
+                ? 'bg-gradient-to-r from-purple-500/20 to-pink-500/20 text-purple-700 dark:text-purple-300 border border-purple-500/30'
                 : isSubscriberContent
-                ? 'bg-gradient-to-r from-blue-500/20 to-cyan-500/20 text-blue-300 border border-blue-500/30'
-                : 'bg-gradient-to-r from-gray-500/20 to-gray-600/20 text-gray-300 border border-gray-500/30'
+                ? 'bg-gradient-to-r from-blue-500/20 to-cyan-500/20 text-blue-700 dark:text-blue-300 border border-blue-500/30'
+                : 'bg-gradient-to-r from-gray-500/20 to-gray-600/20 text-gray-700 dark:text-gray-300 border border-gray-500/30'
             }`}>
               <span className={`w-2 h-2 rounded-full animate-pulse ${
                 needsPayment 
-                  ? 'bg-yellow-400'
+                  ? 'bg-yellow-500 dark:bg-yellow-400'
                   : isVipContent
-                  ? 'bg-purple-400'
+                  ? 'bg-purple-500 dark:bg-purple-400'
                   : isSubscriberContent
-                  ? 'bg-blue-400'
-                  : 'bg-gray-400'
+                  ? 'bg-blue-500 dark:bg-blue-400'
+                  : 'bg-gray-500 dark:bg-gray-400'
               }`}></span>
               {needsPayment 
                 ? 'Paid Content'
@@ -510,7 +508,7 @@ export default function PostCard({
               {tags.slice(0, 3).map((tag) => (
                 <span
                   key={tag}
-                  className="px-3 py-1 bg-slate-700/50 text-slate-400 text-sm rounded-full hover:bg-slate-600/50 transition-colors"
+                  className="px-3 py-1 bg-gray-100 dark:bg-slate-700/50 text-gray-700 dark:text-slate-400 text-sm rounded-full hover:bg-gray-200 dark:hover:bg-slate-600/50 transition-colors"
                 >
                   #{tag}
                 </span>
@@ -520,12 +518,12 @@ export default function PostCard({
         </div>
 
         {/* Actions */}
-        <div className="flex items-center justify-between p-6 pt-4 border-t border-slate-700/50">
+        <div className="flex items-center justify-between p-6 pt-4 border-t border-gray-200 dark:border-slate-700/50">
           <div className="flex items-center gap-6">
             {/* Like */}
             <button
               onClick={handleLike}
-              className="flex items-center gap-2 text-slate-400 hover:text-red-400 transition-colors group/like"
+              className="flex items-center gap-2 text-gray-600 dark:text-slate-400 hover:text-red-500 dark:hover:text-red-400 transition-colors group/like"
             >
               {isLiked ? (
                 <HeartSolidIcon className="w-5 h-5 text-red-500" />
@@ -538,7 +536,7 @@ export default function PostCard({
             {/* Comments */}
             <button
               onClick={() => setShowComments(!showComments)}
-              className="flex items-center gap-2 text-slate-400 hover:text-blue-400 transition-colors group/comment"
+              className="flex items-center gap-2 text-gray-600 dark:text-slate-400 hover:text-blue-500 dark:hover:text-blue-400 transition-colors group/comment"
             >
               <ChatBubbleLeftIcon className="w-5 h-5 group-hover/comment:scale-110 transition-transform" />
               <span className="font-medium">{comments}</span>
@@ -550,23 +548,23 @@ export default function PostCard({
             </button>
 
             {/* Views */}
-            <div className="flex items-center gap-2 text-slate-400">
+            <div className="flex items-center gap-2 text-gray-600 dark:text-slate-400">
               <EyeIcon className="w-5 h-5" />
               <span className="font-medium">{Math.floor(likes * 4.2)}</span>
             </div>
           </div>
 
           {/* Share */}
-          <button className="flex items-center gap-2 text-slate-400 hover:text-purple-400 transition-colors group/share">
+          <button className="flex items-center gap-2 text-gray-600 dark:text-slate-400 hover:text-purple-600 dark:hover:text-purple-400 transition-colors group/share">
             <ShareIcon className="w-5 h-5 group-hover/share:scale-110 transition-transform" />
           </button>
         </div>
 
         {/* Comments Section */}
         {showComments && (
-          <div className="border-t border-slate-700/50 bg-slate-800/20 backdrop-blur-sm">
+          <div className="border-t border-gray-200 dark:border-slate-700/50 bg-gray-50 dark:bg-slate-800/20 backdrop-blur-sm">
             {/* Add Comment */}
-            <div className="p-6 border-b border-slate-700/30">
+            <div className="p-6 border-b border-gray-200 dark:border-slate-700/30">
               <div className="flex gap-3">
                 <Avatar
                   src={user?.avatar}
@@ -581,14 +579,14 @@ export default function PostCard({
                     value={newComment}
                     onChange={(e) => setNewComment(e.target.value)}
                     placeholder="Write a comment..."
-                    className="w-full px-4 py-3 bg-slate-700/50 border border-slate-600/50 rounded-xl text-white placeholder-slate-400 focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-300 resize-none text-sm"
+                    className="w-full px-4 py-3 bg-white dark:bg-slate-700/50 border border-gray-200 dark:border-slate-600/50 rounded-xl text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-slate-400 focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-300 resize-none text-sm"
                     rows={2}
                   />
                   <div className="flex justify-end mt-3">
                     <button
                       onClick={handleAddComment}
                       disabled={!newComment.trim()}
-                      className="bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 disabled:from-slate-600 disabled:to-slate-600 text-white font-medium px-4 py-2 rounded-lg transition-all duration-300 flex items-center gap-2 text-sm hover:scale-105 disabled:hover:scale-100"
+                      className="bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 disabled:from-gray-400 disabled:to-gray-400 dark:disabled:from-slate-600 dark:disabled:to-slate-600 text-white font-medium px-4 py-2 rounded-lg transition-all duration-300 flex items-center gap-2 text-sm hover:scale-105 disabled:hover:scale-100"
                     >
                       <PaperAirplaneIcon className="w-4 h-4" />
                       Send
@@ -601,32 +599,32 @@ export default function PostCard({
             {/* Comments List */}
             <div className="max-h-96 overflow-y-auto">
               {commentsData.map((comment) => (
-                <div key={comment.id} className="p-4 border-b border-slate-700/20 last:border-b-0">
+                <div key={comment.id} className="p-4 border-b border-gray-200 dark:border-slate-700/20 last:border-b-0">
                   <div className="flex gap-3">
-                                      <div className="relative w-10 h-10 rounded-xl overflow-hidden border border-purple-500/20 bg-gradient-to-br from-purple-500/10 to-pink-500/10 flex-shrink-0">
-                    <Avatar
-                      src={comment.user.avatar}
-                      alt={comment.user.name}
-                      seed={comment.user.username}
-                      size={40}
-                      rounded="xl"
-                    />
-                  </div>
+                    <div className="relative w-10 h-10 rounded-xl overflow-hidden border border-purple-500/20 bg-gradient-to-br from-purple-500/10 to-pink-500/10 flex-shrink-0">
+                      <Avatar
+                        src={comment.user.avatar}
+                        alt={comment.user.name}
+                        seed={comment.user.username}
+                        size={40}
+                        rounded="xl"
+                      />
+                    </div>
                     <div className="flex-1">
                       <div className="flex items-center gap-2 mb-1">
-                        <h4 className="font-medium text-white text-sm">{comment.user.name}</h4>
+                        <h4 className="font-medium text-gray-900 dark:text-white text-sm">{comment.user.name}</h4>
                         {comment.user.isVerified && (
-                          <CheckBadgeIcon className="w-3 h-3 text-blue-400" />
+                          <CheckBadgeIcon className="w-3 h-3 text-blue-500 dark:text-blue-400" />
                         )}
-                        <span className="text-slate-400 text-xs">@{comment.user.username}</span>
-                        <span className="text-slate-500 text-xs">•</span>
-                        <span className="text-slate-500 text-xs">{formatDate(comment.createdAt)}</span>
+                        <span className="text-gray-600 dark:text-slate-400 text-xs">@{comment.user.username}</span>
+                        <span className="text-gray-400 dark:text-slate-500 text-xs">•</span>
+                        <span className="text-gray-400 dark:text-slate-500 text-xs">{formatDate(comment.createdAt)}</span>
                       </div>
-                      <p className="text-slate-300 text-sm leading-relaxed mb-2">{comment.content}</p>
+                      <p className="text-gray-700 dark:text-slate-300 text-sm leading-relaxed mb-2">{comment.content}</p>
                       <div className="flex items-center gap-4">
                         <button 
                           onClick={() => handleCommentLike(comment.id)}
-                          className="flex items-center gap-1 text-slate-400 hover:text-red-400 transition-colors group text-xs"
+                          className="flex items-center gap-1 text-gray-600 dark:text-slate-400 hover:text-red-500 dark:hover:text-red-400 transition-colors group text-xs"
                         >
                           {comment.isLiked ? (
                             <HeartSolidIcon className="w-3 h-3 text-red-500" />
@@ -637,7 +635,7 @@ export default function PostCard({
                         </button>
                         <button 
                           onClick={() => setReplyTo(replyTo === comment.id ? null : comment.id)}
-                          className="text-slate-400 hover:text-purple-400 transition-colors text-xs"
+                          className="text-gray-600 dark:text-slate-400 hover:text-purple-600 dark:hover:text-purple-400 transition-colors text-xs"
                         >
                           Reply
                         </button>
@@ -654,20 +652,20 @@ export default function PostCard({
                               value={replyContent}
                               onChange={(e) => setReplyContent(e.target.value)}
                               placeholder="Write a reply..."
-                              className="w-full px-3 py-2 bg-slate-700/50 border border-slate-600/50 rounded-lg text-white placeholder-slate-400 focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-300 resize-none text-xs"
+                              className="w-full px-3 py-2 bg-white dark:bg-slate-700/50 border border-gray-200 dark:border-slate-600/50 rounded-lg text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-slate-400 focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-300 resize-none text-xs"
                               rows={2}
                             />
                             <div className="flex justify-end gap-2 mt-2">
                               <button
                                 onClick={() => setReplyTo(null)}
-                                className="text-slate-400 hover:text-white text-xs px-3 py-1 rounded transition-colors"
+                                className="text-gray-600 dark:text-slate-400 hover:text-gray-900 dark:hover:text-white text-xs px-3 py-1 rounded transition-colors"
                               >
                                 Cancel
                               </button>
                               <button
                                 onClick={() => handleAddReply(comment.id)}
                                 disabled={!replyContent.trim()}
-                                className="bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 disabled:from-slate-600 disabled:to-slate-600 text-white font-medium px-3 py-1 rounded transition-all duration-300 text-xs"
+                                className="bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 disabled:from-gray-400 disabled:to-gray-400 dark:disabled:from-slate-600 dark:disabled:to-slate-600 text-white font-medium px-3 py-1 rounded transition-all duration-300 text-xs"
                               >
                                 Reply
                               </button>
@@ -680,30 +678,30 @@ export default function PostCard({
                       {comment.replies && comment.replies.length > 0 && (
                         <div className="mt-3 space-y-3">
                           {comment.replies.map((reply) => (
-                            <div key={reply.id} className="flex gap-2 pl-4 border-l-2 border-slate-700/50">
-                                                          <div className="relative w-8 h-8 rounded-lg overflow-hidden border border-purple-500/20 bg-gradient-to-br from-purple-500/10 to-pink-500/10 flex-shrink-0">
-                              <Avatar
-                                src={reply.user.avatar}
-                                alt={reply.user.name}
-                                seed={reply.user.username}
-                                size={32}
-                                rounded="xl"
-                              />
-                            </div>
+                            <div key={reply.id} className="flex gap-2 pl-4 border-l-2 border-gray-200 dark:border-slate-700/50">
+                              <div className="relative w-8 h-8 rounded-lg overflow-hidden border border-purple-500/20 bg-gradient-to-br from-purple-500/10 to-pink-500/10 flex-shrink-0">
+                                <Avatar
+                                  src={reply.user.avatar}
+                                  alt={reply.user.name}
+                                  seed={reply.user.username}
+                                  size={32}
+                                  rounded="xl"
+                                />
+                              </div>
                               <div className="flex-1">
                                 <div className="flex items-center gap-2 mb-1">
-                                  <h5 className="font-medium text-white text-xs">{reply.user.name}</h5>
+                                  <h5 className="font-medium text-gray-900 dark:text-white text-xs">{reply.user.name}</h5>
                                   {reply.user.isVerified && (
-                                    <CheckBadgeIcon className="w-3 h-3 text-blue-400" />
+                                    <CheckBadgeIcon className="w-3 h-3 text-blue-500 dark:text-blue-400" />
                                   )}
-                                  <span className="text-slate-400 text-xs">@{reply.user.username}</span>
-                                  <span className="text-slate-500 text-xs">•</span>
-                                  <span className="text-slate-500 text-xs">{formatDate(reply.createdAt)}</span>
+                                  <span className="text-gray-600 dark:text-slate-400 text-xs">@{reply.user.username}</span>
+                                  <span className="text-gray-400 dark:text-slate-500 text-xs">•</span>
+                                  <span className="text-gray-400 dark:text-slate-500 text-xs">{formatDate(reply.createdAt)}</span>
                                 </div>
-                                <p className="text-slate-300 text-xs leading-relaxed mb-1">{reply.content}</p>
+                                <p className="text-gray-700 dark:text-slate-300 text-xs leading-relaxed mb-1">{reply.content}</p>
                                 <button 
                                   onClick={() => handleReplyLike(comment.id, reply.id)}
-                                  className="flex items-center gap-1 text-slate-400 hover:text-red-400 transition-colors group text-xs"
+                                  className="flex items-center gap-1 text-gray-600 dark:text-slate-400 hover:text-red-500 dark:hover:text-red-400 transition-colors group text-xs"
                                 >
                                   {reply.isLiked ? (
                                     <HeartSolidIcon className="w-3 h-3 text-red-500" />
@@ -724,8 +722,6 @@ export default function PostCard({
             </div>
           </div>
         )}
-
-
       </div>
     </article>
   )

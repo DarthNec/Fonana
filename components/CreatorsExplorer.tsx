@@ -171,7 +171,7 @@ export default function CreatorsExplorer() {
     return (
       <div 
         key={creator.id} 
-        className="group relative overflow-hidden rounded-3xl bg-gradient-to-br from-slate-800/40 to-slate-900/60 backdrop-blur-xl border border-slate-700/50 hover:border-purple-500/30 transition-all duration-500 hover:transform hover:scale-[1.02] h-full flex flex-col"
+        className="group relative overflow-hidden rounded-3xl bg-white dark:bg-gradient-to-br dark:from-slate-800/40 dark:to-slate-900/60 backdrop-blur-xl border border-gray-200 dark:border-slate-700/50 hover:border-purple-500/50 dark:hover:border-purple-500/30 transition-all duration-500 hover:transform hover:scale-[1.02] h-full flex flex-col"
       >
         {/* Hover glow effect */}
         <div className="absolute -inset-1 bg-gradient-to-r from-purple-600/20 to-pink-600/20 rounded-3xl opacity-0 group-hover:opacity-100 blur-xl transition-opacity duration-500"></div>
@@ -227,16 +227,16 @@ export default function CreatorsExplorer() {
 
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2 mb-1">
-                <h3 className="font-bold text-white truncate group-hover:text-purple-300 transition-colors">
+                <h3 className="font-bold text-gray-900 dark:text-white truncate group-hover:text-purple-600 dark:group-hover:text-purple-300 transition-colors">
                   {creator.name}
                 </h3>
                 {creator.isVerified && (
-                  <CheckBadgeIcon className="w-5 h-5 text-blue-400 flex-shrink-0" />
+                  <CheckBadgeIcon className="w-5 h-5 text-blue-500 dark:text-blue-400 flex-shrink-0" />
                 )}
               </div>
-              <p className="text-slate-400 text-sm truncate">@{creator.username}</p>
+              <p className="text-gray-600 dark:text-slate-400 text-sm truncate">@{creator.username}</p>
               <div className="flex items-center gap-4 mt-2 text-sm">
-                <span className="text-purple-400 font-semibold">
+                <span className="text-purple-600 dark:text-purple-400 font-semibold">
                   {creator.subscribers.toLocaleString()} subscribers
                 </span>
               </div>
@@ -246,7 +246,7 @@ export default function CreatorsExplorer() {
           {/* Content section with flex-grow to push buttons to bottom */}
           <div className="flex-1 flex flex-col">
             {/* Description */}
-            <p className="text-slate-300 text-sm leading-relaxed mb-4 line-clamp-2">
+            <p className="text-gray-700 dark:text-slate-300 text-sm leading-relaxed mb-4 line-clamp-2">
               {creator.description}
             </p>
 
@@ -255,13 +255,13 @@ export default function CreatorsExplorer() {
               {creator.tags.slice(0, 2).map((tag) => (
                 <span
                   key={tag}
-                  className="px-3 py-1 bg-gradient-to-r from-purple-500/20 to-pink-500/20 text-purple-300 text-xs font-medium rounded-full border border-purple-500/30"
+                  className="px-3 py-1 bg-gradient-to-r from-purple-500/20 to-pink-500/20 text-purple-700 dark:text-purple-300 text-xs font-medium rounded-full border border-purple-500/30"
                 >
                   {tag}
                 </span>
               ))}
               {creator.tags.length > 2 && (
-                <span className="px-3 py-1 bg-slate-700/50 text-slate-400 text-xs font-medium rounded-full">
+                <span className="px-3 py-1 bg-gray-100 dark:bg-slate-700/50 text-gray-600 dark:text-slate-400 text-xs font-medium rounded-full">
                   +{creator.tags.length - 2}
                 </span>
               )}
@@ -270,14 +270,14 @@ export default function CreatorsExplorer() {
             {/* Monthly Earnings - push to bottom with mt-auto */}
             <div className="flex items-center justify-between mb-6 mt-auto">
               <div>
-                <p className="text-slate-400 text-xs mb-1">Monthly earnings</p>
-                <p className="text-green-400 font-bold text-lg">
+                <p className="text-gray-600 dark:text-slate-400 text-xs mb-1">Monthly earnings</p>
+                <p className="text-green-600 dark:text-green-400 font-bold text-lg">
                   {creator.monthlyEarnings}
                 </p>
               </div>
               <div className="text-right">
-                <p className="text-slate-400 text-xs mb-1">Posts</p>
-                <p className="text-white font-semibold">
+                <p className="text-gray-600 dark:text-slate-400 text-xs mb-1">Posts</p>
+                <p className="text-gray-900 dark:text-white font-semibold">
                   {creator.posts}
                 </p>
               </div>
@@ -314,7 +314,7 @@ export default function CreatorsExplorer() {
               href={`/creator/${creator.id}`}
               className="group/btn"
             >
-              <div className="bg-slate-700/50 hover:bg-slate-600/50 text-slate-300 hover:text-white px-4 py-3 rounded-2xl font-semibold text-sm border border-slate-600/50 hover:border-purple-500/30 transform group-hover/btn:scale-105 transition-all duration-300 flex items-center justify-center">
+              <div className="bg-gray-100 dark:bg-slate-700/50 hover:bg-gray-200 dark:hover:bg-slate-600/50 text-gray-700 dark:text-slate-300 hover:text-gray-900 dark:hover:text-white px-4 py-3 rounded-2xl font-semibold text-sm border border-gray-200 dark:border-slate-600/50 hover:border-gray-300 dark:hover:border-purple-500/30 transform group-hover/btn:scale-105 transition-all duration-300 flex items-center justify-center">
                 <PlayIcon className="w-4 h-4" />
               </div>
             </Link>
@@ -337,12 +337,12 @@ export default function CreatorsExplorer() {
   }
 
   return (
-    <section className="py-20 bg-gradient-to-b from-slate-900 to-slate-800">
+    <section className="py-20 bg-gray-50 dark:bg-gradient-to-b dark:from-slate-900 dark:to-slate-800">
       <div className="container mx-auto px-4">
         {/* Header */}
         <div className="text-center mb-12">
           <h2 className="text-5xl md:text-6xl font-black mb-6">
-            <span className="text-white">Explore </span>
+            <span className="text-gray-900 dark:text-white">Explore </span>
             <span className="bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent">
               creators
             </span>
@@ -351,7 +351,7 @@ export default function CreatorsExplorer() {
 
         {/* Top Tabs */}
         <div className="flex justify-center mb-12">
-          <div className="inline-flex bg-slate-800/50 backdrop-blur-sm rounded-2xl p-1 border border-slate-700/50">
+          <div className="inline-flex bg-white dark:bg-slate-800/50 backdrop-blur-sm rounded-2xl p-1 border border-gray-200 dark:border-slate-700/50">
             {publicKey && (
               <>
                 <button
@@ -359,7 +359,7 @@ export default function CreatorsExplorer() {
                   className={`flex items-center gap-2 px-6 py-3 rounded-xl font-semibold transition-all duration-300 ${
                     activeTab === 'subscriptions'
                       ? 'bg-gradient-to-r from-purple-600 to-pink-600 text-white shadow-lg shadow-purple-500/25'
-                      : 'text-slate-300 hover:text-white'
+                      : 'text-gray-600 dark:text-slate-300 hover:text-gray-900 dark:hover:text-white'
                   }`}
                 >
                   <UsersIcon className="w-5 h-5" />
@@ -375,7 +375,7 @@ export default function CreatorsExplorer() {
                   className={`flex items-center gap-2 px-6 py-3 rounded-xl font-semibold transition-all duration-300 ${
                     activeTab === 'recommendations'
                       ? 'bg-gradient-to-r from-purple-600 to-pink-600 text-white shadow-lg shadow-purple-500/25'
-                      : 'text-slate-300 hover:text-white'
+                      : 'text-gray-600 dark:text-slate-300 hover:text-gray-900 dark:hover:text-white'
                   }`}
                 >
                   <SparklesIcon className="w-5 h-5" />
@@ -388,7 +388,7 @@ export default function CreatorsExplorer() {
               className={`flex items-center gap-2 px-6 py-3 rounded-xl font-semibold transition-all duration-300 ${
                 activeTab === 'all'
                   ? 'bg-gradient-to-r from-purple-600 to-pink-600 text-white shadow-lg shadow-purple-500/25'
-                  : 'text-slate-300 hover:text-white'
+                  : 'text-gray-600 dark:text-slate-300 hover:text-gray-900 dark:hover:text-white'
               }`}
             >
               <Squares2X2Icon className="w-5 h-5" />
@@ -407,7 +407,7 @@ export default function CreatorsExplorer() {
                 className={`px-6 py-3 rounded-2xl font-semibold transition-all duration-300 transform hover:scale-105 ${
                   selectedCategory === category
                     ? 'bg-gradient-to-r from-purple-600 to-pink-600 text-white shadow-lg shadow-purple-500/25'
-                    : 'bg-slate-800/50 text-slate-300 hover:bg-slate-700/50 border border-slate-600/50 hover:border-purple-500/30'
+                    : 'bg-white dark:bg-slate-800/50 text-gray-600 dark:text-slate-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-slate-700/50 border border-gray-200 dark:border-slate-600/50 hover:border-gray-300 dark:hover:border-purple-500/30'
                 }`}
               >
                 {category}
@@ -419,22 +419,22 @@ export default function CreatorsExplorer() {
         {/* Tab Content Title */}
         {activeTab === 'subscriptions' && filteredCreators.length > 0 && (
           <div className="text-center mb-8">
-            <h3 className="text-2xl font-bold text-white">Your subscriptions</h3>
-            <p className="text-slate-400 mt-2">Creators you are subscribed to</p>
+            <h3 className="text-2xl font-bold text-gray-900 dark:text-white">Your subscriptions</h3>
+            <p className="text-gray-600 dark:text-slate-400 mt-2">Creators you are subscribed to</p>
           </div>
         )}
 
         {activeTab === 'recommendations' && (
           <div className="text-center mb-8">
-            <h3 className="text-2xl font-bold text-white">Recommendations for you</h3>
-            <p className="text-slate-400 mt-2">Creators that might interest you</p>
+            <h3 className="text-2xl font-bold text-gray-900 dark:text-white">Recommendations for you</h3>
+            <p className="text-gray-600 dark:text-slate-400 mt-2">Creators that might interest you</p>
           </div>
         )}
 
         {activeTab === 'all' && (
           <div className="text-center mb-8">
-            <h3 className="text-2xl font-bold text-white">All creators</h3>
-            <p className="text-slate-400 mt-2">
+            <h3 className="text-2xl font-bold text-gray-900 dark:text-white">All creators</h3>
+            <p className="text-gray-600 dark:text-slate-400 mt-2">
               {selectedCategory === 'All' 
                 ? 'All platform creators' 
                 : `Creators in category ${selectedCategory}`}
@@ -445,7 +445,7 @@ export default function CreatorsExplorer() {
         {/* Creators Grid */}
         {filteredCreators.length === 0 ? (
           <div className="text-center py-12">
-            <p className="text-slate-400 text-lg">
+            <p className="text-gray-600 dark:text-slate-400 text-lg">
               {activeTab === 'subscriptions' 
                 ? 'You are not subscribed to any creators' 
                 : activeTab === 'recommendations'

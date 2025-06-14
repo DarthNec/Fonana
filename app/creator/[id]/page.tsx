@@ -16,7 +16,13 @@ import {
   ArrowLeftIcon,
   ChartBarIcon,
   CurrencyDollarIcon,
-  ShareIcon
+  ShareIcon,
+  UserPlusIcon,
+  CheckIcon,
+  GlobeAltIcon,
+  PaperAirplaneIcon,
+  PhotoIcon,
+  VideoCameraIcon
 } from '@heroicons/react/24/outline'
 import { useUser } from '@/lib/hooks/useUser'
 import { useWallet } from '@solana/wallet-adapter-react'
@@ -50,12 +56,15 @@ export default function CreatorPage() {
   const [creator, setCreator] = useState<Creator | null>(null)
   const [posts, setPosts] = useState<any[]>([])
   const [isLoading, setIsLoading] = useState(true)
-  const [activeTab, setActiveTab] = useState<'posts' | 'about' | 'stats'>('posts')
+  const [activeTab, setActiveTab] = useState<'posts' | 'photos' | 'videos'>('posts')
   const [showSubscribeModal, setShowSubscribeModal] = useState(false)
   const [isSubscribed, setIsSubscribed] = useState(false)
   const [isFollowing, setIsFollowing] = useState(false)
   const [showPurchaseModal, setShowPurchaseModal] = useState(false)
-  const [selectedPost, setSelectedPost] = useState<any>(null)
+  const [selectedPurchaseData, setSelectedPurchaseData] = useState<any>(null)
+  const [selectedCreatorData, setSelectedCreatorData] = useState<any>(null)
+  const [selectedTier, setSelectedTier] = useState<'basic' | 'premium' | 'vip' | undefined>(undefined)
+  const [isLoadingPosts, setIsLoadingPosts] = useState(false)
 
   useEffect(() => {
     if (params.id) {
@@ -155,7 +164,7 @@ export default function CreatorPage() {
   }
 
   const handlePurchaseClick = (postData: any) => {
-    setSelectedPost(postData)
+    setSelectedPurchaseData(postData)
     setShowPurchaseModal(true)
   }
 
@@ -165,6 +174,13 @@ export default function CreatorPage() {
       month: 'long'
     })
   }
+
+  // Filter posts based on active tab
+  const filteredPosts = posts.filter(post => {
+    if (activeTab === 'photos') return post.type === 'image'
+    if (activeTab === 'videos') return post.type === 'video'
+    return true // 'posts' tab shows all
+  })
 
   if (isLoading) {
     return (
@@ -179,39 +195,28 @@ export default function CreatorPage() {
 
   if (!creator) {
     return (
-      <div className="min-h-screen bg-slate-900 pt-32">
-        <div className="text-center">
-          <p className="text-slate-400">Creator not found</p>
-        </div>
+      <div className="min-h-screen bg-gray-50 dark:bg-slate-900 pt-32 flex items-center justify-center">
+        <p className="text-gray-600 dark:text-slate-400">Error: Invalid creator ID</p>
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen bg-slate-900 relative overflow-hidden">
-      {/* Background */}
+    <div className="min-h-screen bg-gray-50 dark:bg-slate-900 relative overflow-hidden">
+      {/* Animated Background */}
       <div className="absolute inset-0 overflow-hidden">
         <div className="absolute -top-1/2 -left-1/2 w-full h-full">
-          <div className="w-96 h-96 bg-gradient-to-r from-purple-500/20 to-pink-500/20 rounded-full blur-3xl animate-pulse"></div>
+          <div className="w-[60rem] h-[60rem] bg-gradient-to-r from-purple-500/10 dark:from-purple-500/20 to-pink-500/10 dark:to-pink-500/20 rounded-full blur-3xl animate-pulse"></div>
         </div>
         <div className="absolute -bottom-1/2 -right-1/2 w-full h-full">
-          <div className="w-96 h-96 bg-gradient-to-r from-blue-500/20 to-purple-500/20 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '2s' }}></div>
+          <div className="w-[60rem] h-[60rem] bg-gradient-to-r from-blue-500/10 dark:from-blue-500/20 to-cyan-500/10 dark:to-cyan-500/20 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '2s' }}></div>
         </div>
       </div>
 
-      <div className="relative z-10 pt-32 pb-12">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
-          {/* Back Button */}
-          <button
-            onClick={() => router.back()}
-            className="mb-8 flex items-center gap-2 text-slate-400 hover:text-white transition-colors"
-          >
-            <ArrowLeftIcon className="w-5 h-5" />
-            Back
-          </button>
-
+      <div className="relative z-10 pt-32 pb-8">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           {/* Profile Header */}
-          <div className="bg-slate-800/50 backdrop-blur-xl border border-slate-700/50 rounded-3xl overflow-hidden mb-8">
+          <div className="bg-white dark:bg-slate-800/50 backdrop-blur-xl border border-gray-200 dark:border-slate-700/50 rounded-3xl overflow-hidden mb-8">
             {/* Background Image with Gradient Overlay */}
             <div className="relative">
               {creator.backgroundImage && (
@@ -222,251 +227,224 @@ export default function CreatorPage() {
                     className="w-full h-full object-cover"
                   />
                   {/* Gradient overlay for readability */}
-                  <div className="absolute inset-0 bg-gradient-to-t from-slate-900 via-slate-900/80 to-slate-900/40"></div>
+                  <div className="absolute inset-0 bg-gradient-to-t from-white dark:from-slate-900 via-white/80 dark:via-slate-900/80 to-white/40 dark:to-slate-900/40"></div>
                 </div>
               )}
               
-              <div className="relative p-8">
-                <div className="flex flex-col md:flex-row items-start md:items-center gap-8">
+              <div className="relative z-10 p-8 md:p-12">
+                <div className="flex flex-col md:flex-row gap-8 items-start">
                   {/* Avatar */}
-                  <Avatar
-                    src={creator.avatar}
-                    alt={creator.fullName || creator.nickname}
-                    seed={creator.nickname || creator.wallet}
-                    size={128}
-                    rounded="3xl"
-                    className="border-4 border-purple-500/30"
-                  />
-
-                  {/* Info */}
-                  <div className="flex-1">
-                    <div className="flex items-center gap-3 mb-2">
-                      <h1 className="text-3xl font-bold text-white">
-                        {creator.fullName || creator.nickname}
-                      </h1>
-                      {creator.isVerified && (
-                        <CheckBadgeIcon className="w-8 h-8 text-blue-400" />
-                      )}
+                  <div className="relative">
+                    <div className="w-32 h-32 rounded-3xl overflow-hidden border-4 border-white/50 dark:border-slate-800/50 bg-gradient-to-br from-purple-500/20 to-pink-500/20 shadow-xl">
+                      <Avatar
+                        src={creator.avatar}
+                        alt={creator.nickname}
+                        seed={creator.wallet}
+                        size={128}
+                        rounded="3xl"
+                      />
                     </div>
-                    <p className="text-slate-400 mb-4">@{creator.nickname}</p>
-                    
-                    {creator.bio && (
-                      <p className="text-slate-300 mb-6 max-w-2xl">{creator.bio}</p>
+                    {creator.isVerified && (
+                      <div className="absolute -bottom-2 -right-2 w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center shadow-lg">
+                        <CheckBadgeIcon className="w-5 h-5 text-white" />
+                      </div>
                     )}
+                  </div>
+
+                  {/* Creator Info */}
+                  <div className="flex-1">
+                    <div className="flex items-start justify-between gap-4">
+                      <div>
+                        <h1 className="text-3xl md:text-4xl font-bold text-gray-900 dark:text-white mb-2">{creator.fullName || creator.nickname}</h1>
+                        <p className="text-gray-600 dark:text-slate-400 text-lg mb-4">@{creator.nickname}</p>
+                        <p className="text-gray-700 dark:text-slate-300 leading-relaxed max-w-2xl">{creator.bio}</p>
+                      </div>
+
+                      {/* Subscribe Button (Desktop) */}
+                      <div className="hidden md:block">
+                        {!isSubscribed ? (
+                          <button
+                            onClick={() => handleSubscribeClick({
+                              id: creator.id,
+                              name: creator.fullName || creator.nickname,
+                              username: creator.nickname,
+                              avatar: creator.avatar || '',
+                              isVerified: creator.isVerified
+                            })}
+                            className="px-8 py-3 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white rounded-2xl font-bold shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-300 flex items-center gap-2"
+                          >
+                            <UserPlusIcon className="w-5 h-5" />
+                            Subscribe
+                          </button>
+                        ) : (
+                          <button className="px-8 py-3 bg-gradient-to-r from-emerald-500 to-green-500 text-white rounded-2xl font-bold shadow-lg flex items-center gap-2">
+                            <CheckIcon className="w-5 h-5" />
+                            Subscribed
+                          </button>
+                        )}
+                      </div>
+                    </div>
 
                     {/* Stats */}
-                    <div className="flex flex-wrap items-center gap-6 mb-6">
-                      <div className="flex items-center gap-2">
-                        <UsersIcon className="w-5 h-5 text-slate-400" />
-                        <span className="text-white font-semibold">{creator.followersCount}</span>
-                        <span className="text-slate-400">followers</span>
+                    <div className="flex flex-wrap gap-6 mt-6">
+                      <div>
+                        <p className="text-gray-900 dark:text-white font-bold text-2xl">{creator.followersCount}</p>
+                        <p className="text-gray-600 dark:text-slate-400">Subscribers</p>
                       </div>
-                      <div className="flex items-center gap-2">
-                        <DocumentTextIcon className="w-5 h-5 text-slate-400" />
-                        <span className="text-white font-semibold">{creator.postsCount}</span>
-                        <span className="text-slate-400">posts</span>
+                      <div>
+                        <p className="text-gray-900 dark:text-white font-bold text-2xl">{creator.postsCount}</p>
+                        <p className="text-gray-600 dark:text-slate-400">Posts</p>
                       </div>
-                      <div className="flex items-center gap-2">
-                        <CalendarIcon className="w-5 h-5 text-slate-400" />
-                        <span className="text-slate-400">Created {formatDate(creator.createdAt)}</span>
+                      <div>
+                        <p className="text-gray-900 dark:text-white font-bold text-2xl">{creator.followingCount}</p>
+                        <p className="text-gray-600 dark:text-slate-400">Following</p>
                       </div>
                     </div>
 
-                    {/* Actions */}
-                    <div className="flex flex-wrap gap-4">
-                      {creator.id !== user?.id && (
-                        <>
-                          <button
-                            onClick={() => setShowSubscribeModal(true)}
-                            className="px-6 py-3 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white font-semibold rounded-xl transition-all transform hover:scale-105"
-                          >
-                            {isSubscribed ? 'Manage subscription' : 'Subscribe'}
-                          </button>
-                          <button
-                            onClick={handleFollow}
-                            className={`px-6 py-3 border rounded-xl font-semibold transition-all ${
-                              isFollowing
-                                ? 'border-purple-500 text-purple-400 hover:bg-purple-500/10'
-                                : 'border-slate-600 text-slate-300 hover:text-white hover:border-slate-500'
-                            }`}
-                          >
-                            {isFollowing ? 'Reading' : 'Read'}
-                          </button>
-                        </>
+                    {/* Links */}
+                    <div className="flex flex-wrap gap-4 mt-6">
+                      {creator.website && (
+                        <a
+                          href={creator.website}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex items-center gap-2 text-purple-600 dark:text-purple-400 hover:text-purple-700 dark:hover:text-purple-300"
+                        >
+                          <GlobeAltIcon className="w-5 h-5" />
+                          Website
+                        </a>
                       )}
-                      <button className="p-3 border border-slate-600 text-slate-300 hover:text-white hover:border-slate-500 rounded-xl transition-all">
-                        <ShareIcon className="w-6 h-6" />
-                      </button>
+                      {creator.twitter && (
+                        <a
+                          href={`https://twitter.com/${creator.twitter}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex items-center gap-2 text-purple-600 dark:text-purple-400 hover:text-purple-700 dark:hover:text-purple-300"
+                        >
+                          <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+                            <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
+                          </svg>
+                          Twitter
+                        </a>
+                      )}
+                      {creator.telegram && (
+                        <a
+                          href={`https://t.me/${creator.telegram}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex items-center gap-2 text-purple-600 dark:text-purple-400 hover:text-purple-700 dark:hover:text-purple-300"
+                        >
+                          <PaperAirplaneIcon className="w-5 h-5" />
+                          Telegram
+                        </a>
+                      )}
                     </div>
                   </div>
                 </div>
 
-                {/* Links */}
-                {(creator.website || creator.twitter || creator.telegram) && (
-                  <div className="mt-6 pt-6 border-t border-slate-700/50 flex flex-wrap gap-4">
-                    {creator.website && (
-                      <a
-                        href={creator.website}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="flex items-center gap-2 text-slate-400 hover:text-white transition-colors"
-                      >
-                        <LinkIcon className="w-5 h-5" />
-                        Website
-                      </a>
-                    )}
-                    {creator.twitter && (
-                      <a
-                        href={`https://twitter.com/${creator.twitter}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="flex items-center gap-2 text-slate-400 hover:text-white transition-colors"
-                      >
-                        <LinkIcon className="w-5 h-5" />
-                        Twitter
-                      </a>
-                    )}
-                    {creator.telegram && (
-                      <a
-                        href={`https://t.me/${creator.telegram}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="flex items-center gap-2 text-slate-400 hover:text-white transition-colors"
-                      >
-                        <LinkIcon className="w-5 h-5" />
-                        Telegram
-                      </a>
-                    )}
-                  </div>
-                )}
+                {/* Subscribe Button (Mobile) */}
+                <div className="md:hidden mt-6">
+                  {!isSubscribed ? (
+                    <button
+                      onClick={() => handleSubscribeClick({
+                        id: creator.id,
+                        name: creator.fullName || creator.nickname,
+                        username: creator.nickname,
+                        avatar: creator.avatar || '',
+                        isVerified: creator.isVerified
+                      })}
+                      className="w-full px-8 py-3 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white rounded-2xl font-bold shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-300 flex items-center justify-center gap-2"
+                    >
+                      <UserPlusIcon className="w-5 h-5" />
+                      Subscribe
+                    </button>
+                  ) : (
+                    <button className="w-full px-8 py-3 bg-gradient-to-r from-emerald-500 to-green-500 text-white rounded-2xl font-bold shadow-lg flex items-center justify-center gap-2">
+                      <CheckIcon className="w-5 h-5" />
+                      Subscribed
+                    </button>
+                  )}
+                </div>
               </div>
             </div>
           </div>
 
-          {/* Tabs */}
-          <div className="flex gap-2 mb-8">
-            <button
-              onClick={() => setActiveTab('posts')}
-              className={`px-6 py-3 rounded-xl font-semibold transition-all ${
-                activeTab === 'posts'
-                  ? 'bg-gradient-to-r from-purple-500 to-pink-500 text-white'
-                  : 'bg-slate-800/50 text-slate-400 hover:text-white'
-              }`}
-            >
-              <DocumentTextIcon className="w-5 h-5 inline mr-2" />
-              Posts
-            </button>
-            <button
-              onClick={() => setActiveTab('about')}
-              className={`px-6 py-3 rounded-xl font-semibold transition-all ${
-                activeTab === 'about'
-                  ? 'bg-gradient-to-r from-purple-500 to-pink-500 text-white'
-                  : 'bg-slate-800/50 text-slate-400 hover:text-white'
-              }`}
-            >
-              <UsersIcon className="w-5 h-5 inline mr-2" />
-              About the Creator
-            </button>
-            <button
-              onClick={() => setActiveTab('stats')}
-              className={`px-6 py-3 rounded-xl font-semibold transition-all ${
-                activeTab === 'stats'
-                  ? 'bg-gradient-to-r from-purple-500 to-pink-500 text-white'
-                  : 'bg-slate-800/50 text-slate-400 hover:text-white'
-              }`}
-            >
-              <ChartBarIcon className="w-5 h-5 inline mr-2" />
-              Stats
-            </button>
+          {/* Content Tabs */}
+          <div className="flex gap-2 mb-8 overflow-x-auto">
+            {[
+              { id: 'posts', label: 'Posts', icon: DocumentTextIcon },
+              { id: 'photos', label: 'Photos', icon: PhotoIcon },
+              { id: 'videos', label: 'Videos', icon: VideoCameraIcon }
+            ].map((tab) => (
+              <button
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id as any)}
+                className={`flex items-center gap-2 px-6 py-3 rounded-2xl font-semibold transition-all whitespace-nowrap ${
+                  activeTab === tab.id
+                    ? 'bg-gradient-to-r from-purple-600 to-pink-600 text-white shadow-lg shadow-purple-500/25'
+                    : 'bg-white dark:bg-slate-800/50 text-gray-600 dark:text-slate-400 hover:text-gray-900 dark:hover:text-white'
+                }`}
+              >
+                <tab.icon className="w-5 h-5" />
+                {tab.label}
+              </button>
+            ))}
           </div>
 
           {/* Content */}
-          {activeTab === 'posts' && (
-            <div>
-              {posts.length === 0 ? (
-                <div className="bg-slate-800/50 backdrop-blur-xl border border-slate-700/50 rounded-3xl p-12 text-center">
-                  <DocumentTextIcon className="w-16 h-16 text-slate-600 mx-auto mb-4" />
-                  <p className="text-slate-400">No posts yet</p>
-                </div>
-              ) : (
-                <div className="space-y-6">
-                  {posts.map((post) => (
-                    <PostCard
-                      key={post.id}
-                      {...post}
-                      showCreator={false}
-                      onSubscribeClick={handleSubscribeClick}
-                      onPurchaseClick={handlePurchaseClick}
-                    />
-                  ))}
-                </div>
-              )}
+          {isLoadingPosts ? (
+            <div className="bg-white dark:bg-slate-800/50 backdrop-blur-xl border border-gray-200 dark:border-slate-700/50 rounded-3xl p-12 text-center">
+              <div className="w-16 h-16 border-4 border-purple-500/30 border-t-purple-500 rounded-full animate-spin mx-auto mb-4"></div>
+              <p className="text-gray-600 dark:text-slate-400">Loading content...</p>
+            </div>
+          ) : filteredPosts.length === 0 ? (
+            <div className="bg-white dark:bg-slate-800/50 backdrop-blur-xl border border-gray-200 dark:border-slate-700/50 rounded-3xl p-12 text-center">
+              <DocumentTextIcon className="w-16 h-16 text-gray-400 dark:text-slate-600 mx-auto mb-4" />
+              <h3 className="text-xl font-bold text-gray-700 dark:text-slate-300 mb-2">No {activeTab} yet</h3>
+              <p className="text-gray-600 dark:text-slate-400">Check back later for new content</p>
+            </div>
+          ) : (
+            <div className="max-w-2xl mx-auto">
+              {filteredPosts.map((post) => (
+                <PostCard
+                  key={post.id}
+                  {...post}
+                  showCreator={false}
+                  onSubscribeClick={handleSubscribeClick}
+                  onPurchaseClick={handlePurchaseClick}
+                />
+              ))}
             </div>
           )}
 
-          {activeTab === 'about' && (
-            <div className="bg-slate-800/50 backdrop-blur-xl border border-slate-700/50 rounded-3xl p-8">
-              <h2 className="text-2xl font-bold text-white mb-6">About the Creator</h2>
-              <div className="space-y-6">
-                {creator.bio && (
-                  <div>
-                    <h3 className="text-lg font-semibold text-white mb-2">Biography</h3>
-                    <p className="text-slate-300">{creator.bio}</p>
-                  </div>
-                )}
-                {creator.location && (
-                  <div>
-                    <h3 className="text-lg font-semibold text-white mb-2">Location</h3>
-                    <p className="text-slate-300">{creator.location}</p>
-                  </div>
-                )}
-                <div>
-                  <h3 className="text-lg font-semibold text-white mb-2">On Platform</h3>
-                  <p className="text-slate-300">Created {formatDate(creator.createdAt)}</p>
-                </div>
+          {/* Subscription Tiers */}
+          {creator.isCreator && (
+            <div className="mt-12">
+              <div className="bg-white dark:bg-slate-800/50 backdrop-blur-xl border border-gray-200 dark:border-slate-700/50 rounded-3xl p-8">
+                <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-6">Subscription Tiers</h2>
+                <p className="text-gray-600 dark:text-slate-400">Coming soon...</p>
               </div>
             </div>
           )}
 
-          {activeTab === 'stats' && (
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              <div className="bg-slate-800/50 backdrop-blur-xl border border-slate-700/50 rounded-3xl p-6">
-                <div className="flex items-center gap-4 mb-4">
-                  <div className="w-12 h-12 bg-gradient-to-r from-purple-500/20 to-pink-500/20 rounded-xl flex items-center justify-center">
-                    <UsersIcon className="w-6 h-6 text-purple-400" />
-                  </div>
-                  <div>
-                    <p className="text-slate-400 text-sm">Followers</p>
-                    <p className="text-2xl font-bold text-white">{creator.followersCount}</p>
-                  </div>
-                </div>
-              </div>
+          {/* Related Creators */}
+          <div className="mt-12">
+            <div className="bg-white dark:bg-slate-800/50 backdrop-blur-xl border border-gray-200 dark:border-slate-700/50 rounded-3xl p-6">
+              <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-4">Related Creators</h2>
+              <p className="text-gray-600 dark:text-slate-400">Coming soon...</p>
+            </div>
+          </div>
 
-              <div className="bg-slate-800/50 backdrop-blur-xl border border-slate-700/50 rounded-3xl p-6">
-                <div className="flex items-center gap-4 mb-4">
-                  <div className="w-12 h-12 bg-gradient-to-r from-blue-500/20 to-cyan-500/20 rounded-xl flex items-center justify-center">
-                    <DocumentTextIcon className="w-6 h-6 text-blue-400" />
-                  </div>
-                  <div>
-                    <p className="text-slate-400 text-sm">Posts</p>
-                    <p className="text-2xl font-bold text-white">{creator.postsCount}</p>
-                  </div>
-                </div>
-              </div>
-
-              <div className="bg-slate-800/50 backdrop-blur-xl border border-slate-700/50 rounded-3xl p-6">
-                <div className="flex items-center gap-4 mb-4">
-                  <div className="w-12 h-12 bg-gradient-to-r from-green-500/20 to-emerald-500/20 rounded-xl flex items-center justify-center">
-                    <CurrencyDollarIcon className="w-6 h-6 text-green-400" />
-                  </div>
-                  <div>
-                    <p className="text-slate-400 text-sm">Earned</p>
-                    <p className="text-2xl font-bold text-white">$0</p>
-                  </div>
-                </div>
+          {/* About */}
+          <div className="mt-8">
+            <div className="bg-white dark:bg-slate-800/50 backdrop-blur-xl border border-gray-200 dark:border-slate-700/50 rounded-3xl p-6">
+              <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-4">About</h2>
+              <div className="space-y-2 text-gray-600 dark:text-slate-400">
+                <p>Joined {new Date(creator.createdAt).toLocaleDateString()}</p>
+                {creator.location && <p>📍 {creator.location}</p>}
               </div>
             </div>
-          )}
+          </div>
         </div>
       </div>
 
@@ -489,9 +467,9 @@ export default function CreatorPage() {
       )}
 
       {/* Purchase Modal */}
-      {showPurchaseModal && selectedPost && (
+      {showPurchaseModal && selectedPurchaseData && (
         <PurchaseModal
-          post={selectedPost}
+          post={selectedPurchaseData}
           onClose={() => setShowPurchaseModal(false)}
           onSuccess={() => {
             setShowPurchaseModal(false)

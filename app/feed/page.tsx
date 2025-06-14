@@ -126,7 +126,7 @@ export default function FeedPage() {
   ]
 
   return (
-    <div className="min-h-screen pt-16"> {/* Added pt-16 for navbar offset */}
+    <div className="min-h-screen bg-white dark:bg-slate-900 pt-16"> {/* Added pt-16 for navbar offset */}
       <div className="container mx-auto px-4 py-8">
         {/* Header */}
         <div className="flex items-center justify-between mb-8">
@@ -136,7 +136,7 @@ export default function FeedPage() {
                 Content Feed
               </span>
             </h1>
-            <p className="text-slate-400">Discover amazing content from creators</p>
+            <p className="text-gray-600 dark:text-slate-400">Discover amazing content from creators</p>
           </div>
           <Link
             href="/create"
@@ -158,7 +158,7 @@ export default function FeedPage() {
                 className={`px-4 sm:px-6 py-2 sm:py-3 rounded-xl font-medium transition-all flex items-center gap-2 whitespace-nowrap ${
                   sortBy === option.id
                     ? 'bg-gradient-to-r from-purple-500 to-pink-500 text-white shadow-lg shadow-purple-500/25'
-                    : 'bg-slate-800/50 text-slate-400 hover:text-white hover:bg-slate-700/50'
+                    : 'bg-gray-100 dark:bg-slate-800/50 text-gray-600 dark:text-slate-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-200 dark:hover:bg-slate-700/50'
                 }`}
               >
                 <option.icon className="w-4 sm:w-5 h-4 sm:h-5" />
@@ -169,7 +169,7 @@ export default function FeedPage() {
 
           {/* Category Filter */}
           <div className="flex flex-col items-center gap-4">
-            <div className="flex items-center gap-2 text-slate-400">
+            <div className="flex items-center gap-2 text-gray-600 dark:text-slate-400">
               <FunnelIcon className="w-5 h-5" />
               <span className="text-sm font-medium">Filter by categories</span>
             </div>
@@ -180,8 +180,8 @@ export default function FeedPage() {
                   onClick={() => setSelectedCategory(category)}
                   className={`px-3 sm:px-4 py-1.5 sm:py-2 text-sm rounded-full transition-all ${
                     selectedCategory === category
-                      ? 'bg-purple-500/20 text-purple-300 border border-purple-500/50'
-                      : 'bg-slate-800/50 text-slate-400 hover:text-white hover:bg-slate-700/50'
+                      ? 'bg-purple-500/20 text-purple-700 dark:text-purple-300 border border-purple-500/50'
+                      : 'bg-gray-100 dark:bg-slate-800/50 text-gray-600 dark:text-slate-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-200 dark:hover:bg-slate-700/50'
                   }`}
                 >
                   {category}
@@ -196,14 +196,14 @@ export default function FeedPage() {
           <div className="flex items-center justify-center py-20">
             <div className="text-center">
               <div className="w-16 h-16 border-4 border-purple-500/30 border-t-purple-500 rounded-full animate-spin mx-auto mb-4"></div>
-              <p className="text-slate-400">Loading posts...</p>
+              <p className="text-gray-600 dark:text-slate-400">Loading posts...</p>
             </div>
           </div>
         ) : sortedPosts.length === 0 ? (
           <div className="text-center py-20">
-            <SparklesIcon className="w-16 h-16 text-slate-600 mx-auto mb-4" />
-            <h3 className="text-xl font-bold text-slate-300 mb-2">No posts yet</h3>
-            <p className="text-slate-400 mb-6">Be the first to create content!</p>
+            <SparklesIcon className="w-16 h-16 text-gray-400 dark:text-slate-600 mx-auto mb-4" />
+            <h3 className="text-xl font-bold text-gray-700 dark:text-slate-300 mb-2">No posts yet</h3>
+            <p className="text-gray-600 dark:text-slate-400 mb-6">Be the first to create content!</p>
             <Link
               href="/create"
               className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-purple-600 to-pink-600 text-white font-bold rounded-xl hover:from-purple-700 hover:to-pink-700 transform hover:scale-105 transition-all duration-300"
@@ -229,7 +229,7 @@ export default function FeedPage() {
         {/* Load More */}
         {sortedPosts.length > 0 && (
           <div className="text-center mt-12">
-            <button className="px-8 py-3 bg-slate-800/50 hover:bg-slate-700/50 text-slate-300 hover:text-white rounded-xl font-medium transition-all">
+            <button className="px-8 py-3 bg-gray-100 dark:bg-slate-800/50 hover:bg-gray-200 dark:hover:bg-slate-700/50 text-gray-700 dark:text-slate-300 hover:text-gray-900 dark:hover:text-white rounded-xl font-medium transition-all">
               Load more
             </button>
           </div>
