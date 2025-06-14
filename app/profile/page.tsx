@@ -128,10 +128,10 @@ export default function ProfilePage() {
       
       setSaved(true)
       setTimeout(() => setSaved(false), 3000)
-      toast.success('Профиль обновлен')
+      toast.success('Profile updated')
     } catch (error) {
       console.error('Error saving profile:', error)
-      toast.error('Ошибка при сохранении профиля')
+      toast.error('Error saving profile')
     } finally {
       setIsSaving(false)
     }
@@ -141,7 +141,7 @@ export default function ProfilePage() {
     const file = event.target.files?.[0]
     if (file) {
       try {
-        // Загружаем файл на сервер
+        // Upload file to server
         const formData = new FormData()
         formData.append('file', file)
         
@@ -158,19 +158,19 @@ export default function ProfilePage() {
         
         const avatarUrl = data.avatarUrl
         
-        // Обновляем состояние
+        // Update state
         setFormData(prev => ({ ...prev, avatar: avatarUrl }))
         
-        // Сохраняем в базе данных
+        // Save to database
         await updateProfile({ avatar: avatarUrl })
         
-        // Обновляем данные пользователя
+        // Update user data
         await refreshUser()
         
-        toast.success('Аватар обновлен')
+        toast.success('Avatar updated')
       } catch (error) {
         console.error('Error updating avatar:', error)
-        toast.error(error instanceof Error ? error.message : 'Ошибка при обновлении аватара')
+        toast.error(error instanceof Error ? error.message : 'Error updating avatar')
       }
     }
   }
@@ -179,7 +179,7 @@ export default function ProfilePage() {
     const file = event.target.files?.[0]
     if (file) {
       try {
-        // Загружаем файл на сервер
+        // Upload file to server
         const formData = new FormData()
         formData.append('file', file)
         
@@ -196,19 +196,19 @@ export default function ProfilePage() {
         
         const backgroundUrl = data.backgroundUrl
         
-        // Обновляем состояние
+        // Update state
         setFormData(prev => ({ ...prev, backgroundImage: backgroundUrl }))
         
-        // Сохраняем в базе данных
+        // Save to database
         await updateProfile({ backgroundImage: backgroundUrl })
         
-        // Обновляем данные пользователя
+        // Update user data
         await refreshUser()
         
-        toast.success('Фоновое изображение обновлено')
+        toast.success('Background image updated')
       } catch (error) {
         console.error('Error updating background:', error)
-        toast.error(error instanceof Error ? error.message : 'Ошибка при обновлении фона')
+        toast.error(error instanceof Error ? error.message : 'Error updating background')
       }
     }
   }
@@ -243,10 +243,10 @@ export default function ProfilePage() {
           {/* Header */}
           <div className="text-center mb-12">
             <h1 className="text-4xl lg:text-6xl font-bold bg-gradient-to-r from-purple-400 via-pink-400 to-purple-400 bg-clip-text text-transparent mb-4">
-              Настройки профиля
+              Profile Settings
             </h1>
             <p className="text-slate-400 text-lg max-w-2xl mx-auto">
-              Управляйте настройками аккаунта и персонализируйте свой профиль
+              Manage your account settings and personalize your profile
             </p>
           </div>
 
@@ -261,7 +261,7 @@ export default function ProfilePage() {
                     : 'text-slate-400 hover:text-white'
                 }`}
               >
-                Профиль
+                Profile
               </button>
               <button
                 onClick={() => setActiveTab('subscriptions')}
@@ -271,7 +271,7 @@ export default function ProfilePage() {
                     : 'text-slate-400 hover:text-white'
                 }`}
               >
-                Подписки
+                Subscriptions
               </button>
               <button
                 onClick={() => setActiveTab('creator')}
@@ -281,7 +281,7 @@ export default function ProfilePage() {
                     : 'text-slate-400 hover:text-white'
                 }`}
               >
-                Настройки автора
+                Creator Settings
               </button>
             </div>
           </div>
@@ -292,7 +292,7 @@ export default function ProfilePage() {
               <div className="w-8 h-8 bg-gradient-to-r from-emerald-400 to-green-400 rounded-full flex items-center justify-center">
                 <CheckIcon className="w-4 h-4 text-white" />
               </div>
-              <span className="text-emerald-300 font-medium">Настройки профиля сохранены!</span>
+              <span className="text-emerald-300 font-medium">Profile settings saved!</span>
             </div>
           )}
 
@@ -306,7 +306,7 @@ export default function ProfilePage() {
                   <div className="w-8 h-8 bg-gradient-to-r from-purple-400 to-pink-400 rounded-lg flex items-center justify-center">
                     <UserIcon className="w-5 h-5 text-white" />
                   </div>
-                  Основная информация
+                  Basic Information
                 </h2>
 
                 <div className="space-y-8">
@@ -325,16 +325,16 @@ export default function ProfilePage() {
                     <div className="text-center sm:text-left">
                       <label className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white rounded-2xl font-medium transition-all duration-300 hover:scale-105 cursor-pointer">
                         <PhotoIcon className="w-5 h-5" />
-                        Изменить фото
+                        Change Photo
                         <input type="file" className="hidden" accept="image/*" onChange={handleAvatarChange} />
                       </label>
-                      <p className="text-slate-400 text-sm mt-2">JPG, PNG до 5MB</p>
+                      <p className="text-slate-400 text-sm mt-2">JPG, PNG up to 5MB</p>
                     </div>
                   </div>
 
                   {/* Background Image Section */}
                   <div className="border-t border-slate-700/50 pt-8">
-                    <h3 className="text-lg font-semibold text-white mb-4">Фоновое изображение профиля</h3>
+                    <h3 className="text-lg font-semibold text-white mb-4">Profile Background Image</h3>
                     <div className="space-y-4">
                       {/* Preview */}
                       {(formData.backgroundImage || user?.backgroundImage) && (
@@ -351,10 +351,10 @@ export default function ProfilePage() {
                       {/* Upload Button */}
                       <label className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600 text-white rounded-2xl font-medium transition-all duration-300 hover:scale-105 cursor-pointer">
                         <PhotoIcon className="w-5 h-5" />
-                        {(formData.backgroundImage || user?.backgroundImage) ? 'Изменить фон' : 'Загрузить фон'}
+                        {(formData.backgroundImage || user?.backgroundImage) ? 'Change Background' : 'Upload Background'}
                         <input type="file" className="hidden" accept="image/*" onChange={handleBackgroundChange} />
                       </label>
-                      <p className="text-slate-400 text-sm">Рекомендуемый размер: 1920x400px, JPG или PNG до 10MB</p>
+                      <p className="text-slate-400 text-sm">Recommended size: 1920x400px, JPG or PNG up to 10MB</p>
                     </div>
                   </div>
 
@@ -362,53 +362,53 @@ export default function ProfilePage() {
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div>
                       <label className="block text-sm font-medium text-slate-300 mb-3">
-                        Отображаемое имя
+                        Display Name
                       </label>
                       <input
                         type="text"
                         value={formData.name}
                         onChange={(e) => handleInputChange('name', e.target.value)}
                         className="w-full px-4 py-3 bg-slate-700/50 border border-slate-600/50 rounded-2xl text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-purple-400 focus:border-transparent transition-all duration-300"
-                        placeholder="Введите ваше имя"
+                        placeholder="Enter your name"
                       />
                     </div>
 
                     <div>
                       <label className="block text-sm font-medium text-slate-300 mb-3">
-                        Имя пользователя
+                        Username
                       </label>
                       <input
                         type="text"
                         value={formData.username}
                         onChange={(e) => handleInputChange('username', e.target.value)}
                         className="w-full px-4 py-3 bg-slate-700/50 border border-slate-600/50 rounded-2xl text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-purple-400 focus:border-transparent transition-all duration-300"
-                        placeholder="@имя_пользователя"
+                        placeholder="@username"
                       />
                     </div>
 
                     <div className="md:col-span-2">
                       <label className="block text-sm font-medium text-slate-300 mb-3">
-                        Адрес электронной почты
+                        Email Address
                       </label>
                       <input
                         type="email"
                         value={formData.email}
                         onChange={(e) => handleInputChange('email', e.target.value)}
                         className="w-full px-4 py-3 bg-slate-700/50 border border-slate-600/50 rounded-2xl text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-purple-400 focus:border-transparent transition-all duration-300"
-                        placeholder="ваш@email.com"
+                        placeholder="your@email.com"
                       />
                     </div>
 
                     <div className="md:col-span-2">
                       <label className="block text-sm font-medium text-slate-300 mb-3">
-                        О себе
+                        About
                       </label>
                       <textarea
                         value={formData.bio}
                         onChange={(e) => handleInputChange('bio', e.target.value)}
                         className="w-full px-4 py-3 bg-slate-700/50 border border-slate-600/50 rounded-2xl text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-purple-400 focus:border-transparent transition-all duration-300 resize-none"
                         rows={4}
-                        placeholder="Расскажите о себе..."
+                        placeholder="Tell us about yourself..."
                       />
                     </div>
                   </div>
@@ -421,15 +421,15 @@ export default function ProfilePage() {
                   <div className="w-8 h-8 bg-gradient-to-r from-blue-400 to-purple-400 rounded-lg flex items-center justify-center">
                     <BellIcon className="w-5 h-5 text-white" />
                   </div>
-                  Уведомления
+                  Notifications
                 </h2>
 
                 <div className="space-y-6">
                   {[
-                    { key: 'comments', label: 'Комментарии к моим постам', icon: ChatBubbleLeftIcon },
-                    { key: 'likes', label: 'Лайки на мой контент', icon: HeartIcon },
-                    { key: 'newPosts', label: 'Новые посты от подписок', icon: StarIcon },
-                    { key: 'subscriptions', label: 'Новые подписчики', icon: BellIcon },
+                    { key: 'comments', label: 'Comments on my posts', icon: ChatBubbleLeftIcon },
+                    { key: 'likes', label: 'Likes on my content', icon: HeartIcon },
+                    { key: 'newPosts', label: 'New posts from subscriptions', icon: StarIcon },
+                    { key: 'subscriptions', label: 'New subscribers', icon: BellIcon },
                   ].map((setting) => (
                     <div key={setting.key} className="flex items-center justify-between p-4 bg-slate-700/30 rounded-2xl">
                       <div className="flex items-center gap-4">
@@ -461,14 +461,14 @@ export default function ProfilePage() {
                   <div className="w-8 h-8 bg-gradient-to-r from-emerald-400 to-cyan-400 rounded-lg flex items-center justify-center">
                     <EyeIcon className="w-5 h-5 text-white" />
                   </div>
-                  Конфиденциальность и безопасность
+                  Privacy & Security
                 </h2>
 
                 <div className="space-y-6">
                   {[
-                    { key: 'showActivity', label: 'Показывать мою активность публично', icon: EyeIcon },
-                    { key: 'allowMessages', label: 'Разрешить личные сообщения', icon: ChatBubbleLeftIcon },
-                    { key: 'showOnline', label: 'Показывать статус онлайн', icon: UserIcon },
+                    { key: 'showActivity', label: 'Show my activity publicly', icon: EyeIcon },
+                    { key: 'allowMessages', label: 'Allow private messages', icon: ChatBubbleLeftIcon },
+                    { key: 'showOnline', label: 'Show online status', icon: UserIcon },
                   ].map((setting) => (
                     <div key={setting.key} className="flex items-center justify-between p-4 bg-slate-700/30 rounded-2xl">
                       <div className="flex items-center gap-4">
@@ -503,14 +503,14 @@ export default function ProfilePage() {
                   <div className="w-6 h-6 bg-gradient-to-r from-yellow-400 to-orange-400 rounded-lg flex items-center justify-center">
                     <SunIcon className="w-4 h-4 text-white" />
                   </div>
-                  Тема
+                  Theme
                 </h3>
                 
                 <div className="space-y-3">
                   {[
-                    { value: 'light', label: 'Светлая', icon: SunIcon },
-                    { value: 'dark', label: 'Темная', icon: MoonIcon },
-                    { value: 'auto', label: 'Системная', icon: ComputerDesktopIcon },
+                    { value: 'light', label: 'Light', icon: SunIcon },
+                    { value: 'dark', label: 'Dark', icon: MoonIcon },
+                    { value: 'auto', label: 'System', icon: ComputerDesktopIcon },
                   ].map((theme) => (
                     <button
                       key={theme.value}
@@ -530,24 +530,24 @@ export default function ProfilePage() {
 
               {/* Account Stats */}
               <div className="bg-slate-800/50 backdrop-blur-xl border border-slate-700/50 rounded-3xl p-6">
-                <h3 className="text-xl font-bold text-white mb-6">Статистика</h3>
+                <h3 className="text-xl font-bold text-white mb-6">Statistics</h3>
                 
                 <div className="space-y-4">
                   <div className="flex items-center justify-between p-3 bg-slate-700/30 rounded-2xl">
-                    <span className="text-slate-400">Создано постов</span>
+                    <span className="text-slate-400">Posts created</span>
                     <span className="font-bold text-white">42</span>
                   </div>
                   <div className="flex items-center justify-between p-3 bg-slate-700/30 rounded-2xl">
-                    <span className="text-slate-400">Подписчиков</span>
+                    <span className="text-slate-400">Subscribers</span>
                     <span className="font-bold text-white">1,234</span>
                   </div>
                   <div className="flex items-center justify-between p-3 bg-slate-700/30 rounded-2xl">
-                    <span className="text-slate-400">Заработано</span>
+                    <span className="text-slate-400">Earned</span>
                     <span className="font-bold text-emerald-400">$2,845.50</span>
                   </div>
                   <div className="flex items-center justify-between p-3 bg-slate-700/30 rounded-2xl">
-                    <span className="text-slate-400">Участник с</span>
-                    <span className="font-bold text-white">Янв 2024</span>
+                    <span className="text-slate-400">Member since</span>
+                    <span className="font-bold text-white">Jan 2024</span>
                   </div>
                 </div>
               </div>
@@ -558,7 +558,7 @@ export default function ProfilePage() {
                 disabled={isSaving}
                 className="w-full px-6 py-4 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white font-bold rounded-2xl transition-all duration-300 hover:scale-105 hover:shadow-xl hover:shadow-purple-500/25 disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                {isSaving ? 'Сохранение...' : 'Сохранить изменения'}
+                {isSaving ? 'Saving...' : 'Save changes'}
               </button>
 
               {/* Danger Zone */}
@@ -567,10 +567,10 @@ export default function ProfilePage() {
                   <div className="w-6 h-6 bg-gradient-to-r from-red-400 to-rose-400 rounded-lg flex items-center justify-center">
                     <ExclamationTriangleIcon className="w-4 h-4 text-white" />
                   </div>
-                  Опасная зона
+                  Danger Zone
                 </h3>
                 <p className="text-red-300 text-sm mb-6">
-                  Действия в этом разделе необратимы. Пожалуйста, будьте осторожны.
+                  Actions in this section are irreversible. Please be careful.
                 </p>
                 
                 <button
@@ -578,7 +578,7 @@ export default function ProfilePage() {
                   className="w-full px-6 py-4 bg-gradient-to-r from-red-500 to-rose-500 hover:from-red-600 hover:to-rose-600 text-white font-bold rounded-2xl transition-all duration-300 hover:scale-105 hover:shadow-xl hover:shadow-red-500/25 flex items-center justify-center gap-3"
                 >
                   <TrashIcon className="w-5 h-5" />
-                  Удалить аккаунт навсегда
+                  Delete account permanently
                 </button>
               </div>
             </div>
@@ -618,22 +618,22 @@ export default function ProfilePage() {
                <div className="text-center mb-8">
                  <h2 className="text-2xl font-bold text-white mb-2">
                    <span className="bg-gradient-to-r from-red-400 to-rose-400 bg-clip-text text-transparent">
-                     Удалить аккаунт?
+                     Delete account?
                    </span>
                  </h2>
                  <p className="text-slate-400">
-                   Это действие необратимо. Все ваши данные, посты и подписки будут удалены навсегда.
+                   This action is irreversible. All your data, posts, and subscriptions will be deleted permanently.
                  </p>
                </div>
 
                {/* Warning List */}
                <div className="bg-red-500/10 border border-red-500/20 rounded-2xl p-4 mb-8">
-                 <p className="text-red-300 text-sm font-medium mb-3">Что будет удалено:</p>
+                 <p className="text-red-300 text-sm font-medium mb-3">What will be deleted:</p>
                  <ul className="text-red-200 text-sm space-y-1">
-                   <li>• Все ваши посты и контент</li>
-                   <li>• Подписки и подписчики</li>
-                   <li>• Комментарии и лайки</li>
-                   <li>• История транзакций</li>
+                   <li>• All your posts and content</li>
+                   <li>• Subscriptions and subscribers</li>
+                   <li>• Comments and likes</li>
+                   <li>• Transaction history</li>
                  </ul>
                </div>
 
@@ -644,7 +644,7 @@ export default function ProfilePage() {
                    disabled={isDeleting}
                    className="flex-1 px-6 py-3 bg-slate-700/50 border border-slate-600/50 text-slate-300 hover:text-white rounded-2xl font-medium transition-all duration-300 hover:bg-slate-600/50 disabled:opacity-50"
                  >
-                   Отмена
+                   Cancel
                  </button>
                  <button
                    onClick={handleDeleteAccount}
@@ -654,12 +654,12 @@ export default function ProfilePage() {
                    {isDeleting ? (
                      <>
                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                       Удаление...
+                       Deleting...
                      </>
                    ) : (
                      <>
                        <TrashIcon className="w-4 h-4" />
-                       Удалить
+                       Delete
                      </>
                    )}
                  </button>

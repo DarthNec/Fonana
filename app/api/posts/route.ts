@@ -7,32 +7,48 @@ export const dynamic = 'force-dynamic'
 const prisma = new PrismaClient()
 
 // GET /api/posts - получить список постов
-export async function GET(request: NextRequest) {
+export async function GET(req: Request) {
   try {
-    const { searchParams } = new URL(request.url)
+    const { searchParams } = new URL(req.url)
+    const userWallet = searchParams.get('userWallet')
     const creatorId = searchParams.get('creatorId')
-    const wallet = searchParams.get('wallet')
-    const userWallet = searchParams.get('userWallet') // Кошелек текущего пользователя
-    const limit = parseInt(searchParams.get('limit') || '20')
-    const offset = parseInt(searchParams.get('offset') || '0')
+    const limit = searchParams.get('limit') ? parseInt(searchParams.get('limit')!) : undefined
+
+    let where = {}
+    
+    // If creatorId is specified, filter by creator
+    if (creatorId) {
+      where = { creatorId }
+    }
+
+    const posts = await prisma.post.findMany({
+      where,
+      include: {
+        creator: {
+          select: {
+            id: true,
+            nickname: true,
+            avatar: true,
+            wallet: true,
+          },
+        },
+        _count: {
+          select: {
+            likes: true,
+            comments: true,
+          },
+        },
+      },
+      orderBy: {
+        createdAt: 'desc',
+      },
+      take: limit,
+    })
 
     // Получаем текущего пользователя если передан wallet
     let currentUser = null
     if (userWallet) {
       currentUser = await getUserByWallet(userWallet)
-    }
-
-    let posts
-    if (creatorId) {
-      posts = await getPostsByCreator(creatorId, { limit, offset })
-    } else if (wallet) {
-      const user = await getUserByWallet(wallet)
-      if (!user) {
-        return NextResponse.json({ error: 'User not found' }, { status: 404 })
-      }
-      posts = await getPostsByCreator(user.id, { limit, offset })
-    } else {
-      posts = await getPosts({ limit, offset })
     }
 
     // Получаем подписки текущего пользователя

@@ -17,101 +17,129 @@ import {
   BellIcon
 } from '@heroicons/react/24/outline'
 import Link from 'next/link'
-import { getPostsByCreator, Post } from '../../lib/mockData'
+import { useUser } from '@/lib/hooks/useUser'
+import { useWallet } from '@solana/wallet-adapter-react'
+import toast from 'react-hot-toast'
 import SubscriptionManager from '@/components/SubscriptionManager'
 
-const stats = [
-  {
-    id: 1,
-    name: 'Total Revenue',
-    value: '$12,456',
-    change: '+12.5%',
-    changeType: 'positive' as const,
-    icon: CurrencyDollarIcon,
-    color: 'from-emerald-500 to-teal-500',
-    description: 'Revenue from all sources'
-  },
-  {
-    id: 2,
-    name: 'Subscribers',
-    value: '3,847',
-    change: '+23.1%',
-    changeType: 'positive' as const,
-    icon: UsersIcon,
-    color: 'from-blue-500 to-indigo-500',
-    description: 'Active subscribers'
-  },
-  {
-    id: 3,
-    name: 'Views',
-    value: '45,239',
-    change: '+8.2%',
-    changeType: 'positive' as const,
-    icon: EyeIcon,
-    color: 'from-purple-500 to-pink-500',
-    description: 'Total content views'
-  },
-  {
-    id: 4,
-    name: 'Conversion',
-    value: '4.2%',
-    change: '-2.1%',
-    changeType: 'negative' as const,
-    icon: ArrowTrendingUpIcon,
-    color: 'from-orange-500 to-red-500',
-    description: 'Visitor to subscriber conversion'
-  }
-]
+interface Post {
+  id: string
+  title: string
+  content: string
+  likes: number
+  comments: number
+  isLocked: boolean
+  createdAt: string
+}
 
-const recentActivity = [
-  {
-    id: 1,
-    user: 'Alice Johnson',
-    action: 'subscribed to your channel',
-    time: '2 hours ago',
-    avatar: '/api/placeholder/32/32',
-    type: 'subscription',
-    icon: UsersIcon,
-    color: 'text-emerald-400'
-  },
-  {
-    id: 2,
-    user: 'Bob Smith',
-    action: 'liked your post "Web3 Guide"',
-    time: '4 hours ago',
-    icon: HeartIcon,
-    color: 'text-red-400',
-    type: 'like'
-  },
-  {
-    id: 3,
-    user: 'Carol Wilson',
-    action: 'commented on "NFT Tutorial"',
-    time: '6 hours ago',
-    icon: ChatBubbleLeftEllipsisIcon,
-    color: 'text-blue-400',
-    type: 'comment'
-  },
-  {
-    id: 4,
-    user: 'David Brown',
-    action: 'sent you 0.1 SOL tip',
-    time: '1 day ago',
-    icon: GiftIcon,
-    color: 'text-yellow-400',
-    type: 'tip'
-  }
-]
+interface Stats {
+  totalRevenue: number
+  subscribers: number
+  views: number
+  postsCount: number
+}
 
 export default function Dashboard() {
+  const { user } = useUser()
+  const { publicKey } = useWallet()
   const [recentPosts, setRecentPosts] = useState<Post[]>([])
   const [isLoading, setIsLoading] = useState(true)
+  const [stats, setStats] = useState<Stats>({
+    totalRevenue: 0,
+    subscribers: 0,
+    views: 0,
+    postsCount: 0
+  })
+  const [recentActivity, setRecentActivity] = useState<any[]>([])
 
   useEffect(() => {
-    const posts = getPostsByCreator(1).slice(0, 5)
-    setRecentPosts(posts)
-    setIsLoading(false)
-  }, [])
+    if (user?.id) {
+      loadDashboardData()
+    }
+  }, [user])
+
+  const loadDashboardData = async () => {
+    try {
+      setIsLoading(true)
+      
+      // Load recent posts
+      const postsResponse = await fetch(`/api/posts?creatorId=${user?.id}&limit=5`)
+      if (postsResponse.ok) {
+        const postsData = await postsResponse.json()
+        const formattedPosts = postsData.posts.map((post: any) => ({
+          id: post.id,
+          title: post.title,
+          content: post.content,
+          likes: post._count?.likes || 0,
+          comments: post._count?.comments || 0,
+          isLocked: post.isLocked,
+          createdAt: post.createdAt
+        }))
+        setRecentPosts(formattedPosts)
+      }
+
+      // Load stats (for now using user data, can be expanded)
+      if (user) {
+        setStats({
+          totalRevenue: 0, // TODO: Calculate from transactions
+          subscribers: 0, // TODO: Load subscribers count from API
+          views: 0, // TODO: Implement views tracking
+          postsCount: recentPosts.length // Using loaded posts count for now
+        })
+      }
+
+      // TODO: Load recent activity from API
+      
+    } catch (error) {
+      console.error('Error loading dashboard data:', error)
+      toast.error('Error loading dashboard data')
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  const displayStats = [
+    {
+      id: 1,
+      name: 'Total Revenue',
+      value: `$${stats.totalRevenue.toFixed(2)}`,
+      change: '+0%',
+      changeType: 'neutral' as const,
+      icon: CurrencyDollarIcon,
+      color: 'from-emerald-500 to-teal-500',
+      description: 'Revenue from all sources'
+    },
+    {
+      id: 2,
+      name: 'Subscribers',
+      value: stats.subscribers.toLocaleString(),
+      change: '+0%',
+      changeType: 'neutral' as const,
+      icon: UsersIcon,
+      color: 'from-blue-500 to-indigo-500',
+      description: 'Active subscribers'
+    },
+    {
+      id: 3,
+      name: 'Posts',
+      value: stats.postsCount.toLocaleString(),
+      change: '+0%',
+      changeType: 'neutral' as const,
+      icon: DocumentTextIcon,
+      color: 'from-purple-500 to-pink-500',
+      description: 'Total posts created'
+    },
+    {
+      id: 4,
+      name: 'Views',
+      value: stats.views.toLocaleString(),
+      change: '+0%',
+      changeType: 'neutral' as const,
+      icon: EyeIcon,
+      color: 'from-orange-500 to-red-500',
+      description: 'Total content views'
+    }
+  ]
 
   return (
     <div className="min-h-screen bg-slate-900 relative overflow-hidden">
@@ -140,7 +168,7 @@ export default function Dashboard() {
 
           {/* Stats Grid */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-12">
-            {stats.map((stat) => {
+            {displayStats.map((stat) => {
               const Icon = stat.icon
               return (
                 <div 
@@ -307,30 +335,40 @@ export default function Dashboard() {
                 Recent Activity
               </h2>
               
-              <div className="space-y-6">
-                {recentActivity.map((activity, index) => {
-                  const Icon = activity.icon
-                  return (
-                    <div key={index} className="flex items-start gap-4 p-4 bg-slate-700/30 rounded-2xl hover:bg-slate-700/50 transition-all duration-300">
-                      <div className={`w-10 h-10 bg-gradient-to-r ${
-                        activity.type === 'subscription' ? 'from-emerald-400/20 to-green-400/20' :
-                        activity.type === 'like' ? 'from-red-400/20 to-pink-400/20' :
-                        activity.type === 'comment' ? 'from-blue-400/20 to-cyan-400/20' :
-                        'from-yellow-400/20 to-orange-400/20'
-                      } rounded-xl flex items-center justify-center`}>
-                        <Icon className={`w-5 h-5 ${activity.color}`} />
+              {recentActivity.length > 0 ? (
+                <div className="space-y-6">
+                  {recentActivity.map((activity, index) => {
+                    const Icon = activity.icon
+                    return (
+                      <div key={index} className="flex items-start gap-4 p-4 bg-slate-700/30 rounded-2xl hover:bg-slate-700/50 transition-all duration-300">
+                        <div className={`w-10 h-10 bg-gradient-to-r ${
+                          activity.type === 'subscription' ? 'from-emerald-400/20 to-green-400/20' :
+                          activity.type === 'like' ? 'from-red-400/20 to-pink-400/20' :
+                          activity.type === 'comment' ? 'from-blue-400/20 to-cyan-400/20' :
+                          'from-yellow-400/20 to-orange-400/20'
+                        } rounded-xl flex items-center justify-center`}>
+                          <Icon className={`w-5 h-5 ${activity.color}`} />
+                        </div>
+                        <div className="flex-1">
+                          <p className="text-white text-sm">
+                            <span className="font-medium text-purple-300">{activity.user}</span>{' '}
+                            <span className="text-slate-300">{activity.action}</span>
+                          </p>
+                          <p className="text-slate-400 text-xs mt-1">{activity.time}</p>
+                        </div>
                       </div>
-                      <div className="flex-1">
-                        <p className="text-white text-sm">
-                          <span className="font-medium text-purple-300">{activity.user}</span>{' '}
-                          <span className="text-slate-300">{activity.action}</span>
-                        </p>
-                        <p className="text-slate-400 text-xs mt-1">{activity.time}</p>
-                      </div>
-                    </div>
-                  )
-                })}
-              </div>
+                    )
+                  })}
+                </div>
+              ) : (
+                <div className="text-center py-8">
+                  <div className="w-16 h-16 bg-gradient-to-r from-blue-400/20 to-cyan-400/20 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                    <BellIcon className="w-8 h-8 text-blue-400" />
+                  </div>
+                  <p className="text-slate-400 text-lg">No recent activity</p>
+                  <p className="text-slate-500 text-sm mt-2">Activity will appear here once users interact with your content</p>
+                </div>
+              )}
             </div>
           </div>
 
