@@ -11,7 +11,7 @@ export default function AvatarDemoPage() {
   const mockPost = {
     id: 1,
     creator: {
-      id: 1,
+      id: '1',
       name: 'Demo Creator',
       username: 'democreator',
       avatar: null,
