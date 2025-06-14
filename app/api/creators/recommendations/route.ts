@@ -50,7 +50,7 @@ export async function GET(request: NextRequest) {
       return {
         id: creator.id,
         name: creator.fullName || creator.nickname || 'Неизвестный автор',
-        username: creator.nickname || creator.wallet.slice(0, 8),
+        username: creator.nickname || creator.wallet?.slice(0, 8) || 'user',
         description: creator.bio || 'Контент-криейтор на платформе Fonana',
         avatar: creator.avatar || null,
         coverImage: `/api/og?title=${encodeURIComponent(creator.fullName || creator.nickname || 'Creator')}`,
