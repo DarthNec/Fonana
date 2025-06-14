@@ -144,11 +144,10 @@ export default function PostCard({
 
   const handleLike = async () => {
     if (!user?.id) {
-      toast.error('Войдите, чтобы оставить лайк')
+      toast.error('Login to like')
       return
     }
 
-    setIsLoadingLike(true)
     try {
       const response = await fetch(`/api/posts/${id}/like`, {
         method: 'POST',
@@ -158,20 +157,18 @@ export default function PostCard({
 
       if (response.ok) {
         const data = await response.json()
-        setIsLiked(data.isLiked)
         setLikesCount(data.likesCount)
+        setIsLiked(data.isLiked)
       }
     } catch (error) {
       console.error('Error toggling like:', error)
-      toast.error('Ошибка при обновлении лайка')
-    } finally {
-      setIsLoadingLike(false)
+      toast.error('Error updating like')
     }
   }
 
   const handleCommentLike = async (commentId: string) => {
     if (!user?.id) {
-      toast.error('Войдите, чтобы оставить лайк')
+      toast.error('Login to like')
       return
     }
 
@@ -186,23 +183,19 @@ export default function PostCard({
         const data = await response.json()
         setCommentsData(prev => prev.map(comment => 
           comment.id === commentId 
-            ? { 
-                ...comment, 
-                likes: data.likesCount,
-                isLiked: data.isLiked 
-              }
+            ? { ...comment, likes: data.likesCount, isLiked: data.isLiked }
             : comment
         ))
       }
     } catch (error) {
       console.error('Error toggling comment like:', error)
-      toast.error('Ошибка при обновлении лайка')
+      toast.error('Error updating like')
     }
   }
 
   const handleReplyLike = async (commentId: string, replyId: string) => {
     if (!user?.id) {
-      toast.error('Войдите, чтобы оставить лайк')
+      toast.error('Login to like')
       return
     }
 
@@ -234,13 +227,13 @@ export default function PostCard({
       }
     } catch (error) {
       console.error('Error toggling reply like:', error)
-      toast.error('Ошибка при обновлении лайка')
+      toast.error('Error updating like')
     }
   }
 
   const handleAddComment = async () => {
     if (!user?.id) {
-      toast.error('Войдите, чтобы оставить комментарий')
+      toast.error('Login to comment')
       return
     }
 
@@ -263,13 +256,13 @@ export default function PostCard({
       }
     } catch (error) {
       console.error('Error adding comment:', error)
-      toast.error('Ошибка при добавлении комментария')
+      toast.error('Error adding comment')
     }
   }
 
   const handleAddReply = async (commentId: string) => {
     if (!user?.id) {
-      toast.error('Войдите, чтобы ответить')
+      toast.error('Login to reply')
       return
     }
 
@@ -298,13 +291,13 @@ export default function PostCard({
       }
     } catch (error) {
       console.error('Error adding reply:', error)
-      toast.error('Ошибка при добавлении ответа')
+      toast.error('Error adding reply')
     }
   }
 
   const formatDate = (dateString: string) => {
     const date = new Date(dateString)
-    return date.toLocaleDateString('ru-RU', {
+    return date.toLocaleDateString('en-US', {
       day: 'numeric',
       month: 'short',
       hour: '2-digit',
@@ -312,31 +305,31 @@ export default function PostCard({
     })
   }
 
-  // Логика доступа к контенту:
-  // - Бесплатный контент видят все
-  // - Контент для подписчиков видят обычные, премиум и VIP подписчики
-  // - Премиум контент видят премиум и VIP подписчики  
-  // - VIP контент видят только VIP подписчики
-  // - Платный контент требует разовой оплаты
+  // Content access logic:
+  // - Free content is visible to everyone
+  // - Subscriber content is visible to basic, premium and VIP subscribers
+  // - Premium content is visible to premium and VIP subscribers  
+  // - VIP content is visible only to VIP subscribers
+  // - Paid content requires one-time payment
   const userSubscriptionLevel = user?.subscriptionType || 'free'
   
-  // Определяем уровень контента
+  // Determine content level
   const contentLevel = isPremium ? 'vip' : isLocked ? 'basic' : 'free'
   
   const canViewContent = (() => {
-    // Бесплатный контент видят все
+    // Free content is visible to everyone
     if (!isLocked && !isPremium) return true
     
-    // Платный контент требует покупки
+    // Paid content requires purchase
     if (price && price > 0) return false
     
-    // Проверяем уровень подписки
+    // Check subscription level
     if (!isSubscribed) return false
     
-    // Контент для подписчиков (basic)
+    // Subscriber content (basic)
     if (isLocked && !isPremium) return true
     
-    // VIP контент только для VIP
+    // VIP content only for VIP
     if (isPremium) return userSubscriptionLevel === 'vip'
     
     return false
@@ -448,16 +441,16 @@ export default function PostCard({
               <div className="py-16 px-6 text-center">
                 <LockClosedIcon className="w-16 h-16 text-slate-500 mx-auto mb-4" />
                 <div className="text-slate-300 font-semibold text-lg mb-2">
-                  {needsPayment ? 'Платный контент' : isVipContent ? 'VIP контент' : isSubscriberContent ? 'Контент для подписчиков' : 'Заблокированный контент'}
+                  {needsPayment ? 'Paid Content' : isVipContent ? 'VIP Content' : isSubscriberContent ? 'Subscribers Only' : 'Locked Content'}
                 </div>
                 <p className="text-slate-400 text-sm mb-4 max-w-sm mx-auto">
                   {needsPayment 
-                    ? 'Приобретите доступ к этому контенту' 
+                    ? 'Purchase access to this content' 
                     : isVipContent 
-                    ? 'Доступно только для VIP подписчиков'
+                    ? 'Available only to VIP subscribers'
                     : isSubscriberContent
-                    ? 'Доступно только для подписчиков'
-                    : 'Этот контент требует специального доступа'
+                    ? 'Available only to subscribers'
+                    : 'This content requires special access'
                   }
                 </p>
                 {needsPayment && (
@@ -495,10 +488,10 @@ export default function PostCard({
                   className="px-6 py-3 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white rounded-xl font-medium transition-all transform hover:scale-105"
                 >
                   {needsPayment 
-                    ? `Купить за ${price} ${currency}`
+                    ? `Buy for ${price} ${currency}`
                     : isVipContent 
-                    ? 'Оформить VIP подписку'
-                    : 'Подписаться'
+                    ? 'Sign Up for VIP'
+                    : 'Subscribe'
                   }
                 </button>
               </div>

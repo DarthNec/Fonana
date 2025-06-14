@@ -8,7 +8,7 @@ export const prisma = globalForPrisma.prisma ?? new PrismaClient()
 
 if (process.env.NODE_ENV !== 'production') globalForPrisma.prisma = prisma
 
-// Функции для работы с пользователями
+// Functions for working with users
 export async function createOrUpdateUser(wallet: string, data?: {
   nickname?: string
   fullName?: string
@@ -66,24 +66,24 @@ export async function updateUserProfile(wallet: string, data: {
   })
 }
 
-// Удаление пользователя и всех связанных данных
+// Delete user and all related data
 export async function deleteUser(wallet: string) {
   const user = await getUserByWallet(wallet)
   if (!user) throw new Error('User not found')
 
-  // Используем транзакцию для удаления всех связанных данных
+  // Use transaction to delete all related data
   await prisma.$transaction(async (tx: any) => {
-    // Удаляем лайки пользователя
+    // Delete user likes
     await tx.like.deleteMany({
       where: { userId: user.id }
     })
 
-    // Удаляем комментарии пользователя
+    // Delete user comments
     await tx.comment.deleteMany({
       where: { userId: user.id }
     })
 
-    // Удаляем подписки пользователя (и на него)
+    // Delete user subscriptions (and to them)
     await tx.subscription.deleteMany({
       where: { 
         OR: [
@@ -93,7 +93,7 @@ export async function deleteUser(wallet: string) {
       }
     })
 
-    // Удаляем связи подписчиков
+    // Delete follower connections
     await tx.follow.deleteMany({
       where: { 
         OR: [
@@ -103,19 +103,19 @@ export async function deleteUser(wallet: string) {
       }
     })
 
-    // Удаляем теги постов пользователя
+    // Delete user post tags
     await tx.postTag.deleteMany({
       where: { 
         post: { creatorId: user.id }
       }
     })
 
-    // Удаляем посты пользователя
+    // Delete user posts
     await tx.post.deleteMany({
       where: { creatorId: user.id }
     })
 
-    // Наконец, удаляем самого пользователя
+    // Finally, delete the user
     await tx.user.delete({
       where: { wallet }
     })
@@ -124,7 +124,7 @@ export async function deleteUser(wallet: string) {
   return { success: true }
 }
 
-// Функции для работы с постами
+// Functions for working with posts
 export async function createPost(creatorWallet: string, data: {
   title: string
   content: string
@@ -274,7 +274,7 @@ export async function getPostById(postId: string) {
   })
 }
 
-// Функции для подписок
+// Functions for working with subscriptions
 export async function createSubscription(userWallet: string, creatorWallet: string, data: {
   plan: string
   price: number
@@ -316,7 +316,7 @@ export async function getUserSubscriptions(userWallet: string) {
   })
 }
 
-// Проверка подписки
+// Check subscription
 export async function hasActiveSubscription(userWallet: string, creatorWallet: string): Promise<boolean> {
   const [user, creator] = await Promise.all([
     getUserByWallet(userWallet),

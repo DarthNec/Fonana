@@ -51,52 +51,52 @@ export default function CreatePostModal({ onPostCreated, onClose }: CreatePostMo
   })
 
   const contentTypes = [
-    { id: 'text', label: 'Текст', icon: DocumentTextIcon, color: 'text-blue-400' },
-    { id: 'image', label: 'Изображение', icon: PhotoIcon, color: 'text-green-400' },
-    { id: 'video', label: 'Видео', icon: VideoCameraIcon, color: 'text-purple-400' },
-    { id: 'audio', label: 'Аудио', icon: MusicalNoteIcon, color: 'text-pink-400' },
+    { id: 'text', label: 'Text', icon: DocumentTextIcon, color: 'text-blue-400' },
+    { id: 'image', label: 'Image', icon: PhotoIcon, color: 'text-green-400' },
+    { id: 'video', label: 'Video', icon: VideoCameraIcon, color: 'text-purple-400' },
+    { id: 'audio', label: 'Audio', icon: MusicalNoteIcon, color: 'text-pink-400' },
   ]
 
   const accessTypes = [
     { 
       value: 'free', 
-      label: 'Бесплатно', 
-      desc: 'Доступно всем',
+      label: 'Free', 
+      desc: 'Available to all',
       icon: GlobeAltIcon,
       color: 'from-green-500 to-emerald-500'
     },
     { 
       value: 'subscribers', 
-      label: 'Для подписчиков', 
-      desc: 'Basic и выше',
+      label: 'For subscribers', 
+      desc: 'Basic and above',
       icon: UsersIcon,
       color: 'from-blue-500 to-cyan-500'
     },
     { 
       value: 'premium', 
       label: 'Premium', 
-      desc: 'Premium и VIP',
+      desc: 'Premium and VIP',
       icon: SparklesIcon,
       color: 'from-purple-500 to-pink-500'
     },
     { 
       value: 'vip', 
-      label: 'VIP контент', 
-      desc: 'Только VIP',
+      label: 'VIP content', 
+      desc: 'Only VIP',
       icon: StarIcon,
       color: 'from-yellow-500 to-orange-500'
     },
     { 
       value: 'paid', 
-      label: 'Платный', 
-      desc: 'Разовая покупка',
+      label: 'Paid', 
+      desc: 'One-time purchase',
       icon: CurrencyDollarIcon,
       color: 'from-red-500 to-rose-500'
     }
   ]
 
   const handleFileUpload = (file: File) => {
-    // Определяем тип контента по файлу
+    // Determine content type based on file
     let contentType: 'image' | 'video' | 'audio' = 'image'
     const maxSizes = {
       image: 10 * 1024 * 1024, // 10MB
@@ -112,7 +112,7 @@ export default function CreatePostModal({ onPostCreated, onClose }: CreatePostMo
 
     const maxSize = maxSizes[contentType]
     if (file.size > maxSize) {
-      toast.error(`Размер файла не должен превышать ${maxSize / (1024 * 1024)}MB`)
+      toast.error(`File size should not exceed ${maxSize / (1024 * 1024)}MB`)
       return
     }
 
@@ -167,14 +167,14 @@ export default function CreatePostModal({ onPostCreated, onClose }: CreatePostMo
 
       if (!response.ok) {
         const error = await response.json()
-        throw new Error(error.error || 'Ошибка загрузки файла')
+        throw new Error(error.error || 'Error uploading file')
       }
 
       const data = await response.json()
       return data.url
     } catch (error) {
       console.error('Upload error:', error)
-      toast.error(error instanceof Error ? error.message : 'Ошибка загрузки файла')
+      toast.error(error instanceof Error ? error.message : 'Error uploading file')
       return null
     }
   }
@@ -188,19 +188,19 @@ export default function CreatePostModal({ onPostCreated, onClose }: CreatePostMo
     console.log('Form data:', formData)
     
     if (!connected || !publicKey) {
-      toast.error('Подключите кошелек')
+      toast.error('Connect wallet')
       return
     }
 
     if (!formData.title.trim() || !formData.content.trim()) {
       console.log('Title:', formData.title)
       console.log('Content:', formData.content)
-      toast.error('Заполните название и описание')
+      toast.error('Fill in title and description')
       return
     }
 
     if (formData.accessType === 'paid' && (!formData.price || formData.price <= 0)) {
-      toast.error('Укажите цену для платного контента')
+      toast.error('Specify price for paid content')
       return
     }
 
@@ -210,14 +210,14 @@ export default function CreatePostModal({ onPostCreated, onClose }: CreatePostMo
       let mediaUrl = null
       let thumbnail = null
 
-      // Загружаем медиа файл если есть
+      // Upload media file if present
       if (formData.file) {
         mediaUrl = await uploadMedia(formData.file)
         if (!mediaUrl) {
-          throw new Error('Не удалось загрузить файл')
+          throw new Error('Failed to upload file')
         }
         
-        // Для видео и аудио используем превью как thumbnail
+        // For video and audio use preview as thumbnail
         if (formData.type === 'video' || formData.type === 'audio') {
           thumbnail = '/placeholder-' + formData.type + '.png'
         } else {
@@ -225,7 +225,7 @@ export default function CreatePostModal({ onPostCreated, onClose }: CreatePostMo
         }
       }
 
-      // Создаем пост
+      // Create post
       const postData = {
         creatorWallet: publicKey.toString(),
         title: formData.title,
@@ -257,15 +257,15 @@ export default function CreatePostModal({ onPostCreated, onClose }: CreatePostMo
 
       if (!response.ok) {
         const error = await response.json()
-        throw new Error(error.error || 'Ошибка создания поста')
+        throw new Error(error.error || 'Error creating post')
       }
 
       const { post } = await response.json()
       console.log('Post created:', post)
       
-      toast.success('Пост успешно создан!')
+      toast.success('Post created successfully!')
       
-      // Сбрасываем форму
+      // Reset form
       setFormData({
         title: '',
         content: '',
@@ -280,7 +280,7 @@ export default function CreatePostModal({ onPostCreated, onClose }: CreatePostMo
         currency: 'SOL'
       })
 
-      // Закрываем модалку и обновляем
+      // Close modal and update
       if (onClose) onClose()
       if (onPostCreated) {
         setTimeout(onPostCreated, 500)
@@ -288,7 +288,7 @@ export default function CreatePostModal({ onPostCreated, onClose }: CreatePostMo
 
     } catch (error) {
       console.error('Post creation error:', error)
-      toast.error(error instanceof Error ? error.message : 'Ошибка создания поста')
+      toast.error(error instanceof Error ? error.message : 'Error creating post')
     } finally {
       setIsUploading(false)
     }
@@ -298,10 +298,10 @@ export default function CreatePostModal({ onPostCreated, onClose }: CreatePostMo
     <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-start justify-center p-4 overflow-y-auto">
       <div className="bg-gradient-to-br from-slate-800/95 to-slate-900/95 backdrop-blur-xl rounded-3xl max-w-4xl w-full my-8 border border-slate-700/50 shadow-2xl">
         <form onSubmit={handleSubmit} className="p-6 lg:p-8 space-y-6">
-          {/* Заголовок */}
+          {/* Header */}
           <div className="flex items-center justify-between mb-6">
             <h2 className="text-2xl font-bold bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent">
-              Создать новый пост
+              Create new post
             </h2>
             <button
               type="button"
@@ -313,12 +313,12 @@ export default function CreatePostModal({ onPostCreated, onClose }: CreatePostMo
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {/* Левая колонка */}
+            {/* Left column */}
             <div className="space-y-6">
-              {/* Выбор типа контента */}
+              {/* Content type selection */}
               <div>
                 <label className="block text-sm font-medium text-slate-300 mb-3">
-                  Тип контента
+                  Content type
                 </label>
                 <div className="grid grid-cols-2 gap-3">
                   {contentTypes.map((type) => (
@@ -341,7 +341,7 @@ export default function CreatePostModal({ onPostCreated, onClose }: CreatePostMo
                 </div>
               </div>
 
-              {/* Загрузка файла (если не текст) */}
+              {/* File upload (if not text) */}
               {formData.type !== 'text' && (
                 <div
                   onDrop={handleDrop}
@@ -386,10 +386,10 @@ export default function CreatePostModal({ onPostCreated, onClose }: CreatePostMo
                     <div>
                       <PhotoIcon className="w-10 h-10 mx-auto text-slate-500 mb-2" />
                       <p className="text-sm font-medium text-slate-300">
-                        Перетащите файл или нажмите
+                        Drag file or click
                       </p>
                       <p className="text-xs text-slate-600 mt-1">
-                        Макс: {formData.type === 'video' ? '100MB' : formData.type === 'audio' ? '50MB' : '10MB'}
+                        Max: {formData.type === 'video' ? '100MB' : formData.type === 'audio' ? '50MB' : '10MB'}
                       </p>
                     </div>
                   )}
@@ -407,10 +407,10 @@ export default function CreatePostModal({ onPostCreated, onClose }: CreatePostMo
                 </div>
               )}
 
-              {/* Категория */}
+              {/* Category */}
               <div>
                 <label className="block text-sm font-medium text-slate-300 mb-2">
-                  Категория
+                  Category
                 </label>
                 <select
                   value={formData.category}
@@ -425,10 +425,10 @@ export default function CreatePostModal({ onPostCreated, onClose }: CreatePostMo
                 </select>
               </div>
 
-              {/* Теги */}
+              {/* Tags */}
               <div>
                 <label className="block text-sm font-medium text-slate-300 mb-2">
-                  Теги (макс. 5)
+                  Tags (max. 5)
                 </label>
                 <div className="flex flex-wrap gap-2 mb-2">
                   {formData.tags.map((tag) => (
@@ -455,7 +455,7 @@ export default function CreatePostModal({ onPostCreated, onClose }: CreatePostMo
                       onChange={(e) => setFormData(prev => ({ ...prev, currentTag: e.target.value }))}
                       onKeyPress={(e) => e.key === 'Enter' && (e.preventDefault(), addTag())}
                       className="flex-1 px-3 py-1.5 bg-slate-800/50 border border-slate-700 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent text-sm"
-                      placeholder="Добавить тег..."
+                      placeholder="Add tag..."
                     />
                     <button
                       type="button"
@@ -469,47 +469,47 @@ export default function CreatePostModal({ onPostCreated, onClose }: CreatePostMo
               </div>
             </div>
 
-            {/* Правая колонка */}
+            {/* Right column */}
             <div className="space-y-6">
-              {/* Название */}
+              {/* Title */}
               <div>
                 <label className="block text-sm font-medium text-slate-300 mb-2">
-                  Название *
+                  Title *
                 </label>
                 <input
                   type="text"
                   value={formData.title}
                   onChange={(e) => setFormData(prev => ({ ...prev, title: e.target.value }))}
                   className="w-full px-4 py-2 bg-slate-800/50 border border-slate-700 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                  placeholder="Введите название поста"
+                  placeholder="Enter post title"
                   maxLength={100}
                   required
                 />
               </div>
 
-              {/* Описание */}
+              {/* Description */}
               <div>
                 <label className="block text-sm font-medium text-slate-300 mb-2">
-                  Описание *
+                  Description *
                 </label>
                 <textarea
                   value={formData.content}
                   onChange={(e) => setFormData(prev => ({ ...prev, content: e.target.value }))}
                   className="w-full px-4 py-2 bg-slate-800/50 border border-slate-700 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent resize-none"
                   rows={4}
-                  placeholder="Опишите ваш контент..."
+                  placeholder="Describe your content..."
                   maxLength={2000}
                   required
                 />
                 <p className="text-xs text-slate-600 mt-1">
-                  {formData.content.length}/2000 символов
+                  {formData.content.length}/2000 characters
                 </p>
               </div>
 
-              {/* Тип доступа */}
+              {/* Access type */}
               <div>
                 <label className="block text-sm font-medium text-slate-300 mb-3">
-                  Доступ к контенту
+                  Content access
                 </label>
                 <div className="grid grid-cols-2 gap-3">
                   {accessTypes.map((access) => (
@@ -535,12 +535,12 @@ export default function CreatePostModal({ onPostCreated, onClose }: CreatePostMo
                 </div>
               </div>
 
-              {/* Настройка цены */}
+              {/* Price settings */}
               {formData.accessType === 'paid' && (
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-slate-300 mb-2">
-                      Цена
+                      Price
                     </label>
                     <input
                       type="number"
@@ -556,7 +556,7 @@ export default function CreatePostModal({ onPostCreated, onClose }: CreatePostMo
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-slate-300 mb-2">
-                      Валюта
+                      Currency
                     </label>
                     <select
                       value={formData.currency}
@@ -572,7 +572,7 @@ export default function CreatePostModal({ onPostCreated, onClose }: CreatePostMo
             </div>
           </div>
 
-          {/* Кнопки */}
+          {/* Buttons */}
           <div className="flex gap-3 pt-4 border-t border-slate-700/50">
             <button
               type="submit"
@@ -582,12 +582,12 @@ export default function CreatePostModal({ onPostCreated, onClose }: CreatePostMo
               {isUploading ? (
                 <>
                   <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                  Публикация...
+                  Publishing...
                 </>
               ) : (
                 <>
                   <LockClosedIcon className="w-5 h-5" />
-                  Опубликовать
+                  Publish
                 </>
               )}
             </button>
@@ -596,7 +596,7 @@ export default function CreatePostModal({ onPostCreated, onClose }: CreatePostMo
               onClick={onClose}
               className="px-6 py-3 bg-slate-700/50 hover:bg-slate-700 text-slate-300 hover:text-white font-medium rounded-xl transition-colors"
             >
-              Отмена
+              Cancel
             </button>
           </div>
         </form>

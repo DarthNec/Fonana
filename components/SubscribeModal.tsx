@@ -50,11 +50,11 @@ const getSubscriptionTiers = (creatorCategory?: string): SubscriptionTier[] => {
       price: 0,
       currency: 'SOL',
       duration: 'forever',
-      description: 'Бесплатная подписка',
+      description: 'Free subscription',
       features: [
-        'Доступ к бесплатным постам',
-        'Возможность лайкать и комментировать',
-        'Уведомления о новом контенте'
+        'Access to free posts',
+        'Like and comment ability',
+        'New content notifications'
       ],
       color: 'from-slate-400 to-slate-600'
     },
@@ -64,11 +64,11 @@ const getSubscriptionTiers = (creatorCategory?: string): SubscriptionTier[] => {
       price: 0.05,
       currency: 'SOL',
       duration: 'month',
-      description: 'Базовая подписка',
+      description: 'Basic subscription',
       features: [
-        'Все возможности Free',
-        'Доступ к контенту для подписчиков',
-        'Участие в чате сообщества'
+        'All Free features',
+        'Access to subscriber content',
+        'Community chat participation'
       ],
       color: 'from-blue-400 to-blue-600'
     },
@@ -78,12 +78,12 @@ const getSubscriptionTiers = (creatorCategory?: string): SubscriptionTier[] => {
       price: 0.15,
       currency: 'SOL',
       duration: 'month',
-      description: 'Премиум подписка',
+      description: 'Premium subscription',
       features: [
-        'Все возможности Basic',
-        'Доступ к премиум контенту',
-        'Приоритетная поддержка',
-        'Ранний доступ к новому контенту'
+        'All Basic features',
+        'Access to premium content',
+        'Priority support',
+        'Early access to new content'
       ],
       popular: true,
       color: 'from-purple-500 to-pink-600'
@@ -94,12 +94,12 @@ const getSubscriptionTiers = (creatorCategory?: string): SubscriptionTier[] => {
       price: 0.35,
       currency: 'SOL',
       duration: 'month',
-      description: 'VIP подписка',
+      description: 'VIP subscription',
       features: [
-        'Все возможности Premium',
-        'Доступ к VIP контенту',
-        'Персональное общение с автором',
-        'Эксклюзивные бонусы'
+        'All Premium features',
+        'Access to VIP content',
+        'Personal communication with author',
+        'Exclusive bonuses'
       ],
       color: 'from-yellow-400 to-orange-500'
     }
@@ -118,7 +118,7 @@ export default function SubscribeModal({ creator, preferredTier, onClose, onSucc
   const selectedSubscription = subscriptionTiers.find(tier => tier.id === selectedTier)
 
   useEffect(() => {
-    // Блокируем скролл при открытии модалки
+    // Block scroll when modal is open
     document.body.style.overflow = 'hidden'
     return () => {
       document.body.style.overflow = 'unset'
@@ -127,27 +127,27 @@ export default function SubscribeModal({ creator, preferredTier, onClose, onSucc
 
   const handleSubscribe = async () => {
     if (!connected) {
-      toast.error('Пожалуйста, подключите кошелек')
+      toast.error('Please connect your wallet')
       return
     }
 
     if (!publicKey) {
-      toast.error('Кошелек не подключен')
+      toast.error('Wallet not connected')
       return
     }
 
     setIsProcessing(true)
     
     try {
-      // Получаем ID текущего пользователя
+      // Get current user ID
       const userResponse = await fetch(`/api/user?wallet=${publicKey.toString()}`)
       const userData = await userResponse.json()
       
       if (!userData.user) {
-        throw new Error('Пользователь не найден')
+        throw new Error('User not found')
       }
 
-      // Создаем подписку
+      // Create subscription
       const response = await fetch('/api/subscriptions', {
         method: 'POST',
         headers: {
@@ -163,15 +163,15 @@ export default function SubscribeModal({ creator, preferredTier, onClose, onSucc
 
       if (!response.ok) {
         const error = await response.json()
-        throw new Error(error.error || 'Ошибка при создании подписки')
+        throw new Error(error.error || 'Error creating subscription')
       }
       
-      toast.success(`Вы успешно подписались на ${creator.name}!`)
+      toast.success(`You have successfully subscribed to ${creator.name}!`)
       onSuccess?.()
       onClose()
     } catch (error) {
       console.error('Error subscribing:', error)
-      toast.error(error instanceof Error ? error.message : 'Ошибка при оформлении подписки')
+      toast.error(error instanceof Error ? error.message : 'Error processing subscription')
     } finally {
       setIsProcessing(false)
     }
@@ -194,7 +194,7 @@ export default function SubscribeModal({ creator, preferredTier, onClose, onSucc
             <div>
               <div className="flex items-center gap-2">
                 <h2 className="text-xl font-bold text-white">
-                  Подписка на {creator.name}
+                  Subscription to {creator.name}
                 </h2>
                 {creator.isVerified && (
                   <CheckBadgeIcon className="w-5 h-5 text-blue-400" />
@@ -223,7 +223,7 @@ export default function SubscribeModal({ creator, preferredTier, onClose, onSucc
           <div className="mb-8">
             <h3 className="text-2xl font-bold text-center mb-6">
               <span className="bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent">
-                Выберите тип подписки
+                Choose subscription type
               </span>
             </h3>
             
@@ -250,7 +250,7 @@ export default function SubscribeModal({ creator, preferredTier, onClose, onSucc
                     {tier.popular && (
                       <div className="absolute -top-3 left-1/2 transform -translate-x-1/2">
                         <span className="bg-gradient-to-r from-purple-600 to-pink-600 text-white px-4 py-1 rounded-full text-xs font-bold">
-                          Популярный
+                          Popular
                         </span>
                       </div>
                     )}
@@ -307,10 +307,10 @@ export default function SubscribeModal({ creator, preferredTier, onClose, onSucc
               />
               <div>
                 <div className="font-semibold text-white">
-                  Показывать в карусели подписок
+                  Show in subscription carousel
                 </div>
                 <p className="text-slate-400 text-sm mt-1">
-                  {creator.name} будет отображаться в вашей карусели подписок на странице авторов
+                  {creator.name} will be displayed in your subscription carousel on the authors page
                 </p>
               </div>
             </label>
@@ -334,14 +334,14 @@ export default function SubscribeModal({ creator, preferredTier, onClose, onSucc
               {isProcessing ? (
                 <div className="flex items-center justify-center gap-3">
                   <div className="w-6 h-6 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                  Обработка...
+                  Processing...
                 </div>
               ) : !connected ? (
-                'Подключите кошелек'
+                'Connect Wallet'
               ) : (
                 selectedSubscription?.price === 0 
-                  ? 'Подписаться бесплатно'
-                  : `Подписаться за ${selectedSubscription?.price} ${selectedSubscription?.currency}/мес`
+                  ? 'Subscribe for free'
+                  : `Subscribe for ${selectedSubscription?.price} ${selectedSubscription?.currency}/month`
               )}
             </button>
             
@@ -349,12 +349,12 @@ export default function SubscribeModal({ creator, preferredTier, onClose, onSucc
               onClick={onClose}
               className="px-8 py-4 border border-slate-600 text-slate-300 hover:text-white hover:border-slate-500 rounded-xl hover:bg-slate-700/50 transition-all font-semibold text-lg"
             >
-              Отмена
+              Cancel
             </button>
           </div>
 
           <p className="mt-4 text-slate-400 text-center text-sm">
-            Подписка автоматически продлевается каждый месяц. Вы можете отменить в любое время.
+            Subscription automatically renews every month. You can cancel at any time.
           </p>
         </div>
       </div>

@@ -56,7 +56,7 @@ export default function ProfileSetupModal({
 
   if (!isOpen) return null
 
-  // Генерация случайного никнейма
+  // Generate random nickname
   const generateRandomNickname = () => {
     const adjectives = [
       'Magic', 'Crypto', 'Cosmic', 'Digital', 'Neon', 'Quantum', 
@@ -110,15 +110,15 @@ export default function ProfileSetupModal({
         const urlField = type === 'avatar' ? 'avatarUrl' : 'backgroundUrl'
         const targetField = type === 'avatar' ? 'avatar' : 'backgroundImage'
         handleChange(targetField, data[urlField])
-        toast.success(`${type === 'avatar' ? 'Аватар' : 'Фон'} загружен`)
+        toast.success(`${type === 'avatar' ? 'Avatar' : 'Background'} uploaded`)
       } else {
-        setUploadError(data.error || `Ошибка загрузки ${type === 'avatar' ? 'аватара' : 'фона'}`)
-        toast.error(data.error || 'Ошибка загрузки файла')
+        setUploadError(data.error || `Error uploading ${type === 'avatar' ? 'avatar' : 'background'}`)
+        toast.error(data.error || 'Error uploading file')
       }
     } catch (error) {
       console.error('Upload error:', error)
-      setUploadError('Ошибка загрузки файла')
-      toast.error('Ошибка загрузки файла')
+      setUploadError('Error uploading file')
+      toast.error('Error uploading file')
     } finally {
       setIsUploading(false)
     }
@@ -127,13 +127,13 @@ export default function ProfileSetupModal({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     
-    // Валидация
+    // Validation
     const newErrors: { [key: string]: string } = {}
     if (!formData.nickname.trim()) {
-      newErrors.nickname = 'Никнейм обязателен'
+      newErrors.nickname = 'Nickname is required'
     }
     if (formData.nickname.length < 3) {
-      newErrors.nickname = 'Никнейм должен содержать минимум 3 символа'
+      newErrors.nickname = 'Nickname must be at least 3 characters long'
     }
 
     if (Object.keys(newErrors).length > 0) {
@@ -145,7 +145,7 @@ export default function ProfileSetupModal({
     setSaveError('')
     
     try {
-      // Генерируем fullName если не указан
+      // Generate fullName if not specified
       const fullName = formData.fullName.trim() || `User ${userWallet.slice(0, 4)}...${userWallet.slice(-4)}`
 
       await onSave({
@@ -160,7 +160,7 @@ export default function ProfileSetupModal({
         location: formData.location.trim() || undefined,
       })
       
-      // Показываем успех и закрываем модалку через 2 секунды
+      // Show success and close modal after 2 seconds
       setSaveSuccess(true)
       setTimeout(() => {
         setSaveSuccess(false)
@@ -169,7 +169,7 @@ export default function ProfileSetupModal({
       
     } catch (error) {
       console.error('Error saving profile:', error)
-      setSaveError('Произошла ошибка при сохранении профиля. Попробуйте еще раз.')
+      setSaveError('An error occurred while saving profile. Please try again.')
     } finally {
       setIsLoading(false)
     }
@@ -199,10 +199,10 @@ export default function ProfileSetupModal({
             <div>
               <h2 className="text-2xl font-bold text-white">
                 <span className="bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent">
-                  Добро пожаловать!
+                  Welcome!
                 </span>
               </h2>
-              <p className="text-slate-400 mt-1">Настройте свой профиль</p>
+              <p className="text-slate-400 mt-1">Set up your profile</p>
             </div>
             <button
               onClick={onClose}
@@ -216,10 +216,10 @@ export default function ProfileSetupModal({
           <form onSubmit={handleSubmit} className="space-y-6">
             {/* Avatar and Background Section */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {/* Аватар */}
+              {/* Avatar */}
               <div>
                 <label className="block text-sm font-medium text-slate-300 mb-2">
-                  Аватар
+                  Avatar
                 </label>
                 <div className="flex items-center gap-4">
                   <Avatar
@@ -232,7 +232,7 @@ export default function ProfileSetupModal({
                   <div>
                     <label className="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white rounded-xl font-medium transition-all duration-300 hover:scale-105 cursor-pointer">
                       <PhotoIcon className="w-5 h-5" />
-                      Изменить
+                      Change
                       <input 
                         ref={fileInputRef}
                         type="file" 
@@ -242,15 +242,15 @@ export default function ProfileSetupModal({
                         disabled={isUploading}
                       />
                     </label>
-                    <p className="text-slate-400 text-xs mt-1">JPG, PNG до 5MB</p>
+                    <p className="text-slate-400 text-xs mt-1">JPG, PNG up to 5MB</p>
                   </div>
                 </div>
               </div>
 
-              {/* Фоновое изображение */}
+              {/* Background Image */}
               <div>
                 <label className="block text-sm font-medium text-slate-300 mb-2">
-                  Фоновое изображение
+                  Background Image
                 </label>
                 <div className="space-y-2">
                   {formData.backgroundImage && (
@@ -264,7 +264,7 @@ export default function ProfileSetupModal({
                   )}
                   <label className="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600 text-white rounded-xl font-medium transition-all duration-300 hover:scale-105 cursor-pointer">
                     <PhotoIcon className="w-5 h-5" />
-                    {formData.backgroundImage ? 'Изменить фон' : 'Загрузить фон'}
+                    {formData.backgroundImage ? 'Change Background' : 'Upload Background'}
                     <input 
                       ref={bgFileInputRef}
                       type="file" 
@@ -274,17 +274,17 @@ export default function ProfileSetupModal({
                       disabled={isUploading}
                     />
                   </label>
-                  <p className="text-slate-400 text-xs">1920x400px, до 10MB</p>
+                  <p className="text-slate-400 text-xs">1920x400px, up to 10MB</p>
                 </div>
               </div>
             </div>
 
             {/* Basic Info */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {/* Никнейм (обязательное поле) */}
+              {/* Nickname (required field) */}
               <div>
                 <label className="block text-sm font-medium text-slate-300 mb-2">
-                  Никнейм *
+                  Nickname *
                 </label>
                 <div className="relative">
                   <UserIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-slate-400" />
@@ -292,7 +292,7 @@ export default function ProfileSetupModal({
                     type="text"
                     value={formData.nickname}
                     onChange={(e) => handleChange('nickname', e.target.value)}
-                    placeholder="Ваш никнейм"
+                    placeholder="Your nickname"
                     className={`w-full pl-10 pr-16 py-3 bg-slate-700/50 border rounded-xl text-white placeholder-slate-400 focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all ${
                       errors.nickname ? 'border-red-500' : 'border-slate-600/50'
                     }`}
@@ -301,7 +301,7 @@ export default function ProfileSetupModal({
                     type="button"
                     onClick={() => handleChange('nickname', generateRandomNickname())}
                     className="absolute right-3 top-1/2 transform -translate-y-1/2 text-purple-400 hover:text-purple-300 transition-colors"
-                    title="Сгенерировать случайный никнейм"
+                    title="Generate random nickname"
                   >
                     <SparklesIcon className="w-5 h-5" />
                   </button>
@@ -311,30 +311,30 @@ export default function ProfileSetupModal({
                 )}
               </div>
 
-              {/* Полное имя */}
+              {/* Full Name */}
               <div>
                 <label className="block text-sm font-medium text-slate-300 mb-2">
-                  Полное имя
+                  Full Name
                 </label>
                 <input
                   type="text"
                   value={formData.fullName}
                   onChange={(e) => handleChange('fullName', e.target.value)}
-                  placeholder="Ваше имя"
+                  placeholder="Your name"
                   className="w-full px-4 py-3 bg-slate-700/50 border border-slate-600/50 rounded-xl text-white placeholder-slate-400 focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all"
                 />
               </div>
             </div>
 
-            {/* Описание */}
+            {/* Description */}
             <div>
               <label className="block text-sm font-medium text-slate-300 mb-2">
-                О себе
+                About Yourself
               </label>
               <textarea
                 value={formData.bio}
                 onChange={(e) => handleChange('bio', e.target.value)}
-                placeholder="Расскажите о себе..."
+                placeholder="Tell us about yourself..."
                 rows={3}
                 className="w-full px-4 py-3 bg-slate-700/50 border border-slate-600/50 rounded-xl text-white placeholder-slate-400 focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all resize-none"
               />
@@ -344,7 +344,7 @@ export default function ProfileSetupModal({
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
                 <label className="block text-sm font-medium text-slate-300 mb-2">
-                  Веб-сайт
+                  Website
                 </label>
                 <input
                   type="url"
@@ -383,13 +383,13 @@ export default function ProfileSetupModal({
 
               <div>
                 <label className="block text-sm font-medium text-slate-300 mb-2">
-                  Местоположение
+                  Location
                 </label>
                 <input
                   type="text"
                   value={formData.location}
                   onChange={(e) => handleChange('location', e.target.value)}
-                  placeholder="Город, Страна"
+                  placeholder="City, Country"
                   className="w-full px-4 py-3 bg-slate-700/50 border border-slate-600/50 rounded-xl text-white placeholder-slate-400 focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all"
                 />
               </div>
@@ -397,7 +397,7 @@ export default function ProfileSetupModal({
 
             {/* Wallet Info */}
             <div className="bg-slate-700/30 rounded-xl p-4">
-              <p className="text-sm text-slate-400">Кошелек подключен:</p>
+              <p className="text-sm text-slate-400">Wallet connected:</p>
               <p className="text-white font-mono text-xs mt-1 break-all">
                 {userWallet}
               </p>
@@ -412,8 +412,8 @@ export default function ProfileSetupModal({
                   </svg>
                 </div>
                 <div>
-                  <p className="text-green-400 font-medium">Профиль успешно сохранен!</p>
-                  <p className="text-green-300 text-sm">Модалка закроется автоматически...</p>
+                  <p className="text-green-400 font-medium">Profile successfully saved!</p>
+                  <p className="text-green-300 text-sm">Modal will close automatically...</p>
                 </div>
               </div>
             )}
@@ -426,34 +426,34 @@ export default function ProfileSetupModal({
                   </svg>
                 </div>
                 <div>
-                  <p className="text-red-400 font-medium">Ошибка сохранения</p>
+                  <p className="text-red-400 font-medium">Save Error</p>
                   <p className="text-red-300 text-sm">{saveError}</p>
                 </div>
               </div>
             )}
 
-            {/* Кнопки */}
+            {/* Buttons */}
             <div className="flex gap-3 pt-4">
               <button
                 type="button"
                 onClick={onClose}
                 className="flex-1 px-6 py-3 bg-slate-700/50 hover:bg-slate-600/50 text-slate-300 hover:text-white font-medium rounded-xl transition-all"
               >
-                Пропустить
+                Skip
               </button>
               <button
                 type="submit"
                 disabled={isLoading || !formData.nickname.trim()}
                 className="flex-1 px-6 py-3 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 disabled:from-slate-600 disabled:to-slate-600 text-white font-medium rounded-xl transition-all disabled:cursor-not-allowed"
               >
-                {isLoading ? 'Сохранение...' : 'Сохранить'}
+                {isLoading ? 'Saving...' : 'Save'}
               </button>
             </div>
           </form>
 
           {/* Footer */}
           <p className="text-xs text-slate-500 text-center mt-6">
-            Вы можете изменить эту информацию позже в настройках профиля
+            You can change this information later in your profile settings
           </p>
         </div>
       </div>

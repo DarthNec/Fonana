@@ -21,24 +21,24 @@ import {
 const contentTypes = [
   {
     type: 'text',
-    name: 'Текст',
-    description: 'Статьи, посты, истории',
+    name: 'Text',
+    description: 'Articles, posts, stories',
     icon: DocumentTextIcon,
     gradient: 'from-blue-500 to-cyan-500',
     shadowColor: 'shadow-blue-500/25'
   },
   {
     type: 'image',
-    name: 'Изображение',
-    description: 'Фотографии, арт, скриншоты',
+    name: 'Image',
+    description: 'Photos, art, screenshots',
     icon: PhotoIcon,
     gradient: 'from-green-500 to-emerald-500',
     shadowColor: 'shadow-green-500/25'
   },
   {
     type: 'video',
-    name: 'Видео',
-    description: 'Видеоролики, стримы, туториалы',
+    name: 'Video',
+    description: 'Videos, streams, tutorials',
     icon: FilmIcon,
     gradient: 'from-purple-500 to-pink-500',
     shadowColor: 'shadow-purple-500/25'
@@ -46,7 +46,7 @@ const contentTypes = [
   {
     type: 'nft',
     name: 'NFT',
-    description: 'Уникальные цифровые активы',
+    description: 'Unique digital assets',
     icon: SparklesIcon,
     gradient: 'from-yellow-500 to-orange-500',
     shadowColor: 'shadow-yellow-500/25'
@@ -55,20 +55,20 @@ const contentTypes = [
 
 const tips = [
   {
-    title: 'Качественный контент',
-    description: 'Создавайте уникальный и интересный контент для вашей аудитории',
+    title: 'Quality Content',
+    description: 'Create unique and interesting content for your audience',
     icon: LightBulbIcon,
     gradient: 'from-purple-500 to-pink-500'
   },
   {
-    title: 'Справедливая цена',
-    description: 'Устанавливайте адекватные цены с учетом ценности контента',
+    title: 'Fair Pricing',
+    description: 'Set reasonable prices based on content value',
     icon: CurrencyDollarIcon,
     gradient: 'from-green-500 to-emerald-500'
   },
   {
-    title: 'Регулярность',
-    description: 'Публикуйте контент регулярно для поддержания интереса',
+    title: 'Regular Updates',
+    description: 'Publish content regularly to maintain interest',
     icon: RocketLaunchIcon,
     gradient: 'from-blue-500 to-cyan-500'
   }
@@ -82,36 +82,36 @@ export default function CreatePage() {
 
   const handlePostCreated = () => {
     setShowCreateModal(false)
-    toast.success('Пост успешно создан!')
-    // Перенаправляем на страницу профиля или feed
+    toast.success('Post created successfully!')
+    // Redirect to profile or feed page
     router.push('/feed')
   }
 
   if (!connected) {
     return (
-      <div className="min-h-screen flex items-center justify-center px-4 pt-16"> {/* Добавили pt-16 для отступа от навбара */}
+      <div className="min-h-screen flex items-center justify-center px-4 pt-16"> {/* Added pt-16 for navbar offset */}
         <div className="bg-slate-800/50 backdrop-blur-sm border border-slate-700/50 rounded-3xl p-8 text-center max-w-md w-full">
           <div className="w-20 h-20 bg-gradient-to-r from-purple-500 to-pink-500 rounded-2xl flex items-center justify-center mx-auto mb-6">
             <LockClosedIcon className="h-10 w-10 text-white" />
           </div>
-          <h3 className="text-2xl font-bold text-white mb-3">Требуется подключение кошелька</h3>
-          <p className="text-slate-400 text-lg">Подключите кошелек для создания контента</p>
+          <h3 className="text-2xl font-bold text-white mb-3">Wallet connection required</h3>
+          <p className="text-slate-400 text-lg">Connect your wallet to create content</p>
         </div>
       </div>
     )
   }
 
   return (
-    <div className="max-w-7xl mx-auto px-6 py-10 pt-24"> {/* Добавили pt-24 для отступа от навбара */}
+    <div className="max-w-7xl mx-auto px-6 py-10 pt-24"> {/* Added pt-24 for navbar offset */}
       {/* Header */}
       <div className="text-center mb-12">
         <h1 className="text-5xl font-bold mb-6">
           <span className="bg-gradient-to-r from-purple-400 via-pink-400 to-red-400 bg-clip-text text-transparent">
-            Создание контента
+            Create Content
           </span>
         </h1>
         <p className="text-xl text-slate-400 max-w-3xl mx-auto">
-          Делитесь своим творчеством и монетизируйте контент с помощью блокчейна
+          Share your creativity and monetize content with blockchain
         </p>
       </div>
 
@@ -122,7 +122,7 @@ export default function CreatePage() {
           className="px-8 py-4 bg-gradient-to-r from-purple-600 to-pink-600 text-white font-bold rounded-2xl hover:from-purple-700 hover:to-pink-700 transform hover:scale-105 transition-all duration-300 hover:shadow-xl hover:shadow-purple-500/25 flex items-center gap-3"
         >
           <PlusIcon className="w-6 h-6" />
-          Создать новый пост
+          Create New Post
         </button>
       </div>
 
@@ -130,7 +130,7 @@ export default function CreatePage() {
       <div className="mb-16">
         <h2 className="text-3xl font-bold text-center mb-8">
           <span className="bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent">
-            Типы контента
+            Content Types
           </span>
         </h2>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -154,7 +154,7 @@ export default function CreatePage() {
       <div className="mb-16">
         <h2 className="text-3xl font-bold text-center mb-8">
           <span className="bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent">
-            Советы создателям
+            Creator Tips
           </span>
         </h2>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -181,9 +181,9 @@ export default function CreatePage() {
           </div>
           <div>
             <h4 className="text-2xl font-bold text-white mb-2">
-              Полезная информация
+              Useful Information
             </h4>
-            <p className="text-slate-300">Важные детали для успешной публикации</p>
+            <p className="text-slate-300">Important details for successful publishing</p>
           </div>
         </div>
         
@@ -191,29 +191,29 @@ export default function CreatePage() {
           <div className="space-y-4">
             <div className="flex items-center gap-3 text-slate-300">
               <div className="w-2 h-2 bg-gradient-to-r from-purple-400 to-pink-400 rounded-full"></div>
-              <span>Размер файла ограничен 10MB для изображений</span>
+              <span>File size limited to 10MB for images</span>
             </div>
             <div className="flex items-center gap-3 text-slate-300">
               <div className="w-2 h-2 bg-gradient-to-r from-purple-400 to-pink-400 rounded-full"></div>
-              <span>100MB для видео контента</span>
+              <span>100MB for video content</span>
             </div>
             <div className="flex items-center gap-3 text-slate-300">
               <div className="w-2 h-2 bg-gradient-to-r from-purple-400 to-pink-400 rounded-full"></div>
-              <span>50MB для аудио файлов</span>
+              <span>50MB for audio files</span>
             </div>
           </div>
           <div className="space-y-4">
             <div className="flex items-center gap-3 text-slate-300">
               <div className="w-2 h-2 bg-gradient-to-r from-purple-400 to-pink-400 rounded-full"></div>
-              <span>Контент хранится в децентрализованной сети</span>
+              <span>Content stored in decentralized network</span>
             </div>
             <div className="flex items-center gap-3 text-slate-300">
               <div className="w-2 h-2 bg-gradient-to-r from-purple-400 to-pink-400 rounded-full"></div>
-              <span>Монетизация через криптовалюты SOL и USDC</span>
+              <span>Monetization via SOL and USDC cryptocurrencies</span>
             </div>
             <div className="flex items-center gap-3 text-slate-300">
               <div className="w-2 h-2 bg-gradient-to-r from-purple-400 to-pink-400 rounded-full"></div>
-              <span>Гибкие модели доступа к контенту</span>
+              <span>Flexible content access models</span>
             </div>
           </div>
         </div>

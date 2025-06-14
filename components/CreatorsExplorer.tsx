@@ -39,19 +39,19 @@ export default function CreatorsExplorer() {
   const { publicKey } = useWallet()
   const [activeTab, setActiveTab] = useState<'subscriptions' | 'recommendations' | 'all'>('subscriptions')
 
-  // Загружаем список авторов
+  // Load creators list
   useEffect(() => {
     fetchCreators()
   }, [])
 
-  // Загружаем подписки пользователя
+  // Load user subscriptions
   useEffect(() => {
     if (publicKey) {
       fetchUserSubscriptions()
     }
   }, [publicKey])
 
-  // Автоматически переключаемся на нужную вкладку
+  // Automatically switch to the right tab
   useEffect(() => {
     if (!publicKey) {
       setActiveTab('all')
@@ -69,11 +69,11 @@ export default function CreatorsExplorer() {
       if (response.ok) {
         setCreators(data.creators || [])
       } else {
-        toast.error('Ошибка загрузки авторов')
+        toast.error('Error loading creators')
       }
     } catch (error) {
       console.error('Error fetching creators:', error)
-      toast.error('Ошибка загрузки авторов')
+      toast.error('Error loading creators')
     } finally {
       setLoading(false)
     }
@@ -107,7 +107,7 @@ export default function CreatorsExplorer() {
 
   const handleSubscribeClick = (creator: Creator) => {
     if (!publicKey) {
-      toast.error('Подключите кошелек для подписки')
+      toast.error('Connect wallet to subscribe')
       return
     }
     setSelectedCreator(creator)
@@ -214,7 +214,7 @@ export default function CreatorsExplorer() {
               <p className="text-slate-400 text-sm truncate">@{creator.username}</p>
               <div className="flex items-center gap-4 mt-2 text-sm">
                 <span className="text-purple-400 font-semibold">
-                  {creator.subscribers.toLocaleString()} подписчиков
+                  {creator.subscribers.toLocaleString()} subscribers
                 </span>
               </div>
             </div>
@@ -245,13 +245,13 @@ export default function CreatorsExplorer() {
           {/* Monthly Earnings */}
           <div className="flex items-center justify-between mb-6">
             <div>
-              <p className="text-slate-400 text-xs mb-1">Месячный доход</p>
+              <p className="text-slate-400 text-xs mb-1">Monthly earnings</p>
               <p className="text-green-400 font-bold text-lg">
                 {creator.monthlyEarnings}
               </p>
             </div>
             <div className="text-right">
-              <p className="text-slate-400 text-xs mb-1">Постов</p>
+              <p className="text-slate-400 text-xs mb-1">Posts</p>
               <p className="text-white font-semibold">
                 {creator.posts}
               </p>
@@ -268,7 +268,7 @@ export default function CreatorsExplorer() {
               >
                 <div className="bg-gradient-to-r from-purple-600 to-pink-600 text-white px-4 py-3 rounded-2xl font-semibold text-sm flex items-center justify-center transform group-hover/btn:scale-105 transition-all duration-300 hover:shadow-lg hover:shadow-purple-500/25">
                   <PlayIcon className="w-4 h-4 mr-2" />
-                  Смотреть
+                  Watch
                 </div>
               </Link>
             ) : (
@@ -279,7 +279,7 @@ export default function CreatorsExplorer() {
               >
                 <div className="bg-gradient-to-r from-purple-600 to-pink-600 text-white px-4 py-3 rounded-2xl font-semibold text-sm flex items-center justify-center transform group-hover/btn:scale-105 transition-all duration-300 hover:shadow-lg hover:shadow-purple-500/25">
                   <UserPlusIcon className="w-4 h-4 mr-2" />
-                  Подписаться
+                  Subscribe
                 </div>
               </button>
             )}
@@ -303,7 +303,7 @@ export default function CreatorsExplorer() {
       <section className="py-20 bg-gradient-to-b from-slate-900 to-slate-800">
         <div className="container mx-auto px-4">
           <div className="text-center">
-            <p className="text-slate-300">Загрузка авторов...</p>
+            <p className="text-slate-300">Loading creators...</p>
           </div>
         </div>
       </section>
@@ -316,9 +316,9 @@ export default function CreatorsExplorer() {
         {/* Header */}
         <div className="text-center mb-12">
           <h2 className="text-5xl md:text-6xl font-black mb-6">
-            <span className="text-white">Исследуйте </span>
+            <span className="text-white">Explore </span>
             <span className="bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent">
-              авторов
+              creators
             </span>
           </h2>
         </div>
@@ -337,7 +337,7 @@ export default function CreatorsExplorer() {
                   }`}
                 >
                   <UsersIcon className="w-5 h-5" />
-                  Ваши подписки
+                  Your subscriptions
                   {subscribedCreatorIds.length > 0 && (
                     <span className="ml-2 px-2 py-0.5 bg-white/20 rounded-full text-sm">
                       {subscribedCreatorIds.length}
@@ -353,7 +353,7 @@ export default function CreatorsExplorer() {
                   }`}
                 >
                   <SparklesIcon className="w-5 h-5" />
-                  Рекомендации
+                  Recommendations
                 </button>
               </>
             )}
@@ -366,7 +366,7 @@ export default function CreatorsExplorer() {
               }`}
             >
               <Squares2X2Icon className="w-5 h-5" />
-              Все авторы
+              All creators
             </button>
           </div>
         </div>
@@ -393,25 +393,25 @@ export default function CreatorsExplorer() {
         {/* Tab Content Title */}
         {activeTab === 'subscriptions' && filteredCreators.length > 0 && (
           <div className="text-center mb-8">
-            <h3 className="text-2xl font-bold text-white">Ваши подписки</h3>
-            <p className="text-slate-400 mt-2">Авторы, на которых вы подписаны</p>
+            <h3 className="text-2xl font-bold text-white">Your subscriptions</h3>
+            <p className="text-slate-400 mt-2">Creators you are subscribed to</p>
           </div>
         )}
 
         {activeTab === 'recommendations' && (
           <div className="text-center mb-8">
-            <h3 className="text-2xl font-bold text-white">Рекомендации для вас</h3>
-            <p className="text-slate-400 mt-2">Авторы, которые могут вас заинтересовать</p>
+            <h3 className="text-2xl font-bold text-white">Recommendations for you</h3>
+            <p className="text-slate-400 mt-2">Creators that might interest you</p>
           </div>
         )}
 
         {activeTab === 'all' && (
           <div className="text-center mb-8">
-            <h3 className="text-2xl font-bold text-white">Все авторы</h3>
+            <h3 className="text-2xl font-bold text-white">All creators</h3>
             <p className="text-slate-400 mt-2">
               {selectedCategory === 'All' 
-                ? 'Все авторы платформы' 
-                : `Авторы в категории ${selectedCategory}`}
+                ? 'All platform creators' 
+                : `Creators in category ${selectedCategory}`}
             </p>
           </div>
         )}
@@ -421,17 +421,17 @@ export default function CreatorsExplorer() {
           <div className="text-center py-12">
             <p className="text-slate-400 text-lg">
               {activeTab === 'subscriptions' 
-                ? 'Вы пока ни на кого не подписаны' 
+                ? 'You are not subscribed to any creators' 
                 : activeTab === 'recommendations'
-                ? 'Нет рекомендаций'
-                : 'Нет авторов в этой категории'}
+                ? 'No recommendations'
+                : 'No creators in this category'}
             </p>
             {activeTab === 'subscriptions' && (
               <button
                 onClick={() => setActiveTab('recommendations')}
                 className="mt-4 px-6 py-3 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-xl font-semibold hover:scale-105 transition-transform"
               >
-                Посмотреть рекомендации
+                View recommendations
               </button>
             )}
           </div>

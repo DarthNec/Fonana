@@ -66,14 +66,14 @@ export default function CreatorPage() {
     try {
       setIsLoading(true)
       
-      // Загружаем данные автора
+      // Load creator data
       const creatorResponse = await fetch(`/api/user?id=${params.id}`)
       if (!creatorResponse.ok) {
         throw new Error('Creator not found')
       }
       const creatorData = await creatorResponse.json()
       
-      // Преобразуем данные для правильного отображения
+      // Transform data for proper display
       const creatorInfo = {
         ...creatorData.user,
         followersCount: creatorData.user._count?.followers || 0,
@@ -82,7 +82,7 @@ export default function CreatorPage() {
       }
       setCreator(creatorInfo)
 
-      // Загружаем посты автора
+      // Load creator posts
       const postsParams = new URLSearchParams({
         creatorId: params.id as string
       })
@@ -93,7 +93,7 @@ export default function CreatorPage() {
       const postsResponse = await fetch(`/api/posts?${postsParams.toString()}`)
       if (postsResponse.ok) {
         const postsData = await postsResponse.json()
-        // Форматируем посты как на странице feed
+        // Format posts like on feed page
         const formattedPosts = postsData.posts.map((post: any) => ({
           id: post.id,
           creator: {
@@ -121,7 +121,7 @@ export default function CreatorPage() {
         setPosts(formattedPosts)
       }
 
-      // Проверяем подписку если пользователь авторизован
+      // Check subscription if user is authenticated
       if (user) {
         const subResponse = await fetch(`/api/subscriptions/check?userId=${user.id}&creatorId=${params.id}`)
         if (subResponse.ok) {
@@ -131,7 +131,7 @@ export default function CreatorPage() {
       }
     } catch (error) {
       console.error('Error loading creator data:', error)
-      toast.error('Ошибка загрузки данных автора')
+      toast.error('Error loading creator data')
       router.push('/creators')
     } finally {
       setIsLoading(false)
@@ -140,12 +140,12 @@ export default function CreatorPage() {
 
   const handleFollow = async () => {
     if (!connected) {
-      toast.error('Подключите кошелек')
+      toast.error('Connect wallet')
       return
     }
 
     setIsFollowing(!isFollowing)
-    // TODO: API для подписки на автора
+    // TODO: API for following creator
   }
 
   const handleSubscribeClick = (creatorData: any, tier: 'basic' | 'premium' | 'vip' = 'basic') => {
@@ -158,7 +158,7 @@ export default function CreatorPage() {
   }
 
   const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('ru-RU', {
+    return new Date(dateString).toLocaleDateString('en-US', {
       year: 'numeric',
       month: 'long'
     })
@@ -169,7 +169,7 @@ export default function CreatorPage() {
       <div className="min-h-screen bg-slate-900 pt-32 flex items-center justify-center">
         <div className="text-center">
           <div className="w-16 h-16 border-4 border-purple-500/30 border-t-purple-500 rounded-full animate-spin mx-auto mb-4"></div>
-          <p className="text-slate-400">Загрузка профиля...</p>
+          <p className="text-slate-400">Loading profile...</p>
         </div>
       </div>
     )
@@ -179,7 +179,7 @@ export default function CreatorPage() {
     return (
       <div className="min-h-screen bg-slate-900 pt-32">
         <div className="text-center">
-          <p className="text-slate-400">Автор не найден</p>
+          <p className="text-slate-400">Creator not found</p>
         </div>
       </div>
     )
@@ -205,7 +205,7 @@ export default function CreatorPage() {
             className="mb-8 flex items-center gap-2 text-slate-400 hover:text-white transition-colors"
           >
             <ArrowLeftIcon className="w-5 h-5" />
-            Назад
+            Back
           </button>
 
           {/* Profile Header */}
@@ -242,16 +242,16 @@ export default function CreatorPage() {
                   <div className="flex items-center gap-2">
                     <UsersIcon className="w-5 h-5 text-slate-400" />
                     <span className="text-white font-semibold">{creator.followersCount}</span>
-                    <span className="text-slate-400">подписчиков</span>
+                    <span className="text-slate-400">followers</span>
                   </div>
                   <div className="flex items-center gap-2">
                     <DocumentTextIcon className="w-5 h-5 text-slate-400" />
                     <span className="text-white font-semibold">{creator.postsCount}</span>
-                    <span className="text-slate-400">постов</span>
+                    <span className="text-slate-400">posts</span>
                   </div>
                   <div className="flex items-center gap-2">
                     <CalendarIcon className="w-5 h-5 text-slate-400" />
-                    <span className="text-slate-400">С {formatDate(creator.createdAt)}</span>
+                    <span className="text-slate-400">Created {formatDate(creator.createdAt)}</span>
                   </div>
                 </div>
 
@@ -263,7 +263,7 @@ export default function CreatorPage() {
                         onClick={() => setShowSubscribeModal(true)}
                         className="px-6 py-3 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white font-semibold rounded-xl transition-all transform hover:scale-105"
                       >
-                        {isSubscribed ? 'Управление подпиской' : 'Подписаться'}
+                        {isSubscribed ? 'Manage subscription' : 'Subscribe'}
                       </button>
                       <button
                         onClick={handleFollow}
@@ -273,7 +273,7 @@ export default function CreatorPage() {
                             : 'border-slate-600 text-slate-300 hover:text-white hover:border-slate-500'
                         }`}
                       >
-                        {isFollowing ? 'Читаю' : 'Читать'}
+                        {isFollowing ? 'Reading' : 'Read'}
                       </button>
                     </>
                   )}
@@ -295,7 +295,7 @@ export default function CreatorPage() {
                     className="flex items-center gap-2 text-slate-400 hover:text-white transition-colors"
                   >
                     <LinkIcon className="w-5 h-5" />
-                    Вебсайт
+                    Website
                   </a>
                 )}
                 {creator.twitter && (
@@ -335,7 +335,7 @@ export default function CreatorPage() {
               }`}
             >
               <DocumentTextIcon className="w-5 h-5 inline mr-2" />
-              Посты
+              Posts
             </button>
             <button
               onClick={() => setActiveTab('about')}
@@ -346,7 +346,7 @@ export default function CreatorPage() {
               }`}
             >
               <UsersIcon className="w-5 h-5 inline mr-2" />
-              О создателе
+              About the Creator
             </button>
             <button
               onClick={() => setActiveTab('stats')}
@@ -357,7 +357,7 @@ export default function CreatorPage() {
               }`}
             >
               <ChartBarIcon className="w-5 h-5 inline mr-2" />
-              Статистика
+              Stats
             </button>
           </div>
 
@@ -367,7 +367,7 @@ export default function CreatorPage() {
               {posts.length === 0 ? (
                 <div className="bg-slate-800/50 backdrop-blur-xl border border-slate-700/50 rounded-3xl p-12 text-center">
                   <DocumentTextIcon className="w-16 h-16 text-slate-600 mx-auto mb-4" />
-                  <p className="text-slate-400">У автора пока нет постов</p>
+                  <p className="text-slate-400">No posts yet</p>
                 </div>
               ) : (
                 <div className="space-y-6">
@@ -387,23 +387,23 @@ export default function CreatorPage() {
 
           {activeTab === 'about' && (
             <div className="bg-slate-800/50 backdrop-blur-xl border border-slate-700/50 rounded-3xl p-8">
-              <h2 className="text-2xl font-bold text-white mb-6">О создателе</h2>
+              <h2 className="text-2xl font-bold text-white mb-6">About the Creator</h2>
               <div className="space-y-6">
                 {creator.bio && (
                   <div>
-                    <h3 className="text-lg font-semibold text-white mb-2">Биография</h3>
+                    <h3 className="text-lg font-semibold text-white mb-2">Biography</h3>
                     <p className="text-slate-300">{creator.bio}</p>
                   </div>
                 )}
                 {creator.location && (
                   <div>
-                    <h3 className="text-lg font-semibold text-white mb-2">Местоположение</h3>
+                    <h3 className="text-lg font-semibold text-white mb-2">Location</h3>
                     <p className="text-slate-300">{creator.location}</p>
                   </div>
                 )}
                 <div>
-                  <h3 className="text-lg font-semibold text-white mb-2">На платформе</h3>
-                  <p className="text-slate-300">С {formatDate(creator.createdAt)}</p>
+                  <h3 className="text-lg font-semibold text-white mb-2">On Platform</h3>
+                  <p className="text-slate-300">Created {formatDate(creator.createdAt)}</p>
                 </div>
               </div>
             </div>
@@ -417,7 +417,7 @@ export default function CreatorPage() {
                     <UsersIcon className="w-6 h-6 text-purple-400" />
                   </div>
                   <div>
-                    <p className="text-slate-400 text-sm">Подписчики</p>
+                    <p className="text-slate-400 text-sm">Followers</p>
                     <p className="text-2xl font-bold text-white">{creator.followersCount}</p>
                   </div>
                 </div>
@@ -429,7 +429,7 @@ export default function CreatorPage() {
                     <DocumentTextIcon className="w-6 h-6 text-blue-400" />
                   </div>
                   <div>
-                    <p className="text-slate-400 text-sm">Посты</p>
+                    <p className="text-slate-400 text-sm">Posts</p>
                     <p className="text-2xl font-bold text-white">{creator.postsCount}</p>
                   </div>
                 </div>
@@ -441,7 +441,7 @@ export default function CreatorPage() {
                     <CurrencyDollarIcon className="w-6 h-6 text-green-400" />
                   </div>
                   <div>
-                    <p className="text-slate-400 text-sm">Заработано</p>
+                    <p className="text-slate-400 text-sm">Earned</p>
                     <p className="text-2xl font-bold text-white">$0</p>
                   </div>
                 </div>
@@ -464,7 +464,7 @@ export default function CreatorPage() {
           onClose={() => setShowSubscribeModal(false)}
           onSuccess={() => {
             setShowSubscribeModal(false)
-            loadCreatorData() // Перезагружаем данные
+            loadCreatorData() // Reload data
           }}
         />
       )}
@@ -476,7 +476,7 @@ export default function CreatorPage() {
           onClose={() => setShowPurchaseModal(false)}
           onSuccess={() => {
             setShowPurchaseModal(false)
-            loadCreatorData() // Перезагружаем посты после покупки
+            loadCreatorData() // Reload posts after purchase
           }}
         />
       )}

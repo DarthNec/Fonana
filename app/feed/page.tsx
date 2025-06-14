@@ -44,7 +44,7 @@ export default function FeedPage() {
     try {
       setIsLoading(true)
       
-      // Добавляем wallet текущего пользователя в запрос
+      // Add current user's wallet to request
       const params = new URLSearchParams()
       if (user?.wallet) {
         params.append('userWallet', user.wallet)
@@ -59,7 +59,7 @@ export default function FeedPage() {
       const data = await response.json()
       console.log('Loaded posts:', data.posts)
       
-      // Преобразуем данные для отображения
+      // Format data for display
       const formattedPosts = data.posts.map((post: any) => ({
         id: post.id,
         creator: {
@@ -88,7 +88,7 @@ export default function FeedPage() {
       setPosts(formattedPosts)
     } catch (error) {
       console.error('Error loading posts:', error)
-      toast.error('Ошибка загрузки постов')
+      toast.error('Error loading posts')
     } finally {
       setIsLoading(false)
     }
@@ -119,30 +119,30 @@ export default function FeedPage() {
   })
 
   const sortOptions = [
-    { id: 'latest', label: 'Новые', icon: ClockIcon },
-    { id: 'popular', label: 'Популярные', icon: FireIcon },
-    { id: 'following', label: 'Подписки', icon: UsersIcon }
+    { id: 'latest', label: 'Latest', icon: ClockIcon },
+    { id: 'popular', label: 'Popular', icon: FireIcon },
+    { id: 'following', label: 'Following', icon: UsersIcon }
   ]
 
   return (
-    <div className="min-h-screen pt-16"> {/* Добавили pt-16 для отступа от навбара */}
+    <div className="min-h-screen pt-16"> {/* Added pt-16 for navbar offset */}
       <div className="container mx-auto px-4 py-8">
         {/* Header */}
         <div className="flex items-center justify-between mb-8">
           <div>
             <h1 className="text-4xl font-bold mb-2">
               <span className="bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent">
-                Лента контента
+                Content Feed
               </span>
             </h1>
-            <p className="text-slate-400">Откройте для себя удивительный контент от креаторов</p>
+            <p className="text-slate-400">Discover amazing content from creators</p>
           </div>
           <Link
             href="/create"
             className="px-6 py-3 bg-gradient-to-r from-purple-600 to-pink-600 text-white font-bold rounded-xl hover:from-purple-700 hover:to-pink-700 transform hover:scale-105 transition-all duration-300 hover:shadow-xl hover:shadow-purple-500/25 flex items-center gap-2"
           >
             <PlusIcon className="w-5 h-5" />
-            Создать
+            Create
           </Link>
         </div>
 
@@ -170,7 +170,7 @@ export default function FeedPage() {
           <div className="flex flex-col items-center gap-4">
             <div className="flex items-center gap-2 text-slate-400">
               <FunnelIcon className="w-5 h-5" />
-              <span className="text-sm font-medium">Фильтр по категориям</span>
+              <span className="text-sm font-medium">Filter by categories</span>
             </div>
             <div className="flex flex-wrap justify-center gap-2 max-w-4xl">
               {categories.map((category) => (
@@ -195,20 +195,20 @@ export default function FeedPage() {
           <div className="flex items-center justify-center py-20">
             <div className="text-center">
               <div className="w-16 h-16 border-4 border-purple-500/30 border-t-purple-500 rounded-full animate-spin mx-auto mb-4"></div>
-              <p className="text-slate-400">Загрузка постов...</p>
+              <p className="text-slate-400">Loading posts...</p>
             </div>
           </div>
         ) : sortedPosts.length === 0 ? (
           <div className="text-center py-20">
             <SparklesIcon className="w-16 h-16 text-slate-600 mx-auto mb-4" />
-            <h3 className="text-xl font-bold text-slate-300 mb-2">Постов пока нет</h3>
-            <p className="text-slate-400 mb-6">Будьте первым, кто создаст контент!</p>
+            <h3 className="text-xl font-bold text-slate-300 mb-2">No posts yet</h3>
+            <p className="text-slate-400 mb-6">Be the first to create content!</p>
             <Link
               href="/create"
               className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-purple-600 to-pink-600 text-white font-bold rounded-xl hover:from-purple-700 hover:to-pink-700 transform hover:scale-105 transition-all duration-300"
             >
               <PlusIcon className="w-5 h-5" />
-              Создать первый пост
+              Create first post
             </Link>
           </div>
         ) : (
@@ -229,13 +229,13 @@ export default function FeedPage() {
         {sortedPosts.length > 0 && (
           <div className="text-center mt-12">
             <button className="px-8 py-3 bg-slate-800/50 hover:bg-slate-700/50 text-slate-300 hover:text-white rounded-xl font-medium transition-all">
-              Загрузить больше
+              Load more
             </button>
           </div>
         )}
       </div>
 
-      {/* Модалки вынесены наружу */}
+      {/* Modals moved outside */}
       {showSubscribeModal && selectedCreator && (
         <SubscribeModal
           creator={selectedCreator}
@@ -243,7 +243,7 @@ export default function FeedPage() {
           onClose={() => setShowSubscribeModal(false)}
           onSuccess={() => {
             setShowSubscribeModal(false)
-            loadPosts() // Перезагружаем посты после подписки
+            loadPosts() // Reload posts after subscription
           }}
         />
       )}
@@ -254,7 +254,7 @@ export default function FeedPage() {
           onClose={() => setShowPurchaseModal(false)}
           onSuccess={() => {
             setShowPurchaseModal(false)
-            loadPosts() // Перезагружаем посты после покупки
+            loadPosts() // Reload posts after purchase
           }}
         />
       )}
