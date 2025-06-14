@@ -5,6 +5,7 @@ import {
   LAMPORTS_PER_SOL 
 } from '@solana/web3.js'
 import { getConnection } from './connection'
+import { SOLANA_CONFIG } from './config'
 
 export interface PaymentDistribution {
   creatorWallet: string
@@ -15,8 +16,8 @@ export interface PaymentDistribution {
   totalAmount: number
 }
 
-// Platform wallet (should be in env vars in production)
-export const PLATFORM_WALLET = process.env.NEXT_PUBLIC_PLATFORM_WALLET || 'HAWrVR3QGwJJNSCuNpFoJJ4vBYbcUfLnu6xGiVg5Fqq6'
+// Platform wallet from config
+export const PLATFORM_WALLET = SOLANA_CONFIG.PLATFORM_WALLET
 
 // Fee percentages
 export const FEES = {
@@ -33,6 +34,11 @@ export function calculatePaymentDistribution(
   hasReferrer: boolean,
   referrerWallet?: string
 ): PaymentDistribution {
+  // Проверка минимальной суммы
+  if (totalAmount < SOLANA_CONFIG.MIN_PAYMENT_AMOUNT) {
+    throw new Error(`Минимальная сумма платежа: ${SOLANA_CONFIG.MIN_PAYMENT_AMOUNT} SOL`)
+  }
+
   const platformFeePercent = hasReferrer ? FEES.PLATFORM_WITH_REFERRER : FEES.PLATFORM_NO_REFERRER
   const referrerFeePercent = hasReferrer ? FEES.REFERRER : 0
   const creatorPercent = 1 - platformFeePercent - referrerFeePercent
@@ -53,8 +59,16 @@ export async function createSubscriptionTransaction(
 ): Promise<Transaction> {
   const transaction = new Transaction()
   
-  // Get recent blockhash
-  const { blockhash } = await getConnection().getLatestBlockhash()
+  // Get recent blockhash with retry
+  let blockhash
+  try {
+    const result = await getConnection().getLatestBlockhash('confirmed')
+    blockhash = result.blockhash
+  } catch (error) {
+    console.error('Error getting blockhash:', error)
+    throw new Error('Не удалось получить данные блокчейна. Попробуйте позже.')
+  }
+  
   transaction.recentBlockhash = blockhash
   transaction.feePayer = payerPublicKey
   
@@ -91,19 +105,14 @@ export async function createSubscriptionTransaction(
   return transaction
 }
 
+// Helper function to convert SOL to lamports
+export function solToLamports(sol: number): number {
+  return Math.floor(sol * LAMPORTS_PER_SOL)
+}
+
 // Format SOL amount for display
 export function formatSolAmount(amount: number): string {
   return `${amount.toFixed(4)} SOL`
-}
-
-// Convert lamports to SOL
-export function lamportsToSol(lamports: number): number {
-  return lamports / LAMPORTS_PER_SOL
-}
-
-// Convert SOL to lamports
-export function solToLamports(sol: number): number {
-  return Math.floor(sol * LAMPORTS_PER_SOL)
 }
 
 export async function createPostPurchaseTransaction(
@@ -112,8 +121,16 @@ export async function createPostPurchaseTransaction(
 ): Promise<Transaction> {
   const transaction = new Transaction()
   
-  // Get recent blockhash
-  const { blockhash } = await getConnection().getLatestBlockhash()
+  // Get recent blockhash with retry
+  let blockhash
+  try {
+    const result = await getConnection().getLatestBlockhash('confirmed')
+    blockhash = result.blockhash
+  } catch (error) {
+    console.error('Error getting blockhash:', error)
+    throw new Error('Не удалось получить данные блокчейна. Попробуйте позже.')
+  }
+  
   transaction.recentBlockhash = blockhash
   transaction.feePayer = payerPublicKey
   

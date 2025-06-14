@@ -17,7 +17,7 @@ import {
   calculatePaymentDistribution,
   formatSolAmount 
 } from '@/lib/solana/payments'
-import { isValidSolanaAddress } from '@/lib/solana/validation'
+import { isValidSolanaAddress } from '@/lib/solana/config'
 import { connection } from '@/lib/solana/connection'
 
 interface PurchaseModalProps {
@@ -78,7 +78,18 @@ export default function PurchaseModal({ post, onClose, onSuccess }: PurchaseModa
     // Определяем кошелек создателя
     const creatorWallet = creatorData?.solanaWallet || creatorData?.wallet || post.creator.solanaWallet || post.creator.wallet
     if (!creatorWallet || !isValidSolanaAddress(creatorWallet)) {
-      toast.error('Некорректный адрес кошелька создателя')
+      toast.error('У создателя не настроен кошелек для приема платежей. Пожалуйста, попробуйте позже.')
+      // Логируем для отладки
+      console.error('Creator wallet issue:', {
+        creatorId: post.creator.id,
+        creatorData,
+        wallets: {
+          solanaWallet: creatorData?.solanaWallet,
+          wallet: creatorData?.wallet,
+          postCreatorSolana: post.creator.solanaWallet,
+          postCreatorWallet: post.creator.wallet
+        }
+      })
       return
     }
     

@@ -1,8 +1,11 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { PaymentDistribution } from '@/lib/solana/payments'
+import { paymentLogger } from '@/lib/utils/logger'
 
 export async function POST(request: Request) {
+  const startTime = Date.now()
+  
   try {
     const body = await request.json()
     const { 
@@ -25,6 +28,23 @@ export async function POST(request: Request) {
       distribution: PaymentDistribution
     } = body
 
+    paymentLogger.info('Processing post payment', {
+      postId: postId.toString(),
+      userId,
+      price,
+      currency,
+      hasReferrer
+    })
+
+    // Валидация входных данных
+    if (!postId || !userId || !price || !currency || !signature || !creatorId) {
+      paymentLogger.warn('Invalid payment data', { postId, userId, price })
+      return NextResponse.json(
+        { error: 'Missing required fields' },
+        { status: 400 }
+      )
+    }
+
     // Найти или создать пользователя по кошельку
     let user = await prisma.user.findUnique({
       where: { solanaWallet: userId }
@@ -38,13 +58,33 @@ export async function POST(request: Request) {
 
     if (!user) {
       // Создаем нового пользователя если не существует
+      paymentLogger.info('Creating new user for payment', { userId })
       user = await prisma.user.create({
         data: {
           solanaWallet: userId,
           wallet: userId,
           name: `User ${userId.slice(0, 8)}`,
-          nickname: `user_${userId.slice(0, 8).toLowerCase()}`
+          nickname: `user_${userId.slice(0, 8).toLowerCase()}_${Date.now()}`
         }
+      })
+    }
+
+    // Проверяем, не была ли уже куплена эта покупка
+    const existingPurchase = await prisma.postPurchase.findUnique({
+      where: {
+        userId_postId: {
+          userId: user.id,
+          postId: postId.toString()
+        }
+      }
+    })
+
+    if (existingPurchase) {
+      paymentLogger.warn('Duplicate purchase attempt', { userId: user.id, postId })
+      return NextResponse.json({
+        success: true,
+        purchase: existingPurchase,
+        message: 'Already purchased'
       })
     }
 
@@ -103,6 +143,17 @@ export async function POST(request: Request) {
       }
     })
 
+    const duration = Date.now() - startTime
+    paymentLogger.payment('completed', {
+      userId: user.id,
+      creatorId: creatorId.toString(),
+      amount: price,
+      currency,
+      signature,
+      hasReferrer
+    })
+    paymentLogger.info(`Payment processed in ${duration}ms`)
+
     return NextResponse.json({
       success: true,
       purchase,
@@ -110,7 +161,12 @@ export async function POST(request: Request) {
     })
 
   } catch (error) {
-    console.error('Error processing payment:', error)
+    const duration = Date.now() - startTime
+    paymentLogger.payment('error', {
+      error: error instanceof Error ? error.message : 'Unknown error'
+    })
+    paymentLogger.error(`Payment processing failed in ${duration}ms`, error)
+    
     return NextResponse.json(
       { error: 'Failed to process payment' },
       { status: 500 }

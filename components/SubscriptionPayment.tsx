@@ -8,7 +8,7 @@ import {
   calculatePaymentDistribution,
   formatSolAmount 
 } from '@/lib/solana/payments'
-import { isValidSolanaAddress } from '@/lib/solana/validation'
+import { isValidSolanaAddress } from '@/lib/solana/config'
 import { connection } from '@/lib/solana/connection'
 import { useToast } from '@/lib/hooks/use-toast'
 
