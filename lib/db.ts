@@ -69,10 +69,18 @@ export async function updateUserProfile(wallet: string, data: {
   telegram?: string
   location?: string
 }) {
+  // Фильтруем undefined значения - обновляем только те поля, которые явно переданы
+  const cleanData: any = {}
+  Object.keys(data).forEach(key => {
+    if (data[key as keyof typeof data] !== undefined) {
+      cleanData[key] = data[key as keyof typeof data]
+    }
+  })
+
   return await prisma.user.update({
     where: { wallet },
     data: {
-      ...data,
+      ...cleanData,
       updatedAt: new Date(),
     },
   })

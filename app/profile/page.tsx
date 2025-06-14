@@ -104,6 +104,7 @@ export default function ProfilePage() {
         username: user.nickname || 'user',
         nickname: user.nickname || '',
         avatar: user.avatar || '',
+        backgroundImage: user.backgroundImage || '',
         bio: user.bio || '',
       }))
     }
