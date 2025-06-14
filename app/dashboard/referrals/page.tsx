@@ -177,7 +177,7 @@ export default function ReferralsPage() {
                   )}
                   <div>
                     <div className="font-medium">
-                      {referral.nickname || referral.wallet.slice(0, 8) + '...'}
+                      {referral.nickname || referral.wallet?.slice(0, 8) + '...' || 'User'}
                     </div>
                     <div className="text-sm text-gray-600 dark:text-gray-400">
                       Зарегистрирован {formatDate(referral.createdAt.toString())}
