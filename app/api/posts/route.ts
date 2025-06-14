@@ -1,7 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getPosts, createPost, getPostsByCreator, getUserByWallet } from '@/lib/db'
+import { PrismaClient } from '@prisma/client'
 
 export const dynamic = 'force-dynamic'
+
+const prisma = new PrismaClient()
 
 // GET /api/posts - получить список постов
 export async function GET(request: NextRequest) {
@@ -9,8 +12,15 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url)
     const creatorId = searchParams.get('creatorId')
     const wallet = searchParams.get('wallet')
+    const userWallet = searchParams.get('userWallet') // Кошелек текущего пользователя
     const limit = parseInt(searchParams.get('limit') || '20')
     const offset = parseInt(searchParams.get('offset') || '0')
+
+    // Получаем текущего пользователя если передан wallet
+    let currentUser = null
+    if (userWallet) {
+      currentUser = await getUserByWallet(userWallet)
+    }
 
     let posts
     if (creatorId) {
@@ -25,24 +35,53 @@ export async function GET(request: NextRequest) {
       posts = await getPosts({ limit, offset })
     }
 
+    // Получаем подписки текущего пользователя
+    let userSubscriptions: string[] = []
+    if (currentUser) {
+      const subscriptions = await prisma.subscription.findMany({
+        where: {
+          userId: currentUser.id,
+          isActive: true,
+          validUntil: { gte: new Date() }
+        },
+        select: { creatorId: true }
+      })
+      userSubscriptions = subscriptions.map(sub => sub.creatorId)
+    }
+
     // Форматируем посты для фронтенда
-    const formattedPosts = posts.map((post: any) => ({
-      ...post,
-      creator: {
-        ...post.creator,
-        name: post.creator.fullName || post.creator.nickname || post.creator.wallet.slice(0, 6) + '...',
-        username: post.creator.nickname || post.creator.wallet.slice(0, 6) + '...' + post.creator.wallet.slice(-4),
-      },
-      image: post.mediaUrl || post.thumbnail,
-      likes: post._count?.likes || post.likesCount || 0,
-      comments: post._count?.comments || post.commentsCount || 0,
-      tags: post.tags?.map((t: any) => typeof t === 'string' ? t : t.tag?.name || '') || []
-    }))
+    const formattedPosts = posts.map((post: any) => {
+      const isCreatorPost = currentUser?.id === post.creatorId
+      const isSubscribed = userSubscriptions.includes(post.creatorId)
+      
+      // Если пост заблокирован и пользователь не подписан и это не его пост - скрываем контент
+      const shouldHideContent = post.isLocked && !isSubscribed && !isCreatorPost
+
+      return {
+        ...post,
+        creator: {
+          ...post.creator,
+          name: post.creator.fullName || post.creator.nickname || post.creator.wallet.slice(0, 6) + '...',
+          username: post.creator.nickname || post.creator.wallet.slice(0, 6) + '...' + post.creator.wallet.slice(-4),
+        },
+        image: post.mediaUrl || post.thumbnail,
+        likes: post._count?.likes || post.likesCount || 0,
+        comments: post._count?.comments || post.commentsCount || 0,
+        tags: post.tags?.map((t: any) => typeof t === 'string' ? t : t.tag?.name || '') || [],
+        isSubscribed,
+        // Скрываем контент для заблокированных постов
+        content: shouldHideContent ? '' : post.content,
+        mediaUrl: shouldHideContent ? null : post.mediaUrl,
+        shouldHideContent
+      }
+    })
 
     return NextResponse.json({ posts: formattedPosts })
   } catch (error) {
     console.error('Error fetching posts:', error)
     return NextResponse.json({ error: 'Failed to fetch posts' }, { status: 500 })
+  } finally {
+    await prisma.$disconnect()
   }
 }
 
@@ -80,5 +119,7 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     console.error('Error creating post:', error)
     return NextResponse.json({ error: 'Failed to create post' }, { status: 500 })
+  } finally {
+    await prisma.$disconnect()
   }
 } 

@@ -63,7 +63,7 @@ export default function HomePage() {
               </div>
               
               <h1 className="text-6xl md:text-8xl font-black mb-8 leading-tight">
-                <span className="bg-gradient-to-r from-white via-purple-200 to-white bg-clip-text text-transparent">
+                <span className="bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent">
                   Web3 Creator
                 </span>
                 <br />

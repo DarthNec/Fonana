@@ -38,12 +38,19 @@ export default function FeedPage() {
 
   useEffect(() => {
     loadPosts()
-  }, [])
+  }, [user])
 
   const loadPosts = async () => {
     try {
       setIsLoading(true)
-      const response = await fetch('/api/posts')
+      
+      // Добавляем wallet текущего пользователя в запрос
+      const params = new URLSearchParams()
+      if (user?.wallet) {
+        params.append('userWallet', user.wallet)
+      }
+      
+      const response = await fetch(`/api/posts?${params.toString()}`)
       
       if (!response.ok) {
         throw new Error('Failed to load posts')
@@ -75,7 +82,7 @@ export default function FeedPage() {
         comments: post._count?.comments || 0,
         createdAt: post.createdAt,
         tags: post.tags || [],
-        isSubscribed: false // TODO: проверить подписку
+        isSubscribed: post.isSubscribed || false
       }))
 
       setPosts(formattedPosts)

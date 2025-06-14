@@ -573,7 +573,7 @@ export default function PostCard({
               className="flex items-center gap-2 text-slate-400 hover:text-blue-400 transition-colors group/comment"
             >
               <ChatBubbleLeftIcon className="w-5 h-5 group-hover/comment:scale-110 transition-transform" />
-              <span className="font-medium">{commentsData.length}</span>
+              <span className="font-medium">{comments}</span>
               {showComments ? (
                 <ChevronUpIcon className="w-4 h-4" />
               ) : (

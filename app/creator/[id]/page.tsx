@@ -83,7 +83,14 @@ export default function CreatorPage() {
       setCreator(creatorInfo)
 
       // Загружаем посты автора
-      const postsResponse = await fetch(`/api/posts?creatorId=${params.id}`)
+      const postsParams = new URLSearchParams({
+        creatorId: params.id as string
+      })
+      if (user?.wallet) {
+        postsParams.append('userWallet', user.wallet)
+      }
+      
+      const postsResponse = await fetch(`/api/posts?${postsParams.toString()}`)
       if (postsResponse.ok) {
         const postsData = await postsResponse.json()
         // Форматируем посты как на странице feed
@@ -108,7 +115,8 @@ export default function CreatorPage() {
           likes: post._count?.likes || 0,
           comments: post._count?.comments || 0,
           createdAt: post.createdAt,
-          tags: post.tags || []
+          tags: post.tags || [],
+          isSubscribed: post.isSubscribed || false
         }))
         setPosts(formattedPosts)
       }
@@ -368,7 +376,6 @@ export default function CreatorPage() {
                       key={post.id}
                       {...post}
                       showCreator={false}
-                      isSubscribed={isSubscribed}
                       onSubscribeClick={handleSubscribeClick}
                       onPurchaseClick={handlePurchaseClick}
                     />
