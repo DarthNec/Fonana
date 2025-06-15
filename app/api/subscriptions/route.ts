@@ -17,6 +17,10 @@ export async function GET(request: NextRequest) {
       const subscriptions = await prisma.subscription.findMany({
         where: {
           creatorId: creatorId,
+          isActive: true,
+          validUntil: {
+            gt: new Date()
+          }
         },
         include: {
           user: {
@@ -53,10 +57,14 @@ export async function GET(request: NextRequest) {
 
     // Если указан userId, возвращаем подписки пользователя
     if (userId) {
-      // Получаем все подписки пользователя с информацией об авторах
+      // Получаем только активные подписки пользователя с информацией об авторах
       const subscriptions = await prisma.subscription.findMany({
         where: {
           userId: userId,
+          isActive: true,
+          validUntil: {
+            gt: new Date()
+          }
         },
         orderBy: {
           subscribedAt: 'desc'
@@ -122,36 +130,55 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Проверяем, есть ли уже активная подписка
-    const existingSubscription = await prisma.subscription.findFirst({
+    // Проверяем, есть ли существующая подписка (активная или неактивная)
+    const existingSubscription = await prisma.subscription.findUnique({
       where: {
-        userId: userId,
-        creatorId: creatorId,
-        isActive: true,
-        validUntil: {
-          gt: new Date()
+        userId_creatorId: {
+          userId: userId,
+          creatorId: creatorId
         }
       }
     })
 
-    if (existingSubscription) {
-      return NextResponse.json(
-        { error: 'Active subscription already exists' },
-        { status: 400 }
-      )
-    }
+    let subscription
 
-    // Создаем новую подписку
-    const subscription = await prisma.subscription.create({
-      data: {
-        userId: userId,
-        creatorId: creatorId,
-        plan: plan,
-        price: price,
-        isActive: true,
-        validUntil: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000) // 30 дней
+    if (existingSubscription) {
+      // Если подписка существует, проверяем её статус
+      if (existingSubscription.isActive && existingSubscription.validUntil > new Date()) {
+        return NextResponse.json(
+          { error: 'Active subscription already exists' },
+          { status: 400 }
+        )
       }
-    })
+
+      // Обновляем существующую подписку
+      subscription = await prisma.subscription.update({
+        where: {
+          id: existingSubscription.id
+        },
+        data: {
+          plan: plan,
+          price: price,
+          isActive: true,
+          subscribedAt: new Date(),
+          validUntil: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 дней
+          currency: 'SOL'
+        }
+      })
+    } else {
+      // Создаем новую подписку
+      subscription = await prisma.subscription.create({
+        data: {
+          userId: userId,
+          creatorId: creatorId,
+          plan: plan,
+          price: price,
+          currency: 'SOL',
+          isActive: true,
+          validUntil: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000) // 30 дней
+        }
+      })
+    }
 
     // Получаем информацию о создателе
     const creator = await prisma.user.findUnique({

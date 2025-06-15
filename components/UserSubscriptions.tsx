@@ -84,7 +84,9 @@ export default function UserSubscriptions() {
 
       if (response.ok) {
         toast.success('Subscription cancelled')
-        fetchSubscriptions() // Refresh the list
+        setSubscriptions(prevSubscriptions => 
+          prevSubscriptions.filter(sub => sub.id !== subscriptionId)
+        )
       } else {
         toast.error('Error cancelling subscription')
       }
