@@ -157,9 +157,34 @@ export async function createPost(creatorWallet: string, data: {
   price?: number
   currency?: string
   tags?: string[]
+  tier?: string
 }) {
   const creator = await getUserByWallet(creatorWallet)
   if (!creator) throw new Error('Creator not found')
+
+  // Map tier values to minSubscriptionTier
+  let minSubscriptionTier: string | undefined
+  if (data.tier) {
+    switch (data.tier) {
+      case 'free':
+        minSubscriptionTier = undefined // Free posts don't have subscription requirement
+        break
+      case 'subscribers':
+        minSubscriptionTier = 'basic' // Basic tier and above
+        break
+      case 'premium':
+        minSubscriptionTier = 'premium' // Premium tier and above
+        break
+      case 'vip':
+        minSubscriptionTier = 'vip' // VIP tier only
+        break
+      case 'paid':
+        minSubscriptionTier = undefined // Paid posts use price, not tier
+        break
+      default:
+        minSubscriptionTier = undefined
+    }
+  }
 
   return await prisma.post.create({
     data: {
@@ -174,6 +199,7 @@ export async function createPost(creatorWallet: string, data: {
       isPremium: data.isPremium || false,
       price: data.price,
       currency: data.currency || 'SOL',
+      minSubscriptionTier: minSubscriptionTier,
       tags: data.tags ? {
         create: data.tags.map(tagName => ({
           tag: {

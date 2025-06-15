@@ -4,6 +4,25 @@ import { prisma } from '@/lib/prisma'
 
 export const dynamic = 'force-dynamic'
 
+// Определяем иерархию тиров подписок
+const TIER_HIERARCHY: Record<string, number> = {
+  'vip': 4,
+  'premium': 3,
+  'basic': 2,
+  'free': 1
+}
+
+// Функция для проверки, достаточен ли уровень подписки
+function hasAccessToTier(userTier: string | undefined, requiredTier: string | undefined): boolean {
+  if (!requiredTier) return true // Если тир не указан, доступ есть у всех
+  if (!userTier) return false // Если у пользователя нет подписки, доступа нет
+  
+  const userLevel = TIER_HIERARCHY[userTier.toLowerCase()] || 0
+  const requiredLevel = TIER_HIERARCHY[requiredTier.toLowerCase()] || 0
+  
+  return userLevel >= requiredLevel
+}
+
 // GET /api/posts - получить список постов
 export async function GET(req: Request) {
   try {
@@ -54,8 +73,8 @@ export async function GET(req: Request) {
       console.log('[API/posts] No userWallet provided')
     }
 
-    // Получаем подписки текущего пользователя
-    let userSubscriptions: string[] = []
+    // Получаем подписки текущего пользователя с планами
+    let userSubscriptionsMap = new Map<string, string>() // creatorId -> plan
     if (currentUser) {
       const subscriptions = await prisma.subscription.findMany({
         where: {
@@ -63,10 +82,15 @@ export async function GET(req: Request) {
           isActive: true,
           validUntil: { gte: new Date() }
         },
-        select: { creatorId: true }
+        select: { 
+          creatorId: true,
+          plan: true 
+        }
       })
-      userSubscriptions = subscriptions.map(sub => sub.creatorId)
-      console.log('[API/posts] User subscriptions:', userSubscriptions.length, 'active subscriptions')
+      subscriptions.forEach(sub => {
+        userSubscriptionsMap.set(sub.creatorId, sub.plan.toLowerCase())
+      })
+      console.log('[API/posts] User subscriptions:', userSubscriptionsMap.size, 'active subscriptions')
     }
 
     // Получаем покупки постов текущего пользователя
@@ -86,17 +110,37 @@ export async function GET(req: Request) {
     // Форматируем посты для фронтенда
     const formattedPosts = posts.map((post: any) => {
       const isCreatorPost = currentUser?.id === post.creatorId
-      const isSubscribed = userSubscriptions.includes(post.creatorId)
+      const isSubscribed = userSubscriptionsMap.has(post.creatorId)
       const hasPurchased = userPurchasedPosts.includes(post.id)
       
       // Проверяем доступ к контенту
       // Если пост заблокирован, проверяем:
       // 1. Это пост самого пользователя
-      // 2. У пользователя есть подписка
-      // 3. Пользователь купил этот конкретный пост
-      const shouldHideContent = post.isLocked && !isCreatorPost && !isSubscribed && !hasPurchased
+      // 2. У пользователя есть достаточный уровень подписки
+      // 3. Пользователь купил этот конкретный пост (для платных постов)
+      
+      let shouldHideContent = false
+      
+      if (post.isLocked && !isCreatorPost) {
+        // Если у поста есть минимальный тир подписки
+        if (post.minSubscriptionTier) {
+          const userTier = userSubscriptionsMap.get(post.creatorId)
+          const hasRequiredTier = hasAccessToTier(userTier, post.minSubscriptionTier)
+          shouldHideContent = !hasRequiredTier
+        } 
+        // Если у поста есть цена - это платный пост
+        else if (post.price && post.price > 0) {
+          shouldHideContent = !hasPurchased
+        }
+        // Обычный заблокированный пост - доступен любым подписчикам
+        else {
+          shouldHideContent = !isSubscribed
+        }
+      }
 
-      console.log(`[API/posts] Post "${post.title}" (ID: ${post.id}) - locked: ${post.isLocked}, subscribed: ${isSubscribed}, purchased: ${hasPurchased}, shouldHide: ${shouldHideContent}`)
+      const userSubscriptionPlan = userSubscriptionsMap.get(post.creatorId) || null
+
+      console.log(`[API/posts] Post "${post.title}" (ID: ${post.id}) - locked: ${post.isLocked}, tier: ${post.minSubscriptionTier}, userTier: ${userSubscriptionPlan}, subscribed: ${isSubscribed}, purchased: ${hasPurchased}, shouldHide: ${shouldHideContent}`)
 
       return {
         ...post,
