@@ -74,7 +74,7 @@ export async function createSubscriptionTransaction(
   
   transaction.recentBlockhash = blockhash
   transaction.feePayer = payerPublicKey
-  transaction.lastValidBlockHeight = lastValidBlockHeight
+  ;(transaction as any).lastValidBlockHeight = lastValidBlockHeight
   
   // Добавляем приоритетную комиссию для более быстрого подтверждения
   // 10000 microlamports = 0.00001 SOL дополнительной комиссии
@@ -147,7 +147,7 @@ export async function createPostPurchaseTransaction(
   
   transaction.recentBlockhash = blockhash
   transaction.feePayer = payerPublicKey
-  transaction.lastValidBlockHeight = lastValidBlockHeight
+  ;(transaction as any).lastValidBlockHeight = lastValidBlockHeight
   
   // Добавляем приоритетную комиссию для более быстрого подтверждения
   // 10000 microlamports = 0.00001 SOL дополнительной комиссии

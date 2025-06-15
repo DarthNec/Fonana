@@ -98,7 +98,7 @@ export default function PurchaseModal({ post, onClose, onSuccess }: PurchaseModa
 
       console.log('Transaction created:', {
         blockhash: transaction.recentBlockhash,
-        lastValidBlockHeight: transaction.lastValidBlockHeight,
+        lastValidBlockHeight: (transaction as any).lastValidBlockHeight,
         instructions: transaction.instructions.length,
         feePayer: transaction.feePayer?.toBase58()
       })
