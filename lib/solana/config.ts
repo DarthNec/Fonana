@@ -2,10 +2,13 @@
 
 export const SOLANA_CONFIG = {
   // RPC endpoint
-  RPC_HOST: process.env.NEXT_PUBLIC_SOLANA_RPC_HOST || 'https://api.mainnet-beta.solana.com',
+  RPC_HOST: process.env.NEXT_PUBLIC_SOLANA_RPC_HOST || 'https://tame-smart-panorama.solana-mainnet.quiknode.pro/0e70fc875702b126bf8b93cdcd626680e9c48894/',
+  
+  // WebSocket endpoint
+  WS_ENDPOINT: process.env.NEXT_PUBLIC_SOLANA_WS_ENDPOINT || 'wss://tame-smart-panorama.solana-mainnet.quiknode.pro/0e70fc875702b126bf8b93cdcd626680e9c48894/',
   
   // Кошелек платформы для получения комиссий
-  PLATFORM_WALLET: process.env.NEXT_PUBLIC_PLATFORM_WALLET || 'HAWrVR3QGwJJNSCuNpFoJJ4vBYbcUfLnu6xGiVg5Fqq6',
+  PLATFORM_WALLET: process.env.NEXT_PUBLIC_PLATFORM_WALLET || 'npzAZaN9fDMgLV63b3kv3FF8cLSd8dQSLxyMXASA5T4',
   
   // Настройки сети
   NETWORK: process.env.NEXT_PUBLIC_SOLANA_NETWORK || 'mainnet-beta',
@@ -27,13 +30,19 @@ export function validateSolanaConfig() {
   }
   
   if (!process.env.NEXT_PUBLIC_SOLANA_RPC_HOST) {
-    warnings.push('NEXT_PUBLIC_SOLANA_RPC_HOST не установлен - используется публичный RPC')
+    warnings.push('NEXT_PUBLIC_SOLANA_RPC_HOST не установлен - используется встроенный QuickNode RPC')
   }
   
   if (warnings.length > 0) {
     console.warn('⚠️  Solana Config Warnings:')
     warnings.forEach(w => console.warn(`   - ${w}`))
   }
+  
+  // Логируем текущую конфигурацию (маскируя чувствительные данные)
+  console.info('📡 Solana Configuration:')
+  console.info(`   RPC: ${SOLANA_CONFIG.RPC_HOST.substring(0, 30)}...`)
+  console.info(`   Platform Wallet: ${SOLANA_CONFIG.PLATFORM_WALLET.substring(0, 8)}...`)
+  console.info(`   Network: ${SOLANA_CONFIG.NETWORK}`)
   
   return warnings
 }

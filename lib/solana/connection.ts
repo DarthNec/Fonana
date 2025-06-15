@@ -1,24 +1,19 @@
-import { Connection, clusterApiUrl, Commitment } from '@solana/web3.js'
+import { Connection } from '@solana/web3.js'
+import { SOLANA_CONFIG } from './config'
 
-const commitment: Commitment = 'confirmed'
-
-// Create connection lazily to avoid build-time errors
-let _connection: Connection | null = null
-
-export const getConnection = () => {
-  if (!_connection) {
-    const endpoint = process.env.NEXT_PUBLIC_SOLANA_RPC_URL || clusterApiUrl('devnet')
-    _connection = new Connection(endpoint, commitment)
+// Создаем единое подключение к Solana
+export const connection = new Connection(
+  SOLANA_CONFIG.RPC_HOST,
+  {
+    commitment: 'confirmed',
+    wsEndpoint: SOLANA_CONFIG.WS_ENDPOINT
   }
-  return _connection
+)
+
+// Экспортируем функцию для получения подключения
+export function getConnection(): Connection {
+  return connection
 }
-
-// For backwards compatibility
-export const connection = new Proxy({} as Connection, {
-  get(target, prop) {
-    return getConnection()[prop as keyof Connection]
-  }
-})
 
 // Helper to get network type
 export const getNetwork = () => {
