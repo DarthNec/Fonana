@@ -1,27 +1,18 @@
+import './globals.css'
+import '@solana/wallet-adapter-react-ui/styles.css'
 import type { Metadata } from 'next'
 import { Inter } from 'next/font/google'
-import './globals.css'
 import { WalletProvider } from '@/components/WalletProvider'
 import { UserProvider } from '@/components/UserProvider'
 import { Navbar } from '@/components/Navbar'
 import { Toaster } from 'react-hot-toast'
 import { ThemeProvider } from '@/lib/contexts/ThemeContext'
-import dynamic from 'next/dynamic'
-
-// Динамически импортируем WalletDebugger только в dev режиме
-const WalletDebugger = dynamic(() => import('@/components/WalletDebugger'), {
-  ssr: false
-})
-
-const PlatformWalletWarning = dynamic(() => import('@/components/PlatformWalletWarning'), {
-  ssr: false
-})
 
 const inter = Inter({ subsets: ['latin'] })
 
 export const metadata: Metadata = {
-  title: 'Fonana - Web3 Creator Platform',
-  description: 'Decentralized creator platform with crypto payments and NFT subscriptions',
+  title: 'Fonana - Web3 Content Platform',
+  description: 'Share exclusive content with your fans using cryptocurrency',
 }
 
 export default function RootLayout({
@@ -44,6 +35,7 @@ export default function RootLayout({
               <Toaster
                 position="top-right"
                 toastOptions={{
+                  duration: 5000, // Автоматическое закрытие через 5 секунд
                   style: {
                     background: '#1e293b',
                     color: '#fff',
@@ -51,8 +43,6 @@ export default function RootLayout({
                   },
                 }}
               />
-              <WalletDebugger />
-              <PlatformWalletWarning />
             </UserProvider>
           </WalletProvider>
         </ThemeProvider>

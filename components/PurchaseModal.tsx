@@ -67,15 +67,11 @@ export default function PurchaseModal({ post, onClose, onSuccess }: PurchaseModa
       toast.error('Пожалуйста, подключите кошелек')
       return
     }
-
-    console.log('User publicKey:', publicKey.toBase58())
-    console.log('Connected wallet:', publicKey.toBase58())
     
     // КРИТИЧЕСКАЯ ПРОВЕРКА: запрещаем покупки с кошелька платформы
     const PLATFORM_WALLET = 'npzAZaN9fDMgLV63b3kv3FF8cLSd8dQSLxyMXASA5T4'
     if (publicKey.toBase58() === PLATFORM_WALLET) {
       toast.error('❌ Вы не можете покупать контент с кошелька платформы!')
-      console.error('CRITICAL: Attempting to purchase from platform wallet!')
       return
     }
 
@@ -84,9 +80,6 @@ export default function PurchaseModal({ post, onClose, onSuccess }: PurchaseModa
     const creatorWallet = finalCreator.solanaWallet || finalCreator.wallet
     const referrerWallet = finalCreator.referrer?.solanaWallet || finalCreator.referrer?.wallet
     const hasReferrer = finalCreator.referrerId && referrerWallet && isValidSolanaAddress(referrerWallet)
-
-    console.log('Creator wallet:', creatorWallet)
-    console.log('Platform wallet:', PLATFORM_WALLET)
 
     if (!creatorWallet || !isValidSolanaAddress(creatorWallet)) {
       toast.error('Кошелек создателя не настроен')
@@ -110,32 +103,11 @@ export default function PurchaseModal({ post, onClose, onSuccess }: PurchaseModa
         referrerWallet
       )
 
-      console.log('Distribution:', distribution)
-
       // Create transaction
       const transaction = await createPostPurchaseTransaction(
         publicKey,
         distribution
       )
-
-      console.log('Transaction after creation:', {
-        blockhash: transaction.recentBlockhash,
-        lastValidBlockHeight: (transaction as any).lastValidBlockHeight,
-        instructions: transaction.instructions.length,
-        feePayer: transaction.feePayer?.toBase58(),
-        expectedFeePayer: publicKey.toBase58()
-      })
-      
-      // Проверяем если в транзакции есть создание новых аккаунтов
-      const hasNewAccounts = transaction.instructions.some(ix => {
-        const transfer = ix.data
-        // Простая проверка - если сумма перевода включает ренту
-        return transfer && transfer.length > 0
-      })
-      
-      if (hasNewAccounts) {
-        console.log('Note: Transaction may include account creation rent')
-      }
 
       // Проверяем что feePayer установлен правильно
       if (transaction.feePayer?.toBase58() !== publicKey.toBase58()) {
@@ -145,17 +117,16 @@ export default function PurchaseModal({ post, onClose, onSuccess }: PurchaseModa
         })
         // Принудительно устанавливаем правильный feePayer
         transaction.feePayer = publicKey
-        console.log('Fee payer corrected to:', transaction.feePayer.toBase58())
       }
 
-      // Send transaction with better error handling
+      // Send transaction with retry logic
       let signature: string = ''
       let attempts = 0
       const maxAttempts = 3
       
       // Параметры для отправки транзакции
       const sendOptions = {
-        skipPreflight: false, // Включаем preflight для лучшей диагностики
+        skipPreflight: false,
         preflightCommitment: 'confirmed' as any,
         maxRetries: 3
       }
@@ -164,96 +135,44 @@ export default function PurchaseModal({ post, onClose, onSuccess }: PurchaseModa
         attempts++
         
         try {
-          console.log(`Attempt ${attempts}/${maxAttempts} to send transaction...`)
-          
-          // ВАЖНО: Получаем свежий blockhash прямо перед отправкой
-          console.log('Getting fresh blockhash before sending...')
+          // Получаем свежий blockhash прямо перед отправкой
           const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash('confirmed')
           transaction.recentBlockhash = blockhash
           ;(transaction as any).lastValidBlockHeight = lastValidBlockHeight
           
-          console.log('Fresh blockhash set:', blockhash)
-          console.log('Valid until block:', lastValidBlockHeight)
-          
           // Симулируем транзакцию перед отправкой (опционально)
-          console.log('Simulating transaction...')
           try {
             const simulation = await connection.simulateTransaction(transaction)
             
-            if (simulation.value.err) {
-              // Игнорируем ошибку AccountNotFound - это нормально для новых аккаунтов
-              if (simulation.value.err !== 'AccountNotFound') {
-                console.error('Simulation failed:', simulation.value.err)
-                if (simulation.value.logs) {
-                  console.log('Simulation logs:', simulation.value.logs)
-                }
-                throw new Error(`Симуляция транзакции неуспешна: ${JSON.stringify(simulation.value.err)}`)
-              } else {
-                console.log('AccountNotFound in simulation - this is normal for new accounts, proceeding...')
-              }
-            } else {
-              console.log('Simulation successful')
+            if (simulation.value.err && simulation.value.err !== 'AccountNotFound') {
+              console.error('Simulation failed:', simulation.value.err)
+              throw new Error(`Симуляция транзакции неуспешна: ${JSON.stringify(simulation.value.err)}`)
             }
           } catch (simError) {
-            console.warn('Simulation error (non-critical):', simError)
             // Продолжаем даже если симуляция не удалась
           }
           
-          console.log('Simulation successful, sending transaction...')
           signature = await sendTransaction(transaction, connection, sendOptions)
-          console.log('Transaction sent:', signature)
-          
-          // Даем транзакции время попасть в сеть
-          await new Promise(resolve => setTimeout(resolve, 1000))
-          
-          // Проверяем статус транзакции сразу после отправки
-          console.log('Checking transaction status...')
-          const status = await connection.getSignatureStatus(signature)
-          console.log('Initial status:', status)
-          
-          if (status.value === null) {
-            // Транзакция еще не видна, ждем немного больше
-            console.log('Transaction not visible yet, waiting...')
-            await new Promise(resolve => setTimeout(resolve, 2000))
-            
-            const status2 = await connection.getSignatureStatus(signature)
-            console.log('Status after additional wait:', status2)
-            
-            if (status2.value === null && attempts < maxAttempts) {
-              // Транзакция так и не появилась, пробуем еще раз
-              console.log('Transaction still not visible, will retry...')
-              throw new Error('Transaction not propagated to network')
-            }
-          }
           
           // Успешно отправлено, выходим из цикла
           break
           
         } catch (sendError) {
-          console.error(`Error on attempt ${attempts}:`, sendError)
-          
           if (attempts === maxAttempts) {
-            // Последняя попытка не удалась
             throw new Error(`Не удалось отправить транзакцию после ${maxAttempts} попыток: ${sendError instanceof Error ? sendError.message : 'Неизвестная ошибка'}`)
           }
-          
           // Ждем перед следующей попыткой
-          console.log(`Waiting before retry ${attempts + 1}...`)
           await new Promise(resolve => setTimeout(resolve, 2000))
         }
       }
 
-      // Проверяем транзакцию сразу после отправки
+      // Проверяем транзакцию
       toast.loading('Проверяем транзакцию в блокчейне...')
-      
-      // Ждем немного перед первой проверкой
       await new Promise(resolve => setTimeout(resolve, 2000))
       
       // Проверяем статус транзакции
       try {
         const status = await connection.getSignatureStatus(signature)
-        console.log('Transaction status after 2s:', status)
-        
         if (status.value?.err) {
           throw new Error(`Транзакция отклонена: ${JSON.stringify(status.value.err)}`)
         }
@@ -261,7 +180,7 @@ export default function PurchaseModal({ post, onClose, onSuccess }: PurchaseModa
         console.error('Error checking transaction status:', statusError)
       }
 
-      // Ждем еще для надежности
+      // Ждем подтверждения
       toast.loading('Подтверждаем транзакцию в блокчейне...')
       await new Promise(resolve => setTimeout(resolve, 8000))
 

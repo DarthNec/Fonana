@@ -84,14 +84,6 @@ export async function validateTransaction(
     const tolerance = 0.001 // 0.001 SOL tolerance
     const expectedWithRent = expectedAmount + totalRentAdded
     
-    console.log('Amount validation:', {
-      totalTransferred,
-      expectedAmount,
-      totalRentAdded,
-      expectedWithRent,
-      recipientAmounts
-    })
-    
     if (Math.abs(totalTransferred - expectedWithRent) > tolerance && 
         Math.abs(totalTransferred - expectedAmount) > tolerance) {
       return {
@@ -217,15 +209,6 @@ export async function validatePaymentDistribution(
       const expectedAmount = accountWasCreated 
         ? distribution.creatorAmount + rentExemption
         : distribution.creatorAmount
-      
-      console.log('Creator validation:', {
-        received: creatorReceived,
-        expected: distribution.creatorAmount,
-        expectedWithRent: expectedAmount,
-        accountWasCreated,
-        preBalance: lamportsToSol(preBalances[creatorIndex]),
-        postBalance: lamportsToSol(postBalances[creatorIndex])
-      })
       
       if (Math.abs(creatorReceived - expectedAmount) > tolerance && 
           Math.abs(creatorReceived - distribution.creatorAmount) > tolerance) {

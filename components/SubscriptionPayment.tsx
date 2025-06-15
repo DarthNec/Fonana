@@ -10,7 +10,7 @@ import {
 } from '@/lib/solana/payments'
 import { isValidSolanaAddress } from '@/lib/solana/config'
 import { connection } from '@/lib/solana/connection'
-import { useToast } from '@/lib/hooks/use-toast'
+import { toast } from 'react-hot-toast'
 
 interface SubscriptionPaymentProps {
   creatorId: string
@@ -38,7 +38,6 @@ export function SubscriptionPayment({
   const [selectedPlan, setSelectedPlan] = useState<string>('')
   const [isProcessing, setIsProcessing] = useState(false)
   const [creatorData, setCreatorData] = useState<any>(null)
-  const { toast } = useToast()
 
   useEffect(() => {
     if (plans.length > 0 && !selectedPlan) {
@@ -60,42 +59,25 @@ export function SubscriptionPayment({
 
   const handleSubscribe = async () => {
     if (!publicKey || !connected) {
-      toast({
-        title: 'Кошелек не подключен',
-        description: 'Пожалуйста, подключите ваш Solana кошелек',
-        variant: 'destructive'
-      })
+      toast.error('Пожалуйста, подключите ваш Solana кошелек')
       return
     }
     
     // КРИТИЧЕСКАЯ ПРОВЕРКА: запрещаем подписки с кошелька платформы
     const PLATFORM_WALLET = 'npzAZaN9fDMgLV63b3kv3FF8cLSd8dQSLxyMXASA5T4'
     if (publicKey.toBase58() === PLATFORM_WALLET) {
-      toast({
-        title: '❌ Ошибка',
-        description: 'Вы не можете оформлять подписку с кошелька платформы!',
-        variant: 'destructive'
-      })
-      console.error('CRITICAL: Attempting to subscribe from platform wallet!')
+      toast.error('❌ Вы не можете оформлять подписку с кошелька платформы!')
       return
     }
 
     if (!creatorWallet || !isValidSolanaAddress(creatorWallet)) {
-      toast({
-        title: 'Ошибка',
-        description: 'Кошелек создателя не настроен',
-        variant: 'destructive'
-      })
+      toast.error('Кошелек создателя не настроен')
       return
     }
     
     // Дополнительная проверка: создатель не может подписаться сам на себя
     if (creatorWallet === publicKey.toBase58()) {
-      toast({
-        title: 'Ошибка',
-        description: 'Вы не можете подписаться сами на себя',
-        variant: 'destructive'
-      })
+      toast.error('Вы не можете подписаться сами на себя')
       return
     }
 
@@ -108,11 +90,7 @@ export function SubscriptionPayment({
     const finalHasReferrer = creatorData?.referrerId && finalReferrerWallet && isValidSolanaAddress(finalReferrerWallet)
 
     if (!isValidSolanaAddress(finalCreatorWallet)) {
-      toast({
-        title: 'Ошибка',
-        description: 'Некорректный адрес кошелька создателя',
-        variant: 'destructive'
-      })
+      toast.error('Некорректный адрес кошелька создателя')
       return
     }
 
@@ -147,44 +125,24 @@ export function SubscriptionPayment({
         attempts++
         
         try {
-          console.log(`Attempt ${attempts}/${maxAttempts} to send subscription transaction...`)
-          
           // ВАЖНО: Получаем свежий blockhash прямо перед отправкой
-          console.log('Getting fresh blockhash before sending...')
           const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash('confirmed')
           transaction.recentBlockhash = blockhash
           ;(transaction as any).lastValidBlockHeight = lastValidBlockHeight
           
-          console.log('Fresh blockhash set:', blockhash)
-          console.log('Valid until block:', lastValidBlockHeight)
-          
           // Симулируем транзакцию перед отправкой (опционально)
-          console.log('Simulating transaction...')
           try {
             const simulation = await connection.simulateTransaction(transaction)
             
-            if (simulation.value.err) {
-              // Игнорируем ошибку AccountNotFound - это нормально для новых аккаунтов
-              if (simulation.value.err !== 'AccountNotFound') {
-                console.error('Simulation failed:', simulation.value.err)
-                if (simulation.value.logs) {
-                  console.log('Simulation logs:', simulation.value.logs)
-                }
-                throw new Error(`Симуляция транзакции неуспешна: ${JSON.stringify(simulation.value.err)}`)
-              } else {
-                console.log('AccountNotFound in simulation - this is normal for new accounts, proceeding...')
-              }
-            } else {
-              console.log('Simulation successful')
+            if (simulation.value.err && simulation.value.err !== 'AccountNotFound') {
+              console.error('Simulation failed:', simulation.value.err)
+              throw new Error(`Симуляция транзакции неуспешна: ${JSON.stringify(simulation.value.err)}`)
             }
           } catch (simError) {
-            console.warn('Simulation error (non-critical):', simError)
             // Продолжаем даже если симуляция не удалась
           }
           
-          console.log('Simulation successful, sending transaction...')
           signature = await sendTransaction(transaction, connection, sendOptions)
-          console.log('Transaction sent:', signature)
           
           // Даем транзакции время попасть в сеть
           await new Promise(resolve => setTimeout(resolve, 1000))
@@ -201,16 +159,12 @@ export function SubscriptionPayment({
           }
           
           // Ждем перед следующей попыткой
-          console.log(`Waiting before retry ${attempts + 1}...`)
           await new Promise(resolve => setTimeout(resolve, 2000))
         }
       }
 
       // Ждем подтверждения транзакции в блокчейне (обычно 5-10 секунд)
-      toast({
-        title: 'Подтверждение транзакции',
-        description: 'Ожидаем подтверждения в блокчейне Solana...',
-      })
+      toast.loading('Ожидаем подтверждения в блокчейне Solana...')
       await new Promise(resolve => setTimeout(resolve, 5000))
 
       // Process payment on backend
@@ -236,10 +190,7 @@ export function SubscriptionPayment({
         throw new Error(data.error || 'Ошибка обработки платежа')
       }
 
-      toast({
-        title: 'Подписка оформлена!',
-        description: `Вы успешно подписались на ${creatorName}`,
-      })
+      toast.success(`Вы успешно подписались на ${creatorName}!`)
 
       // Redirect or update UI
       window.location.reload()
@@ -263,11 +214,7 @@ export function SubscriptionPayment({
         }
       }
       
-      toast({
-        title: 'Ошибка платежа',
-        description: errorMessage,
-        variant: 'destructive'
-      })
+      toast.error(errorMessage)
     } finally {
       setIsProcessing(false)
     }
