@@ -70,6 +70,14 @@ export default function PurchaseModal({ post, onClose, onSuccess }: PurchaseModa
 
     console.log('User publicKey:', publicKey.toBase58())
     console.log('Connected wallet:', publicKey.toBase58())
+    
+    // КРИТИЧЕСКАЯ ПРОВЕРКА: запрещаем покупки с кошелька платформы
+    const PLATFORM_WALLET = 'npzAZaN9fDMgLV63b3kv3FF8cLSd8dQSLxyMXASA5T4'
+    if (publicKey.toBase58() === PLATFORM_WALLET) {
+      toast.error('❌ Вы не можете покупать контент с кошелька платформы!')
+      console.error('CRITICAL: Attempting to purchase from platform wallet!')
+      return
+    }
 
     // Используем данные создателя или пост данные
     const finalCreator = creatorData || post.creator
@@ -78,10 +86,16 @@ export default function PurchaseModal({ post, onClose, onSuccess }: PurchaseModa
     const hasReferrer = finalCreator.referrerId && referrerWallet && isValidSolanaAddress(referrerWallet)
 
     console.log('Creator wallet:', creatorWallet)
-    console.log('Platform wallet:', process.env.NEXT_PUBLIC_PLATFORM_WALLET)
+    console.log('Platform wallet:', PLATFORM_WALLET)
 
     if (!creatorWallet || !isValidSolanaAddress(creatorWallet)) {
       toast.error('Кошелек создателя не настроен')
+      return
+    }
+    
+    // Дополнительная проверка: создатель не может покупать свой контент
+    if (creatorWallet === publicKey.toBase58()) {
+      toast.error('Вы не можете покупать свой собственный контент')
       return
     }
 

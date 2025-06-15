@@ -67,6 +67,37 @@ export function SubscriptionPayment({
       })
       return
     }
+    
+    // КРИТИЧЕСКАЯ ПРОВЕРКА: запрещаем подписки с кошелька платформы
+    const PLATFORM_WALLET = 'npzAZaN9fDMgLV63b3kv3FF8cLSd8dQSLxyMXASA5T4'
+    if (publicKey.toBase58() === PLATFORM_WALLET) {
+      toast({
+        title: '❌ Ошибка',
+        description: 'Вы не можете оформлять подписку с кошелька платформы!',
+        variant: 'destructive'
+      })
+      console.error('CRITICAL: Attempting to subscribe from platform wallet!')
+      return
+    }
+
+    if (!creatorWallet || !isValidSolanaAddress(creatorWallet)) {
+      toast({
+        title: 'Ошибка',
+        description: 'Кошелек создателя не настроен',
+        variant: 'destructive'
+      })
+      return
+    }
+    
+    // Дополнительная проверка: создатель не может подписаться сам на себя
+    if (creatorWallet === publicKey.toBase58()) {
+      toast({
+        title: 'Ошибка',
+        description: 'Вы не можете подписаться сами на себя',
+        variant: 'destructive'
+      })
+      return
+    }
 
     const plan = plans.find(p => p.id === selectedPlan)
     if (!plan) return

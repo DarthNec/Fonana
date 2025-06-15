@@ -13,6 +13,10 @@ const WalletDebugger = dynamic(() => import('@/components/WalletDebugger'), {
   ssr: false
 })
 
+const PlatformWalletWarning = dynamic(() => import('@/components/PlatformWalletWarning'), {
+  ssr: false
+})
+
 const inter = Inter({ subsets: ['latin'] })
 
 export const metadata: Metadata = {
@@ -47,7 +51,8 @@ export default function RootLayout({
                   },
                 }}
               />
-              {process.env.NODE_ENV === 'development' && <WalletDebugger />}
+              <WalletDebugger />
+              <PlatformWalletWarning />
             </UserProvider>
           </WalletProvider>
         </ThemeProvider>
