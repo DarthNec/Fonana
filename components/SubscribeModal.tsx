@@ -141,10 +141,31 @@ export default function SubscribeModal({ creator, preferredTier, onClose, onSucc
     try {
       // Get current user ID
       const userResponse = await fetch(`/api/user?wallet=${publicKey.toString()}`)
-      const userData = await userResponse.json()
+      let userData = await userResponse.json()
       
-      if (!userData.user) {
-        throw new Error('User not found')
+      // If user not found, create new user
+      if (!userResponse.ok || !userData.user) {
+        console.log('User not found, creating new user...')
+        
+        const createUserResponse = await fetch('/api/user', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            wallet: publicKey.toString()
+          })
+        })
+        
+        if (!createUserResponse.ok) {
+          throw new Error('Failed to create user')
+        }
+        
+        userData = await createUserResponse.json()
+        
+        if (!userData.user) {
+          throw new Error('User creation failed')
+        }
       }
 
       // Create subscription
