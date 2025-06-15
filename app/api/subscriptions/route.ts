@@ -120,16 +120,23 @@ export async function GET(request: NextRequest) {
 // POST /api/subscriptions
 export async function POST(request: NextRequest) {
   try {
+    console.log('[Subscriptions API] POST request received')
+    
     const data = await request.json()
+    console.log('[Subscriptions API] Request data:', data)
+    
     const { userId, creatorId, plan, price } = data
 
     if (!userId || !creatorId || !plan || price === undefined) {
+      console.log('[Subscriptions API] Missing required fields')
       return NextResponse.json(
         { error: 'Missing required fields' },
         { status: 400 }
       )
     }
 
+    console.log('[Subscriptions API] Checking existing subscription for:', { userId, creatorId })
+    
     // Проверяем, есть ли существующая подписка (активная или неактивная)
     const existingSubscription = await prisma.subscription.findUnique({
       where: {
@@ -140,17 +147,22 @@ export async function POST(request: NextRequest) {
       }
     })
 
+    console.log('[Subscriptions API] Existing subscription:', existingSubscription)
+
     let subscription
 
     if (existingSubscription) {
       // Если подписка существует, проверяем её статус
       if (existingSubscription.isActive && existingSubscription.validUntil > new Date()) {
+        console.log('[Subscriptions API] Active subscription already exists')
         return NextResponse.json(
           { error: 'Active subscription already exists' },
           { status: 400 }
         )
       }
 
+      console.log('[Subscriptions API] Updating existing subscription')
+      
       // Обновляем существующую подписку
       subscription = await prisma.subscription.update({
         where: {
@@ -165,7 +177,11 @@ export async function POST(request: NextRequest) {
           currency: 'SOL'
         }
       })
+      
+      console.log('[Subscriptions API] Subscription updated:', subscription)
     } else {
+      console.log('[Subscriptions API] Creating new subscription')
+      
       // Создаем новую подписку
       subscription = await prisma.subscription.create({
         data: {
@@ -178,8 +194,12 @@ export async function POST(request: NextRequest) {
           validUntil: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000) // 30 дней
         }
       })
+      
+      console.log('[Subscriptions API] Subscription created:', subscription)
     }
 
+    console.log('[Subscriptions API] Fetching creator info')
+    
     // Получаем информацию о создателе
     const creator = await prisma.user.findUnique({
       where: { id: creatorId },
@@ -191,6 +211,8 @@ export async function POST(request: NextRequest) {
         isVerified: true,
       }
     })
+
+    console.log('[Subscriptions API] Creator info:', creator)
 
     return NextResponse.json({
       subscription: {
@@ -206,9 +228,18 @@ export async function POST(request: NextRequest) {
       }
     })
   } catch (error) {
-    console.error('Error creating subscription:', error)
+    console.error('[Subscriptions API] Error creating subscription:', error)
+    const errorMessage = error instanceof Error ? error.message : String(error)
+    const errorDetails = error instanceof Error ? {
+      name: error.name,
+      message: error.message,
+      stack: error.stack
+    } : { message: String(error) }
+    
+    console.error('[Subscriptions API] Error details:', errorDetails)
+    
     return NextResponse.json(
-      { error: 'Failed to create subscription' },
+      { error: 'Failed to create subscription', details: errorMessage },
       { status: 500 }
     )
   }
