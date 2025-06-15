@@ -88,12 +88,17 @@ export default function CreatorsExplorer() {
       const response = await fetch(`/api/user?wallet=${publicKey?.toBase58()}`)
       const userData = await response.json()
       
+      console.log('[CreatorsExplorer] User data:', userData)
+      
       if (userData.user?.id) {
         const subsResponse = await fetch(`/api/subscriptions/check?userId=${userData.user.id}`)
         const subsData = await subsResponse.json()
         
+        console.log('[CreatorsExplorer] Subscriptions data:', subsData)
+        
         if (subsResponse.ok) {
           setSubscribedCreatorIds(subsData.subscribedCreatorIds || [])
+          console.log('[CreatorsExplorer] Set subscribedCreatorIds:', subsData.subscribedCreatorIds)
         }
         
         // Load hidden subscription IDs from localStorage
@@ -110,6 +115,7 @@ export default function CreatorsExplorer() {
                 .filter((sub: any) => hiddenSubIds.includes(sub.id))
                 .map((sub: any) => sub.creatorId)
               setHiddenCreatorIds(hiddenCreators)
+              console.log('[CreatorsExplorer] Hidden creators:', hiddenCreators)
             }
           } catch (error) {
             console.error('Error loading visibility preferences:', error)
@@ -151,6 +157,11 @@ export default function CreatorsExplorer() {
       filtered = creators.filter(creator => 
         isUserSubscribedTo(creator.id) && !hiddenCreatorIds.includes(creator.id)
       )
+      console.log('[CreatorsExplorer] Subscriptions tab:')
+      console.log('- All creators:', creators.map(c => ({ id: c.id, name: c.name })))
+      console.log('- Subscribed IDs:', subscribedCreatorIds)
+      console.log('- Hidden IDs:', hiddenCreatorIds)
+      console.log('- Filtered creators:', filtered.map(c => ({ id: c.id, name: c.name })))
     } else if (activeTab === 'recommendations') {
       // Показываем рекомендации - случайные 6 авторов, на которых НЕ подписан
       const notSubscribed = creators.filter(creator => !isUserSubscribedTo(creator.id))

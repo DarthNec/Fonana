@@ -240,9 +240,17 @@ export default function SubscribeModal({ creator, preferredTier, onClose, onSucc
         throw new Error(data.error || 'Error processing payment')
       }
       
-      toast.success(`You have successfully subscribed to ${creator.name}!`)
-      onSuccess?.()
-      onClose()
+      toast.success(`Successfully subscribed to ${creator.name}!`)
+      
+      // Вызываем callback успеха
+      if (onSuccess) {
+        onSuccess()
+      }
+      
+      // Принудительно обновляем страницу через небольшую задержку
+      setTimeout(() => {
+        window.location.reload()
+      }, 1500)
     } catch (error) {
       console.error('Error subscribing:', error)
       
@@ -324,7 +332,11 @@ export default function SubscribeModal({ creator, preferredTier, onClose, onSucc
       
       toast.success(`You have successfully subscribed to ${creator.name}!`)
       onSuccess?.()
-      onClose()
+      
+      // Принудительно обновляем страницу через небольшую задержку
+      setTimeout(() => {
+        window.location.reload()
+      }, 1500)
     } catch (error) {
       console.error('Error subscribing:', error)
       toast.error(error instanceof Error ? error.message : 'Error processing subscription')
