@@ -134,12 +134,46 @@ export function SubscriptionPayment({
       )
 
       // Send transaction
-      const signature = await sendTransaction(transaction, connection, {
-        preflightCommitment: 'confirmed',
-        skipPreflight: false
-      })
+      let signature: string
+      const sendOptions = {
+        skipPreflight: true,
+        preflightCommitment: 'processed' as any,
+        maxRetries: 5
+      }
       
-      console.log('Transaction sent:', signature)
+      try {
+        // ВАЖНО: Получаем свежий blockhash прямо перед отправкой
+        console.log('Getting fresh blockhash before sending...')
+        const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash('confirmed')
+        transaction.recentBlockhash = blockhash
+        ;(transaction as any).lastValidBlockHeight = lastValidBlockHeight
+        
+        console.log('Fresh blockhash set:', blockhash)
+        console.log('Valid until block:', lastValidBlockHeight)
+        
+        signature = await sendTransaction(transaction, connection, sendOptions)
+        console.log('Transaction sent:', signature)
+        
+        // Даем транзакции время попасть в сеть
+        await new Promise(resolve => setTimeout(resolve, 500))
+        
+      } catch (sendError) {
+        console.error('Error sending transaction:', sendError)
+        
+        // Если ошибка связана с истекшим blockhash, пробуем еще раз
+        if (sendError instanceof Error && sendError.message.includes('blockhash')) {
+          console.log('Retrying with new blockhash...')
+          
+          const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash('finalized')
+          transaction.recentBlockhash = blockhash
+          ;(transaction as any).lastValidBlockHeight = lastValidBlockHeight
+          
+          signature = await sendTransaction(transaction, connection, sendOptions)
+          console.log('Transaction sent on retry:', signature)
+        } else {
+          throw sendError
+        }
+      }
 
       // Ждем подтверждения транзакции в блокчейне (обычно 5-10 секунд)
       toast({

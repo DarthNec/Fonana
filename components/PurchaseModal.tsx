@@ -139,15 +139,25 @@ export default function PurchaseModal({ post, onClose, onSuccess }: PurchaseModa
 
       // Send transaction with better error handling
       let signature: string
+      
+      // Параметры для отправки транзакции
+      const sendOptions = {
+        skipPreflight: true, // Пропускаем preflight для ускорения
+        preflightCommitment: 'processed' as any, // Используем processed для быстрой проверки
+        maxRetries: 5 // Увеличиваем количество попыток
+      }
+      
       try {
         console.log('Sending transaction with Phantom...')
         
-        // Используем более агрессивные параметры для отправки
-        const sendOptions = {
-          skipPreflight: true, // Пропускаем preflight для ускорения
-          preflightCommitment: 'processed' as any, // Используем processed для быстрой проверки
-          maxRetries: 5 // Увеличиваем количество попыток
-        }
+        // ВАЖНО: Получаем свежий blockhash прямо перед отправкой
+        console.log('Getting fresh blockhash before sending...')
+        const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash('confirmed')
+        transaction.recentBlockhash = blockhash
+        ;(transaction as any).lastValidBlockHeight = lastValidBlockHeight
+        
+        console.log('Fresh blockhash set:', blockhash)
+        console.log('Valid until block:', lastValidBlockHeight)
         
         signature = await sendTransaction(transaction, connection, sendOptions)
         console.log('Transaction sent:', signature)
@@ -157,7 +167,24 @@ export default function PurchaseModal({ post, onClose, onSuccess }: PurchaseModa
         
       } catch (sendError) {
         console.error('Error sending transaction:', sendError)
-        throw new Error(`Ошибка отправки транзакции: ${sendError instanceof Error ? sendError.message : 'Неизвестная ошибка'}`)
+        
+        // Если ошибка связана с истекшим blockhash, пробуем еще раз
+        if (sendError instanceof Error && sendError.message.includes('blockhash')) {
+          console.log('Retrying with new blockhash...')
+          
+          try {
+            const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash('finalized')
+            transaction.recentBlockhash = blockhash
+            ;(transaction as any).lastValidBlockHeight = lastValidBlockHeight
+            
+            signature = await sendTransaction(transaction, connection, sendOptions)
+            console.log('Transaction sent on retry:', signature)
+          } catch (retryError) {
+            throw new Error(`Ошибка отправки транзакции после повторной попытки: ${retryError instanceof Error ? retryError.message : 'Неизвестная ошибка'}`)
+          }
+        } else {
+          throw new Error(`Ошибка отправки транзакции: ${sendError instanceof Error ? sendError.message : 'Неизвестная ошибка'}`)
+        }
       }
 
       // Проверяем транзакцию сразу после отправки

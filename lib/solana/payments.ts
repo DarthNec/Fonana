@@ -77,10 +77,10 @@ export async function createSubscriptionTransaction(
   ;(transaction as any).lastValidBlockHeight = lastValidBlockHeight
   
   // Добавляем приоритетную комиссию для более быстрого подтверждения
-  // 10000 microlamports = 0.00001 SOL дополнительной комиссии
+  // 50000 microlamports = 0.00005 SOL дополнительной комиссии
   transaction.add(
     ComputeBudgetProgram.setComputeUnitPrice({
-      microLamports: 10000
+      microLamports: 50000
     })
   )
   
@@ -158,10 +158,10 @@ export async function createPostPurchaseTransaction(
   console.log('Platform wallet is:', PLATFORM_WALLET)
   
   // Добавляем приоритетную комиссию для более быстрого подтверждения
-  // 10000 microlamports = 0.00001 SOL дополнительной комиссии
+  // 50000 microlamports = 0.00005 SOL дополнительной комиссии
   transaction.add(
     ComputeBudgetProgram.setComputeUnitPrice({
-      microLamports: 10000
+      microLamports: 50000
     })
   )
   

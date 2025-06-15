@@ -238,7 +238,7 @@ export async function validatePaymentDistribution(
 // Вспомогательная функция для ожидания подтверждения транзакции
 export async function waitForTransactionConfirmation(
   signature: string,
-  maxRetries: number = 60, // Увеличено до 60 попыток
+  maxRetries: number = 120, // Увеличено до 120 попыток (2 минуты)
   retryDelay: number = 1000
 ): Promise<boolean> {
   console.log(`Waiting for transaction confirmation: ${signature}`)
@@ -254,16 +254,22 @@ export async function waitForTransactionConfirmation(
     console.error('Error getting slot:', err)
   }
   
+  // Даем транзакции время попасть в сеть
+  await new Promise(resolve => setTimeout(resolve, 2000))
+  
   for (let i = 0; i < maxRetries; i++) {
     try {
       const status = await getConnection().getSignatureStatus(signature)
       
-      console.log(`Attempt ${i + 1}/${maxRetries} - Status:`, {
-        confirmationStatus: status.value?.confirmationStatus,
-        err: status.value?.err,
-        slot: status.context.slot,
-        value: status.value
-      })
+      // Логируем только каждую 5-ю попытку чтобы не спамить
+      if (i % 5 === 0) {
+        console.log(`Attempt ${i + 1}/${maxRetries} - Status:`, {
+          confirmationStatus: status.value?.confirmationStatus,
+          err: status.value?.err,
+          slot: status.context.slot,
+          value: status.value
+        })
+      }
       
       if (status.value?.confirmationStatus === 'confirmed' || 
           status.value?.confirmationStatus === 'finalized') {
@@ -278,12 +284,14 @@ export async function waitForTransactionConfirmation(
       
       // Если транзакция еще не видна в сети, подождем немного больше
       if (!status.value) {
-        if (i < 10) {
-          console.log(`Transaction not found yet, waiting longer... (attempt ${i + 1})`)
+        if (i < 20) {
+          if (i % 5 === 0) {
+            console.log(`Transaction not found yet, waiting longer... (attempt ${i + 1})`)
+          }
           await new Promise(resolve => setTimeout(resolve, retryDelay * 2))
           continue
-        } else if (i === 10) {
-          // После 10 попыток проверяем, не истекла ли транзакция
+        } else if (i === 20) {
+          // После 20 попыток проверяем, не истекла ли транзакция
           console.log('Checking if transaction might have expired...')
           try {
             const tx = await getConnection().getTransaction(signature, {
