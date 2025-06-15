@@ -134,44 +134,63 @@ export function SubscriptionPayment({
       )
 
       // Send transaction
-      let signature: string
+      let signature: string = ''
+      let attempts = 0
+      const maxAttempts = 3
       const sendOptions = {
         skipPreflight: true,
         preflightCommitment: 'processed' as any,
         maxRetries: 5
       }
       
-      try {
-        // ВАЖНО: Получаем свежий blockhash прямо перед отправкой
-        console.log('Getting fresh blockhash before sending...')
-        const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash('confirmed')
-        transaction.recentBlockhash = blockhash
-        ;(transaction as any).lastValidBlockHeight = lastValidBlockHeight
+      while (attempts < maxAttempts) {
+        attempts++
         
-        console.log('Fresh blockhash set:', blockhash)
-        console.log('Valid until block:', lastValidBlockHeight)
-        
-        signature = await sendTransaction(transaction, connection, sendOptions)
-        console.log('Transaction sent:', signature)
-        
-        // Даем транзакции время попасть в сеть
-        await new Promise(resolve => setTimeout(resolve, 500))
-        
-      } catch (sendError) {
-        console.error('Error sending transaction:', sendError)
-        
-        // Если ошибка связана с истекшим blockhash, пробуем еще раз
-        if (sendError instanceof Error && sendError.message.includes('blockhash')) {
-          console.log('Retrying with new blockhash...')
+        try {
+          console.log(`Attempt ${attempts}/${maxAttempts} to send subscription transaction...`)
           
-          const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash('finalized')
+          // ВАЖНО: Получаем свежий blockhash прямо перед отправкой
+          console.log('Getting fresh blockhash before sending...')
+          const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash('confirmed')
           transaction.recentBlockhash = blockhash
           ;(transaction as any).lastValidBlockHeight = lastValidBlockHeight
           
+          console.log('Fresh blockhash set:', blockhash)
+          console.log('Valid until block:', lastValidBlockHeight)
+          
+          // Симулируем транзакцию перед отправкой
+          console.log('Simulating transaction...')
+          const simulation = await connection.simulateTransaction(transaction)
+          
+          if (simulation.value.err) {
+            console.error('Simulation failed:', simulation.value.err)
+            if (simulation.value.logs) {
+              console.log('Simulation logs:', simulation.value.logs)
+            }
+            throw new Error(`Симуляция транзакции неуспешна: ${JSON.stringify(simulation.value.err)}`)
+          }
+          
+          console.log('Simulation successful, sending transaction...')
           signature = await sendTransaction(transaction, connection, sendOptions)
-          console.log('Transaction sent on retry:', signature)
-        } else {
-          throw sendError
+          console.log('Transaction sent:', signature)
+          
+          // Даем транзакции время попасть в сеть
+          await new Promise(resolve => setTimeout(resolve, 1000))
+          
+          // Успешно отправлено, выходим из цикла
+          break
+          
+        } catch (sendError) {
+          console.error(`Error on attempt ${attempts}:`, sendError)
+          
+          if (attempts === maxAttempts) {
+            // Последняя попытка не удалась
+            throw new Error(`Не удалось отправить транзакцию после ${maxAttempts} попыток: ${sendError instanceof Error ? sendError.message : 'Неизвестная ошибка'}`)
+          }
+          
+          // Ждем перед следующей попыткой
+          console.log(`Waiting before retry ${attempts + 1}...`)
+          await new Promise(resolve => setTimeout(resolve, 2000))
         }
       }
 

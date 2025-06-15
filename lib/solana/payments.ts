@@ -3,10 +3,32 @@ import {
   Transaction, 
   SystemProgram,
   LAMPORTS_PER_SOL,
-  ComputeBudgetProgram 
+  ComputeBudgetProgram,
+  Connection
 } from '@solana/web3.js'
 import { getConnection } from './connection'
 import { SOLANA_CONFIG } from './config'
+
+// Получаем рекомендуемую приоритетную комиссию на основе текущей загрузки сети
+async function getRecommendedPriorityFee(connection: Connection): Promise<number> {
+  try {
+    const fees = await connection.getRecentPrioritizationFees()
+    if (fees && fees.length > 0) {
+      const nonZeroFees = fees.filter(f => f.prioritizationFee > 0)
+      if (nonZeroFees.length > 0) {
+        const feeValues = nonZeroFees.map(f => f.prioritizationFee).sort((a, b) => a - b)
+        // Используем 75-й перцентиль для надежности
+        const p75 = feeValues[Math.floor(feeValues.length * 0.75)]
+        // Минимум 100000, максимум 500000
+        return Math.min(Math.max(p75 || 100000, 100000), 500000)
+      }
+    }
+  } catch (error) {
+    console.error('Error getting priority fees:', error)
+  }
+  // По умолчанию используем 200000 microlamports
+  return 200000
+}
 
 export interface PaymentDistribution {
   creatorWallet: string
@@ -58,29 +80,27 @@ export async function createSubscriptionTransaction(
   payerPublicKey: PublicKey,
   distribution: PaymentDistribution
 ): Promise<Transaction> {
+  console.log('Creating subscription transaction with:', {
+    payerPublicKey: payerPublicKey.toBase58(),
+    distribution
+  })
+
+  const connection = getConnection()
+  const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash('confirmed')
+  
   const transaction = new Transaction()
-  
-  // Get recent blockhash with retry
-  let blockhash
-  let lastValidBlockHeight
-  try {
-    const result = await getConnection().getLatestBlockhash('confirmed')
-    blockhash = result.blockhash
-    lastValidBlockHeight = result.lastValidBlockHeight
-  } catch (error) {
-    console.error('Error getting blockhash:', error)
-    throw new Error('Не удалось получить данные блокчейна. Попробуйте позже.')
-  }
-  
   transaction.recentBlockhash = blockhash
   transaction.feePayer = payerPublicKey
   ;(transaction as any).lastValidBlockHeight = lastValidBlockHeight
   
+  // Получаем динамическую приоритетную комиссию
+  const priorityFee = await getRecommendedPriorityFee(connection)
+  console.log(`Using priority fee: ${priorityFee} microlamports`)
+  
   // Добавляем приоритетную комиссию для более быстрого подтверждения
-  // 50000 microlamports = 0.00005 SOL дополнительной комиссии
   transaction.add(
     ComputeBudgetProgram.setComputeUnitPrice({
-      microLamports: 50000
+      microLamports: priorityFee
     })
   )
   
@@ -136,32 +156,24 @@ export async function createPostPurchaseTransaction(
     distribution
   })
   
+  const connection = getConnection()
+  const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash('confirmed')
+  
   const transaction = new Transaction()
-  
-  // Get recent blockhash with retry
-  let blockhash
-  let lastValidBlockHeight
-  try {
-    const result = await getConnection().getLatestBlockhash('confirmed')
-    blockhash = result.blockhash
-    lastValidBlockHeight = result.lastValidBlockHeight
-  } catch (error) {
-    console.error('Error getting blockhash:', error)
-    throw new Error('Не удалось получить данные блокчейна. Попробуйте позже.')
-  }
-  
   transaction.recentBlockhash = blockhash
   transaction.feePayer = payerPublicKey
   ;(transaction as any).lastValidBlockHeight = lastValidBlockHeight
   
-  console.log('Transaction feePayer set to:', transaction.feePayer.toBase58())
-  console.log('Platform wallet is:', PLATFORM_WALLET)
+  console.log('Transaction feePayer set to:', transaction.feePayer?.toBase58())
+  
+  // Получаем динамическую приоритетную комиссию
+  const priorityFee = await getRecommendedPriorityFee(connection)
+  console.log(`Using priority fee: ${priorityFee} microlamports`)
   
   // Добавляем приоритетную комиссию для более быстрого подтверждения
-  // 50000 microlamports = 0.00005 SOL дополнительной комиссии
   transaction.add(
     ComputeBudgetProgram.setComputeUnitPrice({
-      microLamports: 50000
+      microLamports: priorityFee
     })
   )
   
