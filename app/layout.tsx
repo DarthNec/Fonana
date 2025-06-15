@@ -6,6 +6,12 @@ import { UserProvider } from '@/components/UserProvider'
 import { Navbar } from '@/components/Navbar'
 import { Toaster } from 'react-hot-toast'
 import { ThemeProvider } from '@/lib/contexts/ThemeContext'
+import dynamic from 'next/dynamic'
+
+// Динамически импортируем WalletDebugger только в dev режиме
+const WalletDebugger = dynamic(() => import('@/components/WalletDebugger'), {
+  ssr: false
+})
 
 const inter = Inter({ subsets: ['latin'] })
 
@@ -41,6 +47,7 @@ export default function RootLayout({
                   },
                 }}
               />
+              {process.env.NODE_ENV === 'development' && <WalletDebugger />}
             </UserProvider>
           </WalletProvider>
         </ThemeProvider>
