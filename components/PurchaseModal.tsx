@@ -155,9 +155,9 @@ export default function PurchaseModal({ post, onClose, onSuccess }: PurchaseModa
       
       // Параметры для отправки транзакции
       const sendOptions = {
-        skipPreflight: true, // Пропускаем preflight для ускорения
-        preflightCommitment: 'processed' as any, // Используем processed для быстрой проверки
-        maxRetries: 5 // Увеличиваем количество попыток
+        skipPreflight: false, // Включаем preflight для лучшей диагностики
+        preflightCommitment: 'confirmed' as any,
+        maxRetries: 3
       }
       
       while (attempts < maxAttempts) {
@@ -205,6 +205,26 @@ export default function PurchaseModal({ post, onClose, onSuccess }: PurchaseModa
           
           // Даем транзакции время попасть в сеть
           await new Promise(resolve => setTimeout(resolve, 1000))
+          
+          // Проверяем статус транзакции сразу после отправки
+          console.log('Checking transaction status...')
+          const status = await connection.getSignatureStatus(signature)
+          console.log('Initial status:', status)
+          
+          if (status.value === null) {
+            // Транзакция еще не видна, ждем немного больше
+            console.log('Transaction not visible yet, waiting...')
+            await new Promise(resolve => setTimeout(resolve, 2000))
+            
+            const status2 = await connection.getSignatureStatus(signature)
+            console.log('Status after additional wait:', status2)
+            
+            if (status2.value === null && attempts < maxAttempts) {
+              // Транзакция так и не появилась, пробуем еще раз
+              console.log('Transaction still not visible, will retry...')
+              throw new Error('Transaction not propagated to network')
+            }
+          }
           
           // Успешно отправлено, выходим из цикла
           break

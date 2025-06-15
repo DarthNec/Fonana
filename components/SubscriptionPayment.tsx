@@ -138,9 +138,9 @@ export function SubscriptionPayment({
       let attempts = 0
       const maxAttempts = 3
       const sendOptions = {
-        skipPreflight: true,
-        preflightCommitment: 'processed' as any,
-        maxRetries: 5
+        skipPreflight: false,
+        preflightCommitment: 'confirmed' as any,
+        maxRetries: 3
       }
       
       while (attempts < maxAttempts) {
