@@ -1,10 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getPosts, createPost, getPostsByCreator, getUserByWallet } from '@/lib/db'
-import { PrismaClient } from '@prisma/client'
+import { prisma } from '@/lib/prisma'
 
 export const dynamic = 'force-dynamic'
-
-const prisma = new PrismaClient()
 
 // GET /api/posts - получить список постов
 export async function GET(req: Request) {
@@ -81,7 +79,7 @@ export async function GET(req: Request) {
         },
         select: { postId: true }
       })
-      userPurchasedPosts = purchases.map(purchase => purchase.postId)
+      userPurchasedPosts = purchases.map((purchase: { postId: string }) => purchase.postId)
       console.log('[API/posts] User purchased posts:', userPurchasedPosts.length, 'posts')
     }
 
@@ -125,8 +123,6 @@ export async function GET(req: Request) {
   } catch (error) {
     console.error('Error fetching posts:', error)
     return NextResponse.json({ error: 'Failed to fetch posts' }, { status: 500 })
-  } finally {
-    await prisma.$disconnect()
   }
 }
 
@@ -164,7 +160,5 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     console.error('Error creating post:', error)
     return NextResponse.json({ error: 'Failed to create post' }, { status: 500 })
-  } finally {
-    await prisma.$disconnect()
   }
 } 

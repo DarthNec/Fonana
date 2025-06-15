@@ -243,26 +243,9 @@ export async function waitForTransactionConfirmation(
 ): Promise<boolean> {
   console.log(`Waiting for transaction confirmation: ${signature}`)
   
-  // Сначала пытаемся использовать WebSocket для быстрого подтверждения
-  try {
-    const result = await getConnection().confirmTransaction({
-      signature,
-      blockhash: '', // Будет заполнено автоматически
-      lastValidBlockHeight: 0, // Будет заполнено автоматически
-    }, 'confirmed')
-    
-    if (!result.value.err) {
-      console.log(`Transaction confirmed via WebSocket: ${signature}`)
-      return true
-    } else {
-      console.error(`Transaction failed: ${result.value.err}`)
-      return false
-    }
-  } catch (wsError) {
-    console.warn('WebSocket confirmation failed, falling back to polling:', wsError)
-  }
+  // Сначала проверяем статус транзакции напрямую
+  // Не используем confirmTransaction так как для этого нужен blockhash
   
-  // Fallback to polling если WebSocket не сработал
   for (let i = 0; i < maxRetries; i++) {
     try {
       const status = await getConnection().getSignatureStatus(signature)
@@ -281,7 +264,7 @@ export async function waitForTransactionConfirmation(
       }
       
       // Если транзакция еще не видна в сети, подождем немного больше
-      if (!status.value && i < 5) {
+      if (!status.value && i < 10) {
         await new Promise(resolve => setTimeout(resolve, retryDelay * 2))
         continue
       }
