@@ -5,7 +5,7 @@ import { useState, useEffect } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
 import Avatar from '@/components/Avatar'
-import { SubscriptionPayment } from '@/components/SubscriptionPayment'
+import dynamic from 'next/dynamic'
 import { 
   CheckIcon,
   SparklesIcon,
@@ -17,6 +17,20 @@ import { CheckBadgeIcon } from '@heroicons/react/24/solid'
 import { toast } from 'react-hot-toast'
 import { useUser } from '@/lib/hooks/useUser'
 import { getProfileLink } from '@/lib/utils/links'
+
+// Динамический импорт SubscriptionPayment для избежания проблем с SSR
+const SubscriptionPayment = dynamic(
+  () => import('@/components/SubscriptionPayment').then(mod => mod.SubscriptionPayment),
+  { 
+    ssr: false,
+    loading: () => (
+      <div className="text-center py-8">
+        <div className="w-16 h-16 border-4 border-purple-500/30 border-t-purple-500 rounded-full animate-spin mx-auto mb-4"></div>
+        <p className="text-slate-400">Loading payment system...</p>
+      </div>
+    )
+  }
+)
 
 interface SubscribePageProps {
   params: {
