@@ -96,17 +96,57 @@ export default function PurchaseModal({ post, onClose, onSuccess }: PurchaseModa
         distribution
       )
 
-      // Send transaction
-      const signature = await sendTransaction(transaction, connection, {
-        preflightCommitment: 'confirmed',
-        skipPreflight: false
+      console.log('Transaction created:', {
+        blockhash: transaction.recentBlockhash,
+        lastValidBlockHeight: transaction.lastValidBlockHeight,
+        instructions: transaction.instructions.length,
+        feePayer: transaction.feePayer?.toBase58()
       })
-      
-      console.log('Transaction sent:', signature)
 
-      // Ждем подтверждения транзакции в блокчейне (обычно 5-10 секунд)
+      // Send transaction with better error handling
+      let signature: string
+      try {
+        console.log('Sending transaction with Phantom...')
+        
+        // Используем более агрессивные параметры для отправки
+        const sendOptions = {
+          skipPreflight: true, // Пропускаем preflight для ускорения
+          preflightCommitment: 'processed' as any, // Используем processed для быстрой проверки
+          maxRetries: 5 // Увеличиваем количество попыток
+        }
+        
+        signature = await sendTransaction(transaction, connection, sendOptions)
+        console.log('Transaction sent:', signature)
+        
+        // Важно: даем небольшую паузу чтобы транзакция попала в сеть
+        await new Promise(resolve => setTimeout(resolve, 500))
+        
+      } catch (sendError) {
+        console.error('Error sending transaction:', sendError)
+        throw new Error(`Ошибка отправки транзакции: ${sendError instanceof Error ? sendError.message : 'Неизвестная ошибка'}`)
+      }
+
+      // Проверяем транзакцию сразу после отправки
+      toast.loading('Проверяем транзакцию в блокчейне...')
+      
+      // Ждем немного перед первой проверкой
+      await new Promise(resolve => setTimeout(resolve, 2000))
+      
+      // Проверяем статус транзакции
+      try {
+        const status = await connection.getSignatureStatus(signature)
+        console.log('Transaction status after 2s:', status)
+        
+        if (status.value?.err) {
+          throw new Error(`Транзакция отклонена: ${JSON.stringify(status.value.err)}`)
+        }
+      } catch (statusError) {
+        console.error('Error checking transaction status:', statusError)
+      }
+
+      // Ждем еще для надежности
       toast.loading('Подтверждаем транзакцию в блокчейне...')
-      await new Promise(resolve => setTimeout(resolve, 10000))
+      await new Promise(resolve => setTimeout(resolve, 8000))
 
       // Process payment on backend
       const response = await fetch('/api/posts/process-payment', {

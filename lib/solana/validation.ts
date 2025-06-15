@@ -246,11 +246,24 @@ export async function waitForTransactionConfirmation(
   // Сначала проверяем статус транзакции напрямую
   // Не используем confirmTransaction так как для этого нужен blockhash
   
+  // Получаем информацию о слоте для отладки
+  try {
+    const slot = await getConnection().getSlot()
+    console.log(`Current slot: ${slot}`)
+  } catch (err) {
+    console.error('Error getting slot:', err)
+  }
+  
   for (let i = 0; i < maxRetries; i++) {
     try {
       const status = await getConnection().getSignatureStatus(signature)
       
-      console.log(`Attempt ${i + 1}/${maxRetries} - Status:`, status.value?.confirmationStatus)
+      console.log(`Attempt ${i + 1}/${maxRetries} - Status:`, {
+        confirmationStatus: status.value?.confirmationStatus,
+        err: status.value?.err,
+        slot: status.context.slot,
+        value: status.value
+      })
       
       if (status.value?.confirmationStatus === 'confirmed' || 
           status.value?.confirmationStatus === 'finalized') {
@@ -264,9 +277,25 @@ export async function waitForTransactionConfirmation(
       }
       
       // Если транзакция еще не видна в сети, подождем немного больше
-      if (!status.value && i < 10) {
-        await new Promise(resolve => setTimeout(resolve, retryDelay * 2))
-        continue
+      if (!status.value) {
+        if (i < 10) {
+          console.log(`Transaction not found yet, waiting longer... (attempt ${i + 1})`)
+          await new Promise(resolve => setTimeout(resolve, retryDelay * 2))
+          continue
+        } else if (i === 10) {
+          // После 10 попыток проверяем, не истекла ли транзакция
+          console.log('Checking if transaction might have expired...')
+          try {
+            const tx = await getConnection().getTransaction(signature, {
+              maxSupportedTransactionVersion: 0
+            })
+            if (!tx) {
+              console.log('Transaction not found in blockchain, might have expired or never broadcasted')
+            }
+          } catch (err) {
+            console.error('Error fetching transaction:', err)
+          }
+        }
       }
     } catch (error) {
       console.error(`Error checking transaction status (attempt ${i + 1}):`, error)

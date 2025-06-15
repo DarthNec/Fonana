@@ -2,7 +2,8 @@ import {
   PublicKey, 
   Transaction, 
   SystemProgram,
-  LAMPORTS_PER_SOL 
+  LAMPORTS_PER_SOL,
+  ComputeBudgetProgram 
 } from '@solana/web3.js'
 import { getConnection } from './connection'
 import { SOLANA_CONFIG } from './config'
@@ -75,6 +76,14 @@ export async function createSubscriptionTransaction(
   transaction.feePayer = payerPublicKey
   transaction.lastValidBlockHeight = lastValidBlockHeight
   
+  // Добавляем приоритетную комиссию для более быстрого подтверждения
+  // 10000 microlamports = 0.00001 SOL дополнительной комиссии
+  transaction.add(
+    ComputeBudgetProgram.setComputeUnitPrice({
+      microLamports: 10000
+    })
+  )
+  
   // Transfer to creator
   transaction.add(
     SystemProgram.transfer({
@@ -139,6 +148,14 @@ export async function createPostPurchaseTransaction(
   transaction.recentBlockhash = blockhash
   transaction.feePayer = payerPublicKey
   transaction.lastValidBlockHeight = lastValidBlockHeight
+  
+  // Добавляем приоритетную комиссию для более быстрого подтверждения
+  // 10000 microlamports = 0.00001 SOL дополнительной комиссии
+  transaction.add(
+    ComputeBudgetProgram.setComputeUnitPrice({
+      microLamports: 10000
+    })
+  )
   
   // Transfer to creator
   transaction.add(
