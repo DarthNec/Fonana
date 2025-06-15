@@ -44,6 +44,28 @@ export async function GET(request: NextRequest) {
           }
         })
 
+        // Получаем заработки за последние 30 дней
+        const thirtyDaysAgo = new Date()
+        thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30)
+        
+        let monthlyEarnings = 0
+        if (creator.wallet) {
+          const earnings = await prisma.transaction.aggregate({
+            where: {
+              toWallet: creator.wallet,
+              status: 'CONFIRMED',
+              createdAt: {
+                gte: thirtyDaysAgo
+              }
+            },
+            _sum: {
+              amount: true
+            }
+          })
+          
+          monthlyEarnings = earnings._sum?.amount || 0
+        }
+
         // Собираем все теги из постов автора
         const allTags = new Set<string>()
         creator.posts.forEach(post => {
@@ -71,7 +93,7 @@ export async function GET(request: NextRequest) {
           subscribers: subscribersCount,  // Реальное количество активных подписчиков
           posts: creator._count.posts,
           tags: Array.from(allTags),
-          monthlyEarnings: '~100 SOL', // TODO: Рассчитать из реальных подписок
+          monthlyEarnings: monthlyEarnings > 0 ? `${monthlyEarnings.toFixed(2)} SOL` : '0 SOL',
           createdAt: creator.createdAt
         }
       })
