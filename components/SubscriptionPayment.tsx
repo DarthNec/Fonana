@@ -34,30 +34,29 @@ export function SubscriptionPayment({
   referrerWallet,
   plans
 }: SubscriptionPaymentProps) {
-  const { publicKey, sendTransaction, connected } = useWallet()
-  const [selectedPlan, setSelectedPlan] = useState(plans[0]?.id || '')
+  const { publicKey, connected, sendTransaction } = useWallet()
+  const [selectedPlan, setSelectedPlan] = useState<string>('')
   const [isProcessing, setIsProcessing] = useState(false)
   const [creatorData, setCreatorData] = useState<any>(null)
   const { toast } = useToast()
 
   useEffect(() => {
-    // Загружаем полные данные создателя при монтировании
-    if (creatorId) {
-      fetchCreatorData()
+    if (plans.length > 0 && !selectedPlan) {
+      setSelectedPlan(plans[0].id)
     }
-  }, [creatorId])
+  }, [plans, selectedPlan])
 
-  const fetchCreatorData = async () => {
-    try {
-      const response = await fetch(`/api/user?id=${creatorId}`)
-      const data = await response.json()
-      if (data.user) {
-        setCreatorData(data.user)
-      }
-    } catch (error) {
-      console.error('Error fetching creator data:', error)
-    }
-  }
+  useEffect(() => {
+    // Загружаем актуальные данные создателя
+    fetch(`/api/creators/${creatorId}`)
+      .then(res => res.json())
+      .then(data => {
+        if (data.creator) {
+          setCreatorData(data.creator)
+        }
+      })
+      .catch(err => console.error('Error loading creator data:', err))
+  }, [creatorId])
 
   const handleSubscribe = async () => {
     if (!publicKey || !connected) {
@@ -104,14 +103,23 @@ export function SubscriptionPayment({
       )
 
       // Send transaction
-      const signature = await sendTransaction(transaction, connection)
+      const signature = await sendTransaction(transaction, connection, {
+        preflightCommitment: 'confirmed',
+        skipPreflight: false
+      })
       
       console.log('Transaction sent:', signature)
+
+      // Ждем небольшую паузу перед отправкой на бекенд
+      await new Promise(resolve => setTimeout(resolve, 2000))
 
       // Process payment on backend
       const response = await fetch('/api/subscriptions/process-payment', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          'x-user-wallet': publicKey.toBase58()
+        },
         body: JSON.stringify({
           creatorId,
           plan: plan.id,
@@ -138,9 +146,26 @@ export function SubscriptionPayment({
 
     } catch (error) {
       console.error('Payment error:', error)
+      
+      let errorMessage = 'Произошла ошибка при оплате'
+      
+      if (error instanceof Error) {
+        if (error.message.includes('User rejected')) {
+          errorMessage = 'Вы отменили транзакцию'
+        } else if (error.message.includes('insufficient')) {
+          errorMessage = 'Недостаточно средств на кошельке'
+        } else if (error.message.includes('Transaction not confirmed')) {
+          errorMessage = 'Транзакция не была подтверждена. Попробуйте еще раз'
+        } else if (error.message.includes('block height exceeded')) {
+          errorMessage = 'Транзакция истекла. Попробуйте еще раз'
+        } else {
+          errorMessage = error.message
+        }
+      }
+      
       toast({
         title: 'Ошибка платежа',
-        description: error instanceof Error ? error.message : 'Произошла ошибка при оплате',
+        description: errorMessage,
         variant: 'destructive'
       })
     } finally {
@@ -197,9 +222,9 @@ export function SubscriptionPayment({
           <button
             onClick={handleSubscribe}
             disabled={!selectedPlan || isProcessing}
-            className="w-full bg-purple-600 text-white py-3 px-4 rounded-lg font-medium hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="w-full py-3 px-4 bg-purple-600 text-white rounded-lg font-medium hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
           >
-            {isProcessing ? 'Обработка...' : 'Подписаться'}
+            {isProcessing ? 'Обработка...' : 'Оформить подписку'}
           </button>
         </>
       )}

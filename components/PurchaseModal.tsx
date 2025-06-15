@@ -46,86 +46,74 @@ interface PurchaseModalProps {
 }
 
 export default function PurchaseModal({ post, onClose, onSuccess }: PurchaseModalProps) {
-  const { connected, publicKey, sendTransaction } = useWallet()
+  const { publicKey, connected, sendTransaction } = useWallet()
   const [isProcessing, setIsProcessing] = useState(false)
   const [creatorData, setCreatorData] = useState<any>(null)
-  
+
   useEffect(() => {
-    // Загружаем полные данные создателя при открытии модала
-    if (post.creator.id) {
-      fetchCreatorData()
-    }
+    // Загружаем актуальные данные создателя
+    fetch(`/api/creators/${post.creator.id}`)
+      .then(res => res.json())
+      .then(data => {
+        if (data.creator) {
+          setCreatorData(data.creator)
+        }
+      })
+      .catch(err => console.error('Error loading creator data:', err))
   }, [post.creator.id])
-  
-  const fetchCreatorData = async () => {
-    try {
-      const response = await fetch(`/api/user?id=${post.creator.id}`)
-      const data = await response.json()
-      if (data.user) {
-        setCreatorData(data.user)
-      }
-    } catch (error) {
-      console.error('Error fetching creator data:', error)
-    }
-  }
 
   const handlePurchase = async () => {
-    if (!connected || !publicKey) {
+    if (!publicKey || !connected) {
       toast.error('Пожалуйста, подключите кошелек')
       return
     }
-    
-    // Определяем кошелек создателя
-    const creatorWallet = creatorData?.solanaWallet || creatorData?.wallet || post.creator.solanaWallet || post.creator.wallet
+
+    // Используем данные создателя или пост данные
+    const finalCreator = creatorData || post.creator
+    const creatorWallet = finalCreator.solanaWallet || finalCreator.wallet
+    const referrerWallet = finalCreator.referrer?.solanaWallet || finalCreator.referrer?.wallet
+    const hasReferrer = finalCreator.referrerId && referrerWallet && isValidSolanaAddress(referrerWallet)
+
     if (!creatorWallet || !isValidSolanaAddress(creatorWallet)) {
-      toast.error('У создателя не настроен кошелек для приема платежей. Пожалуйста, попробуйте позже.')
-      // Логируем для отладки
-      console.error('Creator wallet issue:', {
-        creatorId: post.creator.id,
-        creatorData,
-        wallets: {
-          solanaWallet: creatorData?.solanaWallet,
-          wallet: creatorData?.wallet,
-          postCreatorSolana: post.creator.solanaWallet,
-          postCreatorWallet: post.creator.wallet
-        }
-      })
+      toast.error('Кошелек создателя не настроен')
       return
     }
-    
-    // Определяем кошелек реферера если есть
-    const referrerWallet = creatorData?.referrer?.solanaWallet || creatorData?.referrer?.wallet
-    const hasReferrer = creatorData?.referrerId && referrerWallet && isValidSolanaAddress(referrerWallet)
 
     setIsProcessing(true)
-    
+
     try {
-      // Рассчитываем распределение платежа
+      // Calculate payment distribution
       const distribution = calculatePaymentDistribution(
         post.price,
         creatorWallet,
         hasReferrer,
         referrerWallet
       )
-      
-      // Создаем транзакцию
+
+      // Create transaction
       const transaction = await createPostPurchaseTransaction(
         publicKey,
         distribution
       )
-      
-      // Отправляем транзакцию
-      const signature = await sendTransaction(transaction, connection)
+
+      // Send transaction
+      const signature = await sendTransaction(transaction, connection, {
+        preflightCommitment: 'confirmed',
+        skipPreflight: false
+      })
       
       console.log('Transaction sent:', signature)
-      
-      // Обрабатываем платеж на бэкенде
+
+      // Ждем небольшую паузу перед отправкой на бекенд
+      await new Promise(resolve => setTimeout(resolve, 2000))
+
+      // Process payment on backend
       const response = await fetch('/api/posts/process-payment', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           postId: post.id,
-          userId: publicKey.toString(),
+          userId: publicKey.toBase58(),
           price: post.price,
           currency: post.currency,
           signature,
@@ -134,169 +122,214 @@ export default function PurchaseModal({ post, onClose, onSuccess }: PurchaseModa
           distribution
         })
       })
-      
+
       const data = await response.json()
-      
+
       if (!response.ok) {
         throw new Error(data.error || 'Ошибка обработки платежа')
       }
+
+      toast.success('Пост успешно куплен!')
       
-      toast.success('Контент успешно приобретен!')
-      onSuccess?.()
+      if (onSuccess) {
+        onSuccess()
+      }
+      
       onClose()
+
     } catch (error) {
       console.error('Payment error:', error)
-      toast.error(error instanceof Error ? error.message : 'Ошибка при покупке контента')
+      
+      let errorMessage = 'Произошла ошибка при оплате'
+      
+      if (error instanceof Error) {
+        if (error.message.includes('User rejected')) {
+          errorMessage = 'Вы отменили транзакцию'
+        } else if (error.message.includes('insufficient')) {
+          errorMessage = 'Недостаточно средств на кошельке'
+        } else if (error.message.includes('Transaction not confirmed')) {
+          errorMessage = 'Транзакция не была подтверждена. Попробуйте еще раз'
+        } else if (error.message.includes('block height exceeded')) {
+          errorMessage = 'Транзакция истекла. Попробуйте еще раз'
+        } else {
+          errorMessage = error.message
+        }
+      }
+      
+      toast.error(errorMessage)
     } finally {
       setIsProcessing(false)
     }
   }
 
+  // Определяем реальное распределение платежа
+  const finalCreator = creatorData || post.creator
+  const hasReferrerDisplay = finalCreator.referrerId && finalCreator.referrer && 
+    (finalCreator.referrer.solanaWallet || finalCreator.referrer.wallet) &&
+    isValidSolanaAddress(finalCreator.referrer.solanaWallet || finalCreator.referrer.wallet)
+
   return (
-    <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-      <div className="bg-slate-900/95 backdrop-blur-xl rounded-3xl border border-slate-700/50 max-w-md w-full">
+    <div className="fixed inset-0 z-50 flex items-center justify-center">
+      {/* Backdrop */}
+      <div 
+        className="absolute inset-0 bg-black/50 backdrop-blur-sm"
+        onClick={onClose}
+      />
+      
+      {/* Modal */}
+      <div className="relative bg-white dark:bg-gray-800 rounded-2xl shadow-xl max-w-md w-full mx-4 p-6">
+        {/* Close button */}
+        <button
+          onClick={onClose}
+          className="absolute top-4 right-4 p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+        >
+          <XMarkIcon className="w-5 h-5 text-gray-500 dark:text-gray-400" />
+        </button>
+
         {/* Header */}
-        <div className="p-6 border-b border-slate-700/50">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-xl font-bold text-white">
-              Покупка контента
-            </h2>
-            <button
-              onClick={onClose}
-              className="w-10 h-10 bg-slate-800/50 hover:bg-slate-700/50 rounded-xl flex items-center justify-center text-slate-400 hover:text-white transition-colors"
-            >
-              <XMarkIcon className="w-6 h-6" />
-            </button>
+        <div className="text-center mb-6">
+          <div className="w-16 h-16 bg-purple-100 dark:bg-purple-900/20 rounded-full flex items-center justify-center mx-auto mb-4">
+            <LockClosedIcon className="w-8 h-8 text-purple-600 dark:text-purple-400" />
           </div>
-          
-          {/* Creator Info */}
-          <div className="flex items-center gap-3">
-            <Avatar
-              src={post.creator.avatar}
-              alt={post.creator.name}
-              seed={post.creator.username}
-              size={40}
-              rounded="xl"
-              className="border border-purple-500/30"
-            />
-            <div>
-              <div className="flex items-center gap-2">
-                <p className="font-medium text-white">
-                  {post.creator.name}
-                </p>
-                {post.creator.isVerified && (
-                  <CheckBadgeIcon className="w-4 h-4 text-blue-400" />
-                )}
+          <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
+            Купить доступ к посту
+          </h2>
+          <p className="text-gray-600 dark:text-gray-400">
+            Получите полный доступ к эксклюзивному контенту
+          </p>
+        </div>
+
+        {/* Post info */}
+        <div className="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-4 mb-6">
+          <h3 className="font-medium text-gray-900 dark:text-white mb-2">
+            {post.title}
+          </h3>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-2">
+              <Avatar
+                src={post.creator.avatar}
+                alt={post.creator.name}
+                seed={post.creator.username}
+                size={32}
+              />
+              <div>
+                <div className="flex items-center space-x-1">
+                  <span className="text-sm font-medium text-gray-900 dark:text-white">
+                    {post.creator.name}
+                  </span>
+                  {post.creator.isVerified && (
+                    <CheckBadgeIcon className="w-4 h-4 text-blue-500" />
+                  )}
+                </div>
+                <span className="text-xs text-gray-500 dark:text-gray-400">
+                  @{post.creator.username}
+                </span>
               </div>
-              <p className="text-slate-400 text-sm">@{post.creator.username}</p>
+            </div>
+            <div className="text-right">
+              <p className="text-xl font-bold text-gray-900 dark:text-white">
+                {formatSolAmount(post.price)}
+              </p>
+              <p className="text-xs text-gray-500 dark:text-gray-400">
+                ≈ ${(post.price * 45).toFixed(2)} USD
+              </p>
             </div>
           </div>
         </div>
 
-        {/* Content */}
-        <div className="p-6">
-          {/* Wallet Connect */}
-          {!connected && (
-            <div className="mb-6">
-              <div className="flex justify-center">
-                <WalletMultiButton />
-              </div>
+        {/* Payment distribution */}
+        <div className="space-y-2 mb-6">
+          <div className="flex justify-between text-sm">
+            <span className="text-gray-600 dark:text-gray-400">Создатель получит:</span>
+            <span className="text-gray-900 dark:text-white font-medium">
+              {formatSolAmount(post.price * 0.9)}
+            </span>
+          </div>
+          <div className="flex justify-between text-sm">
+            <span className="text-gray-600 dark:text-gray-400">Комиссия платформы:</span>
+            <span className="text-gray-900 dark:text-white font-medium">
+              {formatSolAmount(post.price * (hasReferrerDisplay ? 0.05 : 0.1))}
+            </span>
+          </div>
+          {hasReferrerDisplay && (
+            <div className="flex justify-between text-sm">
+              <span className="text-gray-600 dark:text-gray-400">Реферальная комиссия:</span>
+              <span className="text-gray-900 dark:text-white font-medium">
+                {formatSolAmount(post.price * 0.05)}
+              </span>
             </div>
           )}
-          
-          {/* Post Title */}
-          <div className="mb-6">
-            <h3 className="text-lg font-semibold text-white mb-2">
-              {post.title}
-            </h3>
-            <div className="flex items-center gap-2 text-slate-400">
-              <LockClosedIcon className="w-5 h-5" />
-              <span className="text-sm">Платный контент</span>
+        </div>
+
+        {/* Benefits */}
+        <div className="space-y-3 mb-6">
+          <div className="flex items-start space-x-3">
+            <CheckIcon className="w-5 h-5 text-green-500 mt-0.5" />
+            <div>
+              <p className="text-sm font-medium text-gray-900 dark:text-white">
+                Пожизненный доступ
+              </p>
+              <p className="text-xs text-gray-600 dark:text-gray-400">
+                Контент останется доступным навсегда
+              </p>
             </div>
           </div>
-
-          {/* Price */}
-          <div className="bg-slate-800/50 rounded-2xl p-6 mb-6 text-center">
-            <p className="text-slate-400 text-sm mb-2">Стоимость контента</p>
-            <div className="flex items-baseline justify-center gap-2">
-              <span className="text-4xl font-bold text-white">
-                {post.price}
-              </span>
-              <span className="text-xl text-purple-400 font-semibold">
-                {post.currency}
-              </span>
-            </div>
-            
-            {/* Payment Distribution */}
-            {connected && (
-              <div className="mt-4 text-xs text-slate-500 space-y-1">
-                <p>Создатель: {formatSolAmount(post.price * 0.9)}</p>
-                <p>Платформа: {formatSolAmount(post.price * (creatorData?.referrerId ? 0.05 : 0.1))}</p>
-                {creatorData?.referrerId && (
-                  <p>Реферер: {formatSolAmount(post.price * 0.05)}</p>
-                )}
-              </div>
-            )}
-          </div>
-
-          {/* Features */}
-          <div className="space-y-3 mb-6">
-            <div className="flex items-start gap-3">
-              <CheckIcon className="w-5 h-5 text-green-400 mt-0.5 flex-shrink-0" />
-              <div>
-                <p className="text-white font-medium">Мгновенный доступ</p>
-                <p className="text-slate-400 text-sm">Получите доступ к контенту сразу после оплаты</p>
-              </div>
-            </div>
-            <div className="flex items-start gap-3">
-              <CheckIcon className="w-5 h-5 text-green-400 mt-0.5 flex-shrink-0" />
-              <div>
-                <p className="text-white font-medium">Пожизненный доступ</p>
-                <p className="text-slate-400 text-sm">Контент останется доступным навсегда</p>
-              </div>
-            </div>
-            <div className="flex items-start gap-3">
-              <CheckIcon className="w-5 h-5 text-green-400 mt-0.5 flex-shrink-0" />
-              <div>
-                <p className="text-white font-medium">Безопасная оплата</p>
-                <p className="text-slate-400 text-sm">Транзакция через блокчейн Solana</p>
-              </div>
+          <div className="flex items-start space-x-3">
+            <CheckIcon className="w-5 h-5 text-green-500 mt-0.5" />
+            <div>
+              <p className="text-sm font-medium text-gray-900 dark:text-white">
+                Мгновенный доступ
+              </p>
+              <p className="text-xs text-gray-600 dark:text-gray-400">
+                Сразу после подтверждения оплаты
+              </p>
             </div>
           </div>
+          <div className="flex items-start space-x-3">
+            <CheckIcon className="w-5 h-5 text-green-500 mt-0.5" />
+            <div>
+              <p className="text-sm font-medium text-gray-900 dark:text-white">
+                Безопасная оплата
+              </p>
+              <p className="text-xs text-gray-600 dark:text-gray-400">
+                Через блокчейн Solana
+              </p>
+            </div>
+          </div>
+        </div>
 
-          {/* Actions */}
-          <div className="flex gap-3">
+        {/* Action buttons */}
+        <div className="space-y-3">
+          {!connected ? (
+            <div className="flex justify-center">
+              <WalletMultiButton />
+            </div>
+          ) : (
             <button
               onClick={handlePurchase}
-              disabled={isProcessing || !connected}
-              className="flex-1 py-4 px-6 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white rounded-xl font-bold text-lg transition-all duration-300 transform hover:scale-105 shadow-xl disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+              disabled={isProcessing}
+              className="w-full bg-purple-600 text-white py-3 px-4 rounded-lg font-medium hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center space-x-2"
             >
               {isProcessing ? (
                 <>
-                  <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                  Обработка...
+                  <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white" />
+                  <span>Обработка...</span>
                 </>
-              ) : !connected ? (
-                'Подключите кошелек'
               ) : (
                 <>
                   <ShoppingCartIcon className="w-5 h-5" />
-                  Купить за {post.price} {post.currency}
+                  <span>Купить за {formatSolAmount(post.price)}</span>
                 </>
               )}
             </button>
-            
-            <button
-              onClick={onClose}
-              className="px-6 py-4 border border-slate-600 text-slate-300 hover:text-white hover:border-slate-500 rounded-xl hover:bg-slate-700/50 transition-all font-semibold"
-            >
-              Отмена
-            </button>
-          </div>
-
-          <p className="mt-4 text-slate-400 text-center text-xs">
-            Нажимая "Купить", вы соглашаетесь с условиями покупки цифрового контента
-          </p>
+          )}
+          
+          <button
+            onClick={onClose}
+            className="w-full border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 py-3 px-4 rounded-lg font-medium hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+          >
+            Отмена
+          </button>
         </div>
       </div>
     </div>

@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { PaymentDistribution } from '@/lib/solana/payments'
+import { validatePaymentDistribution, waitForTransactionConfirmation } from '@/lib/solana/validation'
 import { paymentLogger } from '@/lib/utils/logger'
 
 export async function POST(request: Request) {
@@ -41,6 +42,34 @@ export async function POST(request: Request) {
       paymentLogger.warn('Invalid payment data', { postId, userId, price })
       return NextResponse.json(
         { error: 'Missing required fields' },
+        { status: 400 }
+      )
+    }
+
+    // Ждём подтверждения транзакции
+    paymentLogger.info('Waiting for transaction confirmation', { signature })
+    const isConfirmed = await waitForTransactionConfirmation(signature)
+    
+    if (!isConfirmed) {
+      paymentLogger.error('Transaction not confirmed', { signature })
+      return NextResponse.json(
+        { error: 'Transaction not confirmed. Please try again.' },
+        { status: 400 }
+      )
+    }
+
+    // Валидация распределения платежа
+    paymentLogger.info('Validating payment distribution', { signature })
+    const validation = await validatePaymentDistribution(signature, distribution)
+    
+    if (!validation.isValid) {
+      paymentLogger.error('Payment validation failed', { 
+        signature, 
+        error: validation.error,
+        details: validation.details 
+      })
+      return NextResponse.json(
+        { error: validation.error || 'Payment validation failed' },
         { status: 400 }
       )
     }
@@ -96,7 +125,7 @@ export async function POST(request: Request) {
         price,
         currency,
         txSignature: signature,
-        paymentStatus: 'PROCESSING',
+        paymentStatus: 'COMPLETED',
         platformFee: distribution.platformAmount,
         referrerFee: distribution.referrerAmount,
         creatorAmount: distribution.creatorAmount
@@ -113,33 +142,17 @@ export async function POST(request: Request) {
         amount: price,
         currency,
         type: 'POST_PURCHASE',
-        status: 'PENDING',
+        status: 'CONFIRMED',
         platformFee: distribution.platformAmount,
         referrerFee: distribution.referrerAmount,
         referrerWallet: distribution.referrerWallet,
+        confirmedAt: new Date(),
         metadata: {
           postId: postId.toString(),
           creatorId: creatorId.toString(),
-          hasReferrer
+          hasReferrer,
+          validationDetails: validation.details
         }
-      }
-    })
-
-    // В реальном приложении здесь должна быть проверка транзакции в блокчейне
-    // Для демонстрации сразу помечаем как успешную
-    
-    // Обновляем статус покупки
-    await prisma.postPurchase.update({
-      where: { id: purchase.id },
-      data: { paymentStatus: 'COMPLETED' }
-    })
-
-    // Обновляем статус транзакции
-    await prisma.transaction.update({
-      where: { id: transaction.id },
-      data: { 
-        status: 'CONFIRMED',
-        confirmedAt: new Date()
       }
     })
 

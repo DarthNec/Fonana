@@ -1,150 +1,123 @@
 #!/bin/bash
 
-# Скрипт для деплоя Fonana на сервер
-# Использование: ./deploy-to-server.sh [user@server]
+# Скрипт для деплоя Fonana на продакшн сервер
+
+echo "🚀 Начинаем деплой Fonana на продакшн..."
+
+# Конфигурация
+SERVER="root@fonana.me"
+PORT="43988"
+PROJECT_DIR="/var/www/fonana"
 
 # Цвета для вывода
-RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
+RED='\033[0;31m'
 NC='\033[0m'
 
-# Настройки по умолчанию
-SERVER="${1:-root@69.10.59.234}"
-SSH_PORT="43988"
-REMOTE_DIR="/var/www/fonana"
-LOCAL_DIR="."
+echo -e "${YELLOW}📡 Подключаемся к серверу...${NC}"
 
-echo -e "${GREEN}🚀 Деплой Fonana на сервер${NC}"
-echo -e "📍 Сервер: $SERVER"
-echo -e "🔌 SSH порт: $SSH_PORT"
-echo -e "📁 Удаленная директория: $REMOTE_DIR"
-echo ""
-
-# Проверка SSH доступа
-echo -e "${YELLOW}Проверка SSH подключения...${NC}"
-ssh -p $SSH_PORT -o ConnectTimeout=5 $SERVER "echo '✅ SSH подключение успешно'" || {
-    echo -e "${RED}❌ Не удается подключиться к серверу${NC}"
-    echo "Убедитесь, что:"
-    echo "1. Сервер доступен"
-    echo "2. У вас есть SSH ключ"
-    echo "3. Правильный пользователь и IP"
-    echo "4. Порт $SSH_PORT открыт"
-    exit 1
-}
-
-# Создание архива проекта
-echo -e "${YELLOW}Создание архива проекта...${NC}"
-tar -czf fonana-deploy.tar.gz \
-    --exclude='.git' \
-    --exclude='node_modules' \
-    --exclude='.next' \
-    --exclude='*.log' \
-    --exclude='*.tar.gz' \
-    --exclude='.env.local' \
-    --exclude='prisma/dev.db' \
-    .
-
-echo -e "${GREEN}✅ Архив создан${NC}"
-
-# Загрузка на сервер
-echo -e "${YELLOW}Загрузка файлов на сервер...${NC}"
-scp -P $SSH_PORT fonana-deploy.tar.gz $SERVER:/tmp/ || {
-    echo -e "${RED}❌ Ошибка загрузки файлов${NC}"
-    rm fonana-deploy.tar.gz
-    exit 1
-}
-
-# Развертывание на сервере
-echo -e "${YELLOW}Развертывание на сервере...${NC}"
-ssh -p $SSH_PORT $SERVER << 'ENDSSH'
+# Выполняем все команды на сервере
+ssh -p $PORT $SERVER << 'ENDSSH'
 set -e
 
-# Цвета
-RED='\033[0;31m'
-GREEN='\033[0;32m'
-YELLOW='\033[1;33m'
-NC='\033[0m'
-
-echo -e "${YELLOW}Подготовка директории...${NC}"
-mkdir -p /var/www/fonana
+# Переходим в директорию проекта
 cd /var/www/fonana
 
-# Остановка сервиса
-echo -e "${YELLOW}Остановка текущего сервиса...${NC}"
-systemctl stop fonana 2>/dev/null || true
+echo "📍 Текущая директория: $(pwd)"
+echo "📌 Текущий коммит: $(git rev-parse --short HEAD)"
 
-# Бэкап текущей версии
-if [ -d ".next" ]; then
-    echo -e "${YELLOW}Создание бэкапа...${NC}"
-    tar -czf backup-$(date +%Y%m%d-%H%M%S).tar.gz .next public prisma/dev.db 2>/dev/null || true
+# Создаем бекап
+echo "💾 Создаем бекап .env..."
+cp .env .env.backup_$(date +%Y%m%d_%H%M%S)
+
+# Обновляем код
+echo "📥 Обновляем код из GitHub..."
+git pull origin main
+
+# Устанавливаем права на скрипты
+echo "🔧 Настраиваем права доступа..."
+chmod +x scripts/*.sh
+chmod +x scripts/*.js
+
+# Проверяем изменения в package.json
+if git diff HEAD@{1} HEAD --name-only | grep -q "package.json"; then
+    echo "📦 Обнаружены изменения в зависимостях, устанавливаем..."
+    npm ci
 fi
 
-# Распаковка новой версии
-echo -e "${YELLOW}Распаковка новых файлов...${NC}"
-tar -xzf /tmp/fonana-deploy.tar.gz
-rm /tmp/fonana-deploy.tar.gz
+# Настраиваем переменные окружения
+echo "🔐 Проверяем переменные окружения Solana..."
 
-# Установка зависимостей
-echo -e "${YELLOW}Установка зависимостей...${NC}"
-npm ci --production=false
+# Функция для добавления/обновления переменной
+update_env() {
+    local key=$1
+    local value=$2
+    if grep -q "^${key}=" .env; then
+        sed -i "s|^${key}=.*|${key}=\"${value}\"|" .env
+        echo "✅ Обновлено: ${key}"
+    else
+        echo "" >> .env
+        echo "${key}=\"${value}\"" >> .env
+        echo "✅ Добавлено: ${key}"
+    fi
+}
 
-# Создание .env если не существует
-if [ ! -f ".env" ]; then
-    echo -e "${YELLOW}Создание .env файла...${NC}"
-    cat > .env << EOF
-DATABASE_URL="file:./prisma/dev.db"
-NEXT_PUBLIC_SOLANA_NETWORK=devnet
-NEXT_PUBLIC_SOLANA_RPC_HOST=https://api.devnet.solana.com
-NODE_ENV=production
-PORT=3001
-HOSTNAME=0.0.0.0
-EOF
+# Добавляем переменные Solana если их нет
+if ! grep -q "NEXT_PUBLIC_SOLANA_RPC_HOST" .env; then
+    echo "⚠️  Добавляем переменные Solana..."
+    update_env "NEXT_PUBLIC_SOLANA_RPC_HOST" "https://tame-smart-panorama.solana-mainnet.quiknode.pro/0e70fc875702b126bf8b93cdcd626680e9c48894/"
+    update_env "NEXT_PUBLIC_SOLANA_WS_ENDPOINT" "wss://tame-smart-panorama.solana-mainnet.quiknode.pro/0e70fc875702b126bf8b93cdcd626680e9c48894/"
+    update_env "NEXT_PUBLIC_PLATFORM_WALLET" "npzAZaN9fDMgLV63b3kv3FF8cLSd8dQSLxyMXASA5T4"
+    update_env "NEXT_PUBLIC_SOLANA_NETWORK" "mainnet-beta"
 fi
 
-# Генерация Prisma клиента
-echo -e "${YELLOW}Генерация Prisma клиента...${NC}"
+# Применяем миграции
+echo "🗄️  Применяем миграции базы данных..."
+npx prisma migrate deploy || {
+    echo "⚠️  Используем db push..."
+    npx prisma db push --accept-data-loss
+}
+
+# Генерируем Prisma клиент
+echo "🔨 Генерируем Prisma клиент..."
 npx prisma generate
 
-# Миграция БД
-echo -e "${YELLOW}Применение миграций БД...${NC}"
-npx prisma db push
+# Собираем приложение
+echo "🏗️  Собираем приложение..."
+NODE_ENV=production npm run build
 
-# Сборка приложения
-echo -e "${YELLOW}Сборка приложения...${NC}"
-npm run build
+# Перезапускаем PM2
+echo "🔄 Перезапускаем приложение..."
+pm2 reload fonana --update-env
 
-# Установка прав
-chmod +x *.sh
-chown -R root:root /var/www/fonana
-
-# Запуск сервиса
-echo -e "${YELLOW}Запуск сервиса...${NC}"
-systemctl daemon-reload
-systemctl start fonana
-
-# Проверка статуса
+# Ждем запуска
 sleep 5
-if systemctl is-active --quiet fonana; then
-    echo -e "${GREEN}✅ Fonana успешно запущена!${NC}"
-else
-    echo -e "${RED}❌ Ошибка запуска${NC}"
-    journalctl -u fonana --no-pager -n 20
-    exit 1
-fi
 
-echo -e "${GREEN}🎉 Деплой завершен успешно!${NC}"
+# Проверяем статус
+echo "📊 Статус приложения:"
+pm2 status
+
+# Проверка здоровья
+echo "🏥 Проверка здоровья системы..."
+node scripts/health-check.js || true
+
+# Показываем логи
+echo "📜 Последние логи:"
+pm2 logs fonana --lines 30 --nostream
+
+echo "✅ Деплой завершен успешно!"
 ENDSSH
 
-# Очистка локальных файлов
-rm fonana-deploy.tar.gz
-
-echo -e "${GREEN}✅ Деплой завершен!${NC}"
-echo -e "🌐 Сайт доступен по адресу: http://69.10.59.234"
-echo ""
-echo "Полезные команды на сервере:"
-echo "  ssh -p $SSH_PORT $SERVER"
-echo "  systemctl status fonana"
-echo "  journalctl -u fonana -f"
-echo "  systemctl restart fonana"
-ENDSSH 
+# Проверяем результат
+if [ $? -eq 0 ]; then
+    echo -e "${GREEN}✅ Деплой завершен успешно!${NC}"
+    echo ""
+    echo "🔍 Проверьте:"
+    echo "   1. https://fonana.me - главная страница"
+    echo "   2. https://fonana.me/dashboard/referrals - реферальная система"
+    echo "   3. Платежи через Solana"
+else
+    echo -e "${RED}❌ Ошибка при деплое!${NC}"
+    exit 1
+fi 
