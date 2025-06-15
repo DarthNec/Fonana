@@ -176,14 +176,24 @@ export default function SubscribeModal({ creator, preferredTier, onClose, onSucc
         },
         body: JSON.stringify({
           userId: userData.user.id,
-          creatorId: creator.id,
+          creatorId: String(creator.id),
           plan: selectedSubscription?.name || 'Premium',
           price: selectedSubscription?.price || 0.15,
         }),
       })
 
+      console.log('Creating subscription with:', {
+        userId: userData.user.id,
+        userIdType: typeof userData.user.id,
+        creatorId: String(creator.id),
+        creatorIdType: typeof String(creator.id),
+        plan: selectedSubscription?.name || 'Premium',
+        price: selectedSubscription?.price || 0.15,
+      })
+
       if (!response.ok) {
         const error = await response.json()
+        console.error('Subscription creation failed:', error)
         throw new Error(error.error || 'Error creating subscription')
       }
       

@@ -1,12 +1,14 @@
 'use client'
 
 import { notFound } from 'next/navigation'
+import { useState, useEffect } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
 import Avatar from '@/components/Avatar'
 import { StarIcon, CheckBadgeIcon } from '@heroicons/react/24/solid'
 import { UsersIcon, CurrencyDollarIcon } from '@heroicons/react/24/outline'
-import { getCreatorsByCategory } from '@/lib/mockData'
+import { toast } from 'react-hot-toast'
+import { getProfileLink } from '@/lib/utils/links'
 
 interface CategoryPageProps {
   params: {
@@ -48,10 +50,53 @@ const categoryDescriptions: { [key: string]: string } = {
 
 export default function CategoryPage({ params }: CategoryPageProps) {
   const categorySlug = params.slug.toLowerCase()
-  const creators = getCreatorsByCategory(categorySlug)
+  const [creators, setCreators] = useState<any[]>([])
+  const [isLoading, setIsLoading] = useState(true)
   
   const title = categoryTitles[categorySlug] || `${categorySlug} Creators`
   const description = categoryDescriptions[categorySlug] || `Discover talented ${categorySlug} creators`
+
+  useEffect(() => {
+    loadCreators()
+  }, [categorySlug])
+
+  const loadCreators = async () => {
+    try {
+      setIsLoading(true)
+      
+      // For now, load all creators and filter by posts in category
+      // In future, add category field to User model or use tags
+      const response = await fetch('/api/creators')
+      
+      if (!response.ok) {
+        throw new Error('Failed to load creators')
+      }
+      
+      const data = await response.json()
+      
+      // Filter creators who have posts in this category
+      // This is a temporary solution until we add categories to creators
+      const filteredCreators = data.creators || []
+      
+      setCreators(filteredCreators)
+    } catch (error) {
+      console.error('Error loading creators:', error)
+      toast.error('Error loading creators')
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-gray-50 dark:bg-slate-900 flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-16 h-16 border-4 border-purple-500/30 border-t-purple-500 rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-gray-600 dark:text-gray-400">Loading creators...</p>
+        </div>
+      </div>
+    )
+  }
 
   if (creators.length === 0) {
     return (
@@ -64,7 +109,7 @@ export default function CategoryPage({ params }: CategoryPageProps) {
             We couldn't find any creators in the "{categorySlug}" category yet.
           </p>
           <Link
-            href="/"
+            href="/creators"
             className="bg-indigo-600 text-white px-6 py-3 rounded-lg font-medium hover:bg-indigo-700 transition-colors"
           >
             Explore All Creators
@@ -101,26 +146,21 @@ export default function CategoryPage({ params }: CategoryPageProps) {
           {creators.map((creator) => (
             <Link
               key={creator.id}
-              href={`/creator/${creator.id}`}
+              href={getProfileLink({ id: creator.id, nickname: creator.nickname })}
               className="bg-white dark:bg-slate-800 rounded-xl shadow-sm hover:shadow-lg transition-all duration-300 hover:-translate-y-1 overflow-hidden group"
             >
               {/* Cover Image */}
               <div className="relative h-32 bg-gradient-to-r from-indigo-500 to-purple-600 overflow-hidden">
-                <Image
-                  src={creator.coverImage}
-                  alt={`${creator.name} cover`}
-                  fill
-                  className="object-cover group-hover:scale-105 transition-transform duration-300"
-                />
+                {creator.backgroundImage && (
+                  <Image
+                    src={creator.backgroundImage}
+                    alt={`${creator.nickname} cover`}
+                    fill
+                    className="object-cover group-hover:scale-105 transition-transform duration-300"
+                  />
+                )}
                 <div className="absolute inset-0 bg-black/20"></div>
                 
-                {/* Category Badge */}
-                <div className="absolute top-3 left-3">
-                  <span className="px-2 py-1 text-xs bg-white/90 dark:bg-black/70 text-gray-900 dark:text-white rounded-full font-medium">
-                    {creator.category}
-                  </span>
-                </div>
-
                 {/* Verified Badge */}
                 {creator.isVerified && (
                   <div className="absolute top-3 right-3">
@@ -136,8 +176,8 @@ export default function CategoryPage({ params }: CategoryPageProps) {
                     <div className="w-12 h-12 rounded-full overflow-hidden border-2 border-white dark:border-gray-700 -mt-8 relative z-10">
                       <Avatar
                         src={creator.avatar}
-                        alt={creator.name}
-                        seed={creator.username}
+                        alt={creator.nickname}
+                        seed={creator.wallet}
                         size={48}
                         rounded="full"
                       />
@@ -146,51 +186,30 @@ export default function CategoryPage({ params }: CategoryPageProps) {
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">
                       <h3 className="font-semibold text-gray-900 dark:text-white truncate">
-                        {creator.name}
+                        {creator.fullName || creator.nickname}
                       </h3>
                     </div>
                     <p className="text-sm text-gray-500 dark:text-gray-400">
-                      {creator.username}
+                      @{creator.nickname}
                     </p>
                   </div>
                 </div>
 
                 {/* Description */}
                 <p className="text-sm text-gray-600 dark:text-gray-300 mb-4 line-clamp-2">
-                  {creator.description}
+                  {creator.bio || 'Content creator on Fonana'}
                 </p>
-
-                {/* Tags */}
-                <div className="flex flex-wrap gap-1 mb-4">
-                  {creator.tags.slice(0, 3).map((tag) => (
-                    <span
-                      key={tag}
-                      className="px-2 py-1 bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 text-xs rounded"
-                    >
-                      {tag}
-                    </span>
-                  ))}
-                  {creator.tags.length > 3 && (
-                    <span className="text-xs text-gray-400 dark:text-gray-500">
-                      +{creator.tags.length - 3} more
-                    </span>
-                  )}
-                </div>
 
                 {/* Stats */}
                 <div className="flex items-center justify-between text-sm text-gray-500 dark:text-gray-400 mb-4">
                   <div className="flex items-center gap-1">
                     <UsersIcon className="w-4 h-4" />
-                    <span>{creator.subscribers.toLocaleString()}</span>
-                  </div>
-                  <div className="flex items-center gap-1">
-                    <StarIcon className="w-4 h-4 text-yellow-500" />
-                    <span>{creator.rating}</span>
+                    <span>{creator.followersCount || 0}</span>
                   </div>
                   <div className="flex items-center gap-1">
                     <CurrencyDollarIcon className="w-4 h-4" />
                     <span className="font-medium text-green-600 dark:text-green-400">
-                      {creator.monthlyEarnings}
+                      {creator.postsCount || 0} posts
                     </span>
                   </div>
                 </div>
@@ -200,11 +219,12 @@ export default function CategoryPage({ params }: CategoryPageProps) {
                   onClick={(e) => {
                     e.preventDefault()
                     e.stopPropagation()
-                    // Handle subscription
+                    // Handle subscription - navigate to creator page
+                    window.location.href = getProfileLink({ id: creator.id, nickname: creator.nickname })
                   }}
                   className="w-full bg-indigo-600 text-white py-2 px-4 rounded-lg text-sm font-medium hover:bg-indigo-700 transition-colors"
                 >
-                  Subscribe
+                  View Profile
                 </button>
               </div>
             </Link>
