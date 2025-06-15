@@ -1,17 +1,15 @@
 // Конфигурация Solana и проверка переменных окружения
 
 export const SOLANA_CONFIG = {
-  // RPC endpoint
-  RPC_HOST: process.env.NEXT_PUBLIC_SOLANA_RPC_HOST || 'https://tame-smart-panorama.solana-mainnet.quiknode.pro/0e70fc875702b126bf8b93cdcd626680e9c48894/',
-  
-  // WebSocket endpoint
-  WS_ENDPOINT: process.env.NEXT_PUBLIC_SOLANA_WS_ENDPOINT || 'wss://tame-smart-panorama.solana-mainnet.quiknode.pro/0e70fc875702b126bf8b93cdcd626680e9c48894/',
-  
-  // Кошелек платформы для получения комиссий
-  PLATFORM_WALLET: process.env.NEXT_PUBLIC_PLATFORM_WALLET || 'npzAZaN9fDMgLV63b3kv3FF8cLSd8dQSLxyMXASA5T4',
-  
-  // Настройки сети
+  // Network configuration
   NETWORK: process.env.NEXT_PUBLIC_SOLANA_NETWORK || 'mainnet-beta',
+  RPC_HOST: process.env.NEXT_PUBLIC_SOLANA_RPC_HOST || 
+    'https://tame-smart-panorama.solana-mainnet.quiknode.pro/0e70fc875702b126bf8b93cdcd626680e9c48894/',
+  WS_ENDPOINT: process.env.NEXT_PUBLIC_SOLANA_WS_ENDPOINT ||
+    'wss://tame-smart-panorama.solana-mainnet.quiknode.pro/0e70fc875702b126bf8b93cdcd626680e9c48894/',
+  
+  // Platform configuration
+  PLATFORM_WALLET: process.env.NEXT_PUBLIC_PLATFORM_WALLET || 'npzAZaN9fDMgLV63b3kv3FF8cLSd8dQSLxyMXASA5T4',
   
   // Таймауты
   CONFIRMATION_TIMEOUT: 30000, // 30 секунд

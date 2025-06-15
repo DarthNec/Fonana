@@ -131,6 +131,11 @@ export async function createPostPurchaseTransaction(
   payerPublicKey: PublicKey,
   distribution: PaymentDistribution
 ): Promise<Transaction> {
+  console.log('Creating post purchase transaction with:', {
+    payerPublicKey: payerPublicKey.toBase58(),
+    distribution
+  })
+  
   const transaction = new Transaction()
   
   // Get recent blockhash with retry
@@ -148,6 +153,9 @@ export async function createPostPurchaseTransaction(
   transaction.recentBlockhash = blockhash
   transaction.feePayer = payerPublicKey
   ;(transaction as any).lastValidBlockHeight = lastValidBlockHeight
+  
+  console.log('Transaction feePayer set to:', transaction.feePayer.toBase58())
+  console.log('Platform wallet is:', PLATFORM_WALLET)
   
   // Добавляем приоритетную комиссию для более быстрого подтверждения
   // 10000 microlamports = 0.00001 SOL дополнительной комиссии
@@ -186,6 +194,8 @@ export async function createPostPurchaseTransaction(
       })
     )
   }
+  
+  console.log('Transaction created with feePayer:', transaction.feePayer.toBase58())
   
   return transaction
 } 

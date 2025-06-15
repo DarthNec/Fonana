@@ -68,11 +68,17 @@ export default function PurchaseModal({ post, onClose, onSuccess }: PurchaseModa
       return
     }
 
+    console.log('User publicKey:', publicKey.toBase58())
+    console.log('Connected wallet:', publicKey.toBase58())
+
     // Используем данные создателя или пост данные
     const finalCreator = creatorData || post.creator
     const creatorWallet = finalCreator.solanaWallet || finalCreator.wallet
     const referrerWallet = finalCreator.referrer?.solanaWallet || finalCreator.referrer?.wallet
     const hasReferrer = finalCreator.referrerId && referrerWallet && isValidSolanaAddress(referrerWallet)
+
+    console.log('Creator wallet:', creatorWallet)
+    console.log('Platform wallet:', process.env.NEXT_PUBLIC_PLATFORM_WALLET)
 
     if (!creatorWallet || !isValidSolanaAddress(creatorWallet)) {
       toast.error('Кошелек создателя не настроен')
@@ -90,18 +96,32 @@ export default function PurchaseModal({ post, onClose, onSuccess }: PurchaseModa
         referrerWallet
       )
 
+      console.log('Distribution:', distribution)
+
       // Create transaction
       const transaction = await createPostPurchaseTransaction(
         publicKey,
         distribution
       )
 
-      console.log('Transaction created:', {
+      console.log('Transaction after creation:', {
         blockhash: transaction.recentBlockhash,
         lastValidBlockHeight: (transaction as any).lastValidBlockHeight,
         instructions: transaction.instructions.length,
-        feePayer: transaction.feePayer?.toBase58()
+        feePayer: transaction.feePayer?.toBase58(),
+        expectedFeePayer: publicKey.toBase58()
       })
+
+      // Проверяем что feePayer установлен правильно
+      if (transaction.feePayer?.toBase58() !== publicKey.toBase58()) {
+        console.error('CRITICAL: Fee payer mismatch!', {
+          transactionFeePayer: transaction.feePayer?.toBase58(),
+          userPublicKey: publicKey.toBase58()
+        })
+        // Принудительно устанавливаем правильный feePayer
+        transaction.feePayer = publicKey
+        console.log('Fee payer corrected to:', transaction.feePayer.toBase58())
+      }
 
       // Send transaction with better error handling
       let signature: string
