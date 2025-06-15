@@ -61,9 +61,11 @@ export async function createSubscriptionTransaction(
   
   // Get recent blockhash with retry
   let blockhash
+  let lastValidBlockHeight
   try {
     const result = await getConnection().getLatestBlockhash('confirmed')
     blockhash = result.blockhash
+    lastValidBlockHeight = result.lastValidBlockHeight
   } catch (error) {
     console.error('Error getting blockhash:', error)
     throw new Error('Не удалось получить данные блокчейна. Попробуйте позже.')
@@ -71,6 +73,7 @@ export async function createSubscriptionTransaction(
   
   transaction.recentBlockhash = blockhash
   transaction.feePayer = payerPublicKey
+  transaction.lastValidBlockHeight = lastValidBlockHeight
   
   // Transfer to creator
   transaction.add(
@@ -123,9 +126,11 @@ export async function createPostPurchaseTransaction(
   
   // Get recent blockhash with retry
   let blockhash
+  let lastValidBlockHeight
   try {
     const result = await getConnection().getLatestBlockhash('confirmed')
     blockhash = result.blockhash
+    lastValidBlockHeight = result.lastValidBlockHeight
   } catch (error) {
     console.error('Error getting blockhash:', error)
     throw new Error('Не удалось получить данные блокчейна. Попробуйте позже.')
@@ -133,6 +138,7 @@ export async function createPostPurchaseTransaction(
   
   transaction.recentBlockhash = blockhash
   transaction.feePayer = payerPublicKey
+  transaction.lastValidBlockHeight = lastValidBlockHeight
   
   // Transfer to creator
   transaction.add(
