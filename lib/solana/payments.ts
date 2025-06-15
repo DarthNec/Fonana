@@ -30,6 +30,25 @@ async function getRecommendedPriorityFee(connection: Connection): Promise<number
   return 200000
 }
 
+// Проверяем существование аккаунта и возвращаем минимальную ренту если нужно
+async function getAccountRentIfNeeded(
+  connection: Connection,
+  publicKey: PublicKey
+): Promise<number> {
+  try {
+    const accountInfo = await connection.getAccountInfo(publicKey)
+    if (!accountInfo) {
+      // Аккаунт не существует, нужна рента для создания
+      const minRent = await connection.getMinimumBalanceForRentExemption(0)
+      console.log(`Account ${publicKey.toBase58()} doesn't exist, need ${minRent / LAMPORTS_PER_SOL} SOL for rent`)
+      return minRent
+    }
+  } catch (error) {
+    console.error('Error checking account:', error)
+  }
+  return 0
+}
+
 export interface PaymentDistribution {
   creatorWallet: string
   creatorAmount: number
@@ -105,31 +124,45 @@ export async function createSubscriptionTransaction(
   )
   
   // Transfer to creator
+  const creatorPubkey = new PublicKey(distribution.creatorWallet)
+  
+  // Проверяем, нужна ли рента для создания аккаунта создателя
+  const creatorRent = await getAccountRentIfNeeded(connection, creatorPubkey)
+  const creatorTransferAmount = Math.floor((distribution.creatorAmount + (creatorRent / LAMPORTS_PER_SOL)) * LAMPORTS_PER_SOL)
+  
   transaction.add(
     SystemProgram.transfer({
       fromPubkey: payerPublicKey,
-      toPubkey: new PublicKey(distribution.creatorWallet),
-      lamports: Math.floor(distribution.creatorAmount * LAMPORTS_PER_SOL)
+      toPubkey: creatorPubkey,
+      lamports: creatorTransferAmount
     })
   )
+
+  // Transfer to platform
+  const platformPubkey = new PublicKey(PLATFORM_WALLET)
+  const platformTransferAmount = Math.floor(distribution.platformAmount * LAMPORTS_PER_SOL)
   
-  // Transfer platform fee
-  const platformWallet = new PublicKey(PLATFORM_WALLET)
   transaction.add(
     SystemProgram.transfer({
       fromPubkey: payerPublicKey,
-      toPubkey: platformWallet,
-      lamports: Math.floor(distribution.platformAmount * LAMPORTS_PER_SOL)
+      toPubkey: platformPubkey,
+      lamports: platformTransferAmount
     })
   )
-  
-  // Transfer referrer fee if applicable
-  if (distribution.referrerWallet && distribution.referrerAmount) {
+
+  // Transfer to referrer if exists
+  if (distribution.referrerWallet && distribution.referrerAmount && distribution.referrerAmount > 0) {
+    const referrerPubkey = new PublicKey(distribution.referrerWallet)
+    
+    // Проверяем, нужна ли рента для создания аккаунта реферера
+    const referrerRent = await getAccountRentIfNeeded(connection, referrerPubkey)
+    const referrerTransferAmount = Math.floor((distribution.referrerAmount + (referrerRent / LAMPORTS_PER_SOL)) * LAMPORTS_PER_SOL)
+    
     transaction.add(
       SystemProgram.transfer({
         fromPubkey: payerPublicKey,
-        toPubkey: new PublicKey(distribution.referrerWallet),
-        lamports: Math.floor(distribution.referrerAmount * LAMPORTS_PER_SOL)
+        toPubkey: referrerPubkey,
+        lamports: referrerTransferAmount
       })
     )
   }
@@ -178,31 +211,57 @@ export async function createPostPurchaseTransaction(
   )
   
   // Transfer to creator
+  console.log('Adding transfer to creator:', {
+    from: payerPublicKey.toBase58(),
+    to: distribution.creatorWallet,
+    amount: distribution.creatorAmount
+  })
+  
+  const creatorPubkey = new PublicKey(distribution.creatorWallet)
+  
+  // Проверяем, нужна ли рента для создания аккаунта создателя
+  const creatorRent = await getAccountRentIfNeeded(connection, creatorPubkey)
+  const creatorTransferAmount = Math.floor((distribution.creatorAmount + (creatorRent / LAMPORTS_PER_SOL)) * LAMPORTS_PER_SOL)
+  
   transaction.add(
     SystemProgram.transfer({
       fromPubkey: payerPublicKey,
-      toPubkey: new PublicKey(distribution.creatorWallet),
-      lamports: Math.floor(distribution.creatorAmount * LAMPORTS_PER_SOL)
+      toPubkey: creatorPubkey,
+      lamports: creatorTransferAmount
     })
   )
+
+  // Transfer to platform
+  const platformPubkey = new PublicKey(PLATFORM_WALLET)
+  const platformTransferAmount = Math.floor(distribution.platformAmount * LAMPORTS_PER_SOL)
   
-  // Transfer platform fee
-  const platformWallet = new PublicKey(PLATFORM_WALLET)
   transaction.add(
     SystemProgram.transfer({
       fromPubkey: payerPublicKey,
-      toPubkey: platformWallet,
-      lamports: Math.floor(distribution.platformAmount * LAMPORTS_PER_SOL)
+      toPubkey: platformPubkey,
+      lamports: platformTransferAmount
     })
   )
-  
-  // Transfer referrer fee if applicable
-  if (distribution.referrerWallet && distribution.referrerAmount) {
+
+  // Transfer to referrer if exists
+  if (distribution.referrerWallet && distribution.referrerAmount && distribution.referrerAmount > 0) {
+    console.log('Adding transfer to referrer:', {
+      from: payerPublicKey.toBase58(),
+      to: distribution.referrerWallet,
+      amount: distribution.referrerAmount
+    })
+    
+    const referrerPubkey = new PublicKey(distribution.referrerWallet)
+    
+    // Проверяем, нужна ли рента для создания аккаунта реферера
+    const referrerRent = await getAccountRentIfNeeded(connection, referrerPubkey)
+    const referrerTransferAmount = Math.floor((distribution.referrerAmount + (referrerRent / LAMPORTS_PER_SOL)) * LAMPORTS_PER_SOL)
+    
     transaction.add(
       SystemProgram.transfer({
         fromPubkey: payerPublicKey,
-        toPubkey: new PublicKey(distribution.referrerWallet),
-        lamports: Math.floor(distribution.referrerAmount * LAMPORTS_PER_SOL)
+        toPubkey: referrerPubkey,
+        lamports: referrerTransferAmount
       })
     )
   }

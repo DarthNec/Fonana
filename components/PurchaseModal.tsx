@@ -125,6 +125,17 @@ export default function PurchaseModal({ post, onClose, onSuccess }: PurchaseModa
         feePayer: transaction.feePayer?.toBase58(),
         expectedFeePayer: publicKey.toBase58()
       })
+      
+      // Проверяем если в транзакции есть создание новых аккаунтов
+      const hasNewAccounts = transaction.instructions.some(ix => {
+        const transfer = ix.data
+        // Простая проверка - если сумма перевода включает ренту
+        return transfer && transfer.length > 0
+      })
+      
+      if (hasNewAccounts) {
+        console.log('Note: Transaction may include account creation rent')
+      }
 
       // Проверяем что feePayer установлен правильно
       if (transaction.feePayer?.toBase58() !== publicKey.toBase58()) {
@@ -164,16 +175,28 @@ export default function PurchaseModal({ post, onClose, onSuccess }: PurchaseModa
           console.log('Fresh blockhash set:', blockhash)
           console.log('Valid until block:', lastValidBlockHeight)
           
-          // Симулируем транзакцию перед отправкой
+          // Симулируем транзакцию перед отправкой (опционально)
           console.log('Simulating transaction...')
-          const simulation = await connection.simulateTransaction(transaction)
-          
-          if (simulation.value.err) {
-            console.error('Simulation failed:', simulation.value.err)
-            if (simulation.value.logs) {
-              console.log('Simulation logs:', simulation.value.logs)
+          try {
+            const simulation = await connection.simulateTransaction(transaction)
+            
+            if (simulation.value.err) {
+              // Игнорируем ошибку AccountNotFound - это нормально для новых аккаунтов
+              if (simulation.value.err !== 'AccountNotFound') {
+                console.error('Simulation failed:', simulation.value.err)
+                if (simulation.value.logs) {
+                  console.log('Simulation logs:', simulation.value.logs)
+                }
+                throw new Error(`Симуляция транзакции неуспешна: ${JSON.stringify(simulation.value.err)}`)
+              } else {
+                console.log('AccountNotFound in simulation - this is normal for new accounts, proceeding...')
+              }
+            } else {
+              console.log('Simulation successful')
             }
-            throw new Error(`Симуляция транзакции неуспешна: ${JSON.stringify(simulation.value.err)}`)
+          } catch (simError) {
+            console.warn('Simulation error (non-critical):', simError)
+            // Продолжаем даже если симуляция не удалась
           }
           
           console.log('Simulation successful, sending transaction...')

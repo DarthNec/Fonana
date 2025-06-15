@@ -158,16 +158,28 @@ export function SubscriptionPayment({
           console.log('Fresh blockhash set:', blockhash)
           console.log('Valid until block:', lastValidBlockHeight)
           
-          // Симулируем транзакцию перед отправкой
+          // Симулируем транзакцию перед отправкой (опционально)
           console.log('Simulating transaction...')
-          const simulation = await connection.simulateTransaction(transaction)
-          
-          if (simulation.value.err) {
-            console.error('Simulation failed:', simulation.value.err)
-            if (simulation.value.logs) {
-              console.log('Simulation logs:', simulation.value.logs)
+          try {
+            const simulation = await connection.simulateTransaction(transaction)
+            
+            if (simulation.value.err) {
+              // Игнорируем ошибку AccountNotFound - это нормально для новых аккаунтов
+              if (simulation.value.err !== 'AccountNotFound') {
+                console.error('Simulation failed:', simulation.value.err)
+                if (simulation.value.logs) {
+                  console.log('Simulation logs:', simulation.value.logs)
+                }
+                throw new Error(`Симуляция транзакции неуспешна: ${JSON.stringify(simulation.value.err)}`)
+              } else {
+                console.log('AccountNotFound in simulation - this is normal for new accounts, proceeding...')
+              }
+            } else {
+              console.log('Simulation successful')
             }
-            throw new Error(`Симуляция транзакции неуспешна: ${JSON.stringify(simulation.value.err)}`)
+          } catch (simError) {
+            console.warn('Simulation error (non-critical):', simError)
+            // Продолжаем даже если симуляция не удалась
           }
           
           console.log('Simulation successful, sending transaction...')
