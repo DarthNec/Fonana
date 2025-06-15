@@ -12,6 +12,13 @@ import {
 import { CheckBadgeIcon } from '@heroicons/react/24/solid'
 import { useWallet } from '@solana/wallet-adapter-react'
 import { toast } from 'react-hot-toast'
+import { 
+  createSubscriptionTransaction, 
+  calculatePaymentDistribution,
+  formatSolAmount 
+} from '@/lib/solana/payments'
+import { isValidSolanaAddress } from '@/lib/solana/config'
+import { connection } from '@/lib/solana/connection'
 
 interface SubscriptionTier {
   id: string
@@ -109,7 +116,7 @@ const getSubscriptionTiers = (creatorCategory?: string): SubscriptionTier[] => {
 }
 
 export default function SubscribeModal({ creator, preferredTier, onClose, onSuccess }: SubscribeModalProps) {
-  const { connected, publicKey } = useWallet()
+  const { connected, publicKey, sendTransaction } = useWallet()
   const subscriptionTiers = getSubscriptionTiers(creator.category)
   const [selectedTier, setSelectedTier] = useState(preferredTier || subscriptionTiers[1].id)
   const [showInCarousel, setShowInCarousel] = useState(true)
@@ -126,21 +133,148 @@ export default function SubscribeModal({ creator, preferredTier, onClose, onSucc
   }, [])
 
   const handleSubscribe = async () => {
-    if (!connected) {
+    if (!connected || !publicKey) {
       toast.error('Please connect your wallet')
       return
     }
 
-    if (!publicKey) {
-      toast.error('Wallet not connected')
+    const selectedSubscription = subscriptionTiers.find(tier => tier.id === selectedTier)
+    if (!selectedSubscription || selectedSubscription.price === 0) {
+      // For free subscription use old logic
+      if (selectedSubscription?.price === 0) {
+        await handleFreeSubscription()
+        return
+      }
+      toast.error('Please select a subscription plan')
       return
     }
 
     setIsProcessing(true)
     
     try {
+      // Check that it's not the platform wallet
+      const PLATFORM_WALLET = 'npzAZaN9fDMgLV63b3kv3FF8cLSd8dQSLxyMXASA5T4'
+      if (publicKey.toBase58() === PLATFORM_WALLET) {
+        toast.error('❌ You cannot subscribe from the platform wallet!')
+        return
+      }
+
+      // Get full creator data
+      const creatorResponse = await fetch(`/api/creators/${creator.id}`)
+      const creatorData = await creatorResponse.json()
+      
+      if (!creatorData.creator) {
+        throw new Error('Creator not found')
+      }
+
+      const creatorWallet = creatorData.creator.solanaWallet || creatorData.creator.wallet
+      if (!creatorWallet || !isValidSolanaAddress(creatorWallet)) {
+        toast.error('Creator wallet not configured')
+        return
+      }
+
+      // Check that creator is not subscribing to themselves
+      if (creatorWallet === publicKey.toBase58()) {
+        toast.error('You cannot subscribe to yourself')
+        return
+      }
+
+      // Determine referrer presence
+      const referrerWallet = creatorData.creator.referrer?.solanaWallet || creatorData.creator.referrer?.wallet
+      const hasReferrer = creatorData.creator.referrerId && referrerWallet && isValidSolanaAddress(referrerWallet)
+
+      // Calculate payment distribution
+      const distribution = calculatePaymentDistribution(
+        selectedSubscription.price,
+        creatorWallet,
+        hasReferrer,
+        referrerWallet
+      )
+
+      // Create transaction
+      const transaction = await createSubscriptionTransaction(
+        publicKey,
+        distribution
+      )
+
+      // Send transaction
+      let signature: string = ''
+      const sendOptions = {
+        skipPreflight: false,
+        preflightCommitment: 'confirmed' as any,
+        maxRetries: 3
+      }
+      
+      // Get fresh blockhash right before sending
+      const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash('confirmed')
+      transaction.recentBlockhash = blockhash
+      ;(transaction as any).lastValidBlockHeight = lastValidBlockHeight
+      
+      signature = await sendTransaction(transaction, connection, sendOptions)
+      
+      toast.loading('Waiting for blockchain confirmation...')
+      
+      // Give transaction time to get into the network
+      await new Promise(resolve => setTimeout(resolve, 5000))
+
+      // Process payment on backend
+      const response = await fetch('/api/subscriptions/process-payment', {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json',
+          'x-user-wallet': publicKey.toBase58()
+        },
+        body: JSON.stringify({
+          creatorId: creator.id,
+          plan: selectedSubscription.name,
+          price: selectedSubscription.price,
+          signature,
+          hasReferrer,
+          distribution
+        })
+      })
+
+      const data = await response.json()
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Error processing payment')
+      }
+      
+      toast.success(`You have successfully subscribed to ${creator.name}!`)
+      onSuccess?.()
+      onClose()
+    } catch (error) {
+      console.error('Error subscribing:', error)
+      
+      let errorMessage = 'Error processing subscription'
+      
+      if (error instanceof Error) {
+        if (error.message.includes('User rejected')) {
+          errorMessage = 'You cancelled the transaction'
+        } else if (error.message.includes('insufficient')) {
+          errorMessage = 'Insufficient funds in wallet'
+        } else if (error.message.includes('Transaction not confirmed')) {
+          errorMessage = 'Transaction was not confirmed. Please try again'
+        } else if (error.message.includes('block height exceeded')) {
+          errorMessage = 'Transaction expired. Please try again'
+        } else {
+          errorMessage = error.message
+        }
+      }
+      
+      toast.error(errorMessage)
+    } finally {
+      setIsProcessing(false)
+    }
+  }
+
+  // Handle free subscription (old logic)
+  const handleFreeSubscription = async () => {
+    setIsProcessing(true)
+    
+    try {
       // Get current user ID
-      const userResponse = await fetch(`/api/user?wallet=${publicKey.toString()}`)
+      const userResponse = await fetch(`/api/user?wallet=${publicKey!.toString()}`)
       let userData = await userResponse.json()
       
       // If user not found, create new user
@@ -153,7 +287,7 @@ export default function SubscribeModal({ creator, preferredTier, onClose, onSucc
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({
-            wallet: publicKey.toString()
+            wallet: publicKey!.toString()
           })
         })
         
@@ -168,7 +302,7 @@ export default function SubscribeModal({ creator, preferredTier, onClose, onSucc
         }
       }
 
-      // Create subscription
+      // Create free subscription
       const response = await fetch('/api/subscriptions', {
         method: 'POST',
         headers: {
@@ -177,18 +311,9 @@ export default function SubscribeModal({ creator, preferredTier, onClose, onSucc
         body: JSON.stringify({
           userId: userData.user.id,
           creatorId: String(creator.id),
-          plan: selectedSubscription?.name || 'Premium',
-          price: selectedSubscription?.price || 0.15,
+          plan: 'Free',
+          price: 0,
         }),
-      })
-
-      console.log('Creating subscription with:', {
-        userId: userData.user.id,
-        userIdType: typeof userData.user.id,
-        creatorId: String(creator.id),
-        creatorIdType: typeof String(creator.id),
-        plan: selectedSubscription?.name || 'Premium',
-        price: selectedSubscription?.price || 0.15,
       })
 
       if (!response.ok) {
@@ -309,6 +434,13 @@ export default function SubscribeModal({ creator, preferredTier, onClose, onSucc
                           /{tier.duration}
                         </span>
                       </div>
+                      {/* Показываем распределение платежа для платных планов */}
+                      {tier.price > 0 && isSelected && (
+                        <div className="mt-2 text-xs text-slate-400 space-y-1">
+                          <p>Creator: {formatSolAmount(tier.price * 0.9)}</p>
+                          <p>Platform: {formatSolAmount(tier.price * 0.1)}</p>
+                        </div>
+                      )}
                     </div>
 
                     <ul className="space-y-2">
@@ -372,7 +504,7 @@ export default function SubscribeModal({ creator, preferredTier, onClose, onSucc
               ) : (
                 selectedSubscription?.price === 0 
                   ? 'Subscribe for free'
-                  : `Subscribe for ${selectedSubscription?.price} ${selectedSubscription?.currency}/month`
+                  : `Pay ${formatSolAmount(selectedSubscription?.price || 0)} per ${selectedSubscription?.duration}`
               )}
             </button>
             
