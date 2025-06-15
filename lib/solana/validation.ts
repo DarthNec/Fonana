@@ -62,6 +62,7 @@ export async function validateTransaction(
     let totalTransferred = 0
     const recipients: string[] = []
     const recipientAmounts: { [key: string]: number } = {}
+    let totalRentAdded = 0 // Отслеживаем общую добавленную ренту
     
     for (let i = 1; i < accountKeys.staticAccountKeys.length; i++) {
       const diff = postBalances[i] - preBalances[i]
@@ -71,15 +72,31 @@ export async function validateTransaction(
         totalTransferred += amountInSol
         recipients.push(recipientKey)
         recipientAmounts[recipientKey] = amountInSol
+        
+        // Если аккаунт был создан (баланс был 0), учитываем ренту
+        if (preBalances[i] === 0) {
+          totalRentAdded += 0.00089088
+        }
       }
     }
 
-    // Validate amount (with small tolerance for fees)
+    // Validate amount (with tolerance for fees and rent)
     const tolerance = 0.001 // 0.001 SOL tolerance
-    if (Math.abs(totalTransferred - expectedAmount) > tolerance) {
+    const expectedWithRent = expectedAmount + totalRentAdded
+    
+    console.log('Amount validation:', {
+      totalTransferred,
+      expectedAmount,
+      totalRentAdded,
+      expectedWithRent,
+      recipientAmounts
+    })
+    
+    if (Math.abs(totalTransferred - expectedWithRent) > tolerance && 
+        Math.abs(totalTransferred - expectedAmount) > tolerance) {
       return {
         isValid: false,
-        error: `Amount mismatch: expected ${expectedAmount}, got ${totalTransferred}`,
+        error: `Amount mismatch: expected ${expectedAmount}${totalRentAdded > 0 ? ` (+ ${totalRentAdded.toFixed(8)} rent)` : ''}, got ${totalTransferred}`,
         details: {
           signature,
           amount: totalTransferred,
@@ -188,13 +205,33 @@ export async function validatePaymentDistribution(
 
     // Проверяем суммы
     const tolerance = 0.0001 // Меньшая толерантность для точности
+    const rentExemption = 0.00089088 // Минимальная рента для создания аккаунта
     
     if (creatorIndex >= 0) {
       const creatorReceived = lamportsToSol(postBalances[creatorIndex] - preBalances[creatorIndex])
-      if (Math.abs(creatorReceived - distribution.creatorAmount) > tolerance) {
+      
+      // Проверяем, был ли аккаунт создан (баланс был 0)
+      const accountWasCreated = preBalances[creatorIndex] === 0
+      
+      // Если аккаунт был создан, учитываем ренту
+      const expectedAmount = accountWasCreated 
+        ? distribution.creatorAmount + rentExemption
+        : distribution.creatorAmount
+      
+      console.log('Creator validation:', {
+        received: creatorReceived,
+        expected: distribution.creatorAmount,
+        expectedWithRent: expectedAmount,
+        accountWasCreated,
+        preBalance: lamportsToSol(preBalances[creatorIndex]),
+        postBalance: lamportsToSol(postBalances[creatorIndex])
+      })
+      
+      if (Math.abs(creatorReceived - expectedAmount) > tolerance && 
+          Math.abs(creatorReceived - distribution.creatorAmount) > tolerance) {
         return {
           isValid: false,
-          error: `Creator amount mismatch: expected ${distribution.creatorAmount}, got ${creatorReceived}`
+          error: `Creator amount mismatch: expected ${distribution.creatorAmount}${accountWasCreated ? ` (+ ${rentExemption} rent)` : ''}, got ${creatorReceived}`
         }
       }
     }
@@ -216,10 +253,20 @@ export async function validatePaymentDistribution(
       
       if (referrerIndex >= 0) {
         const referrerReceived = lamportsToSol(postBalances[referrerIndex] - preBalances[referrerIndex])
-        if (Math.abs(referrerReceived - distribution.referrerAmount) > tolerance) {
+        
+        // Проверяем, был ли аккаунт реферера создан
+        const referrerAccountWasCreated = preBalances[referrerIndex] === 0
+        
+        // Если аккаунт был создан, учитываем ренту
+        const expectedReferrerAmount = referrerAccountWasCreated 
+          ? distribution.referrerAmount + rentExemption
+          : distribution.referrerAmount
+        
+        if (Math.abs(referrerReceived - expectedReferrerAmount) > tolerance && 
+            Math.abs(referrerReceived - distribution.referrerAmount) > tolerance) {
           return {
             isValid: false,
-            error: `Referrer amount mismatch: expected ${distribution.referrerAmount}, got ${referrerReceived}`
+            error: `Referrer amount mismatch: expected ${distribution.referrerAmount}${referrerAccountWasCreated ? ` (+ ${rentExemption} rent)` : ''}, got ${referrerReceived}`
           }
         }
       }
