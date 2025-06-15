@@ -238,7 +238,7 @@ export default function CreatePostModal({ onPostCreated, onClose }: CreatePostMo
         isLocked: formData.accessType !== 'free',
         price: formData.accessType === 'paid' ? formData.price : undefined,
         currency: formData.accessType === 'paid' ? formData.currency : undefined,
-        isPremium: formData.accessType === 'vip',
+        isPremium: false,
         tier: formData.accessType
       }
 

@@ -128,6 +128,12 @@ export async function GET(req: Request) {
           const hasRequiredTier = hasAccessToTier(userTier, post.minSubscriptionTier)
           shouldHideContent = !hasRequiredTier
         } 
+        // Обратная совместимость: если isPremium=true, считаем это VIP постом
+        else if (post.isPremium) {
+          const userTier = userSubscriptionsMap.get(post.creatorId)
+          const hasRequiredTier = hasAccessToTier(userTier, 'vip')
+          shouldHideContent = !hasRequiredTier
+        }
         // Если у поста есть цена - это платный пост
         else if (post.price && post.price > 0) {
           shouldHideContent = !hasPurchased
@@ -197,7 +203,8 @@ export async function POST(request: NextRequest) {
       isPremium: body.isPremium || false,
       price: body.price,
       currency: body.currency,
-      tags: body.tags || []
+      tags: body.tags || [],
+      tier: body.tier
     })
 
     return NextResponse.json({ post })
