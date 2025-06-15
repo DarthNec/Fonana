@@ -71,15 +71,34 @@ export async function GET(req: Request) {
       console.log('[API/posts] User subscriptions:', userSubscriptions.length, 'active subscriptions')
     }
 
+    // Получаем покупки постов текущего пользователя
+    let userPurchasedPosts: string[] = []
+    if (currentUser) {
+      const purchases = await prisma.postPurchase.findMany({
+        where: {
+          userId: currentUser.id,
+          paymentStatus: 'COMPLETED'
+        },
+        select: { postId: true }
+      })
+      userPurchasedPosts = purchases.map(purchase => purchase.postId)
+      console.log('[API/posts] User purchased posts:', userPurchasedPosts.length, 'posts')
+    }
+
     // Форматируем посты для фронтенда
     const formattedPosts = posts.map((post: any) => {
       const isCreatorPost = currentUser?.id === post.creatorId
       const isSubscribed = userSubscriptions.includes(post.creatorId)
+      const hasPurchased = userPurchasedPosts.includes(post.id)
       
-      // Если пост заблокирован и пользователь не подписан и это не его пост - скрываем контент
-      const shouldHideContent = post.isLocked && !isSubscribed && !isCreatorPost
+      // Проверяем доступ к контенту
+      // Если пост заблокирован, проверяем:
+      // 1. Это пост самого пользователя
+      // 2. У пользователя есть подписка
+      // 3. Пользователь купил этот конкретный пост
+      const shouldHideContent = post.isLocked && !isCreatorPost && !isSubscribed && !hasPurchased
 
-      console.log(`[API/posts] Post "${post.title}" - locked: ${post.isLocked}, subscribed: ${isSubscribed}, shouldHide: ${shouldHideContent}`)
+      console.log(`[API/posts] Post "${post.title}" (ID: ${post.id}) - locked: ${post.isLocked}, subscribed: ${isSubscribed}, purchased: ${hasPurchased}, shouldHide: ${shouldHideContent}`)
 
       return {
         ...post,
@@ -93,6 +112,7 @@ export async function GET(req: Request) {
         comments: post._count?.comments || post.commentsCount || 0,
         tags: post.tags?.map((t: any) => typeof t === 'string' ? t : t.tag?.name || '') || [],
         isSubscribed,
+        hasPurchased,
         // Скрываем контент для заблокированных постов
         content: shouldHideContent ? '' : post.content,
         mediaUrl: shouldHideContent ? null : post.mediaUrl,

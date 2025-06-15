@@ -104,8 +104,9 @@ export default function PurchaseModal({ post, onClose, onSuccess }: PurchaseModa
       
       console.log('Transaction sent:', signature)
 
-      // Ждем небольшую паузу перед отправкой на бекенд
-      await new Promise(resolve => setTimeout(resolve, 2000))
+      // Ждем подтверждения транзакции в блокчейне (обычно 5-10 секунд)
+      toast.loading('Подтверждаем транзакцию в блокчейне...')
+      await new Promise(resolve => setTimeout(resolve, 5000))
 
       // Process payment on backend
       const response = await fetch('/api/posts/process-payment', {

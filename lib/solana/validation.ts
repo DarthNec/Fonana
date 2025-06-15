@@ -238,15 +238,40 @@ export async function validatePaymentDistribution(
 // Вспомогательная функция для ожидания подтверждения транзакции
 export async function waitForTransactionConfirmation(
   signature: string,
-  maxRetries: number = 30,
+  maxRetries: number = 60, // Увеличено до 60 попыток
   retryDelay: number = 1000
 ): Promise<boolean> {
+  console.log(`Waiting for transaction confirmation: ${signature}`)
+  
+  // Сначала пытаемся использовать WebSocket для быстрого подтверждения
+  try {
+    const result = await getConnection().confirmTransaction({
+      signature,
+      blockhash: '', // Будет заполнено автоматически
+      lastValidBlockHeight: 0, // Будет заполнено автоматически
+    }, 'confirmed')
+    
+    if (!result.value.err) {
+      console.log(`Transaction confirmed via WebSocket: ${signature}`)
+      return true
+    } else {
+      console.error(`Transaction failed: ${result.value.err}`)
+      return false
+    }
+  } catch (wsError) {
+    console.warn('WebSocket confirmation failed, falling back to polling:', wsError)
+  }
+  
+  // Fallback to polling если WebSocket не сработал
   for (let i = 0; i < maxRetries; i++) {
     try {
       const status = await getConnection().getSignatureStatus(signature)
       
+      console.log(`Attempt ${i + 1}/${maxRetries} - Status:`, status.value?.confirmationStatus)
+      
       if (status.value?.confirmationStatus === 'confirmed' || 
           status.value?.confirmationStatus === 'finalized') {
+        console.log(`Transaction confirmed after ${i + 1} attempts: ${signature}`)
         return true
       }
       
@@ -254,14 +279,28 @@ export async function waitForTransactionConfirmation(
         console.error('Transaction failed:', status.value.err)
         return false
       }
+      
+      // Если транзакция еще не видна в сети, подождем немного больше
+      if (!status.value && i < 5) {
+        await new Promise(resolve => setTimeout(resolve, retryDelay * 2))
+        continue
+      }
     } catch (error) {
-      console.error('Error checking transaction status:', error)
+      console.error(`Error checking transaction status (attempt ${i + 1}):`, error)
+      
+      // Если это временная ошибка сети, продолжаем попытки
+      if (i < maxRetries - 1 && error instanceof Error && 
+          (error.message.includes('fetch') || error.message.includes('network'))) {
+        await new Promise(resolve => setTimeout(resolve, retryDelay * 2))
+        continue
+      }
     }
     
     // Ждём перед следующей попыткой
     await new Promise(resolve => setTimeout(resolve, retryDelay))
   }
   
+  console.error(`Transaction not confirmed after ${maxRetries} attempts: ${signature}`)
   return false
 }
 
