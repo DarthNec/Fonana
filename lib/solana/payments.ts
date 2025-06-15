@@ -19,15 +19,15 @@ async function getRecommendedPriorityFee(connection: Connection): Promise<number
         const feeValues = nonZeroFees.map(f => f.prioritizationFee).sort((a, b) => a - b)
         // Используем 90-й перцентиль для большей надежности в загруженной сети
         const p90 = feeValues[Math.floor(feeValues.length * 0.9)]
-        // Минимум 300000, максимум 1000000
-        return Math.min(Math.max(p90 || 300000, 300000), 1000000)
+        // Минимум 600000, максимум 2000000 (увеличено в 2 раза для теста)
+        return Math.min(Math.max(p90 || 600000, 600000), 2000000)
       }
     }
   } catch (error) {
     console.error('Error getting priority fees:', error)
   }
-  // По умолчанию используем 300000 microlamports
-  return 300000
+  // По умолчанию используем 600000 microlamports
+  return 600000
 }
 
 // Проверяем существование аккаунта и возвращаем минимальную ренту если нужно
