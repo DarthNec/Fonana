@@ -95,6 +95,8 @@ export default function PostManagementTestPage() {
               <PostCard
                 key={post.id}
                 {...post}
+                mediaUrl={post.mediaUrl}  // Явно передаём
+                thumbnail={post.thumbnail}  // Явно передаём
                 showCreator={true}
                 onSubscribeClick={() => {}}
                 onPurchaseClick={() => {}}

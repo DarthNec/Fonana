@@ -113,6 +113,11 @@ export async function GET(req: Request) {
       const isSubscribed = userSubscriptionsMap.has(post.creatorId)
       const hasPurchased = userPurchasedPosts.includes(post.id)
       
+      // Логирование для отладки
+      if (isCreatorPost) {
+        console.log(`[API/posts] User viewing own post "${post.title}" - currentUser.id: ${currentUser?.id}, post.creatorId: ${post.creatorId}`)
+      }
+      
       // Проверяем доступ к контенту
       // Если пост заблокирован, проверяем:
       // 1. Это пост самого пользователя
@@ -161,9 +166,11 @@ export async function GET(req: Request) {
         tags: post.tags?.map((t: any) => typeof t === 'string' ? t : t.tag?.name || '') || [],
         isSubscribed,
         hasPurchased,
-        // Скрываем контент для заблокированных постов
-        content: shouldHideContent ? '' : post.content,
-        mediaUrl: shouldHideContent ? null : post.mediaUrl,
+        // Скрываем контент для заблокированных постов, но не для автора
+        content: (shouldHideContent && !isCreatorPost) ? '' : post.content,
+        // Всегда возвращаем оригинальные пути для редактирования
+        mediaUrl: post.mediaUrl,
+        thumbnail: post.thumbnail,
         shouldHideContent,
         // Добавляем информацию о тирах
         requiredTier: post.minSubscriptionTier || (post.isPremium ? 'vip' : null),

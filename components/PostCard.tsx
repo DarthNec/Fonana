@@ -57,6 +57,8 @@ interface PostCardProps {
   content: string
   category?: string
   image?: string
+  mediaUrl?: string  // Добавляем оригинальный mediaUrl
+  thumbnail?: string  // Добавляем оригинальный thumbnail
   type: 'text' | 'image' | 'video' | 'audio'
   isLocked: boolean
   price?: number
@@ -82,6 +84,8 @@ export default function PostCard({
   content,
   category,
   image,
+  mediaUrl,
+  thumbnail,
   type,
   isLocked,
   price,
@@ -896,7 +900,8 @@ export default function PostCard({
             content,
             category,
             image,
-            mediaUrl: image,
+            mediaUrl: mediaUrl || image,  // Используем оригинальный mediaUrl если есть
+            thumbnail: thumbnail || image,  // Используем оригинальный thumbnail если есть
             tags,
             isLocked,
             isPremium,
