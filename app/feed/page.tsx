@@ -46,8 +46,17 @@ export default function FeedPage() {
       loadPosts()
     }
     
+    const handlePostsUpdated = () => {
+      loadPosts()
+    }
+    
     window.addEventListener('focus', handleFocus)
-    return () => window.removeEventListener('focus', handleFocus)
+    window.addEventListener('postsUpdated', handlePostsUpdated)
+    
+    return () => {
+      window.removeEventListener('focus', handleFocus)
+      window.removeEventListener('postsUpdated', handlePostsUpdated)
+    }
   }, [])
 
   const loadPosts = async () => {

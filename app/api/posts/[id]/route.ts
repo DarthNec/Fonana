@@ -83,12 +83,23 @@ export async function PUT(
     // Проверяем, что пользователь - автор поста
     const post = await prisma.post.findUnique({
       where: { id: params.id },
-      select: { creatorId: true },
+      select: { 
+        creatorId: true,
+        creator: {
+          select: {
+            id: true,
+            wallet: true
+          }
+        }
+      },
     })
 
     if (!post) {
       return NextResponse.json({ error: 'Post not found' }, { status: 404 })
     }
+
+    // Логирование для отладки
+    console.log('[API/posts/[id]] Update attempt - user.id:', user.id, 'post.creatorId:', post.creatorId, 'post.creator.wallet:', post.creator.wallet)
 
     if (post.creatorId !== user.id) {
       return NextResponse.json({ error: 'Not authorized to edit this post' }, { status: 403 })

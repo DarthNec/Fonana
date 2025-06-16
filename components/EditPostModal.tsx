@@ -41,6 +41,9 @@ export default function EditPostModal({ isOpen, onClose, post, onPostUpdated }: 
   const { user } = useUser()
   const [isSubmitting, setIsSubmitting] = useState(false)
   
+  // Предотвращаем закрытие модалки если она не открыта
+  if (!isOpen) return null
+  
   // Form data
   const [title, setTitle] = useState('')
   const [content, setContent] = useState('')
@@ -81,6 +84,9 @@ export default function EditPostModal({ isOpen, onClose, post, onPostUpdated }: 
   }, [isOpen, post])
 
   const handleMediaChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    e.preventDefault() // Предотвращаем всплытие события
+    e.stopPropagation() // Останавливаем распространение события
+    
     const file = e.target.files?.[0]
     if (file) {
       if (file.size > 50 * 1024 * 1024) {
@@ -88,10 +94,16 @@ export default function EditPostModal({ isOpen, onClose, post, onPostUpdated }: 
         return
       }
       
+      console.log('[EditPostModal] Loading file:', file.name)
       setMediaFile(file)
       const reader = new FileReader()
       reader.onload = (e) => {
+        console.log('[EditPostModal] File loaded successfully')
         setMediaPreview(e.target?.result as string)
+      }
+      reader.onerror = (e) => {
+        console.error('[EditPostModal] File reading error:', e)
+        toast.error('Failed to read file')
       }
       reader.readAsDataURL(file)
     }
@@ -277,6 +289,7 @@ export default function EditPostModal({ isOpen, onClose, post, onPostUpdated }: 
                     className="hidden"
                     accept="image/*,video/*"
                     onChange={handleMediaChange}
+                    onClick={(e) => e.stopPropagation()}
                   />
                 </label>
               )}

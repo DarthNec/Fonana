@@ -370,7 +370,13 @@ export default function PostCard({
   }
 
   // Check if current user is the post creator
-  const isCreator = user?.id === creator.id
+  // Добавляем логирование для отладки
+  const isCreator = user?.id && creator?.id && user.id === creator.id
+  
+  // Debug logging
+  if (process.env.NODE_ENV === 'development') {
+    console.log(`[PostCard] Post ${id} - user.id: ${user?.id}, creator.id: ${creator?.id}, isCreator: ${isCreator}`)
+  }
 
   // Use shouldHideContent flag from API instead of complex local logic
   const canViewContent = !shouldHideContent
@@ -881,6 +887,7 @@ export default function PostCard({
       {/* Edit Post Modal */}
       {showEditModal && (
         <EditPostModal
+          key={`edit-modal-${id}`} // Добавляем ключ для стабильности компонента
           isOpen={showEditModal}
           onClose={() => setShowEditModal(false)}
           post={{
@@ -895,11 +902,18 @@ export default function PostCard({
             isPremium,
             price,
             currency,
-            requiredTier
+            requiredTier,
+            creatorId: creator.id  // Добавляем creatorId для проверки
           }}
           onPostUpdated={() => {
             setShowEditModal(false)
-            window.location.reload()
+            // Вместо полной перезагрузки страницы просто вызываем обновление постов
+            // Это позволит избежать потери состояния
+            setTimeout(() => {
+              if (window.dispatchEvent) {
+                window.dispatchEvent(new Event('postsUpdated'))
+              }
+            }, 100) // Небольшая задержка для корректного закрытия модалки
           }}
         />
       )}
