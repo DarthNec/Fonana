@@ -6,16 +6,20 @@ export const dynamic = 'force-dynamic'
 
 // Функция для генерации путей к оптимизированным изображениям
 function getOptimizedImageUrls(mediaUrl: string | null) {
-  if (!mediaUrl || !mediaUrl.includes('/posts/images/')) return null
+  if (!mediaUrl) return null
+  
+  // Проверяем, что это изображение в нашей системе
+  if (!mediaUrl.includes('/posts/images/') && !mediaUrl.includes('/posts/')) return null
   
   const ext = mediaUrl.substring(mediaUrl.lastIndexOf('.'))
-  const baseName = mediaUrl.substring(0, mediaUrl.lastIndexOf('.'))
   const fileName = mediaUrl.substring(mediaUrl.lastIndexOf('/') + 1, mediaUrl.lastIndexOf('.'))
   
+  // Возвращаем пути только для новых изображений
+  // Для старых изображений не генерируем оптимизированные пути
   return {
     original: mediaUrl,
-    thumb: `/posts/images/thumb_${fileName}.webp`,
-    preview: `/posts/images/preview_${fileName}.webp`
+    thumb: null, // Временно отключаем, пока не загружены оптимизированные версии
+    preview: null
   }
 }
 

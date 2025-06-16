@@ -58,8 +58,12 @@ export default function OptimizedImage({
   useEffect(() => {
     if (!isInView) return
 
-    // Сначала показываем preview (если есть)
-    if (preview) {
+    // Если нет preview, сразу показываем основное изображение
+    if (!preview) {
+      setCurrentSrc(thumbSrc)
+      setIsLoading(true)
+    } else {
+      // Если есть preview, показываем его первым
       setCurrentSrc(previewSrc)
       setIsLoading(true)
     }
@@ -74,9 +78,11 @@ export default function OptimizedImage({
     }
 
     mainImage.onerror = () => {
+      // При ошибке показываем оригинал или плейсхолдер
+      setCurrentSrc(imageSrc)
       setIsLoading(false)
     }
-  }, [isInView, preview, thumbSrc, previewSrc])
+  }, [isInView, preview, thumbSrc, previewSrc, imageSrc])
 
   if (type === 'video') {
     return (
