@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
 import Avatar from './Avatar'
@@ -16,11 +16,15 @@ import {
   PaperAirplaneIcon,
   ChevronDownIcon,
   ChevronUpIcon,
-  UserIcon
+  UserIcon,
+  PencilIcon,
+  TrashIcon,
+  EllipsisVerticalIcon
 } from '@heroicons/react/24/outline'
 import { HeartIcon as HeartSolidIcon } from '@heroicons/react/24/solid'
 import { useUser } from '@/lib/hooks/useUser'
 import { getProfileLink } from '@/lib/utils/links'
+import EditPostModal from './EditPostModal'
 
 interface Creator {
   id: string
@@ -105,6 +109,10 @@ export default function PostCard({
   const [replyContent, setReplyContent] = useState('')
   const [isLoadingLike, setIsLoadingLike] = useState(false)
   const [isLoadingComments, setIsLoadingComments] = useState(false)
+  const [showActions, setShowActions] = useState(false)
+  const [showEditModal, setShowEditModal] = useState(false)
+  const [isDeleting, setIsDeleting] = useState(false)
+  const actionsRef = useRef<HTMLDivElement>(null)
 
   // Загружаем статус лайка при монтировании
   useEffect(() => {
@@ -119,6 +127,23 @@ export default function PostCard({
       loadComments()
     }
   }, [showComments, id])
+
+  // Закрываем меню действий при клике вне его
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (actionsRef.current && !actionsRef.current.contains(event.target as Node)) {
+        setShowActions(false)
+      }
+    }
+
+    if (showActions) {
+      document.addEventListener('mousedown', handleClickOutside)
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside)
+    }
+  }, [showActions])
 
   const checkLikeStatus = async () => {
     try {
@@ -311,6 +336,42 @@ export default function PostCard({
     })
   }
 
+  const handleDelete = async () => {
+    if (!user?.wallet) return
+
+    const confirmed = window.confirm('Are you sure you want to delete this post? This action cannot be undone.')
+    if (!confirmed) return
+
+    setIsDeleting(true)
+    try {
+      const response = await fetch(`/api/posts/${id}?userWallet=${user.wallet}`, {
+        method: 'DELETE',
+      })
+
+      if (!response.ok) {
+        const error = await response.json()
+        throw new Error(error.error || 'Failed to delete post')
+      }
+
+      toast.success('Post deleted successfully')
+      // Refresh the page or remove the post from the list
+      window.location.reload()
+    } catch (error) {
+      console.error('Error deleting post:', error)
+      toast.error(error instanceof Error ? error.message : 'Failed to delete post')
+    } finally {
+      setIsDeleting(false)
+    }
+  }
+
+  const handleEdit = () => {
+    setShowEditModal(true)
+    setShowActions(false)
+  }
+
+  // Check if current user is the post creator
+  const isCreator = user?.id === creator.id
+
   // Use shouldHideContent flag from API instead of complex local logic
   const canViewContent = !shouldHideContent
   
@@ -392,8 +453,42 @@ export default function PostCard({
               </div>
             </Link>
             
-            <div className="ml-auto text-gray-600 dark:text-slate-400 text-sm">
-              {formatDate(createdAt)}
+            <div className="ml-auto flex items-center gap-2">
+              <span className="text-gray-600 dark:text-slate-400 text-sm">
+                {formatDate(createdAt)}
+              </span>
+              
+              {/* Creator Actions */}
+              {isCreator && (
+                <div ref={actionsRef} className="relative">
+                  <button
+                    onClick={() => setShowActions(!showActions)}
+                    className="p-1 text-gray-500 hover:text-gray-700 dark:text-slate-400 dark:hover:text-slate-200 rounded-lg hover:bg-gray-100 dark:hover:bg-slate-700/50 transition-colors"
+                  >
+                    <EllipsisVerticalIcon className="w-5 h-5" />
+                  </button>
+                  
+                  {showActions && (
+                    <div className="absolute right-0 mt-2 w-48 bg-white dark:bg-slate-800 rounded-xl shadow-lg border border-gray-200 dark:border-slate-700 py-1 z-10">
+                      <button
+                        onClick={handleEdit}
+                        className="flex items-center gap-2 w-full px-4 py-2 text-gray-700 dark:text-slate-300 hover:bg-gray-100 dark:hover:bg-slate-700/50 transition-colors"
+                      >
+                        <PencilIcon className="w-4 h-4" />
+                        Edit Post
+                      </button>
+                      <button
+                        onClick={handleDelete}
+                        disabled={isDeleting}
+                        className="flex items-center gap-2 w-full px-4 py-2 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors disabled:opacity-50"
+                      >
+                        <TrashIcon className="w-4 h-4" />
+                        {isDeleting ? 'Deleting...' : 'Delete Post'}
+                      </button>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           </div>
         )}
@@ -781,6 +876,32 @@ export default function PostCard({
           </div>
         )}
       </div>
+
+      {/* Edit Post Modal */}
+      {showEditModal && (
+        <EditPostModal
+          isOpen={showEditModal}
+          onClose={() => setShowEditModal(false)}
+          post={{
+            id,
+            title,
+            content,
+            category,
+            image,
+            mediaUrl: image,
+            tags,
+            isLocked,
+            isPremium,
+            price,
+            currency,
+            requiredTier
+          }}
+          onPostUpdated={() => {
+            setShowEditModal(false)
+            window.location.reload()
+          }}
+        />
+      )}
     </article>
   )
 } 
