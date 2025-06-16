@@ -1,0 +1,138 @@
+'use client'
+
+import { useState, useEffect, useRef } from 'react'
+import { PlayIcon } from '@heroicons/react/24/solid'
+
+interface OptimizedImageProps {
+  src: string | null
+  thumbnail?: string | null
+  preview?: string | null
+  alt: string
+  className?: string
+  type?: 'image' | 'video'
+  onClick?: () => void
+}
+
+export default function OptimizedImage({
+  src,
+  thumbnail,
+  preview,
+  alt,
+  className = '',
+  type = 'image',
+  onClick
+}: OptimizedImageProps) {
+  const [currentSrc, setCurrentSrc] = useState<string | null>(null)
+  const [isLoading, setIsLoading] = useState(true)
+  const [isInView, setIsInView] = useState(false)
+  const imgRef = useRef<HTMLImageElement>(null)
+  const containerRef = useRef<HTMLDivElement>(null)
+
+  // Определяем, какое изображение показывать
+  const imageSrc = src || '/placeholder-image.png'
+  const thumbSrc = thumbnail || src || '/placeholder-image.png'
+  const previewSrc = preview || thumbnail || src || '/placeholder-image.png'
+
+  // Intersection Observer для lazy loading
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            setIsInView(true)
+            observer.disconnect()
+          }
+        })
+      },
+      { threshold: 0.1, rootMargin: '50px' }
+    )
+
+    if (containerRef.current) {
+      observer.observe(containerRef.current)
+    }
+
+    return () => observer.disconnect()
+  }, [])
+
+  // Последовательная загрузка изображений
+  useEffect(() => {
+    if (!isInView) return
+
+    // Сначала показываем preview (если есть)
+    if (preview) {
+      setCurrentSrc(previewSrc)
+      setIsLoading(true)
+    }
+
+    // Загружаем основное изображение (thumbnail или оригинал)
+    const mainImage = new Image()
+    mainImage.src = thumbSrc
+    
+    mainImage.onload = () => {
+      setCurrentSrc(thumbSrc)
+      setIsLoading(false)
+    }
+
+    mainImage.onerror = () => {
+      setIsLoading(false)
+    }
+  }, [isInView, preview, thumbSrc, previewSrc])
+
+  if (type === 'video') {
+    return (
+      <div 
+        ref={containerRef}
+        className={`relative ${className}`}
+        onClick={onClick}
+      >
+        <img
+          ref={imgRef}
+          src={currentSrc || previewSrc}
+          alt={alt}
+          className={`${className} ${isLoading ? 'blur-sm' : ''} transition-all duration-300`}
+          loading="lazy"
+        />
+        <div className="absolute inset-0 flex items-center justify-center">
+          <div className="w-16 h-16 bg-black/50 backdrop-blur-sm rounded-full flex items-center justify-center hover:scale-110 transition-transform cursor-pointer">
+            <PlayIcon className="w-8 h-8 text-white" />
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <div 
+      ref={containerRef}
+      className={`relative ${isLoading ? 'bg-gray-100 dark:bg-slate-800 animate-pulse' : ''}`}
+      onClick={onClick}
+    >
+      {isInView && (
+        <>
+          {/* Preview/Placeholder пока грузится основное изображение */}
+          {isLoading && preview && (
+            <img
+              src={previewSrc}
+              alt={alt}
+              className={`${className} blur-md`}
+            />
+          )}
+          
+          {/* Основное изображение */}
+          <img
+            ref={imgRef}
+            src={currentSrc || previewSrc}
+            alt={alt}
+            className={`${className} ${isLoading ? 'opacity-0' : 'opacity-100'} transition-opacity duration-300`}
+            loading="lazy"
+          />
+        </>
+      )}
+      
+      {/* Skeleton loader */}
+      {!isInView && (
+        <div className={`${className} bg-gradient-to-br from-gray-200 to-gray-300 dark:from-slate-700 dark:to-slate-800`} />
+      )}
+    </div>
+  )
+} 

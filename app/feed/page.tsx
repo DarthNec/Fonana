@@ -109,6 +109,7 @@ export default function FeedPage() {
         image: post.mediaUrl || post.thumbnail,
         mediaUrl: post.mediaUrl,  // Передаём оригинальные значения
         thumbnail: post.thumbnail,  // Передаём оригинальные значения
+        preview: post.preview,     // Добавляем preview
         type: post.type as 'text' | 'image' | 'video' | 'audio',
         isLocked: post.isLocked,
         isPremium: post.isPremium || false,

@@ -4,6 +4,21 @@ import { prisma } from '@/lib/prisma'
 
 export const dynamic = 'force-dynamic'
 
+// Функция для генерации путей к оптимизированным изображениям
+function getOptimizedImageUrls(mediaUrl: string | null) {
+  if (!mediaUrl || !mediaUrl.includes('/posts/images/')) return null
+  
+  const ext = mediaUrl.substring(mediaUrl.lastIndexOf('.'))
+  const baseName = mediaUrl.substring(0, mediaUrl.lastIndexOf('.'))
+  const fileName = mediaUrl.substring(mediaUrl.lastIndexOf('/') + 1, mediaUrl.lastIndexOf('.'))
+  
+  return {
+    original: mediaUrl,
+    thumb: `/posts/images/thumb_${fileName}.webp`,
+    preview: `/posts/images/preview_${fileName}.webp`
+  }
+}
+
 // Определяем иерархию тиров подписок
 const TIER_HIERARCHY: Record<string, number> = {
   'vip': 4,
@@ -153,6 +168,9 @@ export async function GET(req: Request) {
 
       console.log(`[API/posts] Post "${post.title}" (ID: ${post.id}) - locked: ${post.isLocked}, tier: ${post.minSubscriptionTier}, userTier: ${userSubscriptionPlan}, subscribed: ${isSubscribed}, purchased: ${hasPurchased}, shouldHide: ${shouldHideContent}`)
 
+      // Получаем оптимизированные версии изображений
+      const optimizedImages = getOptimizedImageUrls(post.mediaUrl)
+      
       return {
         ...post,
         creator: {
@@ -170,7 +188,8 @@ export async function GET(req: Request) {
         content: (shouldHideContent && !isCreatorPost) ? '' : post.content,
         // Всегда возвращаем оригинальные пути для редактирования
         mediaUrl: post.mediaUrl,
-        thumbnail: post.thumbnail,
+        thumbnail: optimizedImages?.thumb || post.thumbnail,
+        preview: optimizedImages?.preview,
         shouldHideContent,
         // Добавляем информацию о тирах
         requiredTier: post.minSubscriptionTier || (post.isPremium ? 'vip' : null),

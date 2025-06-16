@@ -192,6 +192,8 @@ export default function EditPostModal({ isOpen, onClose, post, onPostUpdated }: 
       if (mediaFile) {
         const formData = new FormData()
         formData.append('file', mediaFile)
+        formData.append('type', mediaFile.type.startsWith('video/') ? 'video' : 
+                               mediaFile.type.startsWith('audio/') ? 'audio' : 'image')
         
         const uploadResponse = await fetch('/api/posts/upload', {
           method: 'POST',
@@ -204,7 +206,8 @@ export default function EditPostModal({ isOpen, onClose, post, onPostUpdated }: 
 
         const uploadData = await uploadResponse.json()
         mediaUrl = uploadData.url
-        thumbnail = uploadData.url // Синхронизируем оба поля
+        // Используем оптимизированную версию для thumbnail
+        thumbnail = uploadData.thumbUrl || uploadData.url
       }
 
       // Update post

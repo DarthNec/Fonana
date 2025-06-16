@@ -3,6 +3,7 @@ import { writeFile, mkdir } from 'fs/promises'
 import path from 'path'
 import crypto from 'crypto'
 import fs from 'fs'
+import sharp from 'sharp'
 
 export async function POST(request: NextRequest) {
   try {
@@ -99,6 +100,45 @@ export async function POST(request: NextRequest) {
     try {
       await writeFile(filePath, buffer)
       console.log('File saved:', filePath)
+      
+      // Если это изображение, создаем оптимизированную версию
+      if (type === 'image') {
+        const optimizedFileName = `thumb_${fileName}`
+        const optimizedPath = path.join(uploadDir, optimizedFileName)
+        
+        try {
+          // Создаем оптимизированную версию: 
+          // - максимум 800px по ширине
+          // - конвертируем в webp для лучшего сжатия
+          // - качество 85%
+          await sharp(buffer)
+            .resize(800, null, { 
+              withoutEnlargement: true,
+              fit: 'inside'
+            })
+            .webp({ quality: 85 })
+            .toFile(optimizedPath.replace(ext, '.webp'))
+          
+          console.log('Optimized image created:', optimizedPath)
+          
+          // Также создаем миниатюру для превью (300px)
+          const previewFileName = `preview_${fileName}`
+          const previewPath = path.join(uploadDir, previewFileName)
+          
+          await sharp(buffer)
+            .resize(300, null, { 
+              withoutEnlargement: true,
+              fit: 'inside'
+            })
+            .webp({ quality: 80 })
+            .toFile(previewPath.replace(ext, '.webp'))
+            
+          console.log('Preview image created:', previewPath)
+        } catch (optimizeError) {
+          console.error('Error optimizing image:', optimizeError)
+          // Продолжаем даже если оптимизация не удалась
+        }
+      }
     } catch (writeError) {
       console.error('Error writing file:', writeError)
       throw writeError
@@ -106,9 +146,13 @@ export async function POST(request: NextRequest) {
 
     // Возвращаем URL файла
     const fileUrl = `/posts/${mediaType}/${fileName}`
+    const thumbUrl = type === 'image' ? `/posts/${mediaType}/thumb_${fileName.replace(ext, '.webp')}` : null
+    const previewUrl = type === 'image' ? `/posts/${mediaType}/preview_${fileName.replace(ext, '.webp')}` : null
 
     return NextResponse.json({ 
       url: fileUrl,
+      thumbUrl,
+      previewUrl,
       fileName,
       type: file.type,
       size: file.size 

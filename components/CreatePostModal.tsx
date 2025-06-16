@@ -153,7 +153,7 @@ export default function CreatePostModal({ onPostCreated, onClose }: CreatePostMo
     }))
   }
 
-  const uploadMedia = async (file: File): Promise<string | null> => {
+  const uploadMedia = async (file: File): Promise<{ url: string, thumbUrl?: string, previewUrl?: string } | null> => {
     const formData = new FormData()
     formData.append('file', file)
     formData.append('type', file.type.startsWith('video/') ? 'video' : 
@@ -171,7 +171,7 @@ export default function CreatePostModal({ onPostCreated, onClose }: CreatePostMo
       }
 
       const data = await response.json()
-      return data.url
+      return data
     } catch (error) {
       console.error('Upload error:', error)
       toast.error(error instanceof Error ? error.message : 'Error uploading file')
@@ -212,16 +212,19 @@ export default function CreatePostModal({ onPostCreated, onClose }: CreatePostMo
 
       // Upload media file if present
       if (formData.file) {
-        mediaUrl = await uploadMedia(formData.file)
-        if (!mediaUrl) {
+        const uploadResult = await uploadMedia(formData.file)
+        if (!uploadResult || !uploadResult.url) {
           throw new Error('Failed to upload file')
         }
+        
+        mediaUrl = uploadResult.url
         
         // For video and audio use preview as thumbnail
         if (formData.type === 'video' || formData.type === 'audio') {
           thumbnail = '/placeholder-' + formData.type + '.png'
         } else {
-          thumbnail = mediaUrl
+          // Для изображений используем оптимизированную версию как thumbnail
+          thumbnail = uploadResult.thumbUrl || uploadResult.url
         }
       }
 

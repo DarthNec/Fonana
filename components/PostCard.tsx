@@ -4,6 +4,7 @@ import React, { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
 import Avatar from './Avatar'
+import OptimizedImage from './OptimizedImage'
 import { toast } from 'react-hot-toast'
 import { 
   HeartIcon, 
@@ -59,6 +60,7 @@ interface PostCardProps {
   image?: string
   mediaUrl?: string  // Добавляем оригинальный mediaUrl
   thumbnail?: string  // Добавляем оригинальный thumbnail
+  preview?: string   // Добавляем превью изображение
   type: 'text' | 'image' | 'video' | 'audio'
   isLocked: boolean
   price?: number
@@ -87,6 +89,7 @@ export default function PostCard({
   image,
   mediaUrl,
   thumbnail,
+  preview,
   type,
   isLocked,
   price,
@@ -552,21 +555,16 @@ export default function PostCard({
               </div>
 
               {/* Media Content */}
-              {image && (
+              {(mediaUrl || thumbnail || image) && (
                 <div className="relative -mx-6 mb-4 overflow-hidden bg-gradient-to-br from-purple-900/10 to-pink-900/10">
-                  <img
-                    src={`${image}${image?.includes('?') ? '&' : '?'}t=${Date.now()}`}
+                  <OptimizedImage
+                    src={mediaUrl || image || null}
+                    thumbnail={thumbnail || null}
+                    preview={preview || null}
                     alt={title}
                     className="w-full aspect-[4/3] object-cover"
-                    key={`${id}-${Date.now()}`}
+                    type={type === 'video' ? 'video' : 'image'}
                   />
-                  {type === 'video' && (
-                    <div className="absolute inset-0 flex items-center justify-center">
-                      <div className="w-16 h-16 bg-black/50 backdrop-blur-sm rounded-full flex items-center justify-center hover:scale-110 transition-transform">
-                        <PlayIcon className="w-8 h-8 text-white" />
-                      </div>
-                    </div>
-                  )}
                 </div>
               )}
             </>
