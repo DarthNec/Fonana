@@ -521,9 +521,10 @@ export default function PostCard({
               {image && (
                 <div className="relative -mx-6 mb-4 overflow-hidden bg-gradient-to-br from-purple-900/10 to-pink-900/10">
                   <img
-                    src={image}
+                    src={`${image}${image?.includes('?') ? '&' : '?'}t=${Date.now()}`}
                     alt={title}
                     className="w-full aspect-[4/3] object-cover"
+                    key={`${id}-${Date.now()}`}
                   />
                   {type === 'video' && (
                     <div className="absolute inset-0 flex items-center justify-center">

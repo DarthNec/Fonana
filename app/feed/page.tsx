@@ -27,7 +27,7 @@ export default function FeedPage() {
   const [posts, setPosts] = useState<any[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [selectedCategory, setSelectedCategory] = useState('All')
-  const [sortBy, setSortBy] = useState<'latest' | 'popular' | 'following'>('latest')
+  const [sortBy, setSortBy] = useState<'latest' | 'popular' | 'following' | 'my-posts'>('latest')
   
   // Состояние для модалок
   const [showSubscribeModal, setShowSubscribeModal] = useState(false)
@@ -39,6 +39,16 @@ export default function FeedPage() {
   useEffect(() => {
     loadPosts()
   }, [user])
+
+  // Перезагрузка постов при фокусе окна (для обновления после редактирования)
+  useEffect(() => {
+    const handleFocus = () => {
+      loadPosts()
+    }
+    
+    window.addEventListener('focus', handleFocus)
+    return () => window.removeEventListener('focus', handleFocus)
+  }, [])
 
   const loadPosts = async () => {
     try {
@@ -78,7 +88,7 @@ export default function FeedPage() {
         title: post.title,
         content: post.content,
         category: post.category,
-        image: post.thumbnail || post.mediaUrl,
+        image: post.mediaUrl || post.thumbnail,
         type: post.type as 'text' | 'image' | 'video' | 'audio',
         isLocked: post.isLocked,
         isPremium: post.isPremium || false,
@@ -114,9 +124,15 @@ export default function FeedPage() {
     setShowPurchaseModal(true)
   }
 
-  const filteredPosts = posts.filter(post => 
-    selectedCategory === 'All' || post.category === selectedCategory
-  )
+  const filteredPosts = posts.filter(post => {
+    // Фильтр по категории
+    const categoryMatch = selectedCategory === 'All' || post.category === selectedCategory
+    
+    // Фильтр "Мои посты"
+    const myPostsMatch = sortBy !== 'my-posts' || (user && post.creator.id === user.id)
+    
+    return categoryMatch && myPostsMatch
+  })
 
   const sortedPosts = [...filteredPosts].sort((a, b) => {
     if (sortBy === 'latest') {
@@ -130,7 +146,8 @@ export default function FeedPage() {
   const sortOptions = [
     { id: 'latest', label: 'Latest', icon: ClockIcon },
     { id: 'popular', label: 'Popular', icon: FireIcon },
-    { id: 'following', label: 'Following', icon: UsersIcon }
+    { id: 'following', label: 'Following', icon: UsersIcon },
+    ...(user ? [{ id: 'my-posts', label: 'My Posts', icon: SparklesIcon }] : [])
   ]
 
   return (
