@@ -89,7 +89,9 @@ export default function FeedPage() {
         createdAt: post.createdAt,
         tags: post.tags || [],
         isSubscribed: post.isSubscribed || false,
-        shouldHideContent: post.shouldHideContent || false
+        shouldHideContent: post.shouldHideContent || false,
+        requiredTier: post.requiredTier || null,
+        userTier: post.userTier || null
       }))
 
       setPosts(formattedPosts)

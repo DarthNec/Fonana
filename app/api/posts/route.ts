@@ -164,7 +164,10 @@ export async function GET(req: Request) {
         // Скрываем контент для заблокированных постов
         content: shouldHideContent ? '' : post.content,
         mediaUrl: shouldHideContent ? null : post.mediaUrl,
-        shouldHideContent
+        shouldHideContent,
+        // Добавляем информацию о тирах
+        requiredTier: post.minSubscriptionTier || (post.isPremium ? 'vip' : null),
+        userTier: userSubscriptionPlan
       }
     })
 
@@ -204,7 +207,11 @@ export async function POST(request: NextRequest) {
       price: body.price,
       currency: body.currency,
       tags: body.tags || [],
-      tier: body.tier
+      // Принимаем minSubscriptionTier от клиента и мапим обратно на tier для createPost
+      tier: body.minSubscriptionTier === 'vip' ? 'vip' :
+            body.minSubscriptionTier === 'premium' ? 'premium' :
+            body.minSubscriptionTier === 'basic' ? 'subscribers' :
+            body.accessType === 'paid' ? 'paid' : 'free'
     })
 
     return NextResponse.json({ post })

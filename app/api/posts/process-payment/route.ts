@@ -3,6 +3,7 @@ import { prisma } from '@/lib/prisma'
 import { PaymentDistribution } from '@/lib/solana/payments'
 import { validatePaymentDistribution, waitForTransactionConfirmation } from '@/lib/solana/validation'
 import { paymentLogger } from '@/lib/utils/logger'
+import { generateRandomNickname, generateRandomBio, generateFullNameFromNickname } from '@/lib/usernames'
 
 export async function POST(request: Request) {
   const startTime = Date.now()
@@ -88,12 +89,43 @@ export async function POST(request: Request) {
     if (!user) {
       // Создаем нового пользователя если не существует
       paymentLogger.info('Creating new user for payment', { userId })
+      
+      // Генерируем уникальный никнейм
+      let nickname = generateRandomNickname()
+      let attempts = 0
+      
+      // Проверяем уникальность никнейма
+      while (attempts < 100) {
+        const existing = await prisma.user.findFirst({
+          where: { nickname }
+        })
+        
+        if (!existing) {
+          break
+        }
+        
+        nickname = generateRandomNickname()
+        attempts++
+      }
+      
+      // Если не смогли сгенерировать уникальный никнейм, используем timestamp
+      if (attempts >= 100) {
+        nickname = `user${Date.now()}`
+      }
+      
+      // Генерируем остальные данные
+      const fullName = generateFullNameFromNickname(nickname)
+      const bio = generateRandomBio()
+      
       user = await prisma.user.create({
         data: {
           solanaWallet: userId,
           wallet: userId,
-          name: `User ${userId.slice(0, 8)}`,
-          nickname: `user_${userId.slice(0, 8).toLowerCase()}_${Date.now()}`
+          name: fullName,
+          nickname,
+          fullName,
+          bio,
+          isCreator: true
         }
       })
     }

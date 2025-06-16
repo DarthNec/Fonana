@@ -1,8 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createOrUpdateUser, getUserByWallet, updateUserProfile, deleteUser } from '@/lib/db'
-import { PrismaClient } from '@prisma/client'
+import { createOrUpdateUser, getUserByWallet, updateUserProfile, deleteUser, prisma } from '@/lib/db'
+import { generateRandomNickname, generateRandomBio, generateFullNameFromNickname } from '@/lib/usernames'
 
-const prisma = new PrismaClient()
+// Отключаем кеширование для этого route
+export const dynamic = 'force-dynamic'
+export const revalidate = 0
 
 // GET /api/user?wallet=ADDRESS или /api/user?id=ID или /api/user?nickname=NICKNAME - получить пользователя
 export async function GET(request: NextRequest) {
@@ -97,12 +99,15 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'User not found' }, { status: 404 })
     }
 
-    return NextResponse.json({ user })
+    const response = NextResponse.json({ user })
+    // Добавляем заголовки для предотвращения кеширования
+    response.headers.set('Cache-Control', 'no-cache, no-store, must-revalidate')
+    response.headers.set('Pragma', 'no-cache')
+    response.headers.set('Expires', '0')
+    return response
   } catch (error) {
     console.error('Error getting user:', error)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
-  } finally {
-    await prisma.$disconnect()
   }
 }
 
@@ -120,24 +125,38 @@ export async function POST(request: NextRequest) {
     const existingUser = await getUserByWallet(wallet)
     
     if (existingUser) {
-      // Пользователь уже существует - возвращаем его
-      return NextResponse.json({ 
+      // Проверяем, есть ли у пользователя никнейм и био
+      // Если нет - значит это пустой аккаунт после удаления или новый пользователь
+      const isProfileEmpty = !existingUser.nickname || !existingUser.bio || !existingUser.fullName
+      
+      // Пользователь существует - возвращаем его
+      const response = NextResponse.json({ 
         user: existingUser,
-        isNewUser: false
+        isNewUser: isProfileEmpty // Показываем модалку если профиль пустой
       })
+      response.headers.set('Cache-Control', 'no-cache, no-store, must-revalidate')
+      return response
     }
     
     // Проверяем cookie с реферером
     const referrerCookie = request.cookies.get('fonana_referrer')
     let referrerNickname = referrerCookie?.value
     
-    // Создаем нового пользователя
-    const newUser = await createOrUpdateUser(wallet, undefined, referrerNickname)
+    // Создаем нового пользователя БЕЗ автоматической генерации данных
+    // Пользователь сам заполнит профиль через модалку
+    const newUser = await createOrUpdateUser(wallet, {
+      // Оставляем пустые поля, чтобы пользователь заполнил их сам
+      nickname: undefined,
+      fullName: undefined,
+      bio: undefined
+    }, referrerNickname)
     
-    return NextResponse.json({ 
+    const response = NextResponse.json({ 
       user: newUser,
-      isNewUser: true // Только что созданный пользователь
+      isNewUser: true // Новый пользователь всегда должен увидеть модалку
     })
+    response.headers.set('Cache-Control', 'no-cache, no-store, must-revalidate')
+    return response
   } catch (error) {
     console.error('Error creating/updating user:', error)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })

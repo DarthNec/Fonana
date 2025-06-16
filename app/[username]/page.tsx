@@ -12,14 +12,23 @@ export default function UserProfileShortcut() {
   useEffect(() => {
     if (username) {
       // Remove @ symbol if present, otherwise use as is
-      const nickname = username.startsWith('@') ? username.substring(1) : username
+      const identifier = username.startsWith('@') ? username.substring(1) : username
       
-      // Fetch user by nickname
-      fetchUserByNickname(nickname)
+      // Check if it looks like an ID (cuid pattern) or a nickname
+      // CUIDs typically start with 'c' and contain only alphanumeric characters
+      const isId = identifier.match(/^[a-zA-Z0-9]{8,}$/) && !identifier.match(/^[a-z_]+[a-z0-9_]*$/i)
+      
+      if (isId) {
+        // If it looks like an ID, redirect directly to creator page
+        router.replace(`/creator/${identifier}`)
+      } else {
+        // Otherwise, fetch user by nickname
+        fetchUserByNickname(identifier)
+      }
     } else {
       notFound()
     }
-  }, [username])
+  }, [username, router])
 
   const fetchUserByNickname = async (nickname: string) => {
     try {

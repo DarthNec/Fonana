@@ -77,6 +77,11 @@ export async function updateUserProfile(wallet: string, data: {
     }
   })
 
+  // Если обновляется fullName, также обновляем name для совместимости
+  if (cleanData.fullName) {
+    cleanData.name = cleanData.fullName
+  }
+
   return await prisma.user.update({
     where: { wallet },
     data: {

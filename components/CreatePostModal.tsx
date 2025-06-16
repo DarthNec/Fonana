@@ -239,7 +239,11 @@ export default function CreatePostModal({ onPostCreated, onClose }: CreatePostMo
         price: formData.accessType === 'paid' ? formData.price : undefined,
         currency: formData.accessType === 'paid' ? formData.currency : undefined,
         isPremium: false,
-        tier: formData.accessType
+        // Мапим accessType на minSubscriptionTier
+        minSubscriptionTier: formData.accessType === 'vip' ? 'vip' : 
+                            formData.accessType === 'premium' ? 'premium' :
+                            formData.accessType === 'subscribers' ? 'basic' : 
+                            undefined
       }
 
       console.log('Sending post data:', postData)

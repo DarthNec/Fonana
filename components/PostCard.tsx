@@ -65,6 +65,8 @@ interface PostCardProps {
   isSubscribed?: boolean
   shouldHideContent?: boolean
   showCreator?: boolean
+  requiredTier?: string | null
+  userTier?: string | null
   onSubscribeClick?: (creatorData: any, preferredTier?: 'basic' | 'premium' | 'vip') => void
   onPurchaseClick?: (postData: any) => void
 }
@@ -88,6 +90,8 @@ export default function PostCard({
   isSubscribed = false,
   shouldHideContent = false,
   showCreator = true,
+  requiredTier,
+  userTier,
   onSubscribeClick,
   onPurchaseClick
 }: PostCardProps) {
@@ -311,14 +315,40 @@ export default function PostCard({
   const canViewContent = !shouldHideContent
   
   const needsPayment = isLocked && price && price > 0
-  const isVipContent = isLocked && isPremium && !price
-  const isSubscriberContent = isLocked && !isPremium && !price
+  const isTierContent = isLocked && requiredTier && !price
+  // Обратная совместимость для старых постов с isPremium
+  const isLegacyVipContent = isLocked && isPremium && !price && !requiredTier
+  const isSubscriberContent = isLocked && !isPremium && !price && !requiredTier
+
+  // Определяем детали тиров
+  const tierDetails = {
+    'basic': { name: 'Basic', color: 'blue', icon: '⭐' },
+    'premium': { name: 'Premium', color: 'purple', icon: '💎' },
+    'vip': { name: 'VIP', color: 'gold', icon: '👑' }
+  }
+
+  const getTierInfo = () => {
+    if (!requiredTier) return null
+    
+    const required = tierDetails[requiredTier.toLowerCase() as keyof typeof tierDetails]
+    if (!required) return null
+    
+    const current = userTier ? tierDetails[userTier.toLowerCase() as keyof typeof tierDetails] : null
+    
+    return {
+      required,
+      current,
+      needsUpgrade: !!current // Есть подписка, но нужен апгрейд
+    }
+  }
+
+  const tierInfo = getTierInfo()
 
   return (
     <article className={`group relative overflow-hidden rounded-3xl bg-white dark:bg-slate-900 backdrop-blur-xl border border-gray-200 dark:border-slate-700/50 transition-all duration-500 mb-8 ${
       needsPayment 
         ? 'hover:border-yellow-500/50 dark:hover:border-yellow-500/30'
-        : isVipContent
+        : isLegacyVipContent
         ? 'hover:border-purple-500/50 dark:hover:border-purple-500/30'
         : isSubscriberContent
         ? 'hover:border-blue-500/50 dark:hover:border-blue-500/30'
@@ -328,7 +358,7 @@ export default function PostCard({
       <div className={`absolute -inset-1 rounded-3xl opacity-0 group-hover:opacity-100 blur-xl transition-opacity duration-500 ${
         needsPayment 
           ? 'bg-gradient-to-r from-yellow-600/10 to-orange-600/10'
-          : isVipContent
+          : isLegacyVipContent
           ? 'bg-gradient-to-r from-purple-600/10 to-pink-600/10'
           : isSubscriberContent
           ? 'bg-gradient-to-r from-blue-600/10 to-cyan-600/10'
@@ -416,12 +446,20 @@ export default function PostCard({
               <div className="py-16 px-6 text-center">
                 <LockClosedIcon className="w-16 h-16 text-gray-400 dark:text-slate-500 mx-auto mb-4" />
                 <div className="text-gray-900 dark:text-slate-300 font-semibold text-lg mb-2">
-                  {needsPayment ? 'Paid Content' : isVipContent ? 'VIP Content' : isSubscriberContent ? 'Subscribers Only' : 'Locked Content'}
+                  {needsPayment ? 'Paid Content' : 
+                   isTierContent && tierInfo ? `${tierInfo.required.icon} ${tierInfo.required.name} Content` :
+                   isLegacyVipContent ? 'VIP Content' : 
+                   isSubscriberContent ? 'Subscribers Only' : 
+                   'Locked Content'}
                 </div>
                 <p className="text-gray-600 dark:text-slate-400 text-sm mb-4 max-w-sm mx-auto">
                   {needsPayment 
                     ? 'Purchase access to this content' 
-                    : isVipContent 
+                    : isTierContent && tierInfo
+                    ? tierInfo.current 
+                      ? `You have ${tierInfo.current.icon} ${tierInfo.current.name} subscription. Upgrade to ${tierInfo.required.icon} ${tierInfo.required.name} to access this content.`
+                      : `This content requires ${tierInfo.required.icon} ${tierInfo.required.name} subscription`
+                    : isLegacyVipContent 
                     ? 'Available only to VIP subscribers'
                     : isSubscriberContent
                     ? 'Available only to subscribers'
@@ -450,7 +488,7 @@ export default function PostCard({
                         }
                       })
                     } else {
-                      const preferredTier = isVipContent ? 'vip' : 'basic'
+                      const preferredTier = requiredTier?.toLowerCase() || (isLegacyVipContent ? 'vip' : 'basic')
                       onSubscribeClick?.({
                         id: creator.id,
                         name: creator.name,
@@ -464,7 +502,11 @@ export default function PostCard({
                 >
                   {needsPayment 
                     ? `Buy for ${price} ${currency}`
-                    : isVipContent 
+                    : isTierContent && tierInfo
+                    ? userTier 
+                      ? `Upgrade to ${tierInfo.required.name}`
+                      : `Subscribe to ${tierInfo.required.name}`
+                    : isLegacyVipContent 
                     ? 'Sign Up for VIP'
                     : 'Subscribe'
                   }
@@ -478,7 +520,13 @@ export default function PostCard({
             <div className={`inline-flex items-center gap-2 px-3 py-1 text-sm font-medium rounded-full mb-4 ${
               needsPayment 
                 ? 'bg-gradient-to-r from-yellow-500/20 to-orange-500/20 text-yellow-700 dark:text-yellow-300 border border-yellow-500/30'
-                : isVipContent
+                : isTierContent && tierInfo
+                ? tierInfo.required.name === 'VIP'
+                  ? 'bg-gradient-to-r from-yellow-500/20 to-amber-500/20 text-yellow-700 dark:text-yellow-300 border border-yellow-500/30'
+                  : tierInfo.required.name === 'Premium'
+                  ? 'bg-gradient-to-r from-purple-500/20 to-pink-500/20 text-purple-700 dark:text-purple-300 border border-purple-500/30'
+                  : 'bg-gradient-to-r from-blue-500/20 to-cyan-500/20 text-blue-700 dark:text-blue-300 border border-blue-500/30'
+                : isLegacyVipContent
                 ? 'bg-gradient-to-r from-purple-500/20 to-pink-500/20 text-purple-700 dark:text-purple-300 border border-purple-500/30'
                 : isSubscriberContent
                 ? 'bg-gradient-to-r from-blue-500/20 to-cyan-500/20 text-blue-700 dark:text-blue-300 border border-blue-500/30'
@@ -487,7 +535,13 @@ export default function PostCard({
               <span className={`w-2 h-2 rounded-full animate-pulse ${
                 needsPayment 
                   ? 'bg-yellow-500 dark:bg-yellow-400'
-                  : isVipContent
+                  : isTierContent && tierInfo
+                  ? tierInfo.required.name === 'VIP'
+                    ? 'bg-yellow-500 dark:bg-yellow-400'
+                    : tierInfo.required.name === 'Premium'
+                    ? 'bg-purple-500 dark:bg-purple-400'
+                    : 'bg-blue-500 dark:bg-blue-400'
+                  : isLegacyVipContent
                   ? 'bg-purple-500 dark:bg-purple-400'
                   : isSubscriberContent
                   ? 'bg-blue-500 dark:bg-blue-400'
@@ -495,7 +549,9 @@ export default function PostCard({
               }`}></span>
               {needsPayment 
                 ? 'Paid Content'
-                : isVipContent
+                : isTierContent && tierInfo
+                ? `${tierInfo.required.icon} ${tierInfo.required.name} Content`
+                : isLegacyVipContent
                 ? 'VIP Content'
                 : isSubscriberContent
                 ? 'Subscribers Only'

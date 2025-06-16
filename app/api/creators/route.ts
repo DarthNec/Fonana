@@ -1,7 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { PrismaClient } from '@prisma/client'
 
+// Отключаем кеширование для этого route
 export const dynamic = 'force-dynamic'
+export const revalidate = 0
 
 const prisma = new PrismaClient()
 
@@ -81,9 +83,9 @@ export async function GET(request: NextRequest) {
           nickname: creator.nickname,
           fullName: creator.fullName,
           bio: creator.bio,
-          name: creator.fullName || creator.nickname || 'Неизвестный автор',
+          name: creator.fullName || creator.nickname || 'Unknown Creator',
           username: creator.nickname || creator.wallet?.slice(0, 8) || 'user',
-          description: creator.bio || 'Контент-криейтор на платформе Fonana',
+          description: creator.bio || 'Content creator on Fonana platform',
           avatar: creator.avatar || null,
           backgroundImage: creator.backgroundImage || null,
           coverImage: `/api/og?title=${encodeURIComponent(creator.fullName || creator.nickname || 'Creator')}`,

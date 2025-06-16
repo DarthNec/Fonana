@@ -49,14 +49,15 @@ export async function GET(request: NextRequest) {
 
       return {
         id: creator.id,
-        name: creator.fullName || creator.nickname || 'Неизвестный автор',
+        name: creator.fullName || creator.nickname || 'Unknown Creator',
         username: creator.nickname || creator.wallet?.slice(0, 8) || 'user',
-        description: creator.bio || 'Контент-криейтор на платформе Fonana',
+        description: creator.bio || 'Content creator on Fonana platform',
         avatar: creator.avatar || null,
         coverImage: `/api/og?title=${encodeURIComponent(creator.fullName || creator.nickname || 'Creator')}`,
         isVerified: creator.isVerified,
-        subscribers: creator.followersCount,
+        followersCount: creator.followersCount,
         posts: creator.postsCount,
+        subscribers: creator.followersCount,
         tags: Array.from(allTags),
         monthlyEarnings: '~100 SOL', // TODO: Рассчитать из реальных подписок
         createdAt: creator.createdAt

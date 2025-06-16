@@ -63,6 +63,9 @@ export function useUser() {
         if (data.isNewUser) {
           setShowProfileForm(true)
         }
+      } else {
+        const errorData = await response.json()
+        console.error('[useUser] Failed to create/get user:', response.status, errorData)
       }
     } catch (error) {
       console.error('Error creating/getting user:', error)
