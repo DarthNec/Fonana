@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import { Dialog } from '@headlessui/react'
 import { 
   XMarkIcon, 
@@ -40,6 +40,7 @@ const accessTypes = [
 export default function EditPostModal({ isOpen, onClose, post, onPostUpdated }: EditPostModalProps) {
   const { user } = useUser()
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const fileInputRef = useRef<HTMLInputElement>(null)
   
   // Предотвращаем закрытие модалки если она не открыта
   if (!isOpen) return null
@@ -59,11 +60,20 @@ export default function EditPostModal({ isOpen, onClose, post, onPostUpdated }: 
   // Load post data when modal opens
   useEffect(() => {
     if (isOpen && post) {
+      // Сбрасываем состояния при открытии модалки
       setTitle(post.title || '')
       setContent(post.content || '')
       setCategory(post.category || '')
       setTags(post.tags || [])
       setMediaPreview(post.image || post.mediaUrl || null)
+      setMediaFile(null)
+      setRemoveExistingMedia(false)
+      setTagInput('')
+      
+      // Сбрасываем input файла
+      if (fileInputRef.current) {
+        fileInputRef.current.value = ''
+      }
       
       // Determine access type from post data
       if (!post.isLocked) {
@@ -96,6 +106,8 @@ export default function EditPostModal({ isOpen, onClose, post, onPostUpdated }: 
       
       console.log('[EditPostModal] Loading file:', file.name)
       setMediaFile(file)
+      setRemoveExistingMedia(false) // Сбрасываем флаг удаления при загрузке нового файла
+      
       const reader = new FileReader()
       reader.onload = (e) => {
         console.log('[EditPostModal] File loaded successfully')
@@ -113,6 +125,11 @@ export default function EditPostModal({ isOpen, onClose, post, onPostUpdated }: 
     setMediaFile(null)
     setMediaPreview(null)
     setRemoveExistingMedia(true)
+    
+    // Сбрасываем input файла
+    if (fileInputRef.current) {
+      fileInputRef.current.value = ''
+    }
   }
 
   const handleAddTag = () => {
@@ -203,13 +220,19 @@ export default function EditPostModal({ isOpen, onClose, post, onPostUpdated }: 
 
   const handleClose = () => {
     if (!isSubmitting) {
+      // Сбрасываем состояния при закрытии
+      setMediaFile(null)
+      setRemoveExistingMedia(false)
+      if (fileInputRef.current) {
+        fileInputRef.current.value = ''
+      }
       onClose()
     }
   }
 
   return (
-    <Dialog open={isOpen} onClose={handleClose} className="relative z-50">
-      <div className="fixed inset-0 bg-black/30 backdrop-blur-sm" aria-hidden="true" />
+    <Dialog open={isOpen} onClose={handleClose} className="relative z-50" static>
+      <Dialog.Overlay className="fixed inset-0 bg-black/30 backdrop-blur-sm" aria-hidden="true" />
       
       <div className="fixed inset-0 flex items-center justify-center p-4">
         <Dialog.Panel className="mx-auto max-w-2xl w-full bg-white dark:bg-slate-800 rounded-3xl shadow-2xl">
@@ -285,6 +308,7 @@ export default function EditPostModal({ isOpen, onClose, post, onPostUpdated }: 
                     </p>
                   </div>
                   <input
+                    ref={fileInputRef}
                     type="file"
                     className="hidden"
                     accept="image/*,video/*"
