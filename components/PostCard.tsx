@@ -75,6 +75,7 @@ interface PostCardProps {
   userTier?: string | null
   onSubscribeClick?: (creatorData: any, preferredTier?: 'basic' | 'premium' | 'vip') => void
   onPurchaseClick?: (postData: any) => void
+  onEditClick?: (postData: any) => void  // Добавляем callback для редактирования
 }
 
 export default function PostCard({
@@ -101,7 +102,8 @@ export default function PostCard({
   requiredTier,
   userTier,
   onSubscribeClick,
-  onPurchaseClick
+  onPurchaseClick,
+  onEditClick
 }: PostCardProps) {
   const { user } = useUser()
   const [likesCount, setLikesCount] = useState(likes)
@@ -369,8 +371,30 @@ export default function PostCard({
   }
 
   const handleEdit = () => {
-    setShowEditModal(true)
     setShowActions(false)
+    
+    // Если есть callback, используем его
+    if (onEditClick) {
+      onEditClick({
+        id,
+        title,
+        content,
+        category,
+        image,
+        mediaUrl: mediaUrl || image,
+        thumbnail: thumbnail || image,
+        tags,
+        isLocked,
+        isPremium,
+        price,
+        currency,
+        requiredTier,
+        creatorId: creator.id
+      })
+    } else {
+      // Иначе используем локальную модалку (для обратной совместимости)
+      setShowEditModal(true)
+    }
   }
 
   // Check if current user is the post creator
@@ -378,8 +402,8 @@ export default function PostCard({
   const isCreator = user?.id && creator?.id && user.id === creator.id
   
   // Debug logging
-  if (process.env.NODE_ENV === 'development') {
-    console.log(`[PostCard] Post ${id} - user.id: ${user?.id}, creator.id: ${creator?.id}, isCreator: ${isCreator}`)
+  if (process.env.NODE_ENV === 'development' && showEditModal) {
+    console.log(`[PostCard] Post ${id} - user.id: ${user?.id}, creator.id: ${creator?.id}, isCreator: ${isCreator}, showEditModal: ${showEditModal}`)
   }
 
   // Use shouldHideContent flag from API instead of complex local logic
@@ -888,8 +912,8 @@ export default function PostCard({
         )}
       </div>
 
-      {/* Edit Post Modal */}
-      {showEditModal && (
+      {/* Edit Post Modal - только если нет внешнего callback */}
+      {showEditModal && !onEditClick && (
         <EditPostModal
           key={`edit-modal-${id}`} // Добавляем ключ для стабильности компонента
           isOpen={showEditModal}
@@ -910,15 +934,19 @@ export default function PostCard({
             requiredTier,
             creatorId: creator.id  // Добавляем creatorId для проверки
           }}
-          onPostUpdated={() => {
+          onPostUpdated={async () => {
+            console.log('[PostCard] onPostUpdated called')
+            // Сначала закрываем модалку
             setShowEditModal(false)
-            // Вместо полной перезагрузки страницы просто вызываем обновление постов
-            // Это позволит избежать потери состояния
+            
+            // Затем вызываем обновление с большей задержкой
+            // чтобы модалка успела закрыться
             setTimeout(() => {
+              console.log('[PostCard] Dispatching postsUpdated event')
               if (window.dispatchEvent) {
                 window.dispatchEvent(new Event('postsUpdated'))
               }
-            }, 100) // Небольшая задержка для корректного закрытия модалки
+            }, 500) // Увеличиваем задержку для надёжности
           }}
         />
       )}

@@ -41,6 +41,18 @@ export default function EditPostModal({ isOpen, onClose, post, onPostUpdated }: 
   const { user } = useUser()
   const [isSubmitting, setIsSubmitting] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const isMountedRef = useRef(true)
+  
+  // Отслеживаем unmount
+  useEffect(() => {
+    isMountedRef.current = true
+    console.log('[EditPostModal] Component mounted')
+    
+    return () => {
+      isMountedRef.current = false
+      console.log('[EditPostModal] Component unmounting!')
+    }
+  }, [])
   
   // Предотвращаем закрытие модалки если она не открыта
   if (!isOpen) return null
@@ -58,8 +70,11 @@ export default function EditPostModal({ isOpen, onClose, post, onPostUpdated }: 
   const [removeExistingMedia, setRemoveExistingMedia] = useState(false)
 
   // Load post data when modal opens
+  const [hasInitialized, setHasInitialized] = useState(false)
+  
   useEffect(() => {
-    if (isOpen && post) {
+    if (isOpen && post && !hasInitialized) {
+      console.log('[EditPostModal] Initializing modal data')
       // Сбрасываем состояния при открытии модалки
       setTitle(post.title || '')
       setContent(post.content || '')
@@ -69,6 +84,7 @@ export default function EditPostModal({ isOpen, onClose, post, onPostUpdated }: 
       setMediaFile(null)
       setRemoveExistingMedia(false)
       setTagInput('')
+      setHasInitialized(true)
       
       // Сбрасываем input файла
       if (fileInputRef.current) {
@@ -92,10 +108,19 @@ export default function EditPostModal({ isOpen, onClose, post, onPostUpdated }: 
       }
     }
   }, [isOpen, post])
+  
+  // Сбрасываем hasInitialized при закрытии
+  useEffect(() => {
+    if (!isOpen) {
+      setHasInitialized(false)
+    }
+  }, [isOpen])
 
   const handleMediaChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     e.preventDefault() // Предотвращаем всплытие события
     e.stopPropagation() // Останавливаем распространение события
+    
+    console.log('[EditPostModal] handleMediaChange triggered, isOpen:', isOpen)
     
     const file = e.target.files?.[0]
     if (file) {
@@ -104,13 +129,13 @@ export default function EditPostModal({ isOpen, onClose, post, onPostUpdated }: 
         return
       }
       
-      console.log('[EditPostModal] Loading file:', file.name)
+      console.log('[EditPostModal] Loading file:', file.name, 'Modal still open:', isOpen)
       setMediaFile(file)
       setRemoveExistingMedia(false) // Сбрасываем флаг удаления при загрузке нового файла
       
       const reader = new FileReader()
       reader.onload = (e) => {
-        console.log('[EditPostModal] File loaded successfully')
+        console.log('[EditPostModal] File loaded successfully, modal open:', isOpen)
         setMediaPreview(e.target?.result as string)
       }
       reader.onerror = (e) => {
@@ -144,6 +169,8 @@ export default function EditPostModal({ isOpen, onClose, post, onPostUpdated }: 
   }
 
   const handleSubmit = async () => {
+    console.log('[EditPostModal] Submit started')
+    
     if (!title.trim() || !content.trim()) {
       toast.error('Title and content are required')
       return
@@ -155,6 +182,7 @@ export default function EditPostModal({ isOpen, onClose, post, onPostUpdated }: 
     }
 
     setIsSubmitting(true)
+    console.log('[EditPostModal] Submitting...')
 
     try {
       // Upload media if new file selected
@@ -212,6 +240,7 @@ export default function EditPostModal({ isOpen, onClose, post, onPostUpdated }: 
       }
 
       toast.success('Post updated successfully!')
+      setHasInitialized(false) // Сбрасываем для следующего открытия
       onPostUpdated?.()
       onClose()
     } catch (error) {
@@ -224,9 +253,11 @@ export default function EditPostModal({ isOpen, onClose, post, onPostUpdated }: 
 
   const handleClose = () => {
     if (!isSubmitting) {
+      console.log('[EditPostModal] Closing modal')
       // Сбрасываем состояния при закрытии
       setMediaFile(null)
       setRemoveExistingMedia(false)
+      setHasInitialized(false)
       if (fileInputRef.current) {
         fileInputRef.current.value = ''
       }
@@ -235,8 +266,20 @@ export default function EditPostModal({ isOpen, onClose, post, onPostUpdated }: 
   }
 
   return (
-    <Dialog open={isOpen} onClose={handleClose} className="relative z-50" static>
-      <Dialog.Overlay className="fixed inset-0 bg-black/30 backdrop-blur-sm" aria-hidden="true" />
+    <Dialog 
+      open={isOpen} 
+      onClose={handleClose} 
+      className="relative z-50" 
+      static
+    >
+      <Dialog.Overlay 
+        className="fixed inset-0 bg-black/30 backdrop-blur-sm" 
+        aria-hidden="true" 
+        onClick={(e) => {
+          e.preventDefault()
+          e.stopPropagation()
+        }}
+      />
       
       <div className="fixed inset-0 flex items-center justify-center p-4">
         <Dialog.Panel className="mx-auto max-w-2xl w-full bg-white dark:bg-slate-800 rounded-3xl shadow-2xl">
@@ -301,8 +344,15 @@ export default function EditPostModal({ isOpen, onClose, post, onPostUpdated }: 
                   </button>
                 </div>
               ) : (
-                <label className="flex flex-col items-center justify-center w-full h-64 border-2 border-gray-300 dark:border-slate-600 border-dashed rounded-2xl cursor-pointer bg-gray-50 dark:bg-slate-700/30 hover:bg-gray-100 dark:hover:bg-slate-700/50">
-                  <div className="flex flex-col items-center justify-center pt-5 pb-6">
+                <label 
+                  className="flex flex-col items-center justify-center w-full h-64 border-2 border-gray-300 dark:border-slate-600 border-dashed rounded-2xl cursor-pointer bg-gray-50 dark:bg-slate-700/30 hover:bg-gray-100 dark:hover:bg-slate-700/50"
+                  onClick={(e) => {
+                    e.preventDefault()
+                    e.stopPropagation()
+                    fileInputRef.current?.click()
+                  }}
+                >
+                  <div className="flex flex-col items-center justify-center pt-5 pb-6 pointer-events-none">
                     <PhotoIcon className="w-12 h-12 text-gray-400 mb-3" />
                     <p className="mb-2 text-sm text-gray-500 dark:text-gray-400">
                       <span className="font-semibold">Click to upload</span> or drag and drop

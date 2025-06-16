@@ -6,6 +6,7 @@ import { useUser } from '@/lib/hooks/useUser'
 import PostCard from '@/components/PostCard'
 import SubscribeModal from '@/components/SubscribeModal'
 import PurchaseModal from '@/components/PurchaseModal'
+import EditPostModal from '@/components/EditPostModal'
 import { 
   SparklesIcon, 
   FireIcon, 
@@ -35,6 +36,10 @@ export default function FeedPage() {
   const [selectedCreator, setSelectedCreator] = useState<any>(null)
   const [selectedPost, setSelectedPost] = useState<any>(null)
   const [preferredTier, setPreferredTier] = useState<'basic' | 'premium' | 'vip'>('basic')
+  
+  // Добавляем состояние для редактирования на уровне Feed
+  const [showEditModal, setShowEditModal] = useState(false)
+  const [editingPost, setEditingPost] = useState<any>(null)
 
   useEffect(() => {
     loadPosts()
@@ -61,7 +66,11 @@ export default function FeedPage() {
 
   const loadPosts = async () => {
     try {
-      setIsLoading(true)
+      // Не устанавливаем isLoading в true, если посты уже загружены
+      // Это предотвратит unmount компонентов
+      if (posts.length === 0) {
+        setIsLoading(true)
+      }
       
       console.log('[Feed] Loading posts, user:', user?.id, user?.wallet)
       
@@ -133,6 +142,12 @@ export default function FeedPage() {
   const handlePurchaseClick = (postData: any) => {
     setSelectedPost(postData)
     setShowPurchaseModal(true)
+  }
+  
+  const handleEditClick = (postData: any) => {
+    console.log('[Feed] handleEditClick called with post:', postData.id)
+    setEditingPost(postData)
+    setShowEditModal(true)
   }
 
   const filteredPosts = posts.filter(post => {
@@ -257,6 +272,7 @@ export default function FeedPage() {
                 showCreator={true}
                 onSubscribeClick={handleSubscribeClick}
                 onPurchaseClick={handlePurchaseClick}
+                onEditClick={handleEditClick}
               />
             ))}
           </div>
@@ -300,6 +316,28 @@ export default function FeedPage() {
               console.log('[Feed] Reloading posts after purchase')
               loadPosts()
             }, 1000) // 1 second delay
+          }}
+        />
+      )}
+
+      {/* Edit Modal - теперь на уровне Feed */}
+      {showEditModal && editingPost && (
+        <EditPostModal
+          isOpen={showEditModal}
+          onClose={() => {
+            console.log('[Feed] Closing edit modal')
+            setShowEditModal(false)
+            setEditingPost(null)
+          }}
+          post={editingPost}
+          onPostUpdated={() => {
+            console.log('[Feed] Post updated, reloading posts')
+            setShowEditModal(false)
+            setEditingPost(null)
+            // Обновляем посты с задержкой
+            setTimeout(() => {
+              loadPosts()
+            }, 500)
           }}
         />
       )}
