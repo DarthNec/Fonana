@@ -116,7 +116,7 @@ export default function CreatorPage() {
           title: post.title,
           content: post.content,
           category: post.category,
-          image: post.thumbnail || post.mediaUrl,
+                              image: post.mediaUrl || post.thumbnail,
           type: post.type as 'text' | 'image' | 'video' | 'audio',
           isLocked: post.isLocked,
           isPremium: post.isPremium || false,

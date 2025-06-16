@@ -65,7 +65,7 @@ export default function EditPostModal({ isOpen, onClose, post, onPostUpdated }: 
       setContent(post.content || '')
       setCategory(post.category || '')
       setTags(post.tags || [])
-      setMediaPreview(post.image || post.mediaUrl || null)
+      setMediaPreview(post.image || post.mediaUrl || post.thumbnail || null)
       setMediaFile(null)
       setRemoveExistingMedia(false)
       setTagInput('')
@@ -158,7 +158,9 @@ export default function EditPostModal({ isOpen, onClose, post, onPostUpdated }: 
 
     try {
       // Upload media if new file selected
-      let mediaUrl = removeExistingMedia ? null : post.mediaUrl
+      let mediaUrl = removeExistingMedia ? null : (post.mediaUrl || post.thumbnail)
+      let thumbnail = removeExistingMedia ? null : (post.thumbnail || post.mediaUrl)
+      
       if (mediaFile) {
         const formData = new FormData()
         formData.append('file', mediaFile)
@@ -174,6 +176,7 @@ export default function EditPostModal({ isOpen, onClose, post, onPostUpdated }: 
 
         const uploadData = await uploadResponse.json()
         mediaUrl = uploadData.url
+        thumbnail = uploadData.url // Синхронизируем оба поля
       }
 
       // Update post
@@ -188,6 +191,7 @@ export default function EditPostModal({ isOpen, onClose, post, onPostUpdated }: 
           content,
           category,
           mediaUrl,
+          thumbnail: mediaUrl, // Синхронизируем thumbnail с mediaUrl
           tags,
           accessType,
           price: accessType === 'paid' ? parseFloat(price) : null,
