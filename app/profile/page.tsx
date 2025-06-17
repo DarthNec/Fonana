@@ -20,12 +20,16 @@ import {
   CalendarIcon,
   TrashIcon,
   ExclamationTriangleIcon,
-  CreditCardIcon
+  CreditCardIcon,
+  PencilIcon,
+  DocumentTextIcon
 } from '@heroicons/react/24/outline'
 import { CheckIcon } from '@heroicons/react/24/solid'
 import SubscriptionTiersSettings from '@/components/SubscriptionTiersSettings'
 import UserSubscriptions from '@/components/UserSubscriptions'
 import Avatar from '@/components/Avatar'
+import PostCard from '@/components/PostCard'
+import EditPostModal from '@/components/EditPostModal'
 import toast from 'react-hot-toast'
 import { useTheme } from '@/lib/contexts/ThemeContext'
 import { isValidNickname, isReservedNickname } from '@/lib/utils/links'
@@ -55,11 +59,120 @@ interface UserProfile {
   theme: 'light' | 'dark' | 'auto'
 }
 
+// Component for displaying user's posts
+function MyPostsSection({ userId }: { userId?: string }) {
+  const [posts, setPosts] = useState<any[]>([])
+  const [loading, setLoading] = useState(true)
+  const [showEditModal, setShowEditModal] = useState(false)
+  const [editingPost, setEditingPost] = useState<any>(null)
+
+  useEffect(() => {
+    if (userId) {
+      fetchUserPosts()
+    }
+  }, [userId])
+
+  const fetchUserPosts = async () => {
+    try {
+      const response = await fetch(`/api/posts?creatorId=${userId}`)
+      const data = await response.json()
+      setPosts(data.posts || [])
+    } catch (error) {
+      console.error('Error fetching posts:', error)
+      toast.error('Failed to load posts')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleEditPost = (post: any) => {
+    setEditingPost(post)
+    setShowEditModal(true)
+  }
+
+  const handlePostUpdated = () => {
+    setShowEditModal(false)
+    setEditingPost(null)
+    fetchUserPosts()
+  }
+
+  if (loading) {
+    return (
+      <div className="flex justify-center items-center min-h-[400px]">
+        <div className="w-12 h-12 border-4 border-purple-500 border-t-transparent rounded-full animate-spin"></div>
+      </div>
+    )
+  }
+
+  if (posts.length === 0) {
+    return (
+      <div className="bg-white dark:bg-slate-800/50 backdrop-blur-xl border border-gray-200 dark:border-slate-700/50 rounded-3xl p-12 shadow-lg text-center">
+        <DocumentTextIcon className="w-16 h-16 text-gray-400 dark:text-slate-500 mx-auto mb-4" />
+        <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2">No posts yet</h3>
+        <p className="text-gray-600 dark:text-slate-400 mb-6">Start creating content to see it here</p>
+        <a
+          href="/create"
+          className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white rounded-xl font-medium transition-all duration-300 hover:scale-105"
+        >
+          <PencilIcon className="w-5 h-5" />
+          Create your first post
+        </a>
+      </div>
+    )
+  }
+
+  return (
+    <div className="space-y-8">
+      <div className="bg-white dark:bg-slate-800/50 backdrop-blur-xl border border-gray-200 dark:border-slate-700/50 rounded-3xl p-8 shadow-lg">
+        <div className="flex items-center justify-between mb-8">
+          <h2 className="text-2xl font-bold text-gray-900 dark:text-white flex items-center gap-3">
+            <div className="w-8 h-8 bg-gradient-to-r from-purple-400 to-pink-400 rounded-lg flex items-center justify-center">
+              <DocumentTextIcon className="w-5 h-5 text-white" />
+            </div>
+            My Posts ({posts.length})
+          </h2>
+          <a
+            href="/create"
+            className="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white rounded-xl font-medium transition-all duration-300 hover:scale-105"
+          >
+            <PencilIcon className="w-4 h-4" />
+            Create New
+          </a>
+        </div>
+
+        <div className="space-y-6">
+          {posts.map((post) => (
+            <PostCard
+              key={post.id}
+              {...post}
+              showCreator={false}
+              onEditClick={handleEditPost}
+            />
+          ))}
+        </div>
+      </div>
+
+      {/* Edit Post Modal */}
+      {showEditModal && editingPost && (
+        <EditPostModal
+          isOpen={showEditModal}
+          onClose={() => {
+            setShowEditModal(false)
+            setEditingPost(null)
+          }}
+          post={editingPost}
+          onPostUpdated={handlePostUpdated}
+        />
+      )}
+    </div>
+  )
+}
+
 export default function ProfilePage() {
   const { user, isLoading, deleteAccount, updateProfile, refreshUser } = useUser()
   const { disconnect } = useWallet()
   const { theme: currentTheme, setTheme } = useTheme()
-  const [activeTab, setActiveTab] = useState<'profile' | 'creator' | 'subscriptions'>('profile')
+  const [activeTab, setActiveTab] = useState<'profile' | 'creator' | 'subscriptions' | 'posts'>('profile')
   
   const [formData, setFormData] = useState<UserProfile>({
     id: user?.id || '',
@@ -456,6 +569,16 @@ export default function ProfilePage() {
               >
                 Creator Settings
               </button>
+              <button
+                onClick={() => setActiveTab('posts')}
+                className={`px-6 py-3 rounded-xl font-medium transition-all duration-300 ${
+                  activeTab === 'posts'
+                    ? 'bg-gradient-to-r from-purple-500 to-pink-500 text-white shadow-lg'
+                    : 'text-gray-600 dark:text-slate-400 hover:text-gray-900 dark:hover:text-white'
+                }`}
+              >
+                My Posts
+              </button>
             </div>
           </div>
 
@@ -846,10 +969,15 @@ export default function ProfilePage() {
             <div className="max-w-5xl mx-auto">
               <UserSubscriptions />
             </div>
-          ) : (
+          ) : activeTab === 'creator' ? (
             /* Creator Settings Tab */
             <div className="max-w-5xl mx-auto">
               <SubscriptionTiersSettings />
+            </div>
+          ) : (
+            /* My Posts Tab */
+            <div className="max-w-5xl mx-auto">
+              <MyPostsSection userId={user?.id} />
             </div>
           )}
         </div>

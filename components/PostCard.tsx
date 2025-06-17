@@ -424,8 +424,7 @@ export default function PostCard({
   // Определяем детали тиров с классической цветовой схемой
   const tierDetails = {
     'free': { name: 'Free', color: 'gray', icon: '🔓', gradient: 'from-gray-500/20 to-slate-500/20', border: 'border-gray-500/30', text: 'text-gray-700 dark:text-gray-300', dot: 'bg-gray-500 dark:bg-gray-400' },
-    'basic': { name: 'Basic', color: 'green', icon: '⭐', gradient: 'from-green-500/20 to-emerald-500/20', border: 'border-green-500/30', text: 'text-green-700 dark:text-green-300', dot: 'bg-green-500 dark:bg-green-400' },
-    'standard': { name: 'Standard', color: 'blue', icon: '💎', gradient: 'from-blue-500/20 to-cyan-500/20', border: 'border-blue-500/30', text: 'text-blue-700 dark:text-blue-300', dot: 'bg-blue-500 dark:bg-blue-400' },
+    'basic': { name: 'Basic', color: 'blue', icon: '⭐', gradient: 'from-blue-500/20 to-cyan-500/20', border: 'border-blue-500/30', text: 'text-blue-700 dark:text-blue-300', dot: 'bg-blue-500 dark:bg-blue-400' },
     'premium': { name: 'Premium', color: 'purple', icon: '🔮', gradient: 'from-purple-500/20 to-pink-500/20', border: 'border-purple-500/30', text: 'text-purple-700 dark:text-purple-300', dot: 'bg-purple-500 dark:bg-purple-400' },
     'vip': { name: 'VIP', color: 'gold', icon: '👑', gradient: 'from-yellow-500/20 to-amber-500/20', border: 'border-yellow-500/30', text: 'text-yellow-700 dark:text-yellow-300', dot: 'bg-yellow-500 dark:bg-yellow-400' }
   }

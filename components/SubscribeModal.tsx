@@ -77,21 +77,6 @@ const getSubscriptionTiers = (creatorCategory?: string): SubscriptionTier[] => {
         'Access to basic content',
         'Community chat participation'
       ],
-      color: 'from-green-400 to-emerald-600'
-    },
-    {
-      id: 'standard',
-      name: 'Standard',
-      price: 0.10,
-      currency: 'SOL',
-      duration: 'month',
-      description: 'Standard subscription',
-      features: [
-        'All Basic features',
-        'Access to standard content',
-        'Weekly live streams',
-        'Priority comments'
-      ],
       color: 'from-blue-400 to-cyan-600'
     },
     {
@@ -102,7 +87,7 @@ const getSubscriptionTiers = (creatorCategory?: string): SubscriptionTier[] => {
       duration: 'month',
       description: 'Premium subscription',
       features: [
-        'All Standard features',
+        'All Basic features',
         'Access to premium content',
         'Priority support',
         'Early access to new content'
@@ -422,12 +407,10 @@ export default function SubscribeModal({ creator, preferredTier, onClose, onSucc
                         ? tier.id === 'free'
                           ? 'border-slate-500 shadow-xl shadow-slate-500/25'
                           : tier.id === 'basic'
-                            ? 'border-green-500 shadow-xl shadow-green-500/25'
-                            : tier.id === 'standard'
-                              ? 'border-blue-500 shadow-xl shadow-blue-500/25'
-                              : tier.id === 'vip'
-                                ? 'border-yellow-500 shadow-xl shadow-yellow-500/25'
-                                : 'border-purple-500 shadow-xl shadow-purple-500/25'
+                            ? 'border-blue-500 shadow-xl shadow-blue-500/25'
+                            : tier.id === 'vip'
+                              ? 'border-yellow-500 shadow-xl shadow-yellow-500/25'
+                              : 'border-purple-500 shadow-xl shadow-purple-500/25'
                         : 'border-slate-600/50 hover:border-slate-500/50'
                     } ${tier.popular ? 'ring-2 ring-purple-500/50' : ''}`}
                     onClick={() => setSelectedTier(tier.id)}

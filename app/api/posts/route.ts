@@ -25,9 +25,8 @@ function getOptimizedImageUrls(mediaUrl: string | null) {
 
 // Определяем иерархию тиров подписок
 const TIER_HIERARCHY: Record<string, number> = {
-  'vip': 5,
-  'premium': 4,
-  'standard': 3,
+  'vip': 4,
+  'premium': 3,
   'basic': 2,
   'free': 1
 }
@@ -70,6 +69,11 @@ export async function GET(req: Request) {
             avatar: true,
             wallet: true,
           },
+        },
+        tags: {
+          include: {
+            tag: true
+          }
         },
         _count: {
           select: {
@@ -248,7 +252,6 @@ export async function POST(request: NextRequest) {
       // Принимаем minSubscriptionTier от клиента и мапим обратно на tier для createPost
       tier: body.minSubscriptionTier === 'vip' ? 'vip' :
             body.minSubscriptionTier === 'premium' ? 'premium' :
-            body.minSubscriptionTier === 'standard' ? 'standard' :
             body.minSubscriptionTier === 'basic' ? 'basic' :
             body.accessType === 'paid' ? 'paid' : 'free'
     })
