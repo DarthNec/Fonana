@@ -52,6 +52,9 @@ model User {
   // NextAuth
   accounts       Account[]
   sessions       Session[]
+  
+  // Settings
+  settings       UserSettings?
 
   @@map("users")
 }
@@ -289,4 +292,32 @@ model PostPurchase {
   
   @@unique([userId, postId])
   @@map("post_purchases")
+}
+
+// User settings model
+model UserSettings {
+  id                      String   @id @default(cuid())
+  userId                  String   @unique
+  
+  // Notification settings
+  notifyComments         Boolean  @default(true)
+  notifyLikes            Boolean  @default(true)
+  notifyNewPosts         Boolean  @default(true)
+  notifySubscriptions    Boolean  @default(true)
+  
+  // Privacy settings
+  showActivity           Boolean  @default(true)
+  allowMessages          Boolean  @default(true)
+  showOnlineStatus       Boolean  @default(true)
+  
+  // Theme
+  theme                  String   @default("dark")
+  
+  createdAt              DateTime @default(now())
+  updatedAt              DateTime @updatedAt
+  
+  // Relations
+  user                   User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  @@map("user_settings")
 }

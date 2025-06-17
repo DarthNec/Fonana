@@ -1,9 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { PrismaClient } from '@prisma/client'
+import { prisma } from '@/lib/prisma'
 
 export const dynamic = 'force-dynamic'
-
-const prisma = new PrismaClient()
 
 export async function GET(request: NextRequest) {
   try {
@@ -38,31 +36,59 @@ export async function GET(request: NextRequest) {
     })
 
     // Обрабатываем данные для фронтенда
-    const formattedCreators = creators.map(creator => {
+    const formattedCreators = await Promise.all(creators.map(async (creator) => {
       // Собираем все теги из постов автора
       const allTags = new Set<string>()
-      creator.posts.forEach(post => {
-        post.tags.forEach(postTag => {
+      creator.posts.forEach((post: any) => {
+        post.tags.forEach((postTag: any) => {
           allTags.add(postTag.tag.name)
         })
       })
 
+      // Получаем активные подписки создателя для расчета заработка
+      const activeSubscriptions = await prisma.subscription.findMany({
+        where: {
+          creatorId: creator.id,
+          isActive: true,
+          validUntil: { gte: new Date() }
+        }
+      })
+      
+      // Рассчитываем месячный заработок
+      const monthlyEarnings = activeSubscriptions.reduce((sum: number, sub: any) => {
+        return sum + (sub.creatorAmount || sub.price * 0.9) // 90% идет создателю
+      }, 0)
+      
+      // Получаем количество подписчиков и постов
+      const [subscribersCount, postsCount] = await Promise.all([
+        prisma.subscription.count({
+          where: {
+            creatorId: creator.id,
+            isActive: true,
+            validUntil: { gte: new Date() }
+          }
+        }),
+        prisma.post.count({
+          where: { creatorId: creator.id }
+        })
+      ])
+      
       return {
         id: creator.id,
-        name: creator.fullName || creator.nickname || 'Unknown Creator',
-        username: creator.nickname || creator.wallet?.slice(0, 8) || 'user',
-        description: creator.bio || 'Content creator on Fonana platform',
+        name: creator.nickname || creator.fullName || creator.name || 'Unknown Creator',
+        username: creator.nickname || creator.wallet?.slice(0, 6) + '...' + creator.wallet?.slice(-4) || 'unknown',
+        description: creator.bio || 'New creator on the platform',
         avatar: creator.avatar || null,
-        coverImage: `/api/og?title=${encodeURIComponent(creator.fullName || creator.nickname || 'Creator')}`,
+        backgroundImage: creator.backgroundImage || null,
+        coverImage: creator.backgroundImage || '',
         isVerified: creator.isVerified,
-        followersCount: creator.followersCount,
-        posts: creator.postsCount,
-        subscribers: creator.followersCount,
+        subscribers: subscribersCount,
+        posts: postsCount,
         tags: Array.from(allTags),
-        monthlyEarnings: '~100 SOL', // TODO: Рассчитать из реальных подписок
-        createdAt: creator.createdAt
+        monthlyEarnings: `~${monthlyEarnings.toFixed(2)} SOL`,
+        createdAt: creator.createdAt.toISOString()
       }
-    })
+    }))
 
     // Перемешиваем и возвращаем запрошенное количество
     const shuffled = formattedCreators.sort(() => 0.5 - Math.random())

@@ -100,7 +100,7 @@ export default function HomePage() {
       {!hasSubscriptions && (
         <section className="py-20 relative">
           <div className="container mx-auto px-4">
-            <div className="relative bg-white dark:bg-gradient-to-br dark:from-slate-800/50 dark:to-slate-900/50 backdrop-blur-xl rounded-3xl p-8 md:p-16 border border-gray-200 dark:border-slate-700/50 shadow-lg">
+            <div className="relative bg-white dark:bg-slate-900 backdrop-blur-xl rounded-3xl p-8 md:p-16 border border-gray-200 dark:border-slate-700/50 shadow-lg">
               <div className="grid grid-cols-2 gap-8 lg:grid-cols-4">
                 {stats.map((stat, index) => (
                   <div key={stat.name} className="text-center group">
@@ -148,7 +148,7 @@ export default function HomePage() {
             {features.map((feature, index) => (
               <div 
                 key={feature.name} 
-                className="group relative overflow-hidden rounded-3xl bg-white dark:bg-gradient-to-br dark:from-slate-800/30 dark:to-slate-900/50 backdrop-blur-xl border border-gray-200 dark:border-slate-700/50 p-8 hover:border-purple-500/50 dark:hover:border-purple-500/30 transition-all duration-500 shadow-lg"
+                className="group relative overflow-hidden rounded-3xl bg-white dark:bg-slate-900 backdrop-blur-xl border border-gray-200 dark:border-slate-700/50 p-8 hover:border-purple-500/50 dark:hover:border-purple-500/30 transition-all duration-500 shadow-lg"
               >
                 {/* Gradient overlay on hover */}
                 <div className={`absolute inset-0 bg-gradient-to-br ${feature.gradient} opacity-0 group-hover:opacity-5 transition-opacity duration-500 rounded-3xl`}></div>

@@ -63,7 +63,7 @@ const getSubscriptionTiers = (creatorCategory?: string): SubscriptionTier[] => {
         'Like and comment ability',
         'New content notifications'
       ],
-      color: 'from-slate-400 to-slate-600'
+      color: 'from-gray-400 to-slate-600'
     },
     {
       id: 'basic',
@@ -74,20 +74,35 @@ const getSubscriptionTiers = (creatorCategory?: string): SubscriptionTier[] => {
       description: 'Basic subscription',
       features: [
         'All Free features',
-        'Access to subscriber content',
+        'Access to basic content',
         'Community chat participation'
       ],
-      color: 'from-blue-400 to-blue-600'
+      color: 'from-green-400 to-emerald-600'
+    },
+    {
+      id: 'standard',
+      name: 'Standard',
+      price: 0.10,
+      currency: 'SOL',
+      duration: 'month',
+      description: 'Standard subscription',
+      features: [
+        'All Basic features',
+        'Access to standard content',
+        'Weekly live streams',
+        'Priority comments'
+      ],
+      color: 'from-blue-400 to-cyan-600'
     },
     {
       id: 'premium',
       name: 'Premium',
-      price: 0.15,
+      price: 0.20,
       currency: 'SOL',
       duration: 'month',
       description: 'Premium subscription',
       features: [
-        'All Basic features',
+        'All Standard features',
         'Access to premium content',
         'Priority support',
         'Early access to new content'
@@ -98,7 +113,7 @@ const getSubscriptionTiers = (creatorCategory?: string): SubscriptionTier[] => {
     {
       id: 'vip',
       name: 'VIP',
-      price: 0.35,
+      price: 0.40,
       currency: 'SOL',
       duration: 'month',
       description: 'VIP subscription',
@@ -407,10 +422,12 @@ export default function SubscribeModal({ creator, preferredTier, onClose, onSucc
                         ? tier.id === 'free'
                           ? 'border-slate-500 shadow-xl shadow-slate-500/25'
                           : tier.id === 'basic'
-                            ? 'border-blue-500 shadow-xl shadow-blue-500/25'
-                            : tier.id === 'vip'
-                              ? 'border-yellow-500 shadow-xl shadow-yellow-500/25'
-                              : 'border-purple-500 shadow-xl shadow-purple-500/25'
+                            ? 'border-green-500 shadow-xl shadow-green-500/25'
+                            : tier.id === 'standard'
+                              ? 'border-blue-500 shadow-xl shadow-blue-500/25'
+                              : tier.id === 'vip'
+                                ? 'border-yellow-500 shadow-xl shadow-yellow-500/25'
+                                : 'border-purple-500 shadow-xl shadow-purple-500/25'
                         : 'border-slate-600/50 hover:border-slate-500/50'
                     } ${tier.popular ? 'ring-2 ring-purple-500/50' : ''}`}
                     onClick={() => setSelectedTier(tier.id)}
@@ -500,9 +517,11 @@ export default function SubscribeModal({ creator, preferredTier, onClose, onSucc
                 selectedTier === 'free'
                   ? 'bg-gradient-to-r from-gray-500 to-gray-600 hover:from-gray-600 hover:to-gray-700'
                   : selectedTier === 'basic'
-                  ? 'bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700'
+                  ? 'bg-gradient-to-r from-green-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700'
+                  : selectedTier === 'standard'
+                  ? 'bg-gradient-to-r from-blue-500 to-cyan-600 hover:from-cyan-600 hover:to-cyan-700'
                   : selectedTier === 'vip'
-                  ? 'bg-gradient-to-r from-yellow-500 to-orange-500 hover:from-yellow-600 hover:to-orange-600'
+                  ? 'bg-gradient-to-r from-yellow-500 to-orange-500 hover:from-orange-600 hover:to-orange-700'
                   : 'bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700'
               } shadow-xl disabled:opacity-50 disabled:cursor-not-allowed`}
             >

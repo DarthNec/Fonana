@@ -13,7 +13,10 @@ import {
   ClockIcon, 
   UsersIcon,
   FunnelIcon,
-  PlusIcon
+  PlusIcon,
+  HeartIcon,
+  ChatBubbleLeftIcon,
+  ArrowTrendingUpIcon
 } from '@heroicons/react/24/outline'
 import { toast } from 'react-hot-toast'
 
@@ -28,7 +31,7 @@ export default function FeedPage() {
   const [posts, setPosts] = useState<any[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [selectedCategory, setSelectedCategory] = useState('All')
-  const [sortBy, setSortBy] = useState<'latest' | 'popular' | 'following' | 'my-posts'>('latest')
+  const [sortBy, setSortBy] = useState<'latest' | 'popular' | 'trending' | 'most-liked' | 'most-commented' | 'following' | 'my-posts'>('latest')
   
   // Состояние для модалок
   const [showSubscribeModal, setShowSubscribeModal] = useState(false)
@@ -165,7 +168,19 @@ export default function FeedPage() {
     if (sortBy === 'latest') {
       return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
     } else if (sortBy === 'popular') {
+      // Популярность на основе общей активности (лайки + комментарии)
       return (b.likes + b.comments) - (a.likes + a.comments)
+    } else if (sortBy === 'trending') {
+      // Трендовые - новые посты с высокой активностью
+      const ageA = Date.now() - new Date(a.createdAt).getTime()
+      const ageB = Date.now() - new Date(b.createdAt).getTime()
+      const scoreA = (a.likes + a.comments) / Math.max(ageA / (1000 * 60 * 60), 1) // активность в час
+      const scoreB = (b.likes + b.comments) / Math.max(ageB / (1000 * 60 * 60), 1)
+      return scoreB - scoreA
+    } else if (sortBy === 'most-liked') {
+      return b.likes - a.likes
+    } else if (sortBy === 'most-commented') {
+      return b.comments - a.comments
     }
     return 0
   })
@@ -173,6 +188,9 @@ export default function FeedPage() {
   const sortOptions = [
     { id: 'latest', label: 'Latest', icon: ClockIcon },
     { id: 'popular', label: 'Popular', icon: FireIcon },
+    { id: 'trending', label: 'Trending', icon: ArrowTrendingUpIcon },
+    { id: 'most-liked', label: 'Most Liked', icon: HeartIcon },
+    { id: 'most-commented', label: 'Most Discussed', icon: ChatBubbleLeftIcon },
     { id: 'following', label: 'Following', icon: UsersIcon },
     ...(user ? [{ id: 'my-posts', label: 'My Posts', icon: SparklesIcon }] : [])
   ]

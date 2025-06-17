@@ -174,21 +174,44 @@ export default function CreatorsExplorer() {
       }
     }
 
+    // Сортируем по количеству постов (от большего к меньшему)
+    filtered = filtered.sort((a, b) => b.posts - a.posts)
+
     return filtered
   }
 
   const filteredCreators = getFilteredCreators()
 
-  const renderCreatorCard = (creator: Creator) => {
+  const renderCreatorCard = (creator: Creator, index: number) => {
     const isSubscribed = isUserSubscribedTo(creator.id)
+    const isFirstPlace = index === 0 && creator.posts > 0
+    const hasNoPosts = creator.posts === 0
     
     return (
       <div 
         key={creator.id} 
-        className="group relative overflow-hidden rounded-3xl bg-white dark:bg-slate-900 backdrop-blur-xl border border-gray-200 dark:border-slate-700/50 hover:border-purple-500/50 dark:hover:border-purple-500/30 transition-all duration-500 hover:transform hover:scale-[1.02] h-full flex flex-col"
+        className={`group relative overflow-hidden rounded-3xl bg-white dark:bg-slate-900 backdrop-blur-xl border transition-all duration-500 hover:transform hover:scale-[1.02] h-full flex flex-col ${
+          isFirstPlace 
+            ? 'border-yellow-500/50 hover:border-yellow-500 shadow-xl shadow-yellow-500/20' 
+            : hasNoPosts
+            ? 'border-gray-200 dark:border-slate-700/30 opacity-75 hover:opacity-100 hover:border-gray-300 dark:hover:border-slate-600/50'
+            : 'border-gray-200 dark:border-slate-700/50 hover:border-purple-500/50 dark:hover:border-purple-500/30'
+        }`}
       >
         {/* Hover glow effect */}
-        <div className="absolute -inset-1 bg-gradient-to-r from-purple-600/20 to-pink-600/20 rounded-3xl opacity-0 group-hover:opacity-100 blur-xl transition-opacity duration-500"></div>
+        <div className={`absolute -inset-1 rounded-3xl opacity-0 group-hover:opacity-100 blur-xl transition-opacity duration-500 ${
+          isFirstPlace 
+            ? 'bg-gradient-to-r from-yellow-600/30 to-orange-600/30'
+            : 'bg-gradient-to-r from-purple-600/20 to-pink-600/20'
+        }`}></div>
+        
+        {/* Golden crown for first place */}
+        {isFirstPlace && (
+          <div className="absolute top-4 left-4 z-20 bg-gradient-to-r from-yellow-500 to-orange-500 text-white px-3 py-1 rounded-full text-sm font-bold flex items-center gap-1 shadow-lg">
+            <span>👑</span>
+            <span>#1</span>
+          </div>
+        )}
         
         <div className="relative z-10 p-6 flex flex-col h-full">
           {/* Cover Image */}
@@ -477,7 +500,7 @@ export default function CreatorsExplorer() {
           </div>
         ) : (
           <div className="grid gap-6 md:gap-8 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-            {filteredCreators.map(renderCreatorCard)}
+            {filteredCreators.map((creator, index) => renderCreatorCard(creator, index))}
           </div>
         )}
       </div>

@@ -94,6 +94,14 @@ export default function ProfilePage() {
   // Nickname validation states
   const [nicknameStatus, setNicknameStatus] = useState<'idle' | 'checking' | 'available' | 'taken' | 'invalid' | 'reserved'>('idle')
   const [nicknameCheckTimeout, setNicknameCheckTimeout] = useState<NodeJS.Timeout | null>(null)
+  
+  // User statistics
+  const [userStats, setUserStats] = useState({
+    postsCount: 0,
+    subscribersCount: 0,
+    totalEarned: 0,
+    memberSince: new Date()
+  })
 
   useEffect(() => {
     if (user) {
@@ -109,6 +117,77 @@ export default function ProfilePage() {
       }))
     }
   }, [user])
+  
+  // Загружаем настройки пользователя
+  useEffect(() => {
+    if (user?.wallet) {
+      fetchUserSettings()
+    }
+  }, [user?.wallet])
+  
+  const fetchUserSettings = async () => {
+    try {
+      const response = await fetch(`/api/user/settings?wallet=${user?.wallet}`)
+      if (response.ok) {
+        const data = await response.json()
+        const settings = data.settings
+        
+        setFormData(prev => ({
+          ...prev,
+          notifications: {
+            comments: settings.notifyComments,
+            likes: settings.notifyLikes,
+            newPosts: settings.notifyNewPosts,
+            subscriptions: settings.notifySubscriptions,
+          },
+          privacy: {
+            showActivity: settings.showActivity,
+            allowMessages: settings.allowMessages,
+            showOnline: settings.showOnlineStatus,
+          },
+          theme: settings.theme as 'light' | 'dark' | 'auto',
+        }))
+      }
+    } catch (error) {
+      console.error('Error fetching user settings:', error)
+    }
+  }
+  
+  const fetchUserStats = async () => {
+    if (!user?.id) return
+    
+    try {
+      // Получаем количество постов
+      const postsResponse = await fetch(`/api/posts?creatorId=${user.id}`)
+      const postsData = await postsResponse.json()
+      
+      // Получаем подписчиков
+      const subsResponse = await fetch(`/api/subscriptions?creatorId=${user.id}`)
+      const subsData = await subsResponse.json()
+      
+      // Рассчитываем общий заработок
+      const activeSubscriptions = subsData.subscriptions?.filter((sub: any) => sub.isActive) || []
+      const totalEarned = activeSubscriptions.reduce((sum: number, sub: any) => {
+        return sum + (sub.creatorAmount || sub.price * 0.9) // 90% идет создателю
+      }, 0)
+      
+      setUserStats({
+        postsCount: postsData.posts?.length || 0,
+        subscribersCount: activeSubscriptions.length,
+        totalEarned: totalEarned,
+        memberSince: user.createdAt ? new Date(user.createdAt) : new Date()
+      })
+    } catch (error) {
+      console.error('Error fetching user stats:', error)
+    }
+  }
+  
+  // Загружаем статистику при монтировании
+  useEffect(() => {
+    if (user?.id) {
+      fetchUserStats()
+    }
+  }, [user?.id])
 
   const checkNicknameAvailability = async (nickname: string) => {
     if (!nickname || nickname === user?.nickname) {
@@ -188,6 +267,7 @@ export default function ProfilePage() {
     
     setIsSaving(true)
     try {
+      // Сохраняем основную информацию профиля
       await updateProfile({
         nickname: formData.nickname,
         fullName: formData.name,
@@ -195,6 +275,28 @@ export default function ProfilePage() {
         avatar: formData.avatar,
         backgroundImage: formData.backgroundImage,
       })
+      
+      // Сохраняем настройки
+      if (user?.wallet) {
+        const settingsResponse = await fetch(`/api/user/settings?wallet=${user.wallet}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            notifyComments: formData.notifications.comments,
+            notifyLikes: formData.notifications.likes,
+            notifyNewPosts: formData.notifications.newPosts,
+            notifySubscriptions: formData.notifications.subscriptions,
+            showActivity: formData.privacy.showActivity,
+            allowMessages: formData.privacy.allowMessages,
+            showOnlineStatus: formData.privacy.showOnline,
+            theme: formData.theme
+          })
+        })
+        
+        if (!settingsResponse.ok) {
+          throw new Error('Failed to save settings')
+        }
+      }
       
       setSaved(true)
       setTimeout(() => setSaved(false), 3000)
@@ -691,19 +793,19 @@ export default function ProfilePage() {
                 <div className="space-y-4">
                   <div className="flex items-center justify-between p-3 bg-gray-50 dark:bg-slate-700/30 rounded-2xl">
                     <span className="text-gray-600 dark:text-slate-400">Posts created</span>
-                    <span className="font-bold text-gray-900 dark:text-white">42</span>
+                    <span className="font-bold text-gray-900 dark:text-white">{userStats.postsCount}</span>
                   </div>
                   <div className="flex items-center justify-between p-3 bg-gray-50 dark:bg-slate-700/30 rounded-2xl">
                     <span className="text-gray-600 dark:text-slate-400">Subscribers</span>
-                    <span className="font-bold text-gray-900 dark:text-white">1,234</span>
+                    <span className="font-bold text-gray-900 dark:text-white">{userStats.subscribersCount}</span>
                   </div>
                   <div className="flex items-center justify-between p-3 bg-gray-50 dark:bg-slate-700/30 rounded-2xl">
                     <span className="text-gray-600 dark:text-slate-400">Earned</span>
-                    <span className="font-bold text-emerald-600 dark:text-emerald-400">$2,845.50</span>
+                    <span className="font-bold text-emerald-600 dark:text-emerald-400">${userStats.totalEarned.toFixed(2)}</span>
                   </div>
                   <div className="flex items-center justify-between p-3 bg-gray-50 dark:bg-slate-700/30 rounded-2xl">
                     <span className="text-gray-600 dark:text-slate-400">Member since</span>
-                    <span className="font-bold text-gray-900 dark:text-white">Jan 2024</span>
+                    <span className="font-bold text-gray-900 dark:text-white">{userStats.memberSince.toLocaleDateString()}</span>
                   </div>
                 </div>
               </div>

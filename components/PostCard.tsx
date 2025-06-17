@@ -5,6 +5,7 @@ import Link from 'next/link'
 import Image from 'next/image'
 import Avatar from './Avatar'
 import OptimizedImage from './OptimizedImage'
+import ImageViewer from './ImageViewer'
 import { toast } from 'react-hot-toast'
 import { 
   HeartIcon, 
@@ -26,6 +27,7 @@ import { HeartIcon as HeartSolidIcon } from '@heroicons/react/24/solid'
 import { useUser } from '@/lib/hooks/useUser'
 import { getProfileLink } from '@/lib/utils/links'
 import EditPostModal from './EditPostModal'
+import PostComments from './PostComments'
 
 interface Creator {
   id: string
@@ -121,6 +123,8 @@ export default function PostCard({
   const [showActions, setShowActions] = useState(false)
   const [showEditModal, setShowEditModal] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
+  const [isExpanded, setIsExpanded] = useState(false)
+  const [showImageViewer, setShowImageViewer] = useState(false)
   const actionsRef = useRef<HTMLDivElement>(null)
 
   // Загружаем статус лайка при монтировании
@@ -418,11 +422,13 @@ export default function PostCard({
   const isLegacyVipContent = isLocked && isPremium && !price && !requiredTier
   const isSubscriberContent = isLocked && !isPremium && !price && !requiredTier
 
-  // Определяем детали тиров
+  // Определяем детали тиров с классической цветовой схемой
   const tierDetails = {
-    'basic': { name: 'Basic', color: 'blue', icon: '⭐' },
-    'premium': { name: 'Premium', color: 'purple', icon: '💎' },
-    'vip': { name: 'VIP', color: 'gold', icon: '👑' }
+    'free': { name: 'Free', color: 'gray', icon: '🔓', gradient: 'from-gray-500/20 to-slate-500/20', border: 'border-gray-500/30', text: 'text-gray-700 dark:text-gray-300', dot: 'bg-gray-500 dark:bg-gray-400' },
+    'basic': { name: 'Basic', color: 'green', icon: '⭐', gradient: 'from-green-500/20 to-emerald-500/20', border: 'border-green-500/30', text: 'text-green-700 dark:text-green-300', dot: 'bg-green-500 dark:bg-green-400' },
+    'standard': { name: 'Standard', color: 'blue', icon: '💎', gradient: 'from-blue-500/20 to-cyan-500/20', border: 'border-blue-500/30', text: 'text-blue-700 dark:text-blue-300', dot: 'bg-blue-500 dark:bg-blue-400' },
+    'premium': { name: 'Premium', color: 'purple', icon: '🔮', gradient: 'from-purple-500/20 to-pink-500/20', border: 'border-purple-500/30', text: 'text-purple-700 dark:text-purple-300', dot: 'bg-purple-500 dark:bg-purple-400' },
+    'vip': { name: 'VIP', color: 'gold', icon: '👑', gradient: 'from-yellow-500/20 to-amber-500/20', border: 'border-yellow-500/30', text: 'text-yellow-700 dark:text-yellow-300', dot: 'bg-yellow-500 dark:bg-yellow-400' }
   }
 
   const getTierInfo = () => {
@@ -446,21 +452,45 @@ export default function PostCard({
     <article className={`group relative overflow-hidden rounded-3xl bg-white dark:bg-slate-900 backdrop-blur-xl border border-gray-200 dark:border-slate-700/50 transition-all duration-500 mb-8 ${
       needsPayment 
         ? 'hover:border-yellow-500/50 dark:hover:border-yellow-500/30'
+        : isTierContent && tierInfo && tierInfo.required
+        ? tierInfo.required.color === 'gold'
+          ? 'hover:border-yellow-500/50 dark:hover:border-yellow-500/30'
+          : tierInfo.required.color === 'purple'
+          ? 'hover:border-purple-500/50 dark:hover:border-purple-500/30'
+          : tierInfo.required.color === 'blue'
+          ? 'hover:border-blue-500/50 dark:hover:border-blue-500/30'
+          : tierInfo.required.color === 'green'
+          ? 'hover:border-green-500/50 dark:hover:border-green-500/30'
+          : 'hover:border-gray-500/50 dark:hover:border-gray-500/30'
         : isLegacyVipContent
-        ? 'hover:border-purple-500/50 dark:hover:border-purple-500/30'
+        ? 'hover:border-yellow-500/50 dark:hover:border-yellow-500/30'
         : isSubscriberContent
-        ? 'hover:border-blue-500/50 dark:hover:border-blue-500/30'
-        : 'hover:border-green-500/50 dark:hover:border-green-500/30'
+        ? 'hover:border-green-500/50 dark:hover:border-green-500/30'
+        : !isLocked
+        ? 'hover:border-gray-500/50 dark:hover:border-gray-500/30'
+        : 'hover:border-purple-500/50 dark:hover:border-purple-500/30'
     }`}>
       {/* Hover glow effect */}
       <div className={`absolute -inset-1 rounded-3xl opacity-0 group-hover:opacity-100 blur-xl transition-opacity duration-500 ${
         needsPayment 
           ? 'bg-gradient-to-r from-yellow-600/10 to-orange-600/10'
+          : isTierContent && tierInfo && tierInfo.required
+          ? tierInfo.required.color === 'gold'
+            ? 'bg-gradient-to-r from-yellow-600/10 to-orange-600/10'
+            : tierInfo.required.color === 'purple'
+            ? 'bg-gradient-to-r from-purple-600/10 to-pink-600/10'
+            : tierInfo.required.color === 'blue'
+            ? 'bg-gradient-to-r from-blue-600/10 to-cyan-600/10'
+            : tierInfo.required.color === 'green'
+            ? 'bg-gradient-to-r from-green-600/10 to-emerald-600/10'
+            : 'bg-gradient-to-r from-gray-600/10 to-slate-600/10'
           : isLegacyVipContent
-          ? 'bg-gradient-to-r from-purple-600/10 to-pink-600/10'
+          ? 'bg-gradient-to-r from-yellow-600/10 to-orange-600/10'
           : isSubscriberContent
-          ? 'bg-gradient-to-r from-blue-600/10 to-cyan-600/10'
-          : 'bg-gradient-to-r from-green-600/10 to-emerald-600/10'
+          ? 'bg-gradient-to-r from-green-600/10 to-emerald-600/10'
+          : !isLocked
+          ? 'bg-gradient-to-r from-gray-600/10 to-slate-600/10'
+          : 'bg-gradient-to-r from-purple-600/10 to-pink-600/10'
       }`}></div>
       
       <div className="relative z-10">
@@ -549,9 +579,17 @@ export default function PostCard({
             <>
               {/* Content Preview */}
               <div className="mb-4">
-                <p className="text-gray-700 dark:text-slate-300 leading-relaxed line-clamp-3">
+                <p className={`text-gray-700 dark:text-slate-300 leading-relaxed ${!isExpanded && content.length > 200 ? 'line-clamp-3' : ''}`}>
                   {content}
                 </p>
+                {content.length > 200 && (
+                  <button
+                    onClick={() => setIsExpanded(!isExpanded)}
+                    className="text-purple-600 dark:text-purple-400 hover:text-purple-700 dark:hover:text-purple-300 font-medium text-sm mt-2 transition-colors"
+                  >
+                    {isExpanded ? 'Show less' : 'Read more'}
+                  </button>
+                )}
               </div>
 
               {/* Media Content */}
@@ -562,8 +600,9 @@ export default function PostCard({
                     thumbnail={thumbnail || null}
                     preview={preview || null}
                     alt={title}
-                    className="w-full aspect-[4/3] object-cover"
+                    className="w-full aspect-[4/3] object-cover cursor-pointer hover:opacity-90 transition-opacity"
                     type={type === 'video' ? 'video' : 'image'}
+                    onClick={() => type !== 'video' && setShowImageViewer(true)}
                   />
                 </div>
               )}
@@ -648,31 +687,23 @@ export default function PostCard({
             <div className={`inline-flex items-center gap-2 px-3 py-1 text-sm font-medium rounded-full mb-4 ${
               needsPayment 
                 ? 'bg-gradient-to-r from-yellow-500/20 to-orange-500/20 text-yellow-700 dark:text-yellow-300 border border-yellow-500/30'
-                : isTierContent && tierInfo
-                ? tierInfo.required.name === 'VIP'
-                  ? 'bg-gradient-to-r from-yellow-500/20 to-amber-500/20 text-yellow-700 dark:text-yellow-300 border border-yellow-500/30'
-                  : tierInfo.required.name === 'Premium'
-                  ? 'bg-gradient-to-r from-purple-500/20 to-pink-500/20 text-purple-700 dark:text-purple-300 border border-purple-500/30'
-                  : 'bg-gradient-to-r from-blue-500/20 to-cyan-500/20 text-blue-700 dark:text-blue-300 border border-blue-500/30'
+                : isTierContent && tierInfo && tierInfo.required
+                ? `bg-gradient-to-r ${tierInfo.required.gradient} ${tierInfo.required.text} border ${tierInfo.required.border}`
                 : isLegacyVipContent
-                ? 'bg-gradient-to-r from-purple-500/20 to-pink-500/20 text-purple-700 dark:text-purple-300 border border-purple-500/30'
+                ? 'bg-gradient-to-r from-yellow-500/20 to-amber-500/20 text-yellow-700 dark:text-yellow-300 border border-yellow-500/30'
                 : isSubscriberContent
-                ? 'bg-gradient-to-r from-blue-500/20 to-cyan-500/20 text-blue-700 dark:text-blue-300 border border-blue-500/30'
+                ? 'bg-gradient-to-r from-green-500/20 to-emerald-500/20 text-green-700 dark:text-green-300 border border-green-500/30'
                 : 'bg-gradient-to-r from-gray-500/20 to-gray-600/20 text-gray-700 dark:text-gray-300 border border-gray-500/30'
             }`}>
               <span className={`w-2 h-2 rounded-full animate-pulse ${
                 needsPayment 
                   ? 'bg-yellow-500 dark:bg-yellow-400'
-                  : isTierContent && tierInfo
-                  ? tierInfo.required.name === 'VIP'
-                    ? 'bg-yellow-500 dark:bg-yellow-400'
-                    : tierInfo.required.name === 'Premium'
-                    ? 'bg-purple-500 dark:bg-purple-400'
-                    : 'bg-blue-500 dark:bg-blue-400'
+                  : isTierContent && tierInfo && tierInfo.required
+                  ? tierInfo.required.dot
                   : isLegacyVipContent
-                  ? 'bg-purple-500 dark:bg-purple-400'
+                  ? 'bg-yellow-500 dark:bg-yellow-400'
                   : isSubscriberContent
-                  ? 'bg-blue-500 dark:bg-blue-400'
+                  ? 'bg-green-500 dark:bg-green-400'
                   : 'bg-gray-500 dark:bg-gray-400'
               }`}></span>
               {needsPayment 
@@ -680,9 +711,9 @@ export default function PostCard({
                 : isTierContent && tierInfo
                 ? `${tierInfo.required.icon} ${tierInfo.required.name} Content`
                 : isLegacyVipContent
-                ? 'VIP Content'
+                ? '👑 VIP Content'
                 : isSubscriberContent
-                ? 'Subscribers Only'
+                ? '⭐ Subscribers Only'
                 : 'Premium Content'
               }
             </div>
@@ -948,6 +979,14 @@ export default function PostCard({
           }}
         />
       )}
+
+      {/* Image Viewer for full size */}
+      <ImageViewer
+        src={mediaUrl || image || ''}
+        alt={title}
+        isOpen={showImageViewer}
+        onClose={() => setShowImageViewer(false)}
+      />
     </article>
   )
 } 

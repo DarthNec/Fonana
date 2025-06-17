@@ -218,7 +218,11 @@ export async function createPost(creatorWallet: string, data: {
         minSubscriptionTier = undefined // Free posts don't have subscription requirement
         break
       case 'subscribers':
+      case 'basic':
         minSubscriptionTier = 'basic' // Basic tier and above
+        break
+      case 'standard':
+        minSubscriptionTier = 'standard' // Standard tier and above
         break
       case 'premium':
         minSubscriptionTier = 'premium' // Premium tier and above
