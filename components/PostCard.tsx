@@ -602,33 +602,33 @@ export default function PostCard({
               {auctionStatus === 'SOLD' || soldAt ? (
                 <>
                   <span className="w-2 h-2 rounded-full bg-gray-500 dark:bg-gray-400"></span>
-                  ✅ Продано {soldTo && `@${soldTo.nickname || soldTo.wallet.slice(0, 6) + '...'}`}
-                  {soldPrice && ` за ${soldPrice} SOL`}
+                  ✅ Sold {soldTo && `@${soldTo.nickname || soldTo.wallet.slice(0, 6) + '...'}`}
+                  {soldPrice && ` for ${soldPrice} SOL`}
                 </>
               ) : sellType === 'AUCTION' ? (
                 <>
                   <span className="w-2 h-2 rounded-full bg-yellow-500 dark:bg-yellow-400 animate-pulse"></span>
-                  🕒 Аукцион
+                  🕒 Auction
                   {auctionStatus === 'ACTIVE' && auctionEndAt && (
                     <span className="text-xs">
-                      (до {new Date(auctionEndAt).toLocaleString('ru-RU', { 
+                      (until {new Date(auctionEndAt).toLocaleString('en-US', { 
                         hour: '2-digit', 
                         minute: '2-digit',
                         day: 'numeric',
-                        month: 'short' 
+                        month: 'short'
                       })})
                     </span>
                   )}
                   {auctionCurrentBid && auctionCurrentBid > 0 && (
                     <span className="text-xs font-bold ml-1">
-                      Текущая ставка: {auctionCurrentBid} SOL
+                      Current bid: {auctionCurrentBid} SOL
                     </span>
                   )}
                 </>
               ) : (
                 <>
                   <span className="w-2 h-2 rounded-full bg-yellow-500 dark:bg-yellow-400"></span>
-                  🛒 Купить за {price} {currency}
+                  🛒 Buy for {price} {currency}
                 </>
               )}
             </div>
@@ -678,8 +678,8 @@ export default function PostCard({
               <div className="py-16 px-6 text-center">
                 <LockClosedIcon className="w-16 h-16 text-gray-400 dark:text-slate-500 mx-auto mb-4" />
                 <div className="text-gray-900 dark:text-slate-300 font-semibold text-lg mb-2">
-                  {needsSellablePayment ? '🛒 Продаваемый контент' :
-                   isActiveAuction ? '🕒 Активный аукцион' :
+                  {needsSellablePayment ? '🛒 Sellable Content' :
+                   isActiveAuction ? '🕒 Active Auction' :
                    needsPayment ? 'Paid Content' : 
                    isTierContent && tierInfo ? `${tierInfo.required.icon} ${tierInfo.required.name} Content` :
                    isLegacyVipContent ? 'VIP Content' : 
@@ -688,9 +688,9 @@ export default function PostCard({
                 </div>
                 <p className="text-gray-600 dark:text-slate-400 text-sm mb-4 max-w-sm mx-auto">
                   {needsSellablePayment
-                    ? 'Купите этот уникальный контент. После покупки он будет доступен только вам!'
+                    ? 'Buy this unique content. After purchase, it will be accessible only to you!'
                     : isActiveAuction
-                    ? 'Сделайте ставку, чтобы выиграть этот эксклюзивный контент'
+                    ? 'Make a bid to win this exclusive content'
                     : needsPayment 
                     ? 'Purchase access to this content' 
                     : isTierContent && tierInfo
@@ -713,16 +713,16 @@ export default function PostCard({
                   <div className="space-y-2 mb-4">
                     {auctionCurrentBid && auctionCurrentBid > 0 ? (
                       <div className="text-purple-600 dark:text-purple-400 font-bold text-2xl">
-                        Текущая ставка: {auctionCurrentBid} SOL
+                        Current bid: {auctionCurrentBid} SOL
                       </div>
                     ) : (
                       <div className="text-purple-600 dark:text-purple-400 font-bold text-2xl">
-                        Начальная цена: {auctionStartPrice} SOL
+                        Starting price: {auctionStartPrice} SOL
                       </div>
                     )}
                     {auctionEndAt && (
                       <div className="text-gray-600 dark:text-slate-400 text-sm">
-                        Завершится: {new Date(auctionEndAt).toLocaleString('ru-RU')}
+                        Ends: {new Date(auctionEndAt).toLocaleString('en-US')}
                       </div>
                     )}
                   </div>
@@ -775,9 +775,9 @@ export default function PostCard({
                   className="px-6 py-3 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white rounded-xl font-medium transition-all transform hover:scale-105"
                 >
                   {needsSellablePayment 
-                    ? `Купить за ${price} ${currency}`
+                    ? `Buy for ${price} ${currency}`
                     : isActiveAuction
-                    ? 'Сделать ставку'
+                    ? 'Make a bid'
                     : needsPayment 
                     ? `Buy for ${price} ${currency}`
                     : isTierContent && tierInfo

@@ -133,27 +133,23 @@ export async function POST(
       })
     ])
 
-    // Отправляем уведомление создателю о продаже
-    try {
-      await prisma.notification.create({
-        data: {
-          userId: post.creatorId,
-          type: 'POST_PURCHASE',
-          title: 'Ваш пост продан!',
-          message: `${buyer.nickname || (buyer.wallet ? buyer.wallet.slice(0, 6) + '...' : 'Пользователь')} купил ваш пост "${post.title}" за ${post.price} ${post.currency}`,
-          metadata: {
-            postId: params.id,
-            buyerId: buyer.id,
-            price: post.price,
-            currency: post.currency,
-            buyerName: buyer.nickname || 'Пользователь',
-            buyerWallet: buyer.wallet || ''
-          }
+    // Отправляем уведомление продавцу
+    await prisma.notification.create({
+      data: {
+        userId: post.creatorId,
+        type: 'POST_PURCHASE',
+        title: 'Your post has been sold!',
+        message: `${buyer.nickname || (buyer.wallet ? buyer.wallet.slice(0, 6) + '...' : 'User')} bought your post "${post.title}" for ${post.price} ${post.currency}`,
+        metadata: {
+          postId: params.id,
+          buyerId: buyer.id,
+          price: post.price,
+          currency: post.currency,
+          buyerName: buyer.nickname || 'User',
+          buyerWallet: buyer.wallet || ''
         }
-      })
-    } catch (error) {
-      console.error('Error sending notification:', error)
-    }
+      }
+    })
 
     return NextResponse.json({
       success: true,

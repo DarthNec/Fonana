@@ -52,7 +52,7 @@ export default function SellablePostModal({ isOpen, onClose, post }: SellablePos
       const difference = end - now
 
       if (difference <= 0) {
-        setTimeLeft('Аукцион завершен')
+        setTimeLeft('Auction ended')
         return
       }
 
@@ -60,7 +60,12 @@ export default function SellablePostModal({ isOpen, onClose, post }: SellablePos
       const minutes = Math.floor((difference % (1000 * 60 * 60)) / (1000 * 60))
       const seconds = Math.floor((difference % (1000 * 60)) / 1000)
 
-      setTimeLeft(`${hours}ч ${minutes}м ${seconds}с`)
+      let timeString = ''
+      if (hours > 0) timeString += `${hours}h `
+      if (minutes > 0 || hours > 0) timeString += `${minutes}m `
+      timeString += `${seconds}s`
+
+      setTimeLeft(timeString)
     }
 
     updateTimer()
@@ -123,7 +128,7 @@ export default function SellablePostModal({ isOpen, onClose, post }: SellablePos
         throw new Error(error.error || 'Failed to process purchase')
       }
 
-      toast.success('Пост успешно куплен!')
+      toast.success('Post successfully purchased!')
       onClose()
       
       // Обновляем страницу через небольшую задержку
@@ -133,7 +138,7 @@ export default function SellablePostModal({ isOpen, onClose, post }: SellablePos
 
     } catch (error) {
       console.error('Purchase error:', error)
-      toast.error(error instanceof Error ? error.message : 'Ошибка при покупке')
+      toast.error(error instanceof Error ? error.message : 'Error processing purchase')
     } finally {
       setIsProcessing(false)
     }
@@ -157,7 +162,7 @@ export default function SellablePostModal({ isOpen, onClose, post }: SellablePos
       return
     }
 
-    toast.error('Аукционы будут доступны в следующем обновлении')
+    toast.error('Auctions will be available in the next update')
     // TODO: Implement auction bidding
   }
 
@@ -175,7 +180,7 @@ export default function SellablePostModal({ isOpen, onClose, post }: SellablePos
         <div className="p-6 border-b border-gray-200 dark:border-slate-700">
           <div className="flex items-center justify-between">
             <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
-              {isAuction ? '🕒 Участвовать в аукционе' : '🛒 Купить пост'}
+              {isAuction ? '🕒 Participate in the auction' : '🛒 Buy Post'}
             </h2>
             <button
               onClick={onClose}
@@ -225,7 +230,7 @@ export default function SellablePostModal({ isOpen, onClose, post }: SellablePos
               {isAuction ? (
                 <>
                   <div className="text-sm text-gray-600 dark:text-slate-400 mb-1">
-                    Текущая ставка
+                    Current bid
                   </div>
                   <div className="text-3xl font-bold text-yellow-600 dark:text-yellow-400 mb-2">
                     {currentPrice.toFixed(2)} SOL
@@ -233,14 +238,14 @@ export default function SellablePostModal({ isOpen, onClose, post }: SellablePos
                   {post.auctionEndAt && (
                     <div className="flex items-center justify-center gap-2 text-sm text-gray-600 dark:text-slate-400">
                       <ClockIcon className="w-4 h-4" />
-                      <span>Осталось: {timeLeft}</span>
+                      <span>Time left: {timeLeft}</span>
                     </div>
                   )}
                 </>
               ) : (
                 <>
                   <div className="text-sm text-gray-600 dark:text-slate-400 mb-1">
-                    Цена
+                    Price
                   </div>
                   <div className="text-3xl font-bold text-yellow-600 dark:text-yellow-400">
                     {currentPrice.toFixed(2)} {post.currency}
@@ -255,7 +260,7 @@ export default function SellablePostModal({ isOpen, onClose, post }: SellablePos
             <div className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-2">
-                  Ваша ставка (SOL)
+                  Your bid (SOL)
                 </label>
                 <input
                   type="number"
@@ -263,7 +268,7 @@ export default function SellablePostModal({ isOpen, onClose, post }: SellablePos
                   min={(currentPrice + 0.1).toFixed(2)}
                   value={bidAmount}
                   onChange={(e) => setBidAmount(e.target.value)}
-                  placeholder={`Минимум ${(currentPrice + 0.1).toFixed(2)}`}
+                  placeholder={`Minimum ${(currentPrice + 0.1).toFixed(2)}`}
                   className="w-full px-4 py-3 bg-white dark:bg-slate-800 border border-gray-300 dark:border-slate-600 rounded-xl text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-slate-400 focus:ring-2 focus:ring-yellow-500 focus:border-transparent"
                 />
               </div>
@@ -275,12 +280,12 @@ export default function SellablePostModal({ isOpen, onClose, post }: SellablePos
                 {isProcessing ? (
                   <>
                     <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                    Обработка...
+                    Processing...
                   </>
                 ) : (
                   <>
                     <CurrencyDollarIcon className="w-5 h-5" />
-                    Сделать ставку
+                    Place bid
                   </>
                 )}
               </button>
@@ -294,12 +299,12 @@ export default function SellablePostModal({ isOpen, onClose, post }: SellablePos
               {isProcessing ? (
                 <>
                   <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                  Обработка платежа...
+                  Processing payment...
                 </>
               ) : (
                 <>
                   <CurrencyDollarIcon className="w-5 h-5" />
-                  Купить за {currentPrice.toFixed(2)} {post.currency}
+                  Buy for {currentPrice.toFixed(2)} {post.currency}
                 </>
               )}
             </button>
@@ -307,7 +312,7 @@ export default function SellablePostModal({ isOpen, onClose, post }: SellablePos
 
           {!connected && (
             <p className="text-center text-sm text-red-600 dark:text-red-400 mt-4">
-              Подключите кошелек для продолжения
+              Connect your wallet to continue
             </p>
           )}
         </div>

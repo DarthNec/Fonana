@@ -212,24 +212,28 @@ export default function CreatePostModal({ onPostCreated, onClose }: CreatePostMo
     }
 
     // Валидация для продаваемых постов
-    if (formData.isSellable) {
-      if (formData.sellType === 'FIXED_PRICE' && (!formData.sellPrice || formData.sellPrice <= 0)) {
-        toast.error('Укажите цену продажи')
+    if (formData.isSellable && !formData.sellType) {
+      toast.error('Please select a selling method')
+      return
+    }
+    
+    if (formData.sellType === 'FIXED_PRICE' && !formData.sellPrice) {
+      toast.error('Please specify a price')
+      return
+    }
+    
+    if (formData.sellType === 'AUCTION') {
+      if (!formData.auctionStartPrice) {
+        toast.error('Please specify a starting price')
         return
       }
-      if (formData.sellType === 'AUCTION') {
-        if (!formData.auctionStartPrice || formData.auctionStartPrice <= 0) {
-          toast.error('Укажите начальную цену аукциона')
-          return
-        }
-        if (!formData.auctionStepPrice || formData.auctionStepPrice <= 0) {
-          toast.error('Укажите шаг ставки')
-          return
-        }
-        if (!formData.auctionDuration || formData.auctionDuration < 1) {
-          toast.error('Укажите длительность аукциона')
-          return
-        }
+      if (!formData.auctionStepPrice) {
+        toast.error('Please specify a bid increment')
+        return
+      }
+      if (!formData.auctionDuration) {
+        toast.error('Please specify auction duration')
+        return
       }
     }
 
@@ -621,29 +625,35 @@ export default function CreatePostModal({ onPostCreated, onClose }: CreatePostMo
                 </div>
               )}
 
-              {/* Продаваемый пост */}
-              <div className="p-4 bg-gradient-to-r from-yellow-500/10 to-orange-500/10 border border-yellow-500/20 rounded-xl">
-                <label className="flex items-start gap-3 cursor-pointer">
+              {/* Секция для продаваемых постов */}
+              <div className="border-t border-gray-200 dark:border-gray-700 pt-6">
+                <label className="flex items-center gap-3 mb-4">
                   <input
                     type="checkbox"
                     checked={formData.isSellable}
-                    onChange={(e) => setFormData(prev => ({ ...prev, isSellable: e.target.checked }))}
-                    className="mt-1 w-5 h-5 text-yellow-600 bg-slate-700 border-slate-600 rounded focus:ring-yellow-500"
+                    onChange={(e) => setFormData(prev => ({
+                      ...prev,
+                      isSellable: e.target.checked,
+                      // Сбрасываем конфигурацию при отключении
+                      ...(e.target.checked ? {} : {
+                        sellType: 'FIXED_PRICE' as const,
+                        sellPrice: 0,
+                        auctionStartPrice: 0,
+                        auctionStepPrice: 0,
+                        auctionDepositAmount: 0,
+                        auctionDuration: 24
+                      })
+                    }))}
+                    className="w-5 h-5 text-purple-600 bg-gray-100 border-gray-300 rounded focus:ring-purple-500 dark:focus:ring-purple-600 dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600"
                   />
-                  <div className="flex-1">
-                    <div className="font-semibold text-gray-900 dark:text-white flex items-center gap-2">
-                      <CurrencyDollarIcon className="w-5 h-5 text-yellow-500" />
-                      Сделать пост продаваемым
-                    </div>
-                    <p className="text-sm text-gray-600 dark:text-slate-400 mt-1">
-                      Пост можно будет купить только один раз. После покупки он останется видимым, но с отметкой "Продано"
-                    </p>
-                  </div>
+                  <span className="text-lg font-semibold text-gray-900 dark:text-white">
+                    💰 Make this post sellable
+                  </span>
                 </label>
 
                 {formData.isSellable && (
                   <div className="mt-4 space-y-4">
-                    {/* Тип продажи */}
+                    {/* Выбор типа продажи */}
                     <div>
                       <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-2">
                         Тип продажи
@@ -651,27 +661,39 @@ export default function CreatePostModal({ onPostCreated, onClose }: CreatePostMo
                       <div className="grid grid-cols-2 gap-3">
                         <button
                           type="button"
-                          onClick={() => setFormData(prev => ({ ...prev, sellType: 'FIXED_PRICE' }))}
-                          className={`p-3 rounded-lg border-2 text-center transition-all ${
+                          onClick={() => setFormData(prev => ({
+                            ...prev, 
+                            sellType: 'FIXED_PRICE',
+                            auctionStartPrice: 0,
+                            auctionStepPrice: 0,
+                            auctionDepositAmount: 0,
+                            auctionDuration: 24
+                          }))}
+                          className={`p-3 rounded-lg border-2 transition-all ${
                             formData.sellType === 'FIXED_PRICE'
-                              ? 'border-yellow-500 bg-yellow-500/10'
-                              : 'border-gray-300 dark:border-slate-600 hover:border-gray-400 dark:hover:border-slate-500'
+                              ? 'border-purple-500 bg-purple-50 dark:bg-purple-900/20'
+                              : 'border-gray-300 dark:border-gray-600 hover:border-gray-400'
                           }`}
                         >
-                          <div className="font-medium text-gray-900 dark:text-white">💵 Фиксированная цена</div>
-                          <div className="text-xs text-gray-600 dark:text-slate-400 mt-1">Купить сейчас</div>
+                          <div className="font-medium text-gray-900 dark:text-white">💵 Fixed Price</div>
+                          <div className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+                            One-time purchase
+                          </div>
                         </button>
+                        
                         <button
                           type="button"
                           onClick={() => setFormData(prev => ({ ...prev, sellType: 'AUCTION' }))}
-                          className={`p-3 rounded-lg border-2 text-center transition-all ${
+                          className={`p-3 rounded-lg border-2 transition-all ${
                             formData.sellType === 'AUCTION'
-                              ? 'border-yellow-500 bg-yellow-500/10'
-                              : 'border-gray-300 dark:border-slate-600 hover:border-gray-400 dark:hover:border-slate-500'
+                              ? 'border-purple-500 bg-purple-50 dark:bg-purple-900/20'
+                              : 'border-gray-300 dark:border-gray-600 hover:border-gray-400'
                           }`}
                         >
-                          <div className="font-medium text-gray-900 dark:text-white">🕒 Аукцион</div>
-                          <div className="text-xs text-gray-600 dark:text-slate-400 mt-1">Торги с таймером</div>
+                          <div className="font-medium text-gray-900 dark:text-white">🕒 Auction</div>
+                          <div className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+                            Highest bidder wins
+                          </div>
                         </button>
                       </div>
                     </div>
@@ -698,75 +720,63 @@ export default function CreatePostModal({ onPostCreated, onClose }: CreatePostMo
 
                     {/* Настройки для аукциона */}
                     {formData.sellType === 'AUCTION' && (
-                      <div className="space-y-3">
-                        <div className="grid grid-cols-2 gap-3">
+                      <div className="space-y-4 p-4 bg-orange-50 dark:bg-orange-900/10 rounded-lg">
+                        <div className="grid grid-cols-2 gap-4">
                           <div>
-                            <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-2">
-                              Начальная цена (SOL)
+                            <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1">
+                              Starting Price (SOL)
                             </label>
                             <input
                               type="number"
-                              step="0.01"
-                              min="0.01"
-                              max="1000"
+                              step="0.1"
+                              min="0"
                               value={formData.auctionStartPrice}
                               onChange={(e) => setFormData(prev => ({ ...prev, auctionStartPrice: parseFloat(e.target.value) || 0 }))}
-                              className="w-full px-3 py-2 bg-white dark:bg-slate-800/50 border border-gray-300 dark:border-slate-700 rounded-lg text-gray-900 dark:text-white text-sm"
-                              placeholder="0.00"
-                              required={formData.isSellable}
+                              className="w-full px-3 py-2 bg-white dark:bg-slate-700 border border-gray-300 dark:border-slate-600 rounded-lg"
+                              placeholder="1.0"
                             />
                           </div>
+                          
                           <div>
-                            <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-2">
-                              Шаг ставки (SOL)
+                            <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1">
+                              Bid Increment (SOL)
                             </label>
                             <input
                               type="number"
-                              step="0.01"
-                              min="0.01"
-                              max="100"
+                              step="0.1"
+                              min="0"
                               value={formData.auctionStepPrice}
-                              onChange={(e) => setFormData(prev => ({ ...prev, auctionStepPrice: parseFloat(e.target.value) || 0.1 }))}
-                              className="w-full px-3 py-2 bg-white dark:bg-slate-800/50 border border-gray-300 dark:border-slate-700 rounded-lg text-gray-900 dark:text-white text-sm"
-                              placeholder="0.10"
+                              onChange={(e) => setFormData(prev => ({ ...prev, auctionStepPrice: parseFloat(e.target.value) || 0 }))}
+                              className="w-full px-3 py-2 bg-white dark:bg-slate-700 border border-gray-300 dark:border-slate-600 rounded-lg"
+                              placeholder="0.5"
                             />
                           </div>
                         </div>
-                        <div className="grid grid-cols-2 gap-3">
-                          <div>
-                            <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-2">
-                              Длительность (часов)
-                            </label>
-                            <input
-                              type="number"
-                              step="1"
-                              min="1"
-                              max="168"
-                              value={formData.auctionDuration}
-                              onChange={(e) => setFormData(prev => ({ ...prev, auctionDuration: parseInt(e.target.value) || 24 }))}
-                              className="w-full px-3 py-2 bg-white dark:bg-slate-800/50 border border-gray-300 dark:border-slate-700 rounded-lg text-gray-900 dark:text-white text-sm"
-                              placeholder="24"
-                            />
-                          </div>
-                          <div>
-                            <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-2">
-                              Залог (SOL)
-                            </label>
-                            <input
-                              type="number"
-                              step="0.001"
-                              min="0.001"
-                              max="1"
-                              value={formData.auctionDepositAmount}
-                              onChange={(e) => setFormData(prev => ({ ...prev, auctionDepositAmount: parseFloat(e.target.value) || 0.01 }))}
-                              className="w-full px-3 py-2 bg-white dark:bg-slate-800/50 border border-gray-300 dark:border-slate-700 rounded-lg text-gray-900 dark:text-white text-sm"
-                              placeholder="0.01"
-                            />
-                          </div>
+                        
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1">
+                            Duration (hours)
+                          </label>
+                          <select
+                            value={formData.auctionDuration}
+                            onChange={(e) => setFormData(prev => ({ ...prev, auctionDuration: parseInt(e.target.value) }))}
+                            className="w-full px-3 py-2 bg-white dark:bg-slate-700 border border-gray-300 dark:border-slate-600 rounded-lg"
+                          >
+                            <option value="1">1 hour</option>
+                            <option value="6">6 hours</option>
+                            <option value="12">12 hours</option>
+                            <option value="24">24 hours</option>
+                            <option value="48">48 hours</option>
+                            <option value="72">72 hours</option>
+                            <option value="168">7 days</option>
+                          </select>
                         </div>
-                        <p className="text-xs text-gray-600 dark:text-slate-400">
-                          ⚠️ Участники платят залог для участия. Победитель платит полную сумму после окончания аукциона.
-                        </p>
+                        
+                        <div className="p-3 bg-amber-100 dark:bg-amber-900/20 rounded-lg">
+                          <p className="text-sm text-amber-800 dark:text-amber-200">
+                            ⚠️ Participants pay a deposit to bid. The winner pays the full amount after the auction ends.
+                          </p>
+                        </div>
                       </div>
                     )}
                   </div>
