@@ -132,6 +132,7 @@ export default function FeedPage() {
         // Новые поля для продаваемых постов
         isSellable: post.isSellable || false,
         sellType: post.sellType,
+        quantity: post.quantity,
         auctionStatus: post.auctionStatus,
         auctionStartPrice: post.auctionStartPrice,
         auctionCurrentBid: post.auctionCurrentBid,

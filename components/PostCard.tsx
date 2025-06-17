@@ -79,6 +79,7 @@ interface PostCardProps {
   // Новые поля для продаваемых постов
   isSellable?: boolean
   sellType?: 'FIXED_PRICE' | 'AUCTION'
+  quantity?: number  // Количество товара
   auctionStatus?: 'DRAFT' | 'SCHEDULED' | 'ACTIVE' | 'ENDED' | 'SOLD' | 'CANCELLED' | 'EXPIRED'
   auctionStartPrice?: number
   auctionCurrentBid?: number
@@ -118,6 +119,7 @@ export default function PostCard({
   userTier,
   isSellable,
   sellType,
+  quantity,
   auctionStatus,
   auctionStartPrice,
   auctionCurrentBid,
@@ -434,10 +436,10 @@ export default function PostCard({
   }
 
   // Use shouldHideContent flag from API instead of complex local logic
-  const canViewContent = !shouldHideContent && !(isSellable && !soldAt && sellType === 'FIXED_PRICE')
+  const canViewContent = !shouldHideContent
   
-  const needsPayment = isLocked && price && price > 0 && !isSellable // Обычный платный контент
-  const needsSellablePayment = isSellable && sellType === 'FIXED_PRICE' && !soldAt // Продаваемый пост
+  const needsPayment = isLocked && price && price > 0 && !isSellable // Обычный платный контент (не товар)
+  const needsSellablePayment = false // Sellable посты не требуют оплаты для просмотра, оплата за реальный товар
   const isActiveAuction = isSellable && sellType === 'AUCTION' && auctionStatus === 'ACTIVE'
   const isTierContent = isLocked && requiredTier && !price
   // Обратная совместимость для старых постов с isPremium
@@ -678,20 +680,14 @@ export default function PostCard({
               <div className="py-16 px-6 text-center">
                 <LockClosedIcon className="w-16 h-16 text-gray-400 dark:text-slate-500 mx-auto mb-4" />
                 <div className="text-gray-900 dark:text-slate-300 font-semibold text-lg mb-2">
-                  {needsSellablePayment ? '🛒 Sellable Content' :
-                   isActiveAuction ? '🕒 Active Auction' :
-                   needsPayment ? 'Paid Content' : 
+                  {needsPayment ? 'Paid Content' : 
                    isTierContent && tierInfo ? `${tierInfo.required.icon} ${tierInfo.required.name} Content` :
                    isLegacyVipContent ? 'VIP Content' : 
                    isSubscriberContent ? 'Subscribers Only' : 
                    'Locked Content'}
                 </div>
                 <p className="text-gray-600 dark:text-slate-400 text-sm mb-4 max-w-sm mx-auto">
-                  {needsSellablePayment
-                    ? 'Buy this unique content. After purchase, it will be accessible only to you!'
-                    : isActiveAuction
-                    ? 'Make a bid to win this exclusive content'
-                    : needsPayment 
+                  {needsPayment 
                     ? 'Purchase access to this content' 
                     : isTierContent && tierInfo
                     ? tierInfo.current 
@@ -704,50 +700,14 @@ export default function PostCard({
                     : 'This content requires special access'
                   }
                 </p>
-                {(needsPayment || needsSellablePayment) && (
+                {needsPayment && (
                   <div className="text-purple-600 dark:text-purple-400 font-bold text-2xl mb-4">
                     {price} {currency}
                   </div>
                 )}
-                {isActiveAuction && (
-                  <div className="space-y-2 mb-4">
-                    {auctionCurrentBid && auctionCurrentBid > 0 ? (
-                      <div className="text-purple-600 dark:text-purple-400 font-bold text-2xl">
-                        Current bid: {auctionCurrentBid} SOL
-                      </div>
-                    ) : (
-                      <div className="text-purple-600 dark:text-purple-400 font-bold text-2xl">
-                        Starting price: {auctionStartPrice} SOL
-                      </div>
-                    )}
-                    {auctionEndAt && (
-                      <div className="text-gray-600 dark:text-slate-400 text-sm">
-                        Ends: {new Date(auctionEndAt).toLocaleString('en-US')}
-                      </div>
-                    )}
-                  </div>
-                )}
                 <button 
                   onClick={() => {
-                    if (needsSellablePayment || isActiveAuction) {
-                      onSellableClick?.({
-                        id: id,
-                        title: title,
-                        price: price || 0,
-                        currency: currency || 'SOL',
-                        sellType: sellType,
-                        auctionStartPrice: auctionStartPrice,
-                        auctionCurrentBid: auctionCurrentBid,
-                        auctionEndAt: auctionEndAt,
-                        creator: {
-                          id: creator.id,
-                          name: creator.name,
-                          username: creator.username,
-                          avatar: creator.avatar,
-                          isVerified: creator.isVerified
-                        }
-                      })
-                    } else if (needsPayment) {
+                    if (needsPayment) {
                       onPurchaseClick?.({
                         id: id,
                         title: title,
@@ -774,11 +734,7 @@ export default function PostCard({
                   }}
                   className="px-6 py-3 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white rounded-xl font-medium transition-all transform hover:scale-105"
                 >
-                  {needsSellablePayment 
-                    ? `Buy for ${price} ${currency}`
-                    : isActiveAuction
-                    ? 'Make a bid'
-                    : needsPayment 
+                  {needsPayment 
                     ? `Buy for ${price} ${currency}`
                     : isTierContent && tierInfo
                     ? userTier 
@@ -794,7 +750,7 @@ export default function PostCard({
           )}
 
           {/* Content Type Badge */}
-          {(isLocked || isPremium) && (
+          {(isLocked || isPremium) && !isSellable && (
             <div className={`inline-flex items-center gap-2 px-3 py-1 text-sm font-medium rounded-full mb-4 ${
               needsPayment 
                 ? 'bg-gradient-to-r from-yellow-500/20 to-orange-500/20 text-yellow-700 dark:text-yellow-300 border border-yellow-500/30'
@@ -841,6 +797,82 @@ export default function PostCard({
                   #{tag}
                 </span>
               ))}
+            </div>
+          )}
+          
+          {/* Sellable Post Purchase Button */}
+          {isSellable && !soldAt && (
+            <div className="mt-6 mb-4 p-4 bg-gradient-to-r from-yellow-500/10 to-orange-500/10 rounded-xl border border-yellow-500/30">
+              <div className="flex items-center justify-between mb-3">
+                <div>
+                  <h4 className="font-semibold text-gray-900 dark:text-white">
+                    {sellType === 'AUCTION' ? '🕒 Auction' : '🛒 For Sale'}
+                  </h4>
+                  <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+                    {sellType === 'AUCTION' 
+                      ? 'Place a bid to participate in the auction'
+                      : 'Purchase this item directly from the seller'
+                    }
+                  </p>
+                  {sellType === 'FIXED_PRICE' && quantity && quantity > 1 && (
+                    <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+                      📦 {quantity} items available
+                    </p>
+                  )}
+                </div>
+                <div className="text-right">
+                  {sellType === 'AUCTION' ? (
+                    <>
+                      {auctionCurrentBid && auctionCurrentBid > 0 ? (
+                        <div className="text-lg font-bold text-yellow-600 dark:text-yellow-400">
+                          Current: {auctionCurrentBid} SOL
+                        </div>
+                      ) : (
+                        <div className="text-lg font-bold text-yellow-600 dark:text-yellow-400">
+                          Start: {auctionStartPrice} SOL
+                        </div>
+                      )}
+                      {auctionEndAt && (
+                        <div className="text-xs text-gray-600 dark:text-gray-400">
+                          Ends {new Date(auctionEndAt).toLocaleString('en-US', {
+                            month: 'short',
+                            day: 'numeric',
+                            hour: '2-digit',
+                            minute: '2-digit'
+                          })}
+                        </div>
+                      )}
+                    </>
+                  ) : (
+                    <div className="text-xl font-bold text-yellow-600 dark:text-yellow-400">
+                      {price} {currency}
+                    </div>
+                  )}
+                </div>
+              </div>
+              <button
+                onClick={() => onSellableClick?.({
+                  id: id,
+                  title: title,
+                  price: price || 0,
+                  currency: currency || 'SOL',
+                  sellType: sellType,
+                  quantity: quantity || 1,
+                  auctionStartPrice: auctionStartPrice,
+                  auctionCurrentBid: auctionCurrentBid,
+                  auctionEndAt: auctionEndAt,
+                  creator: {
+                    id: creator.id,
+                    name: creator.name,
+                    username: creator.username,
+                    avatar: creator.avatar,
+                    isVerified: creator.isVerified
+                  }
+                })}
+                className="w-full py-2 bg-gradient-to-r from-yellow-500 to-orange-500 hover:from-yellow-600 hover:to-orange-600 text-white rounded-lg font-medium transition-all transform hover:scale-105"
+              >
+                {sellType === 'AUCTION' ? 'Place Bid' : `Buy for ${price} ${currency}`}
+              </button>
             </div>
           )}
         </div>

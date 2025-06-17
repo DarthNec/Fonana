@@ -211,6 +211,7 @@ export async function createPost(creatorWallet: string, data: {
   isSellable?: boolean
   sellType?: 'FIXED_PRICE' | 'AUCTION'
   sellPrice?: number
+  quantity?: number  // Количество товара
   auctionStartPrice?: number
   auctionStepPrice?: number
   auctionDuration?: number
@@ -275,6 +276,7 @@ export async function createPost(creatorWallet: string, data: {
       // Новые поля для продаваемых постов
       isSellable: data.isSellable || false,
       sellType: data.isSellable ? data.sellType : undefined,
+      quantity: data.isSellable ? (data.quantity || 1) : undefined,
       auctionStartPrice: data.isSellable && data.sellType === 'AUCTION' ? data.auctionStartPrice : undefined,
       auctionStepPrice: data.isSellable && data.sellType === 'AUCTION' ? data.auctionStepPrice : undefined,
       auctionDepositAmount: data.isSellable && data.sellType === 'AUCTION' ? data.auctionDepositAmount : undefined,

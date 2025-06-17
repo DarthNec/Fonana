@@ -51,6 +51,7 @@ export default function CreatePostModal({ onPostCreated, onClose }: CreatePostMo
     isSellable: false,
     sellType: 'FIXED_PRICE' as 'FIXED_PRICE' | 'AUCTION',
     sellPrice: 0,
+    quantity: 1,
     auctionStartPrice: 0,
     auctionStepPrice: 0.1,
     auctionDuration: 24,
@@ -284,6 +285,7 @@ export default function CreatePostModal({ onPostCreated, onClose }: CreatePostMo
         isSellable: formData.isSellable,
         sellType: formData.isSellable ? formData.sellType : undefined,
         sellPrice: formData.isSellable && formData.sellType === 'FIXED_PRICE' ? formData.sellPrice : undefined,
+        quantity: formData.isSellable ? formData.quantity : undefined,
         auctionStartPrice: formData.isSellable && formData.sellType === 'AUCTION' ? formData.auctionStartPrice : undefined,
         auctionStepPrice: formData.isSellable && formData.sellType === 'AUCTION' ? formData.auctionStepPrice : undefined,
         auctionDuration: formData.isSellable && formData.sellType === 'AUCTION' ? formData.auctionDuration : undefined,
@@ -329,6 +331,7 @@ export default function CreatePostModal({ onPostCreated, onClose }: CreatePostMo
         isSellable: false,
         sellType: 'FIXED_PRICE',
         sellPrice: 0,
+        quantity: 1,
         auctionStartPrice: 0,
         auctionStepPrice: 0.1,
         auctionDuration: 24,
@@ -634,10 +637,10 @@ export default function CreatePostModal({ onPostCreated, onClose }: CreatePostMo
                     onChange={(e) => setFormData(prev => ({
                       ...prev,
                       isSellable: e.target.checked,
-                      // Сбрасываем конфигурацию при отключении
                       ...(e.target.checked ? {} : {
                         sellType: 'FIXED_PRICE' as const,
                         sellPrice: 0,
+                        quantity: 1,
                         auctionStartPrice: 0,
                         auctionStepPrice: 0,
                         auctionDepositAmount: 0,
@@ -656,7 +659,7 @@ export default function CreatePostModal({ onPostCreated, onClose }: CreatePostMo
                     {/* Выбор типа продажи */}
                     <div>
                       <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-2">
-                        Тип продажи
+                        Selling Method
                       </label>
                       <div className="grid grid-cols-2 gap-3">
                         <button
@@ -700,27 +703,45 @@ export default function CreatePostModal({ onPostCreated, onClose }: CreatePostMo
 
                     {/* Настройки для фиксированной цены */}
                     {formData.sellType === 'FIXED_PRICE' && (
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-2">
-                          Цена продажи (SOL)
-                        </label>
-                        <input
-                          type="number"
-                          step="0.01"
-                          min="0.01"
-                          max="1000"
-                          value={formData.sellPrice}
-                          onChange={(e) => setFormData(prev => ({ ...prev, sellPrice: parseFloat(e.target.value) || 0 }))}
-                          className="w-full px-4 py-2 bg-white dark:bg-slate-800/50 border border-gray-300 dark:border-slate-700 rounded-xl text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-yellow-500 focus:border-transparent"
-                          placeholder="0.00"
-                          required={formData.isSellable}
-                        />
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-2">
+                            Selling Price (SOL)
+                          </label>
+                          <input
+                            type="number"
+                            step="0.01"
+                            min="0.01"
+                            max="1000"
+                            value={formData.sellPrice}
+                            onChange={(e) => setFormData(prev => ({ ...prev, sellPrice: parseFloat(e.target.value) || 0 }))}
+                            className="w-full px-4 py-2 bg-white dark:bg-slate-800/50 border border-gray-300 dark:border-slate-700 rounded-xl text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-yellow-500 focus:border-transparent"
+                            placeholder="0.00"
+                            required={formData.isSellable}
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-2">
+                            Quantity
+                          </label>
+                          <input
+                            type="number"
+                            step="1"
+                            min="1"
+                            max="9999"
+                            value={formData.quantity}
+                            onChange={(e) => setFormData(prev => ({ ...prev, quantity: parseInt(e.target.value) || 1 }))}
+                            className="w-full px-4 py-2 bg-white dark:bg-slate-800/50 border border-gray-300 dark:border-slate-700 rounded-xl text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-yellow-500 focus:border-transparent"
+                            placeholder="1"
+                            required={formData.isSellable}
+                          />
+                        </div>
                       </div>
                     )}
 
                     {/* Настройки для аукциона */}
                     {formData.sellType === 'AUCTION' && (
-                      <div className="space-y-4 p-4 bg-orange-50 dark:bg-orange-900/10 rounded-lg">
+                      <div className="space-y-4 p-4 bg-amber-50 dark:bg-amber-900/10 rounded-lg">
                         <div className="grid grid-cols-2 gap-4">
                           <div>
                             <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1">

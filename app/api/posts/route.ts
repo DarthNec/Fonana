@@ -162,7 +162,8 @@ export async function GET(req: Request) {
       // Если пост заблокирован, проверяем:
       // 1. Это пост самого пользователя
       // 2. У пользователя есть достаточный уровень подписки
-      // 3. Пользователь купил этот конкретный пост (для платных постов)
+      // Примечание: sellable посты видны согласно обычным правилам доступа,
+      // продажа касается реального товара, а не доступа к контенту
       
       let shouldHideContent = false
       
@@ -179,8 +180,8 @@ export async function GET(req: Request) {
           const hasRequiredTier = hasAccessToTier(userTier, 'vip')
           shouldHideContent = !hasRequiredTier
         }
-        // Если у поста есть цена - это платный пост
-        else if (post.price && post.price > 0) {
+        // Если у поста есть цена И он НЕ является sellable - это платный пост за доступ
+        else if (post.price && post.price > 0 && !post.isSellable) {
           shouldHideContent = !hasPurchased
         }
         // Обычный заблокированный пост - доступен любым подписчикам
@@ -222,6 +223,7 @@ export async function GET(req: Request) {
         // Новые поля для продаваемых постов
         isSellable: post.isSellable,
         sellType: post.sellType,
+        quantity: post.quantity,
         auctionStatus: post.auctionStatus,
         auctionStartPrice: post.auctionStartPrice,
         auctionStepPrice: post.auctionStepPrice,
@@ -289,6 +291,7 @@ export async function POST(request: NextRequest) {
       isSellable: body.isSellable || false,
       sellType: body.sellType,
       sellPrice: body.sellPrice,
+      quantity: body.quantity,
       auctionStartPrice: body.auctionStartPrice,
       auctionStepPrice: body.auctionStepPrice,
       auctionDuration: body.auctionDuration,

@@ -92,6 +92,7 @@ model Post {
   // Sellable post fields
   isSellable        Boolean   @default(false)
   sellType          SellType?
+  quantity          Int?      @default(1)  // Количество товара
   auctionStartPrice Float?
   auctionStepPrice  Float?
   auctionDepositAmount Float?  @default(0.01) // Залог для участия

@@ -17,11 +17,12 @@ interface SellablePostModalProps {
   isOpen: boolean
   onClose: () => void
   post: {
-    id: string
+    id: string | number
     title: string
-    price: number
-    currency: string
+    price?: number
+    currency?: string
     sellType?: 'FIXED_PRICE' | 'AUCTION'
+    quantity?: number  // Количество товара
     auctionStartPrice?: number
     auctionCurrentBid?: number
     auctionEndAt?: string
@@ -41,6 +42,12 @@ export default function SellablePostModal({ isOpen, onClose, post }: SellablePos
   const [isProcessing, setIsProcessing] = useState(false)
   const [bidAmount, setBidAmount] = useState('')
   const [timeLeft, setTimeLeft] = useState('')
+  
+  const price = post.price || 0
+  const currency = post.currency || 'SOL'
+  const quantity = post.quantity || 1
+  
+  const isAuction = post.sellType === 'AUCTION'
 
   // Обновляем таймер для аукциона
   useEffect(() => {
@@ -99,7 +106,7 @@ export default function SellablePostModal({ isOpen, onClose, post }: SellablePos
         SystemProgram.transfer({
           fromPubkey: publicKey,
           toPubkey: new PublicKey(creatorWallet),
-          lamports: Math.floor(post.price * LAMPORTS_PER_SOL)
+          lamports: Math.floor(price * LAMPORTS_PER_SOL)
         })
       )
 
@@ -168,10 +175,9 @@ export default function SellablePostModal({ isOpen, onClose, post }: SellablePos
 
   if (!isOpen) return null
 
-  const isAuction = post.sellType === 'AUCTION'
   const currentPrice = isAuction 
     ? (post.auctionCurrentBid || post.auctionStartPrice || 0)
-    : post.price
+    : price
 
   return (
     <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
@@ -248,8 +254,13 @@ export default function SellablePostModal({ isOpen, onClose, post }: SellablePos
                     Price
                   </div>
                   <div className="text-3xl font-bold text-yellow-600 dark:text-yellow-400">
-                    {currentPrice.toFixed(2)} {post.currency}
+                    {currentPrice.toFixed(2)} {currency}
                   </div>
+                  {quantity > 1 && (
+                    <div className="text-sm text-gray-600 dark:text-slate-400 mt-2">
+                      📦 {quantity} items available
+                    </div>
+                  )}
                 </>
               )}
             </div>
@@ -304,7 +315,7 @@ export default function SellablePostModal({ isOpen, onClose, post }: SellablePos
               ) : (
                 <>
                   <CurrencyDollarIcon className="w-5 h-5" />
-                  Buy for {currentPrice.toFixed(2)} {post.currency}
+                  Buy for {currentPrice.toFixed(2)} {currency}
                 </>
               )}
             </button>
