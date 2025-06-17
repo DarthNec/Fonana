@@ -56,6 +56,9 @@ model User {
   // Settings
   settings       UserSettings?
   tierSettings   CreatorTierSettings?
+  
+  // Notifications
+  notifications  Notification[]
 
   @@map("users")
 }
@@ -340,4 +343,33 @@ model CreatorTierSettings {
   creator       User     @relation(fields: [creatorId], references: [id], onDelete: Cascade)
   
   @@map("creator_tier_settings")
+}
+
+// Notification model
+model Notification {
+  id            String   @id @default(cuid())
+  userId        String
+  type          NotificationType
+  title         String
+  message       String
+  isRead        Boolean  @default(false)
+  metadata      Json?    // Дополнительные данные (postId, commentId, etc)
+  createdAt     DateTime @default(now())
+  
+  // Relations
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  @@index([userId, isRead])
+  @@map("notifications")
+}
+
+// Notification types
+enum NotificationType {
+  LIKE_POST
+  LIKE_COMMENT
+  COMMENT_POST
+  REPLY_COMMENT
+  NEW_SUBSCRIBER
+  POST_PURCHASE
+  NEW_POST_FROM_SUBSCRIPTION
 }

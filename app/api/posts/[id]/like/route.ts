@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
+import { notifyPostLike } from '@/lib/notifications'
 
 export async function GET(
   request: NextRequest,
@@ -56,9 +57,12 @@ export async function POST(
       )
     }
 
-    // Проверяем существует ли пост
+    // Проверяем существует ли пост и получаем информацию об авторе
     const post = await prisma.post.findUnique({
-      where: { id: params.id }
+      where: { id: params.id },
+      include: { 
+        author: true
+      }
     })
 
     if (!post) {
@@ -109,6 +113,29 @@ export async function POST(
           data: { likesCount: { increment: 1 } }
         })
       ])
+
+      // Создаем уведомление для автора поста (если это не его собственный пост)
+      if (post.authorId !== userId) {
+        // Получаем информацию о пользователе, который поставил лайк
+        const liker = await prisma.user.findUnique({
+          where: { id: userId },
+          select: { nickname: true, fullName: true }
+        })
+        
+        if (liker) {
+          const likerName = liker.fullName || liker.nickname || 'Someone'
+          const postTitle = post.title || 'your post'
+          
+          // Проверяем настройки уведомлений автора
+          const authorSettings = await prisma.userSettings.findUnique({
+            where: { userId: post.authorId }
+          })
+          
+          if (!authorSettings || authorSettings.notifyLikes) {
+            await notifyPostLike(post.authorId, likerName, postTitle, post.id)
+          }
+        }
+      }
 
       return NextResponse.json({
         success: true,

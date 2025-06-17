@@ -534,6 +534,7 @@ export default function SubscribeModal({ creator, preferredTier, onClose, onSucc
 
                     <div className="text-center mb-4">
                       <div className={`w-12 h-12 mx-auto mb-3 rounded-xl bg-gradient-to-r ${tier.color} flex items-center justify-center`}>
+                        {tier.id === 'free' && <HeartIcon className="w-6 h-6 text-white" />}
                         {tier.id === 'basic' && <CurrencyDollarIcon className="w-6 h-6 text-white" />}
                         {tier.id === 'premium' && <SparklesIcon className="w-6 h-6 text-white" />}
                         {tier.id === 'vip' && <HeartIcon className="w-6 h-6 text-white" />}
@@ -594,10 +595,10 @@ export default function SubscribeModal({ creator, preferredTier, onClose, onSucc
                         {isExpanded ? 'Show less' : `+${tier.features.length - 3} more features`}
                       </button>
                     )}
-                  </div>
-                )
-              })}
-            </div>
+                    </div>
+                  )
+                })}
+              </div>
             )}
           </div>
 

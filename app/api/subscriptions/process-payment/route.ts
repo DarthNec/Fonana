@@ -4,6 +4,7 @@ import { PaymentDistribution } from '@/lib/solana/payments'
 import { validatePaymentDistribution, waitForTransactionConfirmation } from '@/lib/solana/validation'
 import { paymentLogger } from '@/lib/utils/logger'
 import { generateRandomNickname, generateRandomBio, generateFullNameFromNickname } from '@/lib/usernames'
+import { notifyNewSubscriber } from '@/lib/notifications'
 
 export async function POST(request: Request) {
   const startTime = Date.now()
@@ -238,6 +239,21 @@ export async function POST(request: Request) {
         }
       }
     })
+
+    // Создаем уведомление для креатора о новом подписчике
+    if (!existingSubscription || !existingSubscription.isActive) {
+      // Это новая подписка, отправляем уведомление
+      const subscriberName = user.fullName || user.nickname || 'A user'
+      
+      // Проверяем настройки уведомлений креатора
+      const creatorSettings = await prisma.userSettings.findUnique({
+        where: { userId: creatorId }
+      })
+      
+      if (!creatorSettings || creatorSettings.notifyNewSubscriptions) {
+        await notifyNewSubscriber(creatorId, subscriberName, plan)
+      }
+    }
 
     const duration = Date.now() - startTime
     paymentLogger.payment('completed', {

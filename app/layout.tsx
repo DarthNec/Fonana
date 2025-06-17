@@ -4,6 +4,7 @@ import type { Metadata } from 'next'
 import { Inter } from 'next/font/google'
 import { WalletProvider } from '@/components/WalletProvider'
 import { UserProvider } from '@/components/UserProvider'
+import { NotificationProvider } from '@/lib/contexts/NotificationContext'
 import { Navbar } from '@/components/Navbar'
 import { Toaster } from 'react-hot-toast'
 import { ThemeProvider } from '@/lib/contexts/ThemeContext'
@@ -26,23 +27,25 @@ export default function RootLayout({
         <ThemeProvider>
           <WalletProvider>
             <UserProvider>
-              <div className="min-h-screen bg-gray-50 dark:bg-slate-900">
-                <Navbar />
-                <main className="pt-0">
-                  {children}
-                </main>
-              </div>
-              <Toaster
-                position="top-right"
-                toastOptions={{
-                  duration: 5000, // Автоматическое закрытие через 5 секунд
-                  style: {
-                    background: '#1e293b',
-                    color: '#fff',
-                    border: '1px solid #334155',
-                  },
-                }}
-              />
+              <NotificationProvider>
+                <div className="min-h-screen bg-gray-50 dark:bg-slate-900">
+                  <Navbar />
+                  <main className="pt-0">
+                    {children}
+                  </main>
+                </div>
+                <Toaster
+                  position="top-right"
+                  toastOptions={{
+                    duration: 5000, // Автоматическое закрытие через 5 секунд
+                    style: {
+                      background: '#1e293b',
+                      color: '#fff',
+                      border: '1px solid #334155',
+                    },
+                  }}
+                />
+              </NotificationProvider>
             </UserProvider>
           </WalletProvider>
         </ThemeProvider>

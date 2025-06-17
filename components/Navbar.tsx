@@ -5,6 +5,7 @@ import Link from 'next/link'
 import Image from 'next/image'
 import { useRouter, usePathname } from 'next/navigation'
 import Avatar from './Avatar'
+import NotificationsDropdown from './NotificationsDropdown'
 import { 
   HomeIcon, 
   UsersIcon, 
@@ -86,10 +87,7 @@ export function Navbar() {
           {/* Desktop Actions */}
           <div className="hidden md:flex items-center gap-4">
             {/* Notifications */}
-            <button className="relative p-3 text-gray-600 dark:text-slate-300 hover:text-gray-900 dark:hover:text-white rounded-2xl hover:bg-gray-100 dark:hover:bg-slate-800/50 transition-all duration-300">
-              <BellIcon className="w-6 h-6" />
-              <span className="absolute top-2 right-2 w-2 h-2 bg-red-500 rounded-full"></span>
-            </button>
+            <NotificationsDropdown />
 
             {/* Wallet */}
             <div className="wallet-adapter-button-wrapper">

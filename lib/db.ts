@@ -1,4 +1,5 @@
 import { PrismaClient } from '@prisma/client'
+import { notifyNewPostFromSubscription } from './notifications'
 
 const globalForPrisma = globalThis as unknown as {
   prisma: PrismaClient | undefined
@@ -238,7 +239,7 @@ export async function createPost(creatorWallet: string, data: {
     }
   }
 
-  return await prisma.post.create({
+  const post = await prisma.post.create({
     data: {
       creatorId: creator.id,
       title: data.title,
@@ -270,6 +271,51 @@ export async function createPost(creatorWallet: string, data: {
       },
     },
   })
+
+  // Отправляем уведомления подписчикам о новом посте
+  // Только если пост не платный (платные посты не показываем в уведомлениях)
+  if (!data.price || data.price === 0) {
+    try {
+      // Получаем всех активных подписчиков создателя
+      const subscriptions = await prisma.subscription.findMany({
+        where: {
+          creatorId: creator.id,
+          isActive: true,
+          validUntil: { gte: new Date() }
+        },
+        include: {
+          user: {
+            include: {
+              settings: true
+            }
+          }
+        }
+      })
+
+      // Отправляем уведомление каждому подписчику
+      const creatorName = creator.fullName || creator.nickname || 'A creator'
+      
+      for (const subscription of subscriptions) {
+        // Проверяем настройки уведомлений пользователя
+        if (!subscription.user.settings || subscription.user.settings.notifyNewPosts) {
+          await notifyNewPostFromSubscription(
+            subscription.userId,
+            creatorName,
+            post.title,
+            post.id
+          ).catch(error => {
+            // Не прерываем процесс, если не удалось отправить одно уведомление
+            console.error('Failed to send notification:', error)
+          })
+        }
+      }
+    } catch (error) {
+      // Логируем ошибку, но не прерываем процесс создания поста
+      console.error('Error sending notifications:', error)
+    }
+  }
+
+  return post
 }
 
 export async function getPosts(options?: {

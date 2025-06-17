@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
+import { notifyNewComment, notifyCommentReply } from '@/lib/notifications'
 
 export async function GET(
   request: NextRequest,
@@ -97,9 +98,10 @@ export async function POST(
       )
     }
 
-    // Проверяем существует ли пост
+    // Проверяем существует ли пост и получаем информацию об авторе
     const post = await prisma.post.findUnique({
-      where: { id: params.id }
+      where: { id: params.id },
+      include: { author: true }
     })
 
     if (!post) {
@@ -107,6 +109,15 @@ export async function POST(
         { error: 'Post not found' },
         { status: 404 }
       )
+    }
+
+    // Если это ответ на комментарий, получаем информацию о родительском комментарии
+    let parentComment = null
+    if (parentId) {
+      parentComment = await prisma.comment.findUnique({
+        where: { id: parentId },
+        include: { user: true }
+      })
     }
 
     // Создаем комментарий
@@ -135,6 +146,47 @@ export async function POST(
       where: { id: params.id },
       data: { commentsCount: { increment: 1 } }
     })
+
+    // Создаем уведомления
+    const commenterName = comment.user.fullName || comment.user.nickname || 'Someone'
+    
+    if (parentComment) {
+      // Это ответ на комментарий
+      if (parentComment.userId !== userId) {
+        // Проверяем настройки уведомлений пользователя
+        const userSettings = await prisma.userSettings.findUnique({
+          where: { userId: parentComment.userId }
+        })
+        
+        if (!userSettings || userSettings.notifyComments) {
+          await notifyCommentReply(
+            parentComment.userId,
+            commenterName,
+            parentComment.content.slice(0, 50),
+            params.id,
+            comment.id
+          )
+        }
+      }
+    } else {
+      // Это комментарий к посту
+      if (post.authorId !== userId) {
+        // Проверяем настройки уведомлений автора
+        const authorSettings = await prisma.userSettings.findUnique({
+          where: { userId: post.authorId }
+        })
+        
+        if (!authorSettings || authorSettings.notifyComments) {
+          await notifyNewComment(
+            post.authorId,
+            commenterName,
+            post.title || 'your post',
+            params.id,
+            comment.id
+          )
+        }
+      }
+    }
 
     // Форматируем комментарий для клиента
     const formattedComment = {
