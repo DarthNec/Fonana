@@ -31,21 +31,50 @@ export async function createOrUpdateUser(wallet: string, data?: {
     }
   }
 
-  return await prisma.user.upsert({
-    where: { wallet },
-    update: data ? { ...data, updatedAt: new Date() } : {},
-    create: {
-      wallet,
-      isCreator: true,
-      referrerId,
-      ...data,
-    },
+  // Сначала пытаемся найти пользователя по любому из полей wallet
+  const existingUser = await prisma.user.findFirst({
+    where: {
+      OR: [
+        { wallet: wallet },
+        { solanaWallet: wallet }
+      ]
+    }
   })
+
+  if (existingUser) {
+    // Если пользователь найден, обновляем его
+    return await prisma.user.update({
+      where: { id: existingUser.id },
+      data: {
+        ...data,
+        // Обновляем оба поля wallet для консистентности
+        wallet: wallet,
+        solanaWallet: wallet,
+        updatedAt: new Date()
+      }
+    })
+  } else {
+    // Если пользователь не найден, создаем нового
+    return await prisma.user.create({
+      data: {
+        wallet,
+        solanaWallet: wallet, // Сохраняем в оба поля
+        isCreator: true,
+        referrerId,
+        ...data,
+      }
+    })
+  }
 }
 
 export async function getUserByWallet(wallet: string) {
-  return prisma.user.findUnique({
-    where: { wallet },
+  return prisma.user.findFirst({
+    where: {
+      OR: [
+        { wallet: wallet },
+        { solanaWallet: wallet }
+      ]
+    },
     include: {
       _count: {
         select: {
@@ -82,8 +111,22 @@ export async function updateUserProfile(wallet: string, data: {
     cleanData.name = cleanData.fullName
   }
 
+  // Сначала находим пользователя по любому из полей wallet
+  const user = await prisma.user.findFirst({
+    where: {
+      OR: [
+        { wallet: wallet },
+        { solanaWallet: wallet }
+      ]
+    }
+  })
+
+  if (!user) {
+    throw new Error('User not found')
+  }
+
   return await prisma.user.update({
-    where: { wallet },
+    where: { id: user.id },
     data: {
       ...cleanData,
       updatedAt: new Date(),
