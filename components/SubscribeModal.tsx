@@ -595,7 +595,7 @@ export default function SubscribeModal({ creator, preferredTier, onClose, onSucc
                         {isExpanded ? 'Show less' : `+${tier.features.length - 3} more features`}
                       </button>
                     )}
-                    </div>
+                  </div>
                   )
                 })}
               </div>

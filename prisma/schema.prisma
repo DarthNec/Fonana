@@ -60,6 +60,12 @@ model User {
   // Notifications
   notifications  Notification[]
 
+  // Additional relations for auctions
+  purchasedSellablePosts Post[] @relation("PurchasedSellablePosts")
+  auctionDeposits        AuctionDeposit[]
+  auctionBids           AuctionBid[]
+  auctionPayments       AuctionPayment[]
+
   @@map("users")
 }
 
@@ -82,11 +88,33 @@ model Post {
   viewsCount    Int       @default(0)
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
+  
+  // Sellable post fields
+  isSellable        Boolean   @default(false)
+  sellType          SellType?
+  auctionStartPrice Float?
+  auctionStepPrice  Float?
+  auctionDepositAmount Float?  @default(0.01) // Залог для участия
+  auctionStartAt    DateTime?
+  auctionEndAt      DateTime?
+  auctionStatus     AuctionStatus @default(DRAFT)
+  
+  // Sold post fields
+  soldAt            DateTime?
+  soldToId          String?
+  soldTo            User?     @relation("PurchasedSellablePosts", fields: [soldToId], references: [id])
+  soldPrice         Float?
+  sellerConfirmedAt DateTime? // Когда продавец подтвердил продажу
+  
+  // Relations
   comments      Comment[]
   likes         Like[]
   tags          PostTag[]
   creator       User      @relation(fields: [creatorId], references: [id], onDelete: Cascade)
   purchases     PostPurchase[]
+  auctionDeposits AuctionDeposit[]
+  auctionBids     AuctionBid[]
+  auctionPayment  AuctionPayment?
 
   @@map("posts")
 }
@@ -372,4 +400,93 @@ enum NotificationType {
   NEW_SUBSCRIBER
   POST_PURCHASE
   NEW_POST_FROM_SUBSCRIPTION
+  AUCTION_NEW_BID
+  AUCTION_WON
+  AUCTION_PAYMENT_REMINDER
+  AUCTION_DEPOSIT_REFUNDED
+}
+
+// Залоги участников аукциона
+model AuctionDeposit {
+  id           String   @id @default(cuid())
+  postId       String
+  post         Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
+  userId       String
+  user         User     @relation(fields: [userId], references: [id])
+  amount       Float    // Сумма залога
+  txSignature  String   // Транзакция оплаты залога
+  status       DepositStatus @default(HELD)
+  createdAt    DateTime @default(now())
+  refundedAt   DateTime?
+  refundTxSignature String?
+  forfeitedAt  DateTime? // Когда залог был конфискован
+  
+  @@unique([postId, userId])
+  @@index([userId, status])
+  @@map("auction_deposits")
+}
+
+// Ставки на аукционе (без реальной оплаты)
+model AuctionBid {
+  id          String   @id @default(cuid())
+  postId      String
+  post        Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
+  userId      String
+  user        User     @relation(fields: [userId], references: [id])
+  amount      Float
+  isWinning   Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  
+  @@index([postId, amount])
+  @@index([userId])
+  @@map("auction_bids")
+}
+
+// Оплата победителя аукциона
+model AuctionPayment {
+  id              String   @id @default(cuid())
+  postId          String   @unique
+  post            Post     @relation(fields: [postId], references: [id])
+  userId          String
+  user            User     @relation(fields: [userId], references: [id])
+  amount          Float
+  txSignature     String?
+  status          AuctionPaymentStatus @default(PENDING)
+  dueAt           DateTime // Крайний срок оплаты (час после окончания)
+  paidAt          DateTime?
+  sellerConfirmedAt DateTime?
+  createdAt       DateTime @default(now())
+  
+  @@index([userId, status])
+  @@map("auction_payments")
+}
+
+// Enums for auction system
+enum SellType {
+  FIXED_PRICE
+  AUCTION
+}
+
+enum AuctionStatus {
+  DRAFT       // Черновик
+  SCHEDULED   // Запланирован
+  ACTIVE      // Идет аукцион
+  ENDED       // Завершен, ждет оплаты
+  SOLD        // Продан
+  CANCELLED   // Отменен
+  EXPIRED     // Истек без оплаты
+}
+
+enum DepositStatus {
+  HELD        // Удерживается
+  REFUNDED    // Возвращен
+  FORFEITED   // Конфискован
+}
+
+enum AuctionPaymentStatus {
+  PENDING     // Ожидает оплаты
+  PAID        // Оплачен
+  CONFIRMED   // Подтвержден продавцом
+  EXPIRED     // Истек срок оплаты
+  CANCELLED   // Отменен
 }

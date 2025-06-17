@@ -81,6 +81,22 @@ export async function GET(req: Request) {
             comments: true,
           },
         },
+        // Новые связи для продаваемых постов
+        soldTo: {
+          select: {
+            id: true,
+            nickname: true,
+            wallet: true,
+          }
+        },
+        auctionBids: {
+          orderBy: { amount: 'desc' },
+          take: 1,
+          select: {
+            amount: true,
+            userId: true
+          }
+        }
       },
       orderBy: {
         createdAt: 'desc',
@@ -202,7 +218,22 @@ export async function GET(req: Request) {
         shouldHideContent,
         // Добавляем информацию о тирах
         requiredTier: post.minSubscriptionTier || (post.isPremium ? 'vip' : null),
-        userTier: userSubscriptionPlan
+        userTier: userSubscriptionPlan,
+        // Новые поля для продаваемых постов
+        isSellable: post.isSellable,
+        sellType: post.sellType,
+        auctionStatus: post.auctionStatus,
+        auctionStartPrice: post.auctionStartPrice,
+        auctionStepPrice: post.auctionStepPrice,
+        auctionDepositAmount: post.auctionDepositAmount,
+        auctionStartAt: post.auctionStartAt,
+        auctionEndAt: post.auctionEndAt,
+        soldAt: post.soldAt,
+        soldTo: post.soldTo,
+        soldPrice: post.soldPrice,
+        sellerConfirmedAt: post.sellerConfirmedAt,
+        // Текущая ставка для аукционов
+        auctionCurrentBid: post.auctionBids && post.auctionBids.length > 0 ? post.auctionBids[0].amount : null
       }
     })
 
@@ -253,7 +284,15 @@ export async function POST(request: NextRequest) {
       tier: body.minSubscriptionTier === 'vip' ? 'vip' :
             body.minSubscriptionTier === 'premium' ? 'premium' :
             body.minSubscriptionTier === 'basic' ? 'basic' :
-            body.accessType === 'paid' ? 'paid' : 'free'
+            body.accessType === 'paid' ? 'paid' : 'free',
+      // Новые поля для продаваемых постов
+      isSellable: body.isSellable || false,
+      sellType: body.sellType,
+      sellPrice: body.sellPrice,
+      auctionStartPrice: body.auctionStartPrice,
+      auctionStepPrice: body.auctionStepPrice,
+      auctionDuration: body.auctionDuration,
+      auctionDepositAmount: body.auctionDepositAmount
     })
 
     return NextResponse.json({ post })

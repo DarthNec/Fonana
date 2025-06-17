@@ -76,8 +76,19 @@ interface PostCardProps {
   showCreator?: boolean
   requiredTier?: string | null
   userTier?: string | null
+  // Новые поля для продаваемых постов
+  isSellable?: boolean
+  sellType?: 'FIXED_PRICE' | 'AUCTION'
+  auctionStatus?: 'DRAFT' | 'SCHEDULED' | 'ACTIVE' | 'ENDED' | 'SOLD' | 'CANCELLED' | 'EXPIRED'
+  auctionStartPrice?: number
+  auctionCurrentBid?: number
+  auctionEndAt?: string
+  soldAt?: string
+  soldTo?: { id: string; nickname?: string; wallet: string }
+  soldPrice?: number
   onSubscribeClick?: (creatorData: any, preferredTier?: 'basic' | 'premium' | 'vip') => void
   onPurchaseClick?: (postData: any) => void
+  onSellableClick?: (postData: any) => void  // Новый callback для продаваемых постов
   onEditClick?: (postData: any) => void  // Добавляем callback для редактирования
 }
 
@@ -105,8 +116,18 @@ export default function PostCard({
   showCreator = true,
   requiredTier,
   userTier,
+  isSellable,
+  sellType,
+  auctionStatus,
+  auctionStartPrice,
+  auctionCurrentBid,
+  auctionEndAt,
+  soldAt,
+  soldTo,
+  soldPrice,
   onSubscribeClick,
   onPurchaseClick,
+  onSellableClick,
   onEditClick
 }: PostCardProps) {
   const { user } = useUser()
@@ -413,9 +434,11 @@ export default function PostCard({
   }
 
   // Use shouldHideContent flag from API instead of complex local logic
-  const canViewContent = !shouldHideContent
+  const canViewContent = !shouldHideContent && !(isSellable && !soldAt && sellType === 'FIXED_PRICE')
   
-  const needsPayment = isLocked && price && price > 0
+  const needsPayment = isLocked && price && price > 0 && !isSellable // Обычный платный контент
+  const needsSellablePayment = isSellable && sellType === 'FIXED_PRICE' && !soldAt // Продаваемый пост
+  const isActiveAuction = isSellable && sellType === 'AUCTION' && auctionStatus === 'ACTIVE'
   const isTierContent = isLocked && requiredTier && !price
   // Обратная совместимость для старых постов с isPremium
   const isLegacyVipContent = isLocked && isPremium && !price && !requiredTier
@@ -567,6 +590,50 @@ export default function PostCard({
             </div>
           )}
           
+          {/* Sellable Post Badge */}
+          {isSellable && (
+            <div className={`inline-flex items-center gap-2 px-3 py-1 text-sm font-medium rounded-full mb-3 ml-2 ${
+              auctionStatus === 'SOLD' || soldAt
+                ? 'bg-gradient-to-r from-gray-500/20 to-slate-500/20 text-gray-700 dark:text-gray-300 border border-gray-500/30'
+                : sellType === 'AUCTION' && auctionStatus === 'ACTIVE'
+                ? 'bg-gradient-to-r from-yellow-500/20 to-orange-500/20 text-yellow-700 dark:text-yellow-300 border border-yellow-500/30 animate-pulse'
+                : 'bg-gradient-to-r from-yellow-500/20 to-orange-500/20 text-yellow-700 dark:text-yellow-300 border border-yellow-500/30'
+            }`}>
+              {auctionStatus === 'SOLD' || soldAt ? (
+                <>
+                  <span className="w-2 h-2 rounded-full bg-gray-500 dark:bg-gray-400"></span>
+                  ✅ Продано {soldTo && `@${soldTo.nickname || soldTo.wallet.slice(0, 6) + '...'}`}
+                  {soldPrice && ` за ${soldPrice} SOL`}
+                </>
+              ) : sellType === 'AUCTION' ? (
+                <>
+                  <span className="w-2 h-2 rounded-full bg-yellow-500 dark:bg-yellow-400 animate-pulse"></span>
+                  🕒 Аукцион
+                  {auctionStatus === 'ACTIVE' && auctionEndAt && (
+                    <span className="text-xs">
+                      (до {new Date(auctionEndAt).toLocaleString('ru-RU', { 
+                        hour: '2-digit', 
+                        minute: '2-digit',
+                        day: 'numeric',
+                        month: 'short' 
+                      })})
+                    </span>
+                  )}
+                  {auctionCurrentBid && auctionCurrentBid > 0 && (
+                    <span className="text-xs font-bold ml-1">
+                      Текущая ставка: {auctionCurrentBid} SOL
+                    </span>
+                  )}
+                </>
+              ) : (
+                <>
+                  <span className="w-2 h-2 rounded-full bg-yellow-500 dark:bg-yellow-400"></span>
+                  🛒 Купить за {price} {currency}
+                </>
+              )}
+            </div>
+          )}
+          
           {/* Title */}
           <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-3 leading-tight">
             {title}
@@ -611,14 +678,20 @@ export default function PostCard({
               <div className="py-16 px-6 text-center">
                 <LockClosedIcon className="w-16 h-16 text-gray-400 dark:text-slate-500 mx-auto mb-4" />
                 <div className="text-gray-900 dark:text-slate-300 font-semibold text-lg mb-2">
-                  {needsPayment ? 'Paid Content' : 
+                  {needsSellablePayment ? '🛒 Продаваемый контент' :
+                   isActiveAuction ? '🕒 Активный аукцион' :
+                   needsPayment ? 'Paid Content' : 
                    isTierContent && tierInfo ? `${tierInfo.required.icon} ${tierInfo.required.name} Content` :
                    isLegacyVipContent ? 'VIP Content' : 
                    isSubscriberContent ? 'Subscribers Only' : 
                    'Locked Content'}
                 </div>
                 <p className="text-gray-600 dark:text-slate-400 text-sm mb-4 max-w-sm mx-auto">
-                  {needsPayment 
+                  {needsSellablePayment
+                    ? 'Купите этот уникальный контент. После покупки он будет доступен только вам!'
+                    : isActiveAuction
+                    ? 'Сделайте ставку, чтобы выиграть этот эксклюзивный контент'
+                    : needsPayment 
                     ? 'Purchase access to this content' 
                     : isTierContent && tierInfo
                     ? tierInfo.current 
@@ -631,14 +704,50 @@ export default function PostCard({
                     : 'This content requires special access'
                   }
                 </p>
-                {needsPayment && (
+                {(needsPayment || needsSellablePayment) && (
                   <div className="text-purple-600 dark:text-purple-400 font-bold text-2xl mb-4">
                     {price} {currency}
                   </div>
                 )}
+                {isActiveAuction && (
+                  <div className="space-y-2 mb-4">
+                    {auctionCurrentBid && auctionCurrentBid > 0 ? (
+                      <div className="text-purple-600 dark:text-purple-400 font-bold text-2xl">
+                        Текущая ставка: {auctionCurrentBid} SOL
+                      </div>
+                    ) : (
+                      <div className="text-purple-600 dark:text-purple-400 font-bold text-2xl">
+                        Начальная цена: {auctionStartPrice} SOL
+                      </div>
+                    )}
+                    {auctionEndAt && (
+                      <div className="text-gray-600 dark:text-slate-400 text-sm">
+                        Завершится: {new Date(auctionEndAt).toLocaleString('ru-RU')}
+                      </div>
+                    )}
+                  </div>
+                )}
                 <button 
                   onClick={() => {
-                    if (needsPayment) {
+                    if (needsSellablePayment || isActiveAuction) {
+                      onSellableClick?.({
+                        id: id,
+                        title: title,
+                        price: price || 0,
+                        currency: currency || 'SOL',
+                        sellType: sellType,
+                        auctionStartPrice: auctionStartPrice,
+                        auctionCurrentBid: auctionCurrentBid,
+                        auctionEndAt: auctionEndAt,
+                        creator: {
+                          id: creator.id,
+                          name: creator.name,
+                          username: creator.username,
+                          avatar: creator.avatar,
+                          isVerified: creator.isVerified
+                        }
+                      })
+                    } else if (needsPayment) {
                       onPurchaseClick?.({
                         id: id,
                         title: title,
@@ -665,7 +774,11 @@ export default function PostCard({
                   }}
                   className="px-6 py-3 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white rounded-xl font-medium transition-all transform hover:scale-105"
                 >
-                  {needsPayment 
+                  {needsSellablePayment 
+                    ? `Купить за ${price} ${currency}`
+                    : isActiveAuction
+                    ? 'Сделать ставку'
+                    : needsPayment 
                     ? `Buy for ${price} ${currency}`
                     : isTierContent && tierInfo
                     ? userTier 

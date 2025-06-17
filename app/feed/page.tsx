@@ -7,6 +7,7 @@ import PostCard from '@/components/PostCard'
 import SubscribeModal from '@/components/SubscribeModal'
 import PurchaseModal from '@/components/PurchaseModal'
 import EditPostModal from '@/components/EditPostModal'
+import SellablePostModal from '@/components/SellablePostModal'
 import { 
   SparklesIcon, 
   FireIcon, 
@@ -36,8 +37,10 @@ export default function FeedPage() {
   // Состояние для модалок
   const [showSubscribeModal, setShowSubscribeModal] = useState(false)
   const [showPurchaseModal, setShowPurchaseModal] = useState(false)
+  const [showSellableModal, setShowSellableModal] = useState(false)
   const [selectedCreator, setSelectedCreator] = useState<any>(null)
   const [selectedPost, setSelectedPost] = useState<any>(null)
+  const [selectedSellablePost, setSelectedSellablePost] = useState<any>(null)
   const [preferredTier, setPreferredTier] = useState<'basic' | 'premium' | 'vip'>('basic')
   
   // Добавляем состояние для редактирования на уровне Feed
@@ -125,7 +128,17 @@ export default function FeedPage() {
         isSubscribed: post.isSubscribed || false,
         shouldHideContent: post.shouldHideContent || false,
         requiredTier: post.requiredTier || null,
-        userTier: post.userTier || null
+        userTier: post.userTier || null,
+        // Новые поля для продаваемых постов
+        isSellable: post.isSellable || false,
+        sellType: post.sellType,
+        auctionStatus: post.auctionStatus,
+        auctionStartPrice: post.auctionStartPrice,
+        auctionCurrentBid: post.auctionCurrentBid,
+        auctionEndAt: post.auctionEndAt,
+        soldAt: post.soldAt,
+        soldTo: post.soldTo,
+        soldPrice: post.soldPrice
       }))
 
       setPosts(formattedPosts)
@@ -146,6 +159,11 @@ export default function FeedPage() {
   const handlePurchaseClick = (postData: any) => {
     setSelectedPost(postData)
     setShowPurchaseModal(true)
+  }
+  
+  const handleSellableClick = (postData: any) => {
+    setSelectedSellablePost(postData)
+    setShowSellableModal(true)
   }
   
   const handleEditClick = (postData: any) => {
@@ -291,6 +309,7 @@ export default function FeedPage() {
                 showCreator={true}
                 onSubscribeClick={handleSubscribeClick}
                 onPurchaseClick={handlePurchaseClick}
+                onSellableClick={handleSellableClick}
                 onEditClick={handleEditClick}
               />
             ))}
@@ -336,6 +355,14 @@ export default function FeedPage() {
               loadPosts()
             }, 1000) // 1 second delay
           }}
+        />
+      )}
+
+      {showSellableModal && selectedSellablePost && (
+        <SellablePostModal
+          isOpen={showSellableModal}
+          post={selectedSellablePost}
+          onClose={() => setShowSellableModal(false)}
         />
       )}
 

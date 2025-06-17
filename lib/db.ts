@@ -207,6 +207,14 @@ export async function createPost(creatorWallet: string, data: {
   currency?: string
   tags?: string[]
   tier?: string
+  // Новые поля для продаваемых постов
+  isSellable?: boolean
+  sellType?: 'FIXED_PRICE' | 'AUCTION'
+  sellPrice?: number
+  auctionStartPrice?: number
+  auctionStepPrice?: number
+  auctionDuration?: number
+  auctionDepositAmount?: number
 }) {
   const creator = await getUserByWallet(creatorWallet)
   if (!creator) throw new Error('Creator not found')
@@ -239,6 +247,17 @@ export async function createPost(creatorWallet: string, data: {
     }
   }
 
+  // Вычисляем даты для аукциона
+  let auctionStartAt: Date | undefined
+  let auctionEndAt: Date | undefined
+  let auctionStatus: 'DRAFT' | 'SCHEDULED' | 'ACTIVE' | undefined
+  
+  if (data.isSellable && data.sellType === 'AUCTION' && data.auctionDuration) {
+    auctionStartAt = new Date()
+    auctionEndAt = new Date(auctionStartAt.getTime() + data.auctionDuration * 60 * 60 * 1000)
+    auctionStatus = 'ACTIVE'
+  }
+
   const post = await prisma.post.create({
     data: {
       creatorId: creator.id,
@@ -253,6 +272,17 @@ export async function createPost(creatorWallet: string, data: {
       price: data.price,
       currency: data.currency || 'SOL',
       minSubscriptionTier: minSubscriptionTier,
+      // Новые поля для продаваемых постов
+      isSellable: data.isSellable || false,
+      sellType: data.isSellable ? data.sellType : undefined,
+      auctionStartPrice: data.isSellable && data.sellType === 'AUCTION' ? data.auctionStartPrice : undefined,
+      auctionStepPrice: data.isSellable && data.sellType === 'AUCTION' ? data.auctionStepPrice : undefined,
+      auctionDepositAmount: data.isSellable && data.sellType === 'AUCTION' ? data.auctionDepositAmount : undefined,
+      auctionStartAt,
+      auctionEndAt,
+      auctionStatus: data.isSellable ? (data.sellType === 'AUCTION' ? auctionStatus : 'DRAFT') : undefined,
+      // Для фиксированной цены используем поле price
+      ...(data.isSellable && data.sellType === 'FIXED_PRICE' && data.sellPrice ? { price: data.sellPrice } : {}),
       tags: data.tags ? {
         create: data.tags.map(tagName => ({
           tag: {
