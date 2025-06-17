@@ -110,15 +110,31 @@ export default function SellablePostModal({ isOpen, onClose, post }: SellablePos
         })
       )
 
-      // Отправляем транзакцию
-      const signature = await sendTransaction(transaction, connection)
+      // Get fresh blockhash right before sending
+      const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash('confirmed')
+      transaction.recentBlockhash = blockhash
+      ;(transaction as any).lastValidBlockHeight = lastValidBlockHeight
+
+      // Отправляем транзакцию с правильными настройками
+      const sendOptions = {
+        skipPreflight: false,
+        preflightCommitment: 'confirmed' as any,
+        maxRetries: 3
+      }
       
-      // Ждем подтверждения
-      const latestBlockhash = await connection.getLatestBlockhash()
-      await connection.confirmTransaction({
+      const signature = await sendTransaction(transaction, connection, sendOptions)
+      
+      toast.loading('Waiting for blockchain confirmation...')
+      
+      // Give transaction time to get into the network
+      await new Promise(resolve => setTimeout(resolve, 5000))
+      
+      // Ждем подтверждения с учетом lastValidBlockHeight
+      const confirmation = await connection.confirmTransaction({
         signature,
-        ...latestBlockhash
-      })
+        blockhash,
+        lastValidBlockHeight
+      }, 'confirmed')
 
       // Регистрируем покупку на бэкенде
       const response = await fetch(`/api/posts/${post.id}/buy`, {
@@ -145,7 +161,24 @@ export default function SellablePostModal({ isOpen, onClose, post }: SellablePos
 
     } catch (error) {
       console.error('Purchase error:', error)
-      toast.error(error instanceof Error ? error.message : 'Error processing purchase')
+      
+      let errorMessage = 'Error processing purchase'
+      
+      if (error instanceof Error) {
+        if (error.message.includes('User rejected')) {
+          errorMessage = 'You cancelled the transaction'
+        } else if (error.message.includes('insufficient')) {
+          errorMessage = 'Insufficient funds in wallet'
+        } else if (error.message.includes('Transaction not confirmed')) {
+          errorMessage = 'Transaction was not confirmed. Please try again'
+        } else if (error.message.includes('block height exceeded')) {
+          errorMessage = 'Transaction expired. Please try again'
+        } else {
+          errorMessage = error.message
+        }
+      }
+      
+      toast.error(errorMessage)
     } finally {
       setIsProcessing(false)
     }
