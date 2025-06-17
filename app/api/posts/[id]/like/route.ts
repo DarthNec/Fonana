@@ -61,7 +61,7 @@ export async function POST(
     const post = await prisma.post.findUnique({
       where: { id: params.id },
       include: { 
-        author: true
+        creator: true
       }
     })
 
@@ -115,7 +115,7 @@ export async function POST(
       ])
 
       // Создаем уведомление для автора поста (если это не его собственный пост)
-      if (post.authorId !== userId) {
+      if (post.creatorId !== userId) {
         // Получаем информацию о пользователе, который поставил лайк
         const liker = await prisma.user.findUnique({
           where: { id: userId },
@@ -128,11 +128,11 @@ export async function POST(
           
           // Проверяем настройки уведомлений автора
           const authorSettings = await prisma.userSettings.findUnique({
-            where: { userId: post.authorId }
+            where: { userId: post.creatorId }
           })
           
           if (!authorSettings || authorSettings.notifyLikes) {
-            await notifyPostLike(post.authorId, likerName, postTitle, post.id)
+            await notifyPostLike(post.creatorId, likerName, postTitle, post.id)
           }
         }
       }

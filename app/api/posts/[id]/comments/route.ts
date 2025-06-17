@@ -101,7 +101,7 @@ export async function POST(
     // Проверяем существует ли пост и получаем информацию об авторе
     const post = await prisma.post.findUnique({
       where: { id: params.id },
-      include: { author: true }
+      include: { creator: true }
     })
 
     if (!post) {
@@ -170,15 +170,15 @@ export async function POST(
       }
     } else {
       // Это комментарий к посту
-      if (post.authorId !== userId) {
+      if (post.creatorId !== userId) {
         // Проверяем настройки уведомлений автора
         const authorSettings = await prisma.userSettings.findUnique({
-          where: { userId: post.authorId }
+          where: { userId: post.creatorId }
         })
         
         if (!authorSettings || authorSettings.notifyComments) {
           await notifyNewComment(
-            post.authorId,
+            post.creatorId,
             commenterName,
             post.title || 'your post',
             params.id,
