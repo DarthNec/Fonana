@@ -3,7 +3,6 @@
 import { useUser } from '@/lib/hooks/useUser'
 import { UserIcon } from '@heroicons/react/24/outline'
 import PostCard from '@/components/PostCard'
-import PostComments from '@/components/PostComments'
 
 export default function AvatarDemoPage() {
   const { user } = useUser()
@@ -97,13 +96,10 @@ export default function AvatarDemoPage() {
         {/* Демо пост с комментариями */}
         <div className="mb-8">
           <h2 className="text-xl font-semibold text-white mb-4">Демо пост с комментариями:</h2>
+          <p className="text-slate-400 mb-4">
+            Комментарии теперь встроены в PostCard. Нажмите на кнопку комментариев под постом, чтобы увидеть их.
+          </p>
           <PostCard {...mockPost} showCreator={true} />
-        </div>
-
-        {/* Отдельная секция комментариев */}
-        <div className="bg-slate-800/50 backdrop-blur-sm border border-slate-700/50 rounded-3xl p-6">
-          <h2 className="text-xl font-semibold text-white mb-4">Секция комментариев:</h2>
-          <PostComments postId={1} isSubscribed={true} />
         </div>
       </div>
     </div>
