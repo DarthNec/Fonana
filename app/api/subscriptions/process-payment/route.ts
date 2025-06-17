@@ -250,7 +250,7 @@ export async function POST(request: Request) {
         where: { userId: creatorId }
       })
       
-      if (!creatorSettings || creatorSettings.notifyNewSubscriptions) {
+      if (!creatorSettings || creatorSettings.notifySubscriptions) {
         await notifyNewSubscriber(creatorId, subscriberName, plan)
       }
     }
