@@ -27,7 +27,6 @@ import { HeartIcon as HeartSolidIcon } from '@heroicons/react/24/solid'
 import { useUser } from '@/lib/hooks/useUser'
 import { getProfileLink } from '@/lib/utils/links'
 import EditPostModal from './EditPostModal'
-import PostComments from './PostComments'
 
 interface Creator {
   id: string
