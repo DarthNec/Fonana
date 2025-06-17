@@ -44,7 +44,7 @@ interface SubscribeModalProps {
     posts?: number
     category?: string
   }
-  preferredTier?: 'basic' | 'premium' | 'vip'
+  preferredTier?: string
   onClose: () => void
   onSuccess?: () => void
 }
@@ -117,20 +117,121 @@ const getSubscriptionTiers = (creatorCategory?: string): SubscriptionTier[] => {
 
 export default function SubscribeModal({ creator, preferredTier, onClose, onSuccess }: SubscribeModalProps) {
   const { connected, publicKey, sendTransaction } = useWallet()
-  const subscriptionTiers = getSubscriptionTiers(creator.category)
-  const [selectedTier, setSelectedTier] = useState(preferredTier || subscriptionTiers[1].id)
+  const [subscriptionTiers, setSubscriptionTiers] = useState<SubscriptionTier[]>([])
+  const [loading, setLoading] = useState(true)
+  const [selectedTier, setSelectedTier] = useState(preferredTier || 'basic')
   const [showInCarousel, setShowInCarousel] = useState(true)
   const [isProcessing, setIsProcessing] = useState(false)
+  const [expandedTiers, setExpandedTiers] = useState<Set<string>>(new Set())
 
   const selectedSubscription = subscriptionTiers.find(tier => tier.id === selectedTier)
 
   useEffect(() => {
     // Block scroll when modal is open
     document.body.style.overflow = 'hidden'
+    // Load custom tier settings
+    loadCreatorTierSettings()
+    
     return () => {
       document.body.style.overflow = 'unset'
     }
   }, [])
+
+  const loadCreatorTierSettings = async () => {
+    try {
+      const response = await fetch(`/api/user/tier-settings?creatorId=${creator.id}`)
+      if (response.ok) {
+        const data = await response.json()
+        const settings = data.settings
+        
+        // Конвертируем настройки в формат тиров
+        const customTiers: SubscriptionTier[] = []
+        
+        // Free tier (всегда есть)
+        customTiers.push({
+          id: 'free',
+          name: 'Free',
+          price: 0,
+          currency: 'SOL',
+          duration: 'forever',
+          description: 'Free subscription',
+          features: ['Access to free posts', 'Like and comment ability', 'New content notifications'],
+          color: 'from-gray-400 to-slate-600'
+        })
+        
+        // Basic tier
+        if (settings.basicTier && settings.basicTier.enabled !== false) {
+          const basicFeatures = settings.basicTier.features
+            ?.filter((f: any) => f.enabled)
+            .map((f: any) => f.text) || []
+          
+          customTiers.push({
+            id: 'basic',
+            name: 'Basic',
+            price: settings.basicTier.price || 0.05,
+            currency: 'SOL',
+            duration: 'month',
+            description: settings.basicTier.description || 'Basic subscription',
+            features: basicFeatures.length > 0 ? basicFeatures : ['Access to basic content'],
+            color: 'from-blue-400 to-cyan-600'
+          })
+        }
+        
+        // Premium tier
+        if (settings.premiumTier && settings.premiumTier.enabled !== false) {
+          const premiumFeatures = settings.premiumTier.features
+            ?.filter((f: any) => f.enabled)
+            .map((f: any) => f.text) || []
+          
+          customTiers.push({
+            id: 'premium',
+            name: 'Premium',
+            price: settings.premiumTier.price || 0.20,
+            currency: 'SOL',
+            duration: 'month',
+            description: settings.premiumTier.description || 'Premium subscription',
+            features: premiumFeatures.length > 0 ? premiumFeatures : ['Access to premium content'],
+            popular: true,
+            color: 'from-purple-500 to-pink-600'
+          })
+        }
+        
+        // VIP tier
+        if (settings.vipTier && settings.vipTier.enabled !== false) {
+          const vipFeatures = settings.vipTier.features
+            ?.filter((f: any) => f.enabled)
+            .map((f: any) => f.text) || []
+          
+          customTiers.push({
+            id: 'vip',
+            name: 'VIP',
+            price: settings.vipTier.price || 0.40,
+            currency: 'SOL',
+            duration: 'month',
+            description: settings.vipTier.description || 'VIP subscription',
+            features: vipFeatures.length > 0 ? vipFeatures : ['Exclusive VIP content'],
+            color: 'from-yellow-400 to-orange-500'
+          })
+        }
+        
+        setSubscriptionTiers(customTiers)
+        
+        // Set default selected tier
+        if (!preferredTier && customTiers.length > 1) {
+          setSelectedTier(customTiers[1].id) // Select first paid tier
+        }
+      } else {
+        // Fallback to default tiers
+        setSubscriptionTiers(getSubscriptionTiers(creator.category))
+      }
+    } catch (error) {
+      console.error('Error loading creator tier settings:', error)
+      // Fallback to default tiers
+      setSubscriptionTiers(getSubscriptionTiers(creator.category))
+    } finally {
+      setLoading(false)
+    }
+  }
 
   const handleSubscribe = async () => {
     if (!connected || !publicKey) {
@@ -395,26 +496,34 @@ export default function SubscribeModal({ creator, preferredTier, onClose, onSucc
               </span>
             </h3>
             
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
-              {subscriptionTiers.map((tier) => {
-                const isSelected = selectedTier === tier.id
-                
-                return (
-                  <div
-                    key={tier.id}
-                    className={`relative border-2 rounded-2xl cursor-pointer transition-all duration-300 hover:scale-105 bg-slate-800/50 backdrop-blur-sm p-4 ${
-                      isSelected 
-                        ? tier.id === 'free'
-                          ? 'border-slate-500 shadow-xl shadow-slate-500/25'
-                          : tier.id === 'basic'
-                            ? 'border-blue-500 shadow-xl shadow-blue-500/25'
-                            : tier.id === 'vip'
-                              ? 'border-yellow-500 shadow-xl shadow-yellow-500/25'
-                              : 'border-purple-500 shadow-xl shadow-purple-500/25'
-                        : 'border-slate-600/50 hover:border-slate-500/50'
-                    } ${tier.popular ? 'ring-2 ring-purple-500/50' : ''}`}
-                    onClick={() => setSelectedTier(tier.id)}
-                  >
+            {loading ? (
+              <div className="flex justify-center items-center h-64">
+                <div className="w-12 h-12 border-4 border-purple-500 border-t-transparent rounded-full animate-spin"></div>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
+                {subscriptionTiers.map((tier) => {
+                  const isSelected = selectedTier === tier.id
+                  const isExpanded = expandedTiers.has(tier.id)
+                  const visibleFeatures = isExpanded ? tier.features : tier.features.slice(0, 3)
+                  const hasMoreFeatures = tier.features.length > 3
+                  
+                  return (
+                    <div
+                      key={tier.id}
+                      className={`relative border-2 rounded-2xl cursor-pointer transition-all duration-300 hover:scale-105 bg-slate-800/50 backdrop-blur-sm p-4 ${
+                        isSelected 
+                          ? tier.id === 'free'
+                            ? 'border-slate-500 shadow-xl shadow-slate-500/25'
+                            : tier.id === 'basic'
+                              ? 'border-blue-500 shadow-xl shadow-blue-500/25'
+                              : tier.id === 'vip'
+                                ? 'border-yellow-500 shadow-xl shadow-yellow-500/25'
+                                : 'border-purple-500 shadow-xl shadow-purple-500/25'
+                          : 'border-slate-600/50 hover:border-slate-500/50'
+                      } ${tier.popular ? 'ring-2 ring-purple-500/50' : ''}`}
+                      onClick={() => setSelectedTier(tier.id)}
+                    >
                     {tier.popular && (
                       <div className="absolute -top-3 left-1/2 transform -translate-x-1/2">
                         <span className="bg-gradient-to-r from-purple-600 to-pink-600 text-white px-4 py-1 rounded-full text-xs font-bold">
@@ -456,7 +565,7 @@ export default function SubscribeModal({ creator, preferredTier, onClose, onSucc
                     </div>
 
                     <ul className="space-y-2">
-                      {tier.features.map((feature, index) => (
+                      {visibleFeatures.map((feature, index) => (
                         <li key={index} className="flex items-start gap-2">
                           <CheckIcon className="w-4 h-4 text-green-400 mt-0.5 flex-shrink-0" />
                           <span className="text-slate-300 text-sm">
@@ -465,10 +574,31 @@ export default function SubscribeModal({ creator, preferredTier, onClose, onSucc
                         </li>
                       ))}
                     </ul>
+                    
+                    {hasMoreFeatures && (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          setExpandedTiers(prev => {
+                            const newSet = new Set(prev)
+                            if (newSet.has(tier.id)) {
+                              newSet.delete(tier.id)
+                            } else {
+                              newSet.add(tier.id)
+                            }
+                            return newSet
+                          })
+                        }}
+                        className="mt-3 text-purple-400 hover:text-purple-300 text-sm font-medium transition-colors"
+                      >
+                        {isExpanded ? 'Show less' : `+${tier.features.length - 3} more features`}
+                      </button>
+                    )}
                   </div>
                 )
               })}
             </div>
+            )}
           </div>
 
           {/* Carousel Option */}
@@ -500,9 +630,7 @@ export default function SubscribeModal({ creator, preferredTier, onClose, onSucc
                 selectedTier === 'free'
                   ? 'bg-gradient-to-r from-gray-500 to-gray-600 hover:from-gray-600 hover:to-gray-700'
                   : selectedTier === 'basic'
-                  ? 'bg-gradient-to-r from-green-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700'
-                  : selectedTier === 'standard'
-                  ? 'bg-gradient-to-r from-blue-500 to-cyan-600 hover:from-cyan-600 hover:to-cyan-700'
+                  ? 'bg-gradient-to-r from-blue-500 to-cyan-600 hover:from-blue-600 hover:to-cyan-700'
                   : selectedTier === 'vip'
                   ? 'bg-gradient-to-r from-yellow-500 to-orange-500 hover:from-orange-600 hover:to-orange-700'
                   : 'bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700'

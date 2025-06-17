@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { 
   SparklesIcon,
   CurrencyDollarIcon,
@@ -11,6 +11,7 @@ import {
   InformationCircleIcon
 } from '@heroicons/react/24/outline'
 import { toast } from 'react-hot-toast'
+import { useUser } from '@/lib/hooks/useUser'
 
 interface TierFeature {
   id: string
@@ -63,6 +64,9 @@ const defaultFeatures = {
 }
 
 export default function SubscriptionTiersSettings() {
+  const { user } = useUser()
+  const [loading, setLoading] = useState(true)
+  const [saving, setSaving] = useState(false)
   const [tiers, setTiers] = useState<SubscriptionTier[]>([
     {
       id: 'basic',
@@ -71,7 +75,7 @@ export default function SubscriptionTiersSettings() {
       currency: 'SOL',
       description: 'Access to basic content',
       features: [...defaultFeatures.basic],
-      color: 'from-gray-400 to-gray-600',
+      color: 'from-blue-400 to-cyan-600',
       icon: CurrencyDollarIcon,
       enabled: true
     },
@@ -82,7 +86,7 @@ export default function SubscriptionTiersSettings() {
       currency: 'SOL',
       description: 'Extended access with exclusive content',
       features: [...defaultFeatures.premium],
-      color: 'from-indigo-500 to-purple-600',
+      color: 'from-purple-500 to-pink-600',
       icon: SparklesIcon,
       enabled: true
     },
@@ -100,6 +104,46 @@ export default function SubscriptionTiersSettings() {
   ])
 
   const [showRecommendations, setShowRecommendations] = useState(false)
+
+  // Загружаем настройки при монтировании
+  useEffect(() => {
+    if (user?.wallet) {
+      loadTierSettings()
+    }
+  }, [user?.wallet])
+
+  const loadTierSettings = async () => {
+    try {
+      const response = await fetch(`/api/user/tier-settings?wallet=${user?.wallet}`)
+      if (response.ok) {
+        const data = await response.json()
+        const settings = data.settings
+        
+        // Обновляем тиры из загруженных настроек
+        setTiers(prev => prev.map(tier => {
+          const tierKey = `${tier.id}Tier` as 'basicTier' | 'premiumTier' | 'vipTier'
+          const savedTier = settings[tierKey]
+          
+          if (savedTier && Object.keys(savedTier).length > 0) {
+            return {
+              ...tier,
+              enabled: savedTier.enabled ?? tier.enabled,
+              price: savedTier.price ?? tier.price,
+              description: savedTier.description ?? tier.description,
+              features: savedTier.features ?? tier.features
+            }
+          }
+          
+          return tier
+        }))
+      }
+    } catch (error) {
+      console.error('Error loading tier settings:', error)
+      toast.error('Failed to load tier settings')
+    } finally {
+      setLoading(false)
+    }
+  }
 
   const updateTierPrice = (tierId: string, price: number) => {
     setTiers(prev => prev.map(tier => 
@@ -201,10 +245,54 @@ export default function SubscriptionTiersSettings() {
     setShowRecommendations(false)
   }
 
-  const saveTiers = () => {
-    // Here would be saving to database
-    console.log('Saving tiers:', tiers)
-    toast.success('Tier settings saved!')
+  const saveTiers = async () => {
+    if (!user?.wallet) {
+      toast.error('Please connect your wallet')
+      return
+    }
+
+    setSaving(true)
+    try {
+      // Подготавливаем данные для сохранения
+      const tierData = {
+        basicTier: tiers.find(t => t.id === 'basic') ? {
+          enabled: tiers.find(t => t.id === 'basic')!.enabled,
+          price: tiers.find(t => t.id === 'basic')!.price,
+          description: tiers.find(t => t.id === 'basic')!.description,
+          features: tiers.find(t => t.id === 'basic')!.features
+        } : null,
+        premiumTier: tiers.find(t => t.id === 'premium') ? {
+          enabled: tiers.find(t => t.id === 'premium')!.enabled,
+          price: tiers.find(t => t.id === 'premium')!.price,
+          description: tiers.find(t => t.id === 'premium')!.description,
+          features: tiers.find(t => t.id === 'premium')!.features
+        } : null,
+        vipTier: tiers.find(t => t.id === 'vip') ? {
+          enabled: tiers.find(t => t.id === 'vip')!.enabled,
+          price: tiers.find(t => t.id === 'vip')!.price,
+          description: tiers.find(t => t.id === 'vip')!.description,
+          features: tiers.find(t => t.id === 'vip')!.features
+        } : null
+      }
+
+      const response = await fetch(`/api/user/tier-settings?wallet=${user.wallet}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(tierData)
+      })
+
+      if (!response.ok) {
+        const error = await response.json()
+        throw new Error(error.error || 'Failed to save settings')
+      }
+
+      toast.success('Tier settings saved successfully!')
+    } catch (error) {
+      console.error('Error saving tier settings:', error)
+      toast.error(error instanceof Error ? error.message : 'Failed to save tier settings')
+    } finally {
+      setSaving(false)
+    }
   }
 
   return (
@@ -410,9 +498,17 @@ export default function SubscriptionTiersSettings() {
       <div className="mt-8 flex justify-end">
         <button
           onClick={saveTiers}
-          className="px-8 py-3 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white rounded-xl font-bold transition-all duration-300 hover:scale-105 hover:shadow-xl hover:shadow-purple-500/25"
+          disabled={saving || loading}
+          className="px-8 py-3 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 disabled:from-gray-400 disabled:to-gray-500 text-white rounded-xl font-bold transition-all duration-300 hover:scale-105 hover:shadow-xl hover:shadow-purple-500/25 disabled:hover:scale-100 disabled:hover:shadow-none flex items-center gap-2"
         >
-          Save tier settings
+          {saving ? (
+            <>
+              <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+              Saving...
+            </>
+          ) : (
+            'Save tier settings'
+          )}
         </button>
       </div>
     </div>

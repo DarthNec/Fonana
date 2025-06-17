@@ -55,6 +55,7 @@ model User {
   
   // Settings
   settings       UserSettings?
+  tierSettings   CreatorTierSettings?
 
   @@map("users")
 }
@@ -320,4 +321,23 @@ model UserSettings {
   user                   User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   
   @@map("user_settings")
+}
+
+// Creator tier settings model
+model CreatorTierSettings {
+  id            String   @id @default(cuid())
+  creatorId     String   @unique
+  
+  // Tier settings stored as JSON
+  basicTier     Json?    // { enabled: boolean, price: number, description: string, features: [] }
+  premiumTier   Json?    // { enabled: boolean, price: number, description: string, features: [] }
+  vipTier       Json?    // { enabled: boolean, price: number, description: string, features: [] }
+  
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  
+  // Relations
+  creator       User     @relation(fields: [creatorId], references: [id], onDelete: Cascade)
+  
+  @@map("creator_tier_settings")
 }
