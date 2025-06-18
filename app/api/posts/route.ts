@@ -135,7 +135,9 @@ export async function GET(req: Request) {
 
     // Получаем покупки постов текущего пользователя
     let userPurchasedPosts: string[] = []
+    let userPurchasedSellablePosts: string[] = []
     if (currentUser) {
+      // Получаем покупки платных постов
       const purchases = await prisma.postPurchase.findMany({
         where: {
           userId: currentUser.id,
@@ -144,7 +146,19 @@ export async function GET(req: Request) {
         select: { postId: true }
       })
       userPurchasedPosts = purchases.map((purchase: { postId: string }) => purchase.postId)
+      
+      // Получаем купленные sellable посты
+      const sellablePurchases = await prisma.post.findMany({
+        where: {
+          soldToId: currentUser.id,
+          isSellable: true
+        },
+        select: { id: true }
+      })
+      userPurchasedSellablePosts = sellablePurchases.map((post: { id: string }) => post.id)
+      
       console.log('[API/posts] User purchased posts:', userPurchasedPosts.length, 'posts')
+      console.log('[API/posts] User purchased sellable posts:', userPurchasedSellablePosts.length, 'posts')
     }
 
     // Форматируем посты для фронтенда
@@ -152,6 +166,7 @@ export async function GET(req: Request) {
       const isCreatorPost = currentUser?.id === post.creatorId
       const isSubscribed = userSubscriptionsMap.has(post.creatorId)
       const hasPurchased = userPurchasedPosts.includes(post.id)
+      const hasPurchasedSellable = userPurchasedSellablePosts.includes(post.id)
       
       // Логирование для отладки
       if (isCreatorPost) {
@@ -168,8 +183,12 @@ export async function GET(req: Request) {
       let shouldHideContent = false
       
       if (post.isLocked && !isCreatorPost) {
+        // Для sellable постов проверяем покупку
+        if (post.isSellable) {
+          shouldHideContent = !hasPurchasedSellable
+        }
         // Если у поста есть минимальный тир подписки
-        if (post.minSubscriptionTier) {
+        else if (post.minSubscriptionTier) {
           const userTier = userSubscriptionsMap.get(post.creatorId)
           const hasRequiredTier = hasAccessToTier(userTier, post.minSubscriptionTier)
           shouldHideContent = !hasRequiredTier
@@ -180,8 +199,8 @@ export async function GET(req: Request) {
           const hasRequiredTier = hasAccessToTier(userTier, 'vip')
           shouldHideContent = !hasRequiredTier
         }
-        // Если у поста есть цена И он НЕ является sellable - это платный пост за доступ
-        else if (post.price && post.price > 0 && !post.isSellable) {
+        // Если у поста есть цена - это платный пост за доступ
+        else if (post.price && post.price > 0) {
           shouldHideContent = !hasPurchased
         }
         // Обычный заблокированный пост - доступен любым подписчикам

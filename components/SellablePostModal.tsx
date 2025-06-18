@@ -164,8 +164,35 @@ export default function SellablePostModal({ isOpen, onClose, post }: SellablePos
       
       toast.loading('Waiting for blockchain confirmation...')
       
-      // Give transaction time to get into the network
-      await new Promise(resolve => setTimeout(resolve, 5000))
+      // Wait for transaction confirmation
+      let confirmed = false
+      const maxRetries = 60
+      
+      for (let i = 0; i < maxRetries; i++) {
+        try {
+          const status = await connection.getSignatureStatus(signature)
+          
+          if (status.value?.confirmationStatus === 'confirmed' || 
+              status.value?.confirmationStatus === 'finalized') {
+            confirmed = true
+            break
+          }
+          
+          if (status.value?.err) {
+            throw new Error('Transaction failed on blockchain')
+          }
+          
+          // If not confirmed yet, wait
+          await new Promise(resolve => setTimeout(resolve, 1000))
+        } catch (error) {
+          console.error('Error checking transaction status:', error)
+          // Continue checking
+        }
+      }
+      
+      if (!confirmed) {
+        throw new Error('Transaction not confirmed after 60 seconds')
+      }
 
       // Process payment on backend
       const response = await fetch(`/api/posts/${post.id}/buy`, {
