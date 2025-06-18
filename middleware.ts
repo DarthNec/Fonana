@@ -25,33 +25,33 @@ export function middleware(request: NextRequest) {
                         !pathname.startsWith('/intimate') &&
                         !pathname.startsWith('/test')
   
-  if (isReferralLink || isProfileVisit) {
-    // Extract referrer nickname
-    let referrer = ''
-    if (isReferralLink) {
-      referrer = pathname.slice(3) // Remove /r/ prefix
-    } else if (isProfileVisit) {
-      referrer = pathname.slice(1) // Remove leading slash
-    }
+  // Handle old /r/username format - redirect to /username
+  if (isReferralLink) {
+    const username = pathname.substring(3) // Remove '/r/' prefix
+    const newUrl = new URL(`/${username}`, request.url)
+    // Preserve query parameters
+    newUrl.search = request.nextUrl.search
+    return NextResponse.redirect(newUrl, { status: 301 }) // Permanent redirect
+  }
+  
+  // Handle profile visits (both new and old formats)
+  if (isProfileVisit) {
+    const username = pathname.substring(1) // Remove leading slash
     
-    // Check if user already has a referrer cookie
+    // Check for existing referrer cookie
     const existingReferrer = request.cookies.get('fonana_referrer')
     
-    // Only set cookie if no existing referrer (first visitor wins)
-    if (!existingReferrer && referrer) {
-      response.cookies.set('fonana_referrer', referrer, {
+    // Only set referrer cookie if:
+    // 1. No existing referrer cookie (first visitor wins)
+    // 2. Valid username format
+    if (!existingReferrer && username && /^[a-zA-Z0-9_-]+$/.test(username)) {
+      // Set referrer cookie for 7 days
+      response.cookies.set('fonana_referrer', username, {
         maxAge: 60 * 60 * 24 * 7, // 7 days
         httpOnly: true,
         sameSite: 'lax',
         secure: process.env.NODE_ENV === 'production'
       })
-      
-      console.log('[Middleware] Set referrer cookie:', referrer)
-    }
-    
-    // If it's a /r/ link, redirect to the profile page
-    if (isReferralLink) {
-      return NextResponse.redirect(new URL(`/${referrer}`, request.url))
     }
   }
   
@@ -66,7 +66,8 @@ export const config = {
      * - _next/static (static files)
      * - _next/image (image optimization files)
      * - favicon.ico (favicon file)
+     * - public folder
      */
-    '/((?!api|_next/static|_next/image|favicon.ico).*)',
+    '/((?!api|_next/static|_next/image|favicon.ico|public).*)',
   ],
 } 

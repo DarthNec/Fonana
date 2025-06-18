@@ -49,7 +49,7 @@ export default function ReferralsPage() {
   const [activeTab, setActiveTab] = useState<'overview' | 'referrals' | 'transactions'>('overview')
 
   const referralLink = user?.nickname 
-    ? `${typeof window !== 'undefined' ? window.location.origin : ''}/r/${user.nickname}`
+    ? `${typeof window !== 'undefined' ? window.location.origin : ''}/${user.nickname}`
     : ''
 
   useEffect(() => {

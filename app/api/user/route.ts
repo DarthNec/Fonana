@@ -20,6 +20,11 @@ export async function GET(request: NextRequest) {
 
     let user
     if (id) {
+      // Валидация ID (защита от инъекций)
+      if (!/^[a-zA-Z0-9]+$/.test(id)) {
+        return NextResponse.json({ error: 'Invalid ID format' }, { status: 400 })
+      }
+      
       // Получаем пользователя по ID
       user = await prisma.user.findUnique({
         where: { id },
@@ -43,9 +48,19 @@ export async function GET(request: NextRequest) {
         },
       })
     } else if (nickname) {
-      // Получаем пользователя по никнейму
+      // Валидация nickname (защита от инъекций)
+      if (!/^[a-zA-Z0-9_-]+$/.test(nickname)) {
+        return NextResponse.json({ error: 'Invalid nickname format' }, { status: 400 })
+      }
+      
+      // Получаем пользователя по никнейму (case-insensitive)
       user = await prisma.user.findFirst({
-        where: { nickname },
+        where: { 
+          nickname: {
+            equals: nickname,
+            mode: 'insensitive' // Case-insensitive поиск
+          }
+        },
         include: {
           referrer: {
             select: {
@@ -66,6 +81,11 @@ export async function GET(request: NextRequest) {
         },
       })
     } else if (wallet) {
+      // Валидация wallet (защита от инъекций)
+      if (!/^[a-zA-Z0-9]+$/.test(wallet)) {
+        return NextResponse.json({ error: 'Invalid wallet format' }, { status: 400 })
+      }
+      
       // Получаем пользователя по wallet с полной информацией
       user = await prisma.user.findFirst({
         where: {

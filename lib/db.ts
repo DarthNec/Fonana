@@ -21,11 +21,50 @@ export async function createOrUpdateUser(wallet: string, data?: {
   telegram?: string
   location?: string
 }, referrerNickname?: string) {
+  // Валидация и нормализация nickname
+  if (data?.nickname) {
+    // Защита от инъекций
+    if (!/^[a-zA-Z0-9_-]+$/.test(data.nickname)) {
+      throw new Error('Invalid nickname format')
+    }
+    
+    // Проверка уникальности (case-insensitive)
+    const existingUserWithNickname = await prisma.user.findFirst({
+      where: {
+        nickname: {
+          equals: data.nickname,
+          mode: 'insensitive'
+        }
+      }
+    })
+    
+    if (existingUserWithNickname) {
+      // Если это не тот же пользователь
+      const currentUser = await prisma.user.findFirst({
+        where: {
+          OR: [
+            { wallet: wallet },
+            { solanaWallet: wallet }
+          ]
+        }
+      })
+      
+      if (!currentUser || currentUser.id !== existingUserWithNickname.id) {
+        throw new Error('Nickname already taken')
+      }
+    }
+  }
+  
   // If referrer nickname is provided, try to find the referrer
   let referrerId: string | undefined
   if (referrerNickname) {
     const referrer = await prisma.user.findFirst({
-      where: { nickname: referrerNickname }
+      where: { 
+        nickname: {
+          equals: referrerNickname,
+          mode: 'insensitive' // Case-insensitive поиск реферера
+        }
+      }
     })
     if (referrer) {
       referrerId = referrer.id
@@ -99,19 +138,6 @@ export async function updateUserProfile(wallet: string, data: {
   telegram?: string
   location?: string
 }) {
-  // Фильтруем undefined значения - обновляем только те поля, которые явно переданы
-  const cleanData: any = {}
-  Object.keys(data).forEach(key => {
-    if (data[key as keyof typeof data] !== undefined) {
-      cleanData[key] = data[key as keyof typeof data]
-    }
-  })
-
-  // Если обновляется fullName, также обновляем name для совместимости
-  if (cleanData.fullName) {
-    cleanData.name = cleanData.fullName
-  }
-
   // Сначала находим пользователя по любому из полей wallet
   const user = await prisma.user.findFirst({
     where: {
@@ -124,6 +150,44 @@ export async function updateUserProfile(wallet: string, data: {
 
   if (!user) {
     throw new Error('User not found')
+  }
+
+  // Валидация и проверка уникальности nickname
+  if (data.nickname && data.nickname !== user.nickname) {
+    // Защита от инъекций
+    if (!/^[a-zA-Z0-9_-]+$/.test(data.nickname)) {
+      throw new Error('Invalid nickname format')
+    }
+    
+    // Проверка уникальности (case-insensitive)
+    const existingUserWithNickname = await prisma.user.findFirst({
+      where: {
+        nickname: {
+          equals: data.nickname,
+          mode: 'insensitive'
+        },
+        NOT: {
+          id: user.id
+        }
+      }
+    })
+    
+    if (existingUserWithNickname) {
+      throw new Error('Nickname already taken')
+    }
+  }
+
+  // Фильтруем undefined значения - обновляем только те поля, которые явно переданы
+  const cleanData: any = {}
+  Object.keys(data).forEach(key => {
+    if (data[key as keyof typeof data] !== undefined) {
+      cleanData[key] = data[key as keyof typeof data]
+    }
+  })
+
+  // Если обновляется fullName, также обновляем name для совместимости
+  if (cleanData.fullName) {
+    cleanData.name = cleanData.fullName
   }
 
   return await prisma.user.update({
