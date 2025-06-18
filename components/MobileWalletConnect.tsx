@@ -17,9 +17,9 @@ const isMobileDevice = () => {
 }
 
 // Проверка, установлен ли Phantom
-const isPhantomInstalled = () => {
+const isPhantomInstalled = (): boolean => {
   if (typeof window === 'undefined') return false
-  return window.solana && window.solana.isPhantom
+  return !!(window.solana && window.solana.isPhantom)
 }
 
 // Получение deeplink для Phantom
