@@ -20,7 +20,7 @@ Production DB has real users and posts
 - PostgreSQL + Prisma ORM
 - Solana Web3 integration
 - PM2 process manager
-- Port 3000 (local/server)
+- Port 3000 (default, may auto-increment if busy)
 
 ## Solana RPC
 - HTTPS: `https://tame-smart-panorama.solana-mainnet.quiknode.pro/0e70fc875702b126bf8b93cdcd626680e9c48894/`
@@ -29,7 +29,7 @@ Production DB has real users and posts
 ## Development Guidelines
 1. **Analyze First**: Check both local and server states before changes
 2. **Preserve Integrity**: Understand existing routes, data flows, and dependencies
-3. **Test Locally**: Run changes on localhost:3004 before deploying
+3. **Test Locally**: Run changes on localhost:3000 before deploying
 4. **Deploy Safely**: Use the deploy script, don't break production data
 
 ## Task Templates

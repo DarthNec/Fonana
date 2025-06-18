@@ -8,7 +8,7 @@ Guidelines:
 - Parallelize operations when possible
 - Analyze before changing (check local & server)
 - Preserve existing systems and data flows
-- Test locally (port 3004) before deploying
+- Test locally (port 3000) before deploying
 - Use English for UI, Russian comments OK
 - Production has real users/data - be careful
 

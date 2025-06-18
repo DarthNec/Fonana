@@ -13,7 +13,7 @@ Guidelines:
 - Parallelize operations when possible
 - Analyze before changing (check local & server)
 - Preserve existing systems and data flows
-- Test locally (port 3004) before deploying
+- Test locally (port 3000) before deploying
 - Use English for UI, Russian comments OK
 - Production has real users/data - be careful
 
@@ -97,4 +97,5 @@ Commit message should be: "Add post filtering by category"
 
 - **If AI seems lost**: "Check AI_ASSISTANT_QUICK_START.md for project overview"
 - **If deploy fails**: "The repo is private, use SCP method in deploy script"
-- **If confused about architecture**: "Run 'find . -name "*.md" | grep -E "(FEATURE|SYSTEM|UPDATE)"' to see all docs" 
+- **If confused about architecture**: "Run 'find . -name "*.md" | grep -E "(FEATURE|SYSTEM|UPDATE)"' to see all docs"
+- **If port 3000 is busy**: Next.js will auto-increment (3001, 3002, etc.) 
