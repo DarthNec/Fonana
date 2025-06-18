@@ -1,0 +1,15 @@
+Project: Fonana - Next.js + Solana platform
+GitHub: https://github.com/DukeDeSouth/Fonana (private repo with deploy key)
+Production: 69.10.59.234:43988, path: /var/www/fonana
+Deploy: ./deploy-to-production.sh
+RPC: https://tame-smart-panorama.solana-mainnet.quiknode.pro/0e70fc875702b126bf8b93cdcd626680e9c48894/
+
+Guidelines:
+- Parallelize operations when possible
+- Analyze before changing (check local & server)
+- Preserve existing systems and data flows
+- Test locally (port 3004) before deploying
+- Use English for UI, Russian comments OK
+- Production has real users/data - be careful
+
+[YOUR TASK HERE] 
