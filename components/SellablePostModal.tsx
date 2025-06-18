@@ -151,10 +151,13 @@ export default function SellablePostModal({ isOpen, onClose, post }: SellablePos
       if (!isValidSolanaAddress(creatorWallet)) {
         throw new Error(`Invalid creator wallet address: ${creatorWallet}`)
       }
+      
+      console.log('Creator wallet validated:', creatorWallet)
+      console.log('Payment amount:', price, 'SOL')
 
       // Параметры для отправки транзакции
       const sendOptions = {
-        skipPreflight: false,
+        skipPreflight: true, // Пропускаем preflight симуляцию, так как она может падать на новых аккаунтах
         preflightCommitment: 'confirmed' as any,
         maxRetries: 3
       }
@@ -197,17 +200,21 @@ export default function SellablePostModal({ isOpen, onClose, post }: SellablePos
             })
           )
           
-          // Симулируем транзакцию перед отправкой
-          try {
-            const simulation = await connection.simulateTransaction(transaction)
-            
-            if (simulation.value.err) {
-              console.error('Simulation failed:', simulation.value.err)
-              // Продолжаем даже если симуляция не удалась, но логируем
+          // Опционально симулируем транзакцию (может падать на новых аккаунтах)
+          if (sendOptions.skipPreflight === false) {
+            try {
+              const simulation = await connection.simulateTransaction(transaction)
+              
+              if (simulation.value.err) {
+                console.error('Simulation failed:', simulation.value.err)
+                // Продолжаем даже если симуляция не удалась
+              } else {
+                console.log('Simulation successful')
+              }
+            } catch (simError) {
+              console.error('Simulation error:', simError)
+              // Продолжаем даже если симуляция выдала ошибку
             }
-          } catch (simError) {
-            console.error('Simulation error:', simError)
-            // Продолжаем даже если симуляция выдала ошибку
           }
           
           signature = await sendTransaction(transaction, connection, sendOptions)
@@ -242,9 +249,9 @@ export default function SellablePostModal({ isOpen, onClose, post }: SellablePos
         console.error('Error checking transaction status:', statusError)
       }
       
-      // Ждем подтверждения
+      // Ждем подтверждения (увеличиваем время для надежности)
       toast.loading('Waiting for blockchain confirmation...')
-      await new Promise(resolve => setTimeout(resolve, 8000))
+      await new Promise(resolve => setTimeout(resolve, 15000)) // 15 секунд вместо 8
 
       // Регистрируем покупку на бэкенде
       const response = await fetch(`/api/posts/${post.id}/buy`, {

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
-import { validateTransaction } from '@/lib/solana/validation'
+import { validateTransaction, waitForTransactionConfirmation } from '@/lib/solana/validation'
 
 // POST /api/posts/[id]/buy - купить пост с фиксированной ценой
 export async function POST(
@@ -31,6 +31,15 @@ export async function POST(
       return NextResponse.json(
         { error: 'Post not found' },
         { status: 404 }
+      )
+    }
+    
+    // Проверяем наличие кошелька создателя
+    const creatorWallet = post.creator.wallet || post.creator.solanaWallet
+    if (!creatorWallet) {
+      return NextResponse.json(
+        { error: 'Creator wallet not configured' },
+        { status: 400 }
       )
     }
 
@@ -83,11 +92,22 @@ export async function POST(
       )
     }
 
+    // Ждем подтверждения транзакции
+    console.log(`Waiting for transaction confirmation: ${txSignature}`)
+    const isConfirmed = await waitForTransactionConfirmation(txSignature, 60, 2000)
+    
+    if (!isConfirmed) {
+      return NextResponse.json(
+        { error: 'Transaction not confirmed. Please check your wallet and try again.' },
+        { status: 400 }
+      )
+    }
+    
     // Проверяем транзакцию
     const validation = await validateTransaction(
       txSignature,
       post.price,
-      [post.creator.wallet || post.creator.solanaWallet || '']
+      [creatorWallet]
     )
 
     if (!validation.isValid) {
@@ -119,7 +139,7 @@ export async function POST(
         data: {
           txSignature,
           fromWallet: buyerWallet,
-          toWallet: post.creator.wallet || post.creator.solanaWallet || '',
+          toWallet: creatorWallet,
           amount: post.price,
           currency: post.currency || 'SOL',
           type: 'POST_PURCHASE',
