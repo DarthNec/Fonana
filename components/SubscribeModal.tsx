@@ -666,4 +666,4 @@ export default function SubscribeModal({ creator, preferredTier, onClose, onSucc
       </div>
     </div>
   )
-} 
+}
