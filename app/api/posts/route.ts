@@ -269,6 +269,16 @@ export async function POST(request: NextRequest) {
       })
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
     }
+    
+    // Проверяем, что для платных постов указана цена
+    if (body.accessType === 'paid' && (!body.price || body.price <= 0)) {
+      return NextResponse.json({ error: 'Please specify a price' }, { status: 400 })
+    }
+    
+    // Проверяем, что для sellable постов с фиксированной ценой указана цена
+    if (body.isSellable && body.sellType === 'FIXED_PRICE' && (!body.sellPrice || body.sellPrice <= 0)) {
+      return NextResponse.json({ error: 'Please specify a sell price for fixed price items' }, { status: 400 })
+    }
 
     const post = await createPost(body.creatorWallet, {
       title: body.title,

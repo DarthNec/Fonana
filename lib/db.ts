@@ -219,6 +219,11 @@ export async function createPost(creatorWallet: string, data: {
 }) {
   const creator = await getUserByWallet(creatorWallet)
   if (!creator) throw new Error('Creator not found')
+  
+  // Валидация для платных постов
+  if (data.tier === 'paid' && (!data.price || data.price <= 0)) {
+    throw new Error('Price is required for paid posts')
+  }
 
   // Map tier values to minSubscriptionTier
   let minSubscriptionTier: string | undefined

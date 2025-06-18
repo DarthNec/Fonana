@@ -12,6 +12,7 @@ import {
   CheckIcon
 } from '@heroicons/react/24/outline'
 import Avatar from './Avatar'
+import { isValidSolanaAddress } from '@/lib/solana/config'
 
 // Константа для базовой комиссии сети Solana (5000 lamports = 0.000005 SOL)
 const NETWORK_FEE = 0.000005
@@ -144,6 +145,11 @@ export default function SellablePostModal({ isOpen, onClose, post }: SellablePos
       
       if (!creatorWallet) {
         throw new Error('Creator wallet not found')
+      }
+      
+      // Валидируем адрес Solana
+      if (!isValidSolanaAddress(creatorWallet)) {
+        throw new Error(`Invalid creator wallet address: ${creatorWallet}`)
       }
 
       // Параметры для отправки транзакции
