@@ -94,17 +94,38 @@ export default function EditPostModal({ isOpen, onClose, post, onPostUpdated }: 
       // Determine access type from post data
       if (!post.isLocked) {
         setAccessType('free')
-      } else if (post.price && post.price > 0) {
+        // Даже для free постов сохраняем цену если это sellable пост
+        if (post.price && post.price > 0) {
+          setPrice(post.price.toString())
+        }
+      } else if (post.price && post.price > 0 && !post.isSellable) {
+        // Если есть цена и это НЕ sellable - значит это paid пост
         setAccessType('paid')
         setPrice(post.price.toString())
       } else if (post.requiredTier === 'vip' || post.isPremium) {
         setAccessType('vip')
+        // Сохраняем цену для sellable VIP постов
+        if (post.price && post.price > 0) {
+          setPrice(post.price.toString())
+        }
       } else if (post.requiredTier === 'premium') {
         setAccessType('premium')
+        // Сохраняем цену для sellable premium постов
+        if (post.price && post.price > 0) {
+          setPrice(post.price.toString())
+        }
       } else if (post.requiredTier === 'basic') {
         setAccessType('subscribers')
+        // Сохраняем цену для sellable subscribers постов
+        if (post.price && post.price > 0) {
+          setPrice(post.price.toString())
+        }
       } else {
         setAccessType('subscribers')
+        // Сохраняем цену для sellable постов
+        if (post.price && post.price > 0) {
+          setPrice(post.price.toString())
+        }
       }
     }
   }, [isOpen, post])
@@ -225,7 +246,8 @@ export default function EditPostModal({ isOpen, onClose, post, onPostUpdated }: 
           thumbnail: mediaUrl, // Синхронизируем thumbnail с mediaUrl
           tags,
           accessType,
-          price: accessType === 'paid' ? parseFloat(price) : null,
+          // Сохраняем цену для paid постов или если была изначальная цена (для sellable)
+          price: (accessType === 'paid' || (post.isSellable && price)) ? parseFloat(price) : null,
           // Map access type to proper fields
           isLocked: accessType !== 'free',
           isPremium: accessType === 'vip',
@@ -233,7 +255,11 @@ export default function EditPostModal({ isOpen, onClose, post, onPostUpdated }: 
             accessType === 'vip' ? 'vip' :
             accessType === 'premium' ? 'premium' :
             accessType === 'subscribers' ? 'basic' :
-            null
+            null,
+          // Сохраняем sellable поля если они есть
+          isSellable: post.isSellable || false,
+          sellType: post.sellType || null,
+          quantity: post.quantity || null
         }),
       })
 

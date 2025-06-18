@@ -217,7 +217,7 @@ export default function CreatePostModal({ onPostCreated, onClose }: CreatePostMo
       return
     }
     
-    if (formData.sellType === 'FIXED_PRICE' && (!formData.price || formData.price <= 0)) {
+    if (formData.isSellable && formData.sellType === 'FIXED_PRICE' && (!formData.price || formData.price <= 0)) {
       toast.error('Please specify a price')
       return
     }

@@ -119,6 +119,11 @@ export async function PUT(
     if (updateData.price !== undefined) dataToUpdate.price = updateData.price
     if (updateData.currency !== undefined) dataToUpdate.currency = updateData.currency
     
+    // Обновляем sellable поля
+    if (updateData.isSellable !== undefined) dataToUpdate.isSellable = updateData.isSellable
+    if (updateData.sellType !== undefined) dataToUpdate.sellType = updateData.sellType
+    if (updateData.quantity !== undefined) dataToUpdate.quantity = updateData.quantity
+    
     // Обновляем minSubscriptionTier на основе accessType или tier
     if (updateData.minSubscriptionTier !== undefined) {
       dataToUpdate.minSubscriptionTier = updateData.minSubscriptionTier
@@ -128,21 +133,34 @@ export async function PUT(
         case 'free':
           dataToUpdate.minSubscriptionTier = null
           dataToUpdate.isLocked = false
+          // Не сбрасываем цену если это sellable пост
+          if (!updateData.isSellable) {
+            dataToUpdate.price = null
+          }
           break
         case 'subscribers':
           dataToUpdate.minSubscriptionTier = 'basic'
           dataToUpdate.isLocked = true
-          dataToUpdate.price = null
+          // Не сбрасываем цену если это sellable пост
+          if (!updateData.isSellable) {
+            dataToUpdate.price = null
+          }
           break
         case 'premium':
           dataToUpdate.minSubscriptionTier = 'premium'
           dataToUpdate.isLocked = true
-          dataToUpdate.price = null
+          // Не сбрасываем цену если это sellable пост
+          if (!updateData.isSellable) {
+            dataToUpdate.price = null
+          }
           break
         case 'vip':
           dataToUpdate.minSubscriptionTier = 'vip'
           dataToUpdate.isLocked = true
-          dataToUpdate.price = null
+          // Не сбрасываем цену если это sellable пост
+          if (!updateData.isSellable) {
+            dataToUpdate.price = null
+          }
           break
         case 'paid':
           dataToUpdate.minSubscriptionTier = null
