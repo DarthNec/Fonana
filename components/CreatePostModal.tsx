@@ -273,8 +273,9 @@ export default function CreatePostModal({ onPostCreated, onClose }: CreatePostMo
         thumbnail,
         mediaUrl,
         isLocked: formData.accessType !== 'free',
-        accessType: formData.accessType, // Добавляем accessType для правильной валидации на бэкенде
-        price: formData.accessType === 'paid' ? formData.price : undefined,
+              accessType: formData.accessType, // Добавляем accessType для правильной валидации на бэкенде
+      price: formData.accessType === 'paid' ? formData.price : 
+             (formData.isSellable && formData.sellType === 'FIXED_PRICE' ? formData.sellPrice : undefined),
         currency: formData.accessType === 'paid' ? formData.currency : undefined,
         isPremium: false,
         // Мапим accessType на minSubscriptionTier
@@ -283,9 +284,8 @@ export default function CreatePostModal({ onPostCreated, onClose }: CreatePostMo
                             formData.accessType === 'subscribers' ? 'basic' : 
                             undefined,
         // Новые поля для продаваемых постов
-        isSellable: formData.isSellable,
-        sellType: formData.isSellable ? formData.sellType : undefined,
-        sellPrice: formData.isSellable && formData.sellType === 'FIXED_PRICE' ? formData.sellPrice : undefined,
+                  isSellable: formData.isSellable,
+          sellType: formData.isSellable ? formData.sellType : undefined,
         quantity: formData.isSellable ? formData.quantity : undefined,
         auctionStartPrice: formData.isSellable && formData.sellType === 'AUCTION' ? formData.auctionStartPrice : undefined,
         auctionStepPrice: formData.isSellable && formData.sellType === 'AUCTION' ? formData.auctionStepPrice : undefined,

@@ -59,8 +59,8 @@ export async function POST(
       )
     }
 
-    // Проверяем цену (используем sellPrice для sellable постов)
-    const price = post.isSellable ? post.sellPrice : post.price
+    // Проверяем цену
+    const price = post.price
     if (!price || price <= 0) {
       return NextResponse.json(
         { error: 'Invalid post price' },

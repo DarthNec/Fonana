@@ -286,8 +286,8 @@ export async function POST(request: NextRequest) {
     }
     
     // Проверяем, что для sellable постов с фиксированной ценой указана цена
-    if (body.isSellable && body.sellType === 'FIXED_PRICE' && (!body.sellPrice || body.sellPrice <= 0)) {
-      return NextResponse.json({ error: 'Please specify a sell price for fixed price items' }, { status: 400 })
+    if (body.isSellable && body.sellType === 'FIXED_PRICE' && (!body.price || body.price <= 0)) {
+      return NextResponse.json({ error: 'Please specify a price for fixed price items' }, { status: 400 })
     }
 
     const post = await createPost(body.creatorWallet, {
@@ -310,7 +310,6 @@ export async function POST(request: NextRequest) {
       // Новые поля для продаваемых постов
       isSellable: body.isSellable || false,
       sellType: body.sellType,
-      sellPrice: body.sellPrice,
       quantity: body.quantity,
       auctionStartPrice: body.auctionStartPrice,
       auctionStepPrice: body.auctionStepPrice,
