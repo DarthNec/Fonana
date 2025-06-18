@@ -183,12 +183,16 @@ export async function GET(req: Request) {
       let shouldHideContent = false
       
       if (post.isLocked && !isCreatorPost) {
-        // Для sellable постов проверяем покупку
-        if (post.isSellable) {
-          shouldHideContent = !hasPurchasedSellable
+        // Для sellable постов НЕ проверяем покупку товара, так как это не влияет на доступ к контенту
+        // Sellable посты продают товары, а не доступ к контенту
+        if (post.isSellable && post.minSubscriptionTier) {
+          // Проверяем подписку пользователя для доступа к контенту
+          const userTier = userSubscriptionsMap.get(post.creatorId)
+          const hasRequiredTier = hasAccessToTier(userTier, post.minSubscriptionTier)
+          shouldHideContent = !hasRequiredTier
         }
         // Если у поста есть минимальный тир подписки
-        else if (post.minSubscriptionTier) {
+        else if (!post.isSellable && post.minSubscriptionTier) {
           const userTier = userSubscriptionsMap.get(post.creatorId)
           const hasRequiredTier = hasAccessToTier(userTier, post.minSubscriptionTier)
           shouldHideContent = !hasRequiredTier
@@ -200,7 +204,7 @@ export async function GET(req: Request) {
           shouldHideContent = !hasRequiredTier
         }
         // Если у поста есть цена - это платный пост за доступ
-        else if (post.price && post.price > 0) {
+        else if (post.price && post.price > 0 && !post.isSellable) {
           shouldHideContent = !hasPurchased
         }
         // Обычный заблокированный пост - доступен любым подписчикам
