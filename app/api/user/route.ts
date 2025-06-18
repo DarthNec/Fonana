@@ -125,9 +125,9 @@ export async function POST(request: NextRequest) {
     const existingUser = await getUserByWallet(wallet)
     
     if (existingUser) {
-      // Проверяем, есть ли у пользователя никнейм и био
-      // Если нет - значит это пустой аккаунт после удаления или новый пользователь
-      const isProfileEmpty = !existingUser.nickname || !existingUser.bio || !existingUser.fullName
+      // Проверяем, есть ли у пользователя никнейм и полное имя
+      // bio является опциональным полем и может быть пустым
+      const isProfileEmpty = !existingUser.nickname || !existingUser.fullName
       
       // Пользователь существует - возвращаем его
       const response = NextResponse.json({ 

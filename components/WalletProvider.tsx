@@ -14,6 +14,23 @@ import { clusterApiUrl } from '@solana/web3.js'
 // Default styles that can be overridden by your app
 require('@solana/wallet-adapter-react-ui/styles.css')
 
+// Проверка мобильного устройства
+const isMobileDevice = () => {
+  if (typeof window === 'undefined') return false
+  
+  const userAgent = window.navigator.userAgent.toLowerCase()
+  const isMobile = /android|webos|iphone|ipad|ipod|blackberry|iemobile|opera mini/i.test(userAgent)
+  const isTablet = /ipad|tablet|playbook|silk/i.test(userAgent)
+  
+  return isMobile || isTablet
+}
+
+// Проверка, установлен ли Phantom в мобильном браузере
+const isPhantomInstalled = () => {
+  if (typeof window === 'undefined') return false
+  return window.solana && window.solana.isPhantom
+}
+
 export function WalletProvider({ children }: { children: React.ReactNode }) {
   const [mounted, setMounted] = useState(false)
   
@@ -28,14 +45,22 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
     [network]
   )
 
-  const wallets = useMemo(
-    () => [
-      new PhantomWalletAdapter(),
+  const wallets = useMemo(() => {
+    const walletsArray = []
+    
+    // Добавляем Phantom адаптер только если это не мобильное устройство 
+    // или если Phantom установлен в мобильном браузере
+    if (!isMobileDevice() || isPhantomInstalled()) {
+      walletsArray.push(new PhantomWalletAdapter())
+    }
+    
+    walletsArray.push(
       new SolflareWalletAdapter(),
-      new TorusWalletAdapter(),
-    ],
-    []
-  )
+      new TorusWalletAdapter()
+    )
+    
+    return walletsArray
+  }, [])
 
   useEffect(() => {
     setMounted(true)

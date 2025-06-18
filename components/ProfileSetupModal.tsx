@@ -146,6 +146,13 @@ export default function ProfileSetupModal({
 
   const handleNext = () => {
     if (step < 3) {
+      // Если переходим с шага 2 и био пустое, генерируем дефолтное
+      if (step === 2 && !formData.bio.trim()) {
+        setFormData(prev => ({
+          ...prev,
+          bio: `Fonana creator and Web3 enthusiast. Join me on this journey!`
+        }))
+      }
       setStep(step + 1)
     } else {
       handleSubmit()
@@ -173,7 +180,12 @@ export default function ProfileSetupModal({
   return (
     <Dialog
       open={isOpen}
-      onClose={() => {}}
+      onClose={() => {
+        // Разрешаем закрытие только если заполнены обязательные поля (после шага 1)
+        if (step > 1 && formData.nickname && formData.fullName) {
+          onClose()
+        }
+      }}
       className="relative z-50"
     >
       <div className="fixed inset-0 bg-black/30 backdrop-blur-sm" aria-hidden="true" />
@@ -182,7 +194,17 @@ export default function ProfileSetupModal({
         <Dialog.Panel className="mx-auto max-w-md w-full bg-white dark:bg-slate-800 rounded-3xl shadow-2xl">
           <div className="p-6">
             {/* Header */}
-            <div className="text-center mb-6">
+            <div className="text-center mb-6 relative">
+              {/* Close button - показываем только после шага 1 */}
+              {step > 1 && formData.nickname && formData.fullName && (
+                <button
+                  onClick={onClose}
+                  className="absolute right-0 top-0 p-2 text-gray-400 hover:text-gray-600 dark:text-slate-500 dark:hover:text-slate-300 transition-colors"
+                  aria-label="Close"
+                >
+                  <XMarkIcon className="w-5 h-5" />
+                </button>
+              )}
               <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
                 Welcome to Fonana! 🎉
               </h2>

@@ -15,9 +15,14 @@ import {
   XMarkIcon,
   BellIcon,
   Cog6ToothIcon,
-  ArrowRightOnRectangleIcon
+  ArrowRightOnRectangleIcon,
+  RocketLaunchIcon,
+  VideoCameraIcon,
+  PuzzlePieceIcon,
+  Squares2X2Icon,
+  BookOpenIcon
 } from '@heroicons/react/24/outline'
-import { WalletMultiButton } from '@solana/wallet-adapter-react-ui'
+import { MobileWalletConnect } from './MobileWalletConnect'
 import { useWallet } from '@solana/wallet-adapter-react'
 import { useUser } from '@/lib/hooks/useUser'
 
@@ -91,7 +96,7 @@ export function Navbar() {
 
             {/* Wallet */}
             <div className="wallet-adapter-button-wrapper">
-              <WalletMultiButton />
+              <MobileWalletConnect />
             </div>
 
             {/* Profile */}
@@ -204,7 +209,7 @@ export function Navbar() {
               
               <div className="pt-4 border-t border-gray-200 dark:border-slate-700/50">
                 <div className="wallet-adapter-button-wrapper mb-4">
-                  <WalletMultiButton />
+                  <MobileWalletConnect />
                 </div>
                 
                 {connected && (
