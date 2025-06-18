@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react'
 import { useWallet } from '@solana/wallet-adapter-react'
 import { PublicKey, LAMPORTS_PER_SOL } from '@solana/web3.js'
-import { useConnection } from '@solana/wallet-adapter-react'
+import { connection } from '@/lib/solana/connection'
 import { toast } from 'react-hot-toast'
 import { 
   XMarkIcon,
@@ -46,7 +46,6 @@ interface SellablePostModalProps {
 }
 
 export default function SellablePostModal({ isOpen, onClose, post }: SellablePostModalProps) {
-  const { connection } = useConnection()
   const { connected, publicKey, sendTransaction } = useWallet()
   const [isProcessing, setIsProcessing] = useState(false)
   const [bidAmount, setBidAmount] = useState('')
@@ -141,6 +140,16 @@ export default function SellablePostModal({ isOpen, onClose, post }: SellablePos
         referrerWallet
       )
 
+      // Check connection before creating transaction
+      try {
+        const slot = await connection.getSlot()
+        console.log('[SellablePostModal] Current slot:', slot)
+      } catch (err) {
+        console.error('[SellablePostModal] Connection error:', err)
+        toast.error('Connection error. Please try again.')
+        return
+      }
+      
       // Create transaction
       const transaction = await createPostPurchaseTransaction(
         publicKey,
@@ -152,7 +161,7 @@ export default function SellablePostModal({ isOpen, onClose, post }: SellablePos
       const sendOptions = {
         skipPreflight: false,
         preflightCommitment: 'confirmed' as any,
-        maxRetries: 3
+        maxRetries: 5
       }
       
       // Get fresh blockhash right before sending
@@ -161,8 +170,12 @@ export default function SellablePostModal({ isOpen, onClose, post }: SellablePos
       ;(transaction as any).lastValidBlockHeight = lastValidBlockHeight
       
       signature = await sendTransaction(transaction, connection, sendOptions)
+      console.log('[SellablePostModal] Transaction sent:', signature)
       
       toast.loading('Waiting for blockchain confirmation...')
+      
+      // Give transaction time to propagate through the network
+      await new Promise(resolve => setTimeout(resolve, 2000))
       
       // Wait for transaction confirmation
       let confirmed = false
@@ -172,14 +185,32 @@ export default function SellablePostModal({ isOpen, onClose, post }: SellablePos
         try {
           const status = await connection.getSignatureStatus(signature)
           
+          // Log status every 5 attempts
+          if (i % 5 === 0) {
+            console.log(`[SellablePostModal] Attempt ${i + 1}/${maxRetries} - Status:`, {
+              confirmationStatus: status.value?.confirmationStatus,
+              err: status.value?.err,
+              slot: status.context.slot
+            })
+          }
+          
           if (status.value?.confirmationStatus === 'confirmed' || 
               status.value?.confirmationStatus === 'finalized') {
+            console.log(`[SellablePostModal] Transaction confirmed after ${i + 1} attempts`)
             confirmed = true
             break
           }
           
           if (status.value?.err) {
+            console.error('[SellablePostModal] Transaction failed:', status.value.err)
             throw new Error('Transaction failed on blockchain')
+          }
+          
+          // If transaction not found yet, wait longer
+          if (!status.value && i < 20) {
+            console.log(`[SellablePostModal] Transaction not found yet, waiting... (attempt ${i + 1})`)
+            await new Promise(resolve => setTimeout(resolve, 2000))
+            continue
           }
           
           // If not confirmed yet, wait

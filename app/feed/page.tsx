@@ -49,7 +49,7 @@ export default function FeedPage() {
 
   useEffect(() => {
     loadPosts()
-  }, [user])
+  }, [user?.wallet]) // Перезагружаем при изменении wallet
 
   // Перезагрузка постов при фокусе окна (для обновления после редактирования)
   useEffect(() => {
