@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react'
 import { useWallet } from '@solana/wallet-adapter-react'
-import { SystemProgram, Transaction, PublicKey, LAMPORTS_PER_SOL, ComputeBudgetProgram, Connection } from '@solana/web3.js'
+import { PublicKey, LAMPORTS_PER_SOL } from '@solana/web3.js'
 import { useConnection } from '@solana/wallet-adapter-react'
 import { toast } from 'react-hot-toast'
 import { 
@@ -13,30 +13,14 @@ import {
 } from '@heroicons/react/24/outline'
 import Avatar from './Avatar'
 import { isValidSolanaAddress } from '@/lib/solana/config'
+import { 
+  createPostPurchaseTransaction, 
+  calculatePaymentDistribution,
+  formatSolAmount 
+} from '@/lib/solana/payments'
 
 // Константа для базовой комиссии сети Solana (5000 lamports = 0.000005 SOL)
 const NETWORK_FEE = 0.000005
-
-// Получаем рекомендуемую приоритетную комиссию на основе текущей загрузки сети
-async function getRecommendedPriorityFee(connection: Connection): Promise<number> {
-  try {
-    const fees = await connection.getRecentPrioritizationFees()
-    if (fees && fees.length > 0) {
-      const nonZeroFees = fees.filter(f => f.prioritizationFee > 0)
-      if (nonZeroFees.length > 0) {
-        const feeValues = nonZeroFees.map(f => f.prioritizationFee).sort((a, b) => a - b)
-        // Используем 90-й перцентиль для большей надежности в загруженной сети
-        const p90 = feeValues[Math.floor(feeValues.length * 0.9)]
-        // Минимум 600000, максимум 2000000 microlamports
-        return Math.min(Math.max(p90 || 600000, 600000), 2000000)
-      }
-    }
-  } catch (error) {
-    console.error('Error getting priority fees:', error)
-  }
-  // По умолчанию используем 600000 microlamports
-  return 600000
-}
 
 interface SellablePostModalProps {
   isOpen: boolean
@@ -75,25 +59,7 @@ export default function SellablePostModal({ isOpen, onClose, post }: SellablePos
   
   const isAuction = post.sellType === 'AUCTION'
 
-  // Получаем актуальную комиссию сети при открытии модального окна
-  useEffect(() => {
-    if (!isOpen || !connection) return
 
-    const updateNetworkFee = async () => {
-      try {
-        const priorityFee = await getRecommendedPriorityFee(connection)
-        // Рассчитываем примерную комиссию сети в SOL
-        // Базовая комиссия (5000 lamports) + приоритетная комиссия на примерно 200000 compute units
-        const estimatedFeeInLamports = 5000 + (priorityFee * 200000 / 1000000)
-        const feeInSol = estimatedFeeInLamports / LAMPORTS_PER_SOL
-        setDynamicNetworkFee(feeInSol)
-      } catch (error) {
-        console.error('Error calculating network fee:', error)
-      }
-    }
-
-    updateNetworkFee()
-  }, [isOpen, connection])
 
   // Обновляем таймер для аукциона
   useEffect(() => {
@@ -129,155 +95,110 @@ export default function SellablePostModal({ isOpen, onClose, post }: SellablePos
 
   const handleBuyNow = async () => {
     if (!connected || !publicKey) {
-      toast.error('Подключите кошелек')
+      toast.error('Please connect your wallet')
       return
     }
 
     setIsProcessing(true)
-
+    
     try {
-      // Получаем кошелек создателя
-      const creatorResponse = await fetch(`/api/creators/${post.creator.id}`)
-      if (!creatorResponse.ok) throw new Error('Failed to fetch creator data')
-      
-      const { creator } = await creatorResponse.json()
-      const creatorWallet = creator.wallet || creator.solanaWallet
-      
-      if (!creatorWallet) {
-        throw new Error('Creator wallet not found')
+      // Check that it's not the platform wallet
+      const PLATFORM_WALLET = 'npzAZaN9fDMgLV63b3kv3FF8cLSd8dQSLxyMXASA5T4'
+      if (publicKey.toBase58() === PLATFORM_WALLET) {
+        toast.error('❌ You cannot buy from the platform wallet!')
+        return
       }
-      
-      // Валидируем адрес Solana
-      if (!isValidSolanaAddress(creatorWallet)) {
-        throw new Error(`Invalid creator wallet address: ${creatorWallet}`)
-      }
-      
-      console.log('Creator wallet validated:', creatorWallet)
-      console.log('Payment amount:', price, 'SOL')
 
-      // Параметры для отправки транзакции
+      // Get full creator data
+      const creatorResponse = await fetch(`/api/creators/${post.creator.id}`)
+      const creatorData = await creatorResponse.json()
+      
+      if (!creatorData.creator) {
+        throw new Error('Creator not found')
+      }
+
+      const creatorWallet = creatorData.creator.solanaWallet || creatorData.creator.wallet
+      if (!creatorWallet || !isValidSolanaAddress(creatorWallet)) {
+        toast.error('Creator wallet not configured')
+        return
+      }
+
+      // Check that creator is not buying from themselves
+      if (creatorWallet === publicKey.toBase58()) {
+        toast.error('You cannot buy your own post')
+        return
+      }
+
+      // Determine referrer presence
+      const referrerWallet = creatorData.creator.referrer?.solanaWallet || creatorData.creator.referrer?.wallet
+      const hasReferrer = creatorData.creator.referrerId && referrerWallet && isValidSolanaAddress(referrerWallet)
+
+      // Calculate payment distribution
+      const distribution = calculatePaymentDistribution(
+        price,
+        creatorWallet,
+        hasReferrer,
+        referrerWallet
+      )
+
+      // Create transaction
+      const transaction = await createPostPurchaseTransaction(
+        publicKey,
+        distribution
+      )
+
+      // Send transaction
+      let signature: string = ''
       const sendOptions = {
-        skipPreflight: true, // Пропускаем preflight симуляцию, так как она может падать на новых аккаунтах
+        skipPreflight: false,
         preflightCommitment: 'confirmed' as any,
         maxRetries: 3
       }
       
-      // Логика повторных попыток
-      let signature: string = ''
-      let attempts = 0
-      const maxAttempts = 3
+      // Get fresh blockhash right before sending
+      const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash('confirmed')
+      transaction.recentBlockhash = blockhash
+      ;(transaction as any).lastValidBlockHeight = lastValidBlockHeight
       
-      while (attempts < maxAttempts) {
-        attempts++
-        
-        try {
-          // Создаем новую транзакцию для каждой попытки
-          const transaction = new Transaction()
-          
-          // Получаем свежий blockhash прямо перед отправкой
-          const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash('confirmed')
-          transaction.recentBlockhash = blockhash
-          transaction.feePayer = publicKey
-          ;(transaction as any).lastValidBlockHeight = lastValidBlockHeight
-          
-          // Получаем динамическую приоритетную комиссию
-          const priorityFee = await getRecommendedPriorityFee(connection)
-          console.log(`Using priority fee: ${priorityFee} microlamports`)
-          
-          // Добавляем приоритетную комиссию для более быстрого подтверждения
-          transaction.add(
-            ComputeBudgetProgram.setComputeUnitPrice({
-              microLamports: priorityFee
-            })
-          )
-          
-          // Добавляем перевод создателю
-          transaction.add(
-            SystemProgram.transfer({
-              fromPubkey: publicKey,
-              toPubkey: new PublicKey(creatorWallet),
-              lamports: Math.floor(price * LAMPORTS_PER_SOL)
-            })
-          )
-          
-          // Опционально симулируем транзакцию (может падать на новых аккаунтах)
-          if (sendOptions.skipPreflight === false) {
-            try {
-              const simulation = await connection.simulateTransaction(transaction)
-              
-              if (simulation.value.err) {
-                console.error('Simulation failed:', simulation.value.err)
-                // Продолжаем даже если симуляция не удалась
-              } else {
-                console.log('Simulation successful')
-              }
-            } catch (simError) {
-              console.error('Simulation error:', simError)
-              // Продолжаем даже если симуляция выдала ошибку
-            }
-          }
-          
-          signature = await sendTransaction(transaction, connection, sendOptions)
-          console.log('Transaction sent:', signature)
-          
-          // Успешно отправлено, выходим из цикла
-          break
-          
-        } catch (sendError) {
-          console.error(`Send attempt ${attempts} failed:`, sendError)
-          
-          if (attempts === maxAttempts) {
-            throw new Error(`Failed to send transaction after ${maxAttempts} attempts: ${sendError instanceof Error ? sendError.message : 'Unknown error'}`)
-          }
-          
-          // Ждем перед следующей попыткой
-          await new Promise(resolve => setTimeout(resolve, 2000))
-        }
-      }
-
-      // Проверяем транзакцию
-      toast.loading('Checking transaction status...')
-      await new Promise(resolve => setTimeout(resolve, 2000))
+      signature = await sendTransaction(transaction, connection, sendOptions)
       
-      // Проверяем статус транзакции
-      try {
-        const status = await connection.getSignatureStatus(signature)
-        if (status.value?.err) {
-          throw new Error(`Transaction rejected: ${JSON.stringify(status.value.err)}`)
-        }
-      } catch (statusError) {
-        console.error('Error checking transaction status:', statusError)
-      }
-      
-      // Ждем подтверждения (увеличиваем время для надежности)
       toast.loading('Waiting for blockchain confirmation...')
-      await new Promise(resolve => setTimeout(resolve, 15000)) // 15 секунд вместо 8
+      
+      // Give transaction time to get into the network
+      await new Promise(resolve => setTimeout(resolve, 5000))
 
-      // Регистрируем покупку на бэкенде
+      // Process payment on backend
       const response = await fetch(`/api/posts/${post.id}/buy`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          'x-user-wallet': publicKey.toBase58()
+        },
         body: JSON.stringify({
           buyerWallet: publicKey.toString(),
-          txSignature: signature
+          txSignature: signature,
+          price,
+          hasReferrer,
+          distribution
         })
       })
 
-      if (!response.ok) {
-        const error = await response.json()
-        throw new Error(error.error || 'Failed to process purchase')
-      }
+      const data = await response.json()
 
-      toast.success('Post successfully purchased!')
+      if (!response.ok) {
+        throw new Error(data.error || 'Error processing payment')
+      }
+      
+      toast.success(`Successfully bought the post!`)
+      
       onClose()
       
-      // Обновляем страницу через небольшую задержку
+      // Force page refresh after a small delay
       setTimeout(() => {
-        window.dispatchEvent(new Event('postsUpdated'))
-      }, 500)
-
+        window.location.reload()
+      }, 1500)
     } catch (error) {
-      console.error('Purchase error:', error)
+      console.error('Error buying post:', error)
       
       let errorMessage = 'Error processing purchase'
       

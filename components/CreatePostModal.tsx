@@ -273,6 +273,7 @@ export default function CreatePostModal({ onPostCreated, onClose }: CreatePostMo
         thumbnail,
         mediaUrl,
         isLocked: formData.accessType !== 'free',
+        accessType: formData.accessType, // Добавляем accessType для правильной валидации на бэкенде
         price: formData.accessType === 'paid' ? formData.price : undefined,
         currency: formData.accessType === 'paid' ? formData.currency : undefined,
         isPremium: false,
