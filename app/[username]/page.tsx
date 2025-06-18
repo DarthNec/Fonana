@@ -1,13 +1,15 @@
 'use client'
 
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { useParams, useRouter, notFound } from 'next/navigation'
 import { useUser } from '@/lib/hooks/useUser'
 
 export default function UserProfileShortcut() {
   const params = useParams()
   const router = useRouter()
+  const { user } = useUser()
   const username = params.username as string
+  const [isLoading, setIsLoading] = useState(true)
 
   useEffect(() => {
     if (username) {
@@ -40,24 +42,34 @@ export default function UserProfileShortcut() {
           // Redirect to the actual creator page
           router.replace(`/creator/${data.user.id}`)
         } else {
+          // User not found - show 404
+          setIsLoading(false)
           notFound()
         }
       } else {
+        // Error fetching user - show 404
+        setIsLoading(false)
         notFound()
       }
     } catch (error) {
       console.error('Error fetching user:', error)
+      setIsLoading(false)
       notFound()
     }
   }
 
   // Show loading while redirecting
-  return (
-    <div className="min-h-screen bg-gray-50 dark:bg-slate-900 flex items-center justify-center">
-      <div className="text-center">
-        <div className="w-16 h-16 border-4 border-purple-500/30 border-t-purple-500 rounded-full animate-spin mx-auto mb-4"></div>
-        <p className="text-gray-600 dark:text-slate-400">Loading profile...</p>
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-gray-50 dark:bg-slate-900 flex items-center justify-center pt-20">
+        <div className="text-center">
+          <div className="w-16 h-16 border-4 border-purple-500/30 border-t-purple-500 rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-gray-600 dark:text-slate-400">Loading profile...</p>
+        </div>
       </div>
-    </div>
-  )
+    )
+  }
+
+  // If we get here, the user was not found
+  return null
 } 

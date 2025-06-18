@@ -49,7 +49,7 @@ export default function ReferralsPage() {
   const [activeTab, setActiveTab] = useState<'overview' | 'referrals' | 'transactions'>('overview')
 
   const referralLink = user?.nickname 
-    ? `${window.location.origin}/${user.nickname}`
+    ? `${typeof window !== 'undefined' ? window.location.origin : ''}/r/${user.nickname}`
     : ''
 
   useEffect(() => {
@@ -66,7 +66,7 @@ export default function ReferralsPage() {
       setReferrals(data.referrals || [])
     } catch (error) {
       console.error('Error fetching referrals:', error)
-      toast.error('Ошибка загрузки рефералов')
+      toast.error('Error loading referrals')
     } finally {
       setLoading(false)
     }
@@ -86,7 +86,7 @@ export default function ReferralsPage() {
     if (referralLink) {
       navigator.clipboard.writeText(referralLink)
       setCopied(true)
-      toast.success('Ссылка скопирована!')
+      toast.success('Link copied!')
       setTimeout(() => setCopied(false), 2000)
     }
   }
@@ -106,161 +106,161 @@ export default function ReferralsPage() {
 
   if (!user) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <p className="text-gray-500">Войдите в систему</p>
+      <div className="flex items-center justify-center min-h-screen pt-20">
+        <p className="text-gray-500 dark:text-slate-400">Please sign in</p>
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 py-8">
+    <div className="min-h-screen bg-gray-50 dark:bg-slate-900 pt-20 pb-8">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        {/* Заголовок */}
+        {/* Header */}
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
-            Реферальная программа
+            Referral Program
           </h1>
-          <p className="mt-2 text-gray-600 dark:text-gray-400">
-            Приглашайте новых пользователей и зарабатывайте
+          <p className="mt-2 text-gray-600 dark:text-slate-400">
+            Invite new users and earn commissions
           </p>
         </div>
 
-        {/* Реферальная ссылка */}
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6 mb-8">
+        {/* Referral Link */}
+        <div className="bg-white dark:bg-slate-800/50 backdrop-blur-sm border border-gray-200 dark:border-slate-700/50 rounded-3xl shadow-lg p-6 mb-8">
           <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
-            Ваша реферальная ссылка
+            Your Referral Link
           </h2>
           <div className="flex items-center space-x-2">
             <input
               type="text"
               value={referralLink}
               readOnly
-              className="flex-1 px-4 py-2 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white"
+              className="flex-1 px-4 py-3 bg-gray-50 dark:bg-slate-700/50 border border-gray-300 dark:border-slate-600/50 rounded-2xl text-gray-900 dark:text-white focus:outline-none"
             />
             <button
               onClick={copyLink}
-              className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors flex items-center space-x-2"
+              className="px-6 py-3 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white rounded-2xl font-medium transition-all transform hover:scale-105 flex items-center space-x-2"
             >
               <LinkIcon className="w-5 h-5" />
-              <span>{copied ? 'Скопировано!' : 'Копировать'}</span>
+              <span>{copied ? 'Copied!' : 'Copy'}</span>
             </button>
           </div>
         </div>
 
-        {/* Табы */}
-        <div className="border-b border-gray-200 dark:border-gray-700 mb-8">
+        {/* Tabs */}
+        <div className="border-b border-gray-200 dark:border-slate-700/50 mb-8">
           <nav className="-mb-px flex space-x-8">
             <button
               onClick={() => setActiveTab('overview')}
-              className={`py-2 px-1 border-b-2 font-medium text-sm ${
+              className={`py-2 px-1 border-b-2 font-medium text-sm transition-colors ${
                 activeTab === 'overview'
                   ? 'border-purple-500 text-purple-600 dark:text-purple-400'
-                  : 'border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 dark:text-slate-400 dark:hover:text-slate-300'
               }`}
             >
-              Обзор
+              Overview
             </button>
             <button
               onClick={() => setActiveTab('referrals')}
-              className={`py-2 px-1 border-b-2 font-medium text-sm ${
+              className={`py-2 px-1 border-b-2 font-medium text-sm transition-colors ${
                 activeTab === 'referrals'
                   ? 'border-purple-500 text-purple-600 dark:text-purple-400'
-                  : 'border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 dark:text-slate-400 dark:hover:text-slate-300'
               }`}
             >
-              Рефералы ({referrals.length})
+              Referrals ({referrals.length})
             </button>
             <button
               onClick={() => setActiveTab('transactions')}
-              className={`py-2 px-1 border-b-2 font-medium text-sm ${
+              className={`py-2 px-1 border-b-2 font-medium text-sm transition-colors ${
                 activeTab === 'transactions'
                   ? 'border-purple-500 text-purple-600 dark:text-purple-400'
-                  : 'border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 dark:text-slate-400 dark:hover:text-slate-300'
               }`}
             >
-              Транзакции
+              Transactions
             </button>
           </nav>
         </div>
 
-        {/* Контент */}
+        {/* Content */}
         {activeTab === 'overview' && (
           <>
-            {/* Статистика */}
+            {/* Statistics */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-              <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+              <div className="bg-white dark:bg-slate-800/50 backdrop-blur-sm border border-gray-200 dark:border-slate-700/50 rounded-3xl shadow-lg p-6">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm font-medium text-gray-600 dark:text-gray-400">
-                      Общий заработок
+                    <p className="text-sm font-medium text-gray-600 dark:text-slate-400">
+                      Total Earnings
                     </p>
                     <p className="text-2xl font-bold text-gray-900 dark:text-white">
                       {earnings ? formatSolAmount(earnings.totalEarnings) : '0 SOL'}
                     </p>
                   </div>
-                  <CurrencyDollarIcon className="w-8 h-8 text-green-500" />
+                  <CurrencyDollarIcon className="w-8 h-8 text-green-500 dark:text-green-400" />
                 </div>
               </div>
 
-              <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+              <div className="bg-white dark:bg-slate-800/50 backdrop-blur-sm border border-gray-200 dark:border-slate-700/50 rounded-3xl shadow-lg p-6">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm font-medium text-gray-600 dark:text-gray-400">
-                      Всего рефералов
+                    <p className="text-sm font-medium text-gray-600 dark:text-slate-400">
+                      Total Referrals
                     </p>
                     <p className="text-2xl font-bold text-gray-900 dark:text-white">
                       {referrals.length}
                     </p>
                   </div>
-                  <UserGroupIcon className="w-8 h-8 text-blue-500" />
+                  <UserGroupIcon className="w-8 h-8 text-blue-500 dark:text-blue-400" />
                 </div>
               </div>
 
-              <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+              <div className="bg-white dark:bg-slate-800/50 backdrop-blur-sm border border-gray-200 dark:border-slate-700/50 rounded-3xl shadow-lg p-6">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm font-medium text-gray-600 dark:text-gray-400">
-                      Активные создатели
+                    <p className="text-sm font-medium text-gray-600 dark:text-slate-400">
+                      Active Creators
                     </p>
                     <p className="text-2xl font-bold text-gray-900 dark:text-white">
                       {referrals.filter(r => r.isCreator).length}
                     </p>
                   </div>
-                  <UserPlusIcon className="w-8 h-8 text-purple-500" />
+                  <UserPlusIcon className="w-8 h-8 text-purple-500 dark:text-purple-400" />
                 </div>
               </div>
 
-              <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+              <div className="bg-white dark:bg-slate-800/50 backdrop-blur-sm border border-gray-200 dark:border-slate-700/50 rounded-3xl shadow-lg p-6">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm font-medium text-gray-600 dark:text-gray-400">
-                      Транзакций
+                    <p className="text-sm font-medium text-gray-600 dark:text-slate-400">
+                      Transactions
                     </p>
                     <p className="text-2xl font-bold text-gray-900 dark:text-white">
                       {earnings?.totalTransactions || 0}
                     </p>
                   </div>
-                  <ChartBarIcon className="w-8 h-8 text-orange-500" />
+                  <ChartBarIcon className="w-8 h-8 text-orange-500 dark:text-orange-400" />
                 </div>
               </div>
             </div>
 
-            {/* Заработок по типам */}
+            {/* Earnings by Type */}
             {earnings && (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-                <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+                <div className="bg-white dark:bg-slate-800/50 backdrop-blur-sm border border-gray-200 dark:border-slate-700/50 rounded-3xl shadow-lg p-6">
                   <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
-                    Заработок по типам
+                    Earnings by Type
                   </h3>
                   <div className="space-y-3">
                     <div className="flex justify-between items-center">
-                      <span className="text-gray-600 dark:text-gray-400">Подписки</span>
+                      <span className="text-gray-600 dark:text-slate-400">Subscriptions</span>
                       <span className="font-semibold text-gray-900 dark:text-white">
                         {formatSolAmount(earnings.earningsByType.subscriptions)}
                       </span>
                     </div>
                     <div className="flex justify-between items-center">
-                      <span className="text-gray-600 dark:text-gray-400">Платные посты</span>
+                      <span className="text-gray-600 dark:text-slate-400">Paid Posts</span>
                       <span className="font-semibold text-gray-900 dark:text-white">
                         {formatSolAmount(earnings.earningsByType.posts)}
                       </span>
@@ -268,14 +268,14 @@ export default function ReferralsPage() {
                   </div>
                 </div>
 
-                <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+                <div className="bg-white dark:bg-slate-800/50 backdrop-blur-sm border border-gray-200 dark:border-slate-700/50 rounded-3xl shadow-lg p-6">
                   <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
-                    Заработок по валютам
+                    Earnings by Currency
                   </h3>
                   <div className="space-y-3">
                     {Object.entries(earnings.earningsByCurrency).map(([currency, amount]) => (
                       <div key={currency} className="flex justify-between items-center">
-                        <span className="text-gray-600 dark:text-gray-400">{currency}</span>
+                        <span className="text-gray-600 dark:text-slate-400">{currency}</span>
                         <span className="font-semibold text-gray-900 dark:text-white">
                           {currency === 'SOL' ? formatSolAmount(amount) : `${amount.toFixed(2)} ${currency}`}
                         </span>
@@ -290,29 +290,29 @@ export default function ReferralsPage() {
 
         {activeTab === 'referrals' && (
           <>
-            {/* Сортировка */}
+            {/* Sort */}
             <div className="flex justify-end mb-4">
               <select
                 value={sortBy}
                 onChange={(e) => setSortBy(e.target.value as 'date' | 'profit' | 'name')}
-                className="px-4 py-2 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white"
+                className="px-4 py-2 bg-white dark:bg-slate-800/50 border border-gray-300 dark:border-slate-600/50 rounded-2xl text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-purple-400"
               >
-                <option value="date">По дате</option>
-                <option value="profit">По доходу</option>
-                <option value="name">По имени</option>
+                <option value="date">By Date</option>
+                <option value="profit">By Revenue</option>
+                <option value="name">By Name</option>
               </select>
             </div>
 
-            {/* Список рефералов */}
+            {/* Referrals List */}
             {loading ? (
               <div className="flex justify-center py-12">
                 <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600"></div>
               </div>
             ) : sortedReferrals.length > 0 ? (
-              <div className="bg-white dark:bg-gray-800 rounded-lg shadow overflow-hidden">
-                <div className="divide-y divide-gray-200 dark:divide-gray-700">
+              <div className="bg-white dark:bg-slate-800/50 backdrop-blur-sm border border-gray-200 dark:border-slate-700/50 rounded-3xl shadow-lg overflow-hidden">
+                <div className="divide-y divide-gray-200 dark:divide-slate-700/50">
                   {sortedReferrals.map((referral) => (
-                    <div key={referral.id} className="p-6 hover:bg-gray-50 dark:hover:bg-gray-700">
+                    <div key={referral.id} className="p-6 hover:bg-gray-50 dark:hover:bg-slate-700/50 transition-colors">
                       <div className="flex items-center justify-between">
                         <div className="flex items-center space-x-4">
                           <Avatar
@@ -326,27 +326,27 @@ export default function ReferralsPage() {
                             <h4 className="text-lg font-semibold text-gray-900 dark:text-white">
                               {referral.fullName || referral.nickname}
                             </h4>
-                            <p className="text-sm text-gray-500 dark:text-gray-400">
+                            <p className="text-sm text-gray-500 dark:text-slate-400">
                               @{referral.nickname}
                             </p>
                             <div className="flex items-center space-x-4 mt-1">
-                              <span className="text-xs text-gray-500 dark:text-gray-400">
-                                Присоединился {new Date(referral.createdAt).toLocaleDateString('ru-RU')}
+                              <span className="text-xs text-gray-500 dark:text-slate-400">
+                                Joined {new Date(referral.createdAt).toLocaleDateString('en-US')}
                               </span>
                               {referral.isCreator && (
-                                <span className="text-xs bg-purple-100 dark:bg-purple-900 text-purple-800 dark:text-purple-200 px-2 py-1 rounded-full">
-                                  Создатель
+                                <span className="text-xs bg-purple-100 dark:bg-purple-900/50 text-purple-800 dark:text-purple-200 px-2 py-1 rounded-full">
+                                  Creator
                                 </span>
                               )}
                             </div>
                           </div>
                         </div>
                         <div className="text-right">
-                          <p className="text-sm text-gray-500 dark:text-gray-400">
-                            {referral.postsCount} постов
+                          <p className="text-sm text-gray-500 dark:text-slate-400">
+                            {referral.postsCount} posts
                           </p>
-                          <p className="text-sm text-gray-500 dark:text-gray-400">
-                            {referral.subscribersCount} подписчиков
+                          <p className="text-sm text-gray-500 dark:text-slate-400">
+                            {referral.subscribersCount} subscribers
                           </p>
                         </div>
                       </div>
@@ -355,13 +355,13 @@ export default function ReferralsPage() {
                 </div>
               </div>
             ) : (
-              <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-12 text-center">
-                <UserGroupIcon className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-                <p className="text-gray-500 dark:text-gray-400">
-                  У вас пока нет рефералов
+              <div className="bg-white dark:bg-slate-800/50 backdrop-blur-sm border border-gray-200 dark:border-slate-700/50 rounded-3xl shadow-lg p-12 text-center">
+                <UserGroupIcon className="w-12 h-12 text-gray-400 dark:text-slate-500 mx-auto mb-4" />
+                <p className="text-gray-500 dark:text-slate-400">
+                  You don't have any referrals yet
                 </p>
-                <p className="text-sm text-gray-400 dark:text-gray-500 mt-2">
-                  Поделитесь своей реферальной ссылкой, чтобы начать зарабатывать
+                <p className="text-sm text-gray-400 dark:text-slate-500 mt-2">
+                  Share your referral link to start earning
                 </p>
               </div>
             )}
@@ -369,17 +369,17 @@ export default function ReferralsPage() {
         )}
 
         {activeTab === 'transactions' && (
-          <div className="bg-white dark:bg-gray-800 rounded-lg shadow overflow-hidden">
+          <div className="bg-white dark:bg-slate-800/50 backdrop-blur-sm border border-gray-200 dark:border-slate-700/50 rounded-3xl shadow-lg overflow-hidden">
             {earnings && earnings.recentTransactions.length > 0 ? (
-              <div className="divide-y divide-gray-200 dark:divide-gray-700">
+              <div className="divide-y divide-gray-200 dark:divide-slate-700/50">
                 {earnings.recentTransactions.map((tx: any) => (
-                  <div key={tx.id} className="p-6 hover:bg-gray-50 dark:hover:bg-gray-700">
+                  <div key={tx.id} className="p-6 hover:bg-gray-50 dark:hover:bg-slate-700/50 transition-colors">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center space-x-4">
-                        <div className={`p-3 rounded-lg ${
+                        <div className={`p-3 rounded-2xl ${
                           tx.type === 'subscription' 
-                            ? 'bg-blue-100 dark:bg-blue-900' 
-                            : 'bg-green-100 dark:bg-green-900'
+                            ? 'bg-blue-100 dark:bg-blue-900/30' 
+                            : 'bg-green-100 dark:bg-green-900/30'
                         }`}>
                           {tx.type === 'subscription' ? (
                             <UserPlusIcon className="w-6 h-6 text-blue-600 dark:text-blue-400" />
@@ -389,18 +389,18 @@ export default function ReferralsPage() {
                         </div>
                         <div>
                           <h4 className="text-lg font-semibold text-gray-900 dark:text-white">
-                            {tx.type === 'subscription' ? 'Подписка' : 'Покупка поста'}
+                            {tx.type === 'subscription' ? 'Subscription' : 'Post Purchase'}
                           </h4>
-                          <p className="text-sm text-gray-500 dark:text-gray-400">
+                          <p className="text-sm text-gray-500 dark:text-slate-400">
                             {tx.buyer.fullName || tx.buyer.nickname} → {tx.creator.fullName || tx.creator.nickname}
                           </p>
                           {tx.postTitle && (
-                            <p className="text-sm text-gray-600 dark:text-gray-300 mt-1">
+                            <p className="text-sm text-gray-600 dark:text-slate-300 mt-1">
                               "{tx.postTitle}"
                             </p>
                           )}
-                          <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">
-                            {new Date(tx.date).toLocaleString('ru-RU')}
+                          <p className="text-xs text-gray-400 dark:text-slate-500 mt-1">
+                            {new Date(tx.date).toLocaleString('en-US')}
                           </p>
                         </div>
                       </div>
@@ -408,8 +408,8 @@ export default function ReferralsPage() {
                         <p className="text-lg font-semibold text-green-600 dark:text-green-400">
                           +{tx.currency === 'SOL' ? formatSolAmount(tx.amount) : `${tx.amount.toFixed(2)} ${tx.currency}`}
                         </p>
-                        <p className="text-sm text-gray-500 dark:text-gray-400">
-                          Комиссия 5%
+                        <p className="text-sm text-gray-500 dark:text-slate-400">
+                          5% commission
                         </p>
                       </div>
                     </div>
@@ -418,12 +418,12 @@ export default function ReferralsPage() {
               </div>
             ) : (
               <div className="p-12 text-center">
-                <CalendarIcon className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-                <p className="text-gray-500 dark:text-gray-400">
-                  Транзакций пока нет
+                <CalendarIcon className="w-12 h-12 text-gray-400 dark:text-slate-500 mx-auto mb-4" />
+                <p className="text-gray-500 dark:text-slate-400">
+                  No transactions yet
                 </p>
-                <p className="text-sm text-gray-400 dark:text-gray-500 mt-2">
-                  Здесь будут отображаться ваши реферальные комиссии
+                <p className="text-sm text-gray-400 dark:text-slate-500 mt-2">
+                  Your referral commissions will appear here
                 </p>
               </div>
             )}
