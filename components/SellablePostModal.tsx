@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react'
 import { useWallet } from '@solana/wallet-adapter-react'
-import { SystemProgram, Transaction, PublicKey, LAMPORTS_PER_SOL } from '@solana/web3.js'
+import { SystemProgram, Transaction, PublicKey, LAMPORTS_PER_SOL, ComputeBudgetProgram, Connection } from '@solana/web3.js'
 import { useConnection } from '@solana/wallet-adapter-react'
 import { toast } from 'react-hot-toast'
 import { 
@@ -12,6 +12,30 @@ import {
   CheckIcon
 } from '@heroicons/react/24/outline'
 import Avatar from './Avatar'
+
+// Константа для базовой комиссии сети Solana (5000 lamports = 0.000005 SOL)
+const NETWORK_FEE = 0.000005
+
+// Получаем рекомендуемую приоритетную комиссию на основе текущей загрузки сети
+async function getRecommendedPriorityFee(connection: Connection): Promise<number> {
+  try {
+    const fees = await connection.getRecentPrioritizationFees()
+    if (fees && fees.length > 0) {
+      const nonZeroFees = fees.filter(f => f.prioritizationFee > 0)
+      if (nonZeroFees.length > 0) {
+        const feeValues = nonZeroFees.map(f => f.prioritizationFee).sort((a, b) => a - b)
+        // Используем 90-й перцентиль для большей надежности в загруженной сети
+        const p90 = feeValues[Math.floor(feeValues.length * 0.9)]
+        // Минимум 600000, максимум 2000000 microlamports
+        return Math.min(Math.max(p90 || 600000, 600000), 2000000)
+      }
+    }
+  } catch (error) {
+    console.error('Error getting priority fees:', error)
+  }
+  // По умолчанию используем 600000 microlamports
+  return 600000
+}
 
 interface SellablePostModalProps {
   isOpen: boolean
@@ -42,12 +66,33 @@ export default function SellablePostModal({ isOpen, onClose, post }: SellablePos
   const [isProcessing, setIsProcessing] = useState(false)
   const [bidAmount, setBidAmount] = useState('')
   const [timeLeft, setTimeLeft] = useState('')
+  const [dynamicNetworkFee, setDynamicNetworkFee] = useState(NETWORK_FEE)
   
   const price = post.price || 0
   const currency = post.currency || 'SOL'
   const quantity = post.quantity || 1
   
   const isAuction = post.sellType === 'AUCTION'
+
+  // Получаем актуальную комиссию сети при открытии модального окна
+  useEffect(() => {
+    if (!isOpen || !connection) return
+
+    const updateNetworkFee = async () => {
+      try {
+        const priorityFee = await getRecommendedPriorityFee(connection)
+        // Рассчитываем примерную комиссию сети в SOL
+        // Базовая комиссия (5000 lamports) + приоритетная комиссия на примерно 200000 compute units
+        const estimatedFeeInLamports = 5000 + (priorityFee * 200000 / 1000000)
+        const feeInSol = estimatedFeeInLamports / LAMPORTS_PER_SOL
+        setDynamicNetworkFee(feeInSol)
+      } catch (error) {
+        console.error('Error calculating network fee:', error)
+      }
+    }
+
+    updateNetworkFee()
+  }, [isOpen, connection])
 
   // Обновляем таймер для аукциона
   useEffect(() => {
@@ -101,40 +146,99 @@ export default function SellablePostModal({ isOpen, onClose, post }: SellablePos
         throw new Error('Creator wallet not found')
       }
 
-      // Создаем транзакцию
-      const transaction = new Transaction().add(
-        SystemProgram.transfer({
-          fromPubkey: publicKey,
-          toPubkey: new PublicKey(creatorWallet),
-          lamports: Math.floor(price * LAMPORTS_PER_SOL)
-        })
-      )
-
-      // Get fresh blockhash right before sending
-      const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash('confirmed')
-      transaction.recentBlockhash = blockhash
-      ;(transaction as any).lastValidBlockHeight = lastValidBlockHeight
-
-      // Отправляем транзакцию с правильными настройками
+      // Параметры для отправки транзакции
       const sendOptions = {
         skipPreflight: false,
         preflightCommitment: 'confirmed' as any,
         maxRetries: 3
       }
       
-      const signature = await sendTransaction(transaction, connection, sendOptions)
+      // Логика повторных попыток
+      let signature: string = ''
+      let attempts = 0
+      const maxAttempts = 3
       
+      while (attempts < maxAttempts) {
+        attempts++
+        
+        try {
+          // Создаем новую транзакцию для каждой попытки
+          const transaction = new Transaction()
+          
+          // Получаем свежий blockhash прямо перед отправкой
+          const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash('confirmed')
+          transaction.recentBlockhash = blockhash
+          transaction.feePayer = publicKey
+          ;(transaction as any).lastValidBlockHeight = lastValidBlockHeight
+          
+          // Получаем динамическую приоритетную комиссию
+          const priorityFee = await getRecommendedPriorityFee(connection)
+          console.log(`Using priority fee: ${priorityFee} microlamports`)
+          
+          // Добавляем приоритетную комиссию для более быстрого подтверждения
+          transaction.add(
+            ComputeBudgetProgram.setComputeUnitPrice({
+              microLamports: priorityFee
+            })
+          )
+          
+          // Добавляем перевод создателю
+          transaction.add(
+            SystemProgram.transfer({
+              fromPubkey: publicKey,
+              toPubkey: new PublicKey(creatorWallet),
+              lamports: Math.floor(price * LAMPORTS_PER_SOL)
+            })
+          )
+          
+          // Симулируем транзакцию перед отправкой
+          try {
+            const simulation = await connection.simulateTransaction(transaction)
+            
+            if (simulation.value.err) {
+              console.error('Simulation failed:', simulation.value.err)
+              // Продолжаем даже если симуляция не удалась, но логируем
+            }
+          } catch (simError) {
+            console.error('Simulation error:', simError)
+            // Продолжаем даже если симуляция выдала ошибку
+          }
+          
+          signature = await sendTransaction(transaction, connection, sendOptions)
+          console.log('Transaction sent:', signature)
+          
+          // Успешно отправлено, выходим из цикла
+          break
+          
+        } catch (sendError) {
+          console.error(`Send attempt ${attempts} failed:`, sendError)
+          
+          if (attempts === maxAttempts) {
+            throw new Error(`Failed to send transaction after ${maxAttempts} attempts: ${sendError instanceof Error ? sendError.message : 'Unknown error'}`)
+          }
+          
+          // Ждем перед следующей попыткой
+          await new Promise(resolve => setTimeout(resolve, 2000))
+        }
+      }
+
+      // Проверяем транзакцию
+      toast.loading('Checking transaction status...')
+      await new Promise(resolve => setTimeout(resolve, 2000))
+      
+      // Проверяем статус транзакции
+      try {
+        const status = await connection.getSignatureStatus(signature)
+        if (status.value?.err) {
+          throw new Error(`Transaction rejected: ${JSON.stringify(status.value.err)}`)
+        }
+      } catch (statusError) {
+        console.error('Error checking transaction status:', statusError)
+      }
+      
+      // Ждем подтверждения
       toast.loading('Waiting for blockchain confirmation...')
-      
-      // Give transaction time to get into the network
-      await new Promise(resolve => setTimeout(resolve, 5000))
-      
-      // Ждем подтверждения с учетом lastValidBlockHeight
-      const confirmation = await connection.confirmTransaction({
-        signature,
-        blockhash,
-        lastValidBlockHeight
-      }, 'confirmed')
+      await new Promise(resolve => setTimeout(resolve, 8000))
 
       // Регистрируем покупку на бэкенде
       const response = await fetch(`/api/posts/${post.id}/buy`, {
@@ -267,34 +371,62 @@ export default function SellablePostModal({ isOpen, onClose, post }: SellablePos
           <div className="bg-gradient-to-r from-yellow-500/10 to-orange-500/10 rounded-2xl p-6 mb-6">
             <div className="text-center">
               {isAuction ? (
-                <>
+                <div className="space-y-2">
                   <div className="text-sm text-gray-600 dark:text-slate-400 mb-1">
                     Current bid
                   </div>
                   <div className="text-3xl font-bold text-yellow-600 dark:text-yellow-400 mb-2">
                     {currentPrice.toFixed(2)} SOL
                   </div>
+                  <div className="text-xs text-gray-500 dark:text-slate-500">
+                    + Network fee: ~{dynamicNetworkFee.toFixed(6)} SOL
+                  </div>
                   {post.auctionEndAt && (
-                    <div className="flex items-center justify-center gap-2 text-sm text-gray-600 dark:text-slate-400">
+                    <div className="flex items-center justify-center gap-2 text-sm text-gray-600 dark:text-slate-400 mt-2">
                       <ClockIcon className="w-4 h-4" />
                       <span>Time left: {timeLeft}</span>
                     </div>
                   )}
-                </>
-              ) : (
-                <>
-                  <div className="text-sm text-gray-600 dark:text-slate-400 mb-1">
-                    Price
+                  <div className="text-xs text-gray-500 dark:text-slate-500 mt-2">
+                    * Network fee applies to each bid
                   </div>
-                  <div className="text-3xl font-bold text-yellow-600 dark:text-yellow-400">
-                    {currentPrice.toFixed(2)} {currency}
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  <div className="text-sm text-gray-600 dark:text-slate-400 mb-1">
+                    Price breakdown
+                  </div>
+                  <div className="space-y-1">
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm text-gray-600 dark:text-slate-400">Item price:</span>
+                      <span className="text-lg font-semibold text-gray-900 dark:text-white">
+                        {currentPrice.toFixed(2)} {currency}
+                      </span>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm text-gray-600 dark:text-slate-400">Network fee:</span>
+                      <span className="text-sm text-gray-600 dark:text-slate-400">
+                        ~{dynamicNetworkFee.toFixed(6)} SOL
+                      </span>
+                    </div>
+                    <div className="flex justify-between items-center pt-2 border-t border-yellow-500/20">
+                      <span className="text-sm font-semibold text-gray-900 dark:text-white">Total:</span>
+                      <span className="text-2xl font-bold text-yellow-600 dark:text-yellow-400">
+                        {(currentPrice + dynamicNetworkFee).toFixed(6)} SOL
+                      </span>
+                    </div>
                   </div>
                   {quantity > 1 && (
                     <div className="text-sm text-gray-600 dark:text-slate-400 mt-2">
                       📦 {quantity} items available
                     </div>
                   )}
-                </>
+                  {dynamicNetworkFee > NETWORK_FEE && (
+                    <div className="text-xs text-gray-500 dark:text-slate-500 mt-2 text-center">
+                      * Using priority fee for faster confirmation
+                    </div>
+                  )}
+                </div>
               )}
             </div>
           </div>
@@ -348,7 +480,7 @@ export default function SellablePostModal({ isOpen, onClose, post }: SellablePos
               ) : (
                 <>
                   <CurrencyDollarIcon className="w-5 h-5" />
-                  Buy for {currentPrice.toFixed(2)} {currency}
+                  Buy for {(currentPrice + dynamicNetworkFee).toFixed(4)} {currency}
                 </>
               )}
             </button>
