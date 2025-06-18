@@ -36,7 +36,7 @@ export default function RootLayout({
                   <footer className="bg-slate-800 dark:bg-slate-950 border-t border-slate-700 dark:border-slate-800 py-4">
                     <div className="container mx-auto px-4 text-center">
                       <p className="text-slate-400 text-sm">
-                        Fonana v1.0.0-beta.1 | © 2025 Fonana. All rights reserved.
+                        Fonana v1.0.0-beta.2 | © 2025 Fonana. All rights reserved.
                       </p>
                     </div>
                   </footer>

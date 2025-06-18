@@ -288,8 +288,7 @@ export async function createPost(creatorWallet: string, data: {
       auctionStartAt,
       auctionEndAt,
       auctionStatus: data.isSellable ? (data.sellType === 'AUCTION' ? auctionStatus : 'DRAFT') : undefined,
-      // Для фиксированной цены используем поле price
-      ...(data.isSellable && data.sellType === 'FIXED_PRICE' && data.sellPrice ? { price: data.sellPrice } : {}),
+      // Поле price уже установлено выше, дополнительная логика не нужна
       tags: data.tags ? {
         create: data.tags.map(tagName => ({
           tag: {

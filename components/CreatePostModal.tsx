@@ -50,7 +50,6 @@ export default function CreatePostModal({ onPostCreated, onClose }: CreatePostMo
     currency: 'SOL' as 'SOL' | 'USDC',
     isSellable: false,
     sellType: 'FIXED_PRICE' as 'FIXED_PRICE' | 'AUCTION',
-    sellPrice: 0,
     quantity: 1,
     auctionStartPrice: 0,
     auctionStepPrice: 0.1,
@@ -218,7 +217,7 @@ export default function CreatePostModal({ onPostCreated, onClose }: CreatePostMo
       return
     }
     
-    if (formData.sellType === 'FIXED_PRICE' && !formData.sellPrice) {
+    if (formData.sellType === 'FIXED_PRICE' && (!formData.price || formData.price <= 0)) {
       toast.error('Please specify a price')
       return
     }
@@ -274,9 +273,9 @@ export default function CreatePostModal({ onPostCreated, onClose }: CreatePostMo
         mediaUrl,
         isLocked: formData.accessType !== 'free',
               accessType: formData.accessType, // Добавляем accessType для правильной валидации на бэкенде
-      price: formData.accessType === 'paid' ? formData.price : 
-             (formData.isSellable && formData.sellType === 'FIXED_PRICE' ? formData.sellPrice : undefined),
-        currency: formData.accessType === 'paid' ? formData.currency : undefined,
+      // Единое поле price для всех типов постов с ценой
+      price: (formData.accessType === 'paid' || (formData.isSellable && formData.sellType === 'FIXED_PRICE')) ? formData.price : undefined,
+        currency: (formData.accessType === 'paid' || (formData.isSellable && formData.sellType === 'FIXED_PRICE')) ? formData.currency : undefined,
         isPremium: false,
         // Мапим accessType на minSubscriptionTier
         minSubscriptionTier: formData.accessType === 'vip' ? 'vip' : 
@@ -331,7 +330,6 @@ export default function CreatePostModal({ onPostCreated, onClose }: CreatePostMo
         currency: 'SOL',
         isSellable: false,
         sellType: 'FIXED_PRICE',
-        sellPrice: 0,
         quantity: 1,
         auctionStartPrice: 0,
         auctionStepPrice: 0.1,
@@ -575,7 +573,12 @@ export default function CreatePostModal({ onPostCreated, onClose }: CreatePostMo
                     <button
                       key={access.value}
                       type="button"
-                      onClick={() => setFormData(prev => ({ ...prev, accessType: access.value as any }))}
+                      onClick={() => setFormData(prev => ({ 
+                        ...prev, 
+                        accessType: access.value as any,
+                        // Сбрасываем цену если выбран не платный доступ
+                        price: access.value === 'paid' ? prev.price : 0
+                      }))}
                       className={`p-3 rounded-xl border-2 text-left transition-all ${
                         formData.accessType === access.value
                           ? 'border-purple-500 bg-purple-500/10'
@@ -640,7 +643,6 @@ export default function CreatePostModal({ onPostCreated, onClose }: CreatePostMo
                       isSellable: e.target.checked,
                       ...(e.target.checked ? {} : {
                         sellType: 'FIXED_PRICE' as const,
-                        sellPrice: 0,
                         quantity: 1,
                         auctionStartPrice: 0,
                         auctionStepPrice: 0,
@@ -714,8 +716,8 @@ export default function CreatePostModal({ onPostCreated, onClose }: CreatePostMo
                             step="0.01"
                             min="0.01"
                             max="1000"
-                            value={formData.sellPrice}
-                            onChange={(e) => setFormData(prev => ({ ...prev, sellPrice: parseFloat(e.target.value) || 0 }))}
+                            value={formData.price}
+                            onChange={(e) => setFormData(prev => ({ ...prev, price: parseFloat(e.target.value) || 0 }))}
                             className="w-full px-4 py-2 bg-white dark:bg-slate-800/50 border border-gray-300 dark:border-slate-700 rounded-xl text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-yellow-500 focus:border-transparent"
                             placeholder="0.00"
                             required={formData.isSellable}
