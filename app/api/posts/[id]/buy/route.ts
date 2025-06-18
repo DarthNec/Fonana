@@ -59,8 +59,9 @@ export async function POST(
       )
     }
 
-    // Проверяем цену
-    if (!post.price || post.price <= 0) {
+    // Проверяем цену (используем sellPrice для sellable постов)
+    const price = post.isSellable ? post.sellPrice : post.price
+    if (!price || price <= 0) {
       return NextResponse.json(
         { error: 'Invalid post price' },
         { status: 400 }
@@ -106,7 +107,7 @@ export async function POST(
     // Проверяем транзакцию
     const validation = await validateTransaction(
       txSignature,
-      post.price,
+      price,
       [creatorWallet]
     )
 
@@ -125,7 +126,7 @@ export async function POST(
         data: {
           soldAt: new Date(),
           soldToId: buyer.id,
-          soldPrice: post.price,
+          soldPrice: price,
           auctionStatus: 'SOLD'
         },
         include: {
@@ -140,7 +141,7 @@ export async function POST(
           txSignature,
           fromWallet: buyerWallet,
           toWallet: creatorWallet,
-          amount: post.price,
+          amount: price,
           currency: post.currency || 'SOL',
           type: 'POST_PURCHASE',
           status: 'CONFIRMED',
@@ -159,11 +160,11 @@ export async function POST(
         userId: post.creatorId,
         type: 'POST_PURCHASE',
         title: 'Your post has been sold!',
-        message: `${buyer.nickname || (buyer.wallet ? buyer.wallet.slice(0, 6) + '...' : 'User')} bought your post "${post.title}" for ${post.price} ${post.currency}`,
+        message: `${buyer.nickname || (buyer.wallet ? buyer.wallet.slice(0, 6) + '...' : 'User')} bought your post "${post.title}" for ${price} ${post.currency}`,
         metadata: {
           postId: params.id,
           buyerId: buyer.id,
-          price: post.price,
+          price: price,
           currency: post.currency,
           buyerName: buyer.nickname || 'User',
           buyerWallet: buyer.wallet || ''

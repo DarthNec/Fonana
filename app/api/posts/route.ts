@@ -258,7 +258,13 @@ export async function GET(req: Request) {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
-    console.log('Received post data:', body)
+    console.log('Received post data:', {
+      ...body,
+      accessType: body.accessType,
+      price: body.price,
+      isSellable: body.isSellable,
+      sellPrice: body.sellPrice
+    })
     
     if (!body.creatorWallet || !body.title || !body.content || !body.type) {
       console.log('Missing fields:', {
@@ -272,6 +278,10 @@ export async function POST(request: NextRequest) {
     
     // Проверяем, что для платных постов указана цена
     if (body.accessType === 'paid' && (!body.price || body.price <= 0)) {
+      console.log('Paid post validation failed:', {
+        accessType: body.accessType,
+        price: body.price
+      })
       return NextResponse.json({ error: 'Please specify a price' }, { status: 400 })
     }
     
