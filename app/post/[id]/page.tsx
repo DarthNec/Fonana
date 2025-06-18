@@ -1,10 +1,11 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { useParams } from 'next/navigation'
+import { useParams, useRouter } from 'next/navigation'
 import Image from 'next/image'
 import Link from 'next/link'
 import Avatar from '@/components/Avatar'
+import { useUser } from '@/lib/hooks/useUser'
 import { 
   HeartIcon, 
   ChatBubbleLeftIcon, 
@@ -17,65 +18,136 @@ import {
 } from '@heroicons/react/24/outline'
 import { HeartIcon as HeartSolidIcon } from '@heroicons/react/24/solid'
 
-// Mock data
-const mockPost = {
-  id: 11,
+interface Post {
+  id: string
   creator: {
-    id: 1,
-    name: 'Anna Crypto',
-    username: 'annacrypto',
-    avatar: null,
-    isVerified: true
-  },
-  title: 'Мой новый NFT проект готов к запуску!',
-  content: 'Привет всем! После месяцев работы я наконец готова представить свой новый NFT проект. Это коллекция из 10,000 уникальных цифровых артов, каждый со своей историей и особенностями. Проект сочетает в себе элементы киберпанка и футуризма.',
-  image: '/avatars/post1.jpg',
-  type: 'image' as const,
-  isLocked: false,
-  likes: 124,
-  comments: 23,
-  views: 892,
-  createdAt: '2024-01-15T10:30:00Z',
-  tags: ['NFT', 'Crypto', 'Digital Art'],
-  isPremium: false
+    id: string
+    name: string
+    username: string
+    avatar: string | null
+    isVerified?: boolean
+  }
+  title: string
+  content: string
+  image?: string
+  type: string
+  isLocked: boolean
+  likes: number
+  comments: number
+  views: number
+  createdAt: string
+  tags: string[]
+  isPremium: boolean
 }
 
-const mockComments = [
-  {
-    id: 1,
-    user: {
-      name: 'Alex Blockchain',
-      username: 'alexblockchain',
-      avatar: null,
-      isVerified: false
-    },
-    content: 'Выглядит потрясающе! Когда будет минт?',
-    createdAt: '2024-01-15T11:00:00Z',
-    likes: 5
-  },
-  {
-    id: 2,
-    user: {
-      name: 'Crypto Marina',
-      username: 'cryptomarina',
-      avatar: null,
-      isVerified: true
-    },
-    content: 'Анна, твои работы всегда на высшем уровне! Обязательно буду участвовать в минте 🚀',
-    createdAt: '2024-01-15T11:15:00Z',
-    likes: 12
+interface Comment {
+  id: string
+  user: {
+    id: string
+    name: string
+    username: string
+    avatar: string | null
+    isVerified?: boolean
   }
-]
+  content: string
+  createdAt: string
+  likes: number
+  replies?: Comment[]
+}
 
 export default function PostPage() {
   const params = useParams()
+  const router = useRouter()
+  const { user } = useUser()
+  const [post, setPost] = useState<Post | null>(null)
+  const [comments, setComments] = useState<Comment[]>([])
   const [isLiked, setIsLiked] = useState(false)
-  const [likeCount, setLikeCount] = useState(mockPost.likes)
+  const [likeCount, setLikeCount] = useState(0)
   const [newComment, setNewComment] = useState('')
-  const [comments, setComments] = useState(mockComments)
+  const [isLoading, setIsLoading] = useState(true)
+  const [isLoadingComments, setIsLoadingComments] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+  const [commentError, setCommentError] = useState<string | null>(null)
+  const [isSubmittingComment, setIsSubmittingComment] = useState(false)
 
+  // Загружаем пост
   useEffect(() => {
-    if (window.location.hash === '#comments') {
+    const fetchPost = async () => {
+      try {
+        setIsLoading(true)
+        setError(null)
+        
+        const response = await fetch(`/api/posts/${params.id}`)
+        if (!response.ok) {
+          if (response.status === 404) {
+            setError('Пост не найден')
+          } else {
+            setError('Ошибка загрузки поста')
+          }
+          return
+        }
+        
+        const data = await response.json()
+        setPost(data.post)
+        setLikeCount(data.post.likes || 0)
+      } catch (error) {
+        console.error('Error fetching post:', error)
+        setError('Ошибка подключения к серверу')
+      } finally {
+        setIsLoading(false)
+      }
+    }
+
+    if (params.id) {
+      fetchPost()
+    }
+  }, [params.id])
+
+  // Загружаем комментарии
+  useEffect(() => {
+    const fetchComments = async () => {
+      try {
+        setIsLoadingComments(true)
+        const response = await fetch(`/api/posts/${params.id}/comments`)
+        if (response.ok) {
+          const data = await response.json()
+          setComments(data.comments || [])
+        }
+      } catch (error) {
+        console.error('Error fetching comments:', error)
+      } finally {
+        setIsLoadingComments(false)
+      }
+    }
+
+    if (params.id) {
+      fetchComments()
+    }
+  }, [params.id])
+
+  // Проверяем статус лайка
+  useEffect(() => {
+    const checkLikeStatus = async () => {
+      if (!user || !params.id) return
+      
+      try {
+        const response = await fetch(`/api/posts/${params.id}/like?userId=${user.id}`)
+        if (response.ok) {
+          const data = await response.json()
+          setIsLiked(data.isLiked)
+          setLikeCount(data.likesCount)
+        }
+      } catch (error) {
+        console.error('Error checking like status:', error)
+      }
+    }
+
+    checkLikeStatus()
+  }, [user, params.id])
+
+  // Прокрутка к комментариям при загрузке страницы
+  useEffect(() => {
+    if (!isLoading && window.location.hash === '#comments') {
       setTimeout(() => {
         const commentsSection = document.getElementById('comments')
         if (commentsSection) {
@@ -83,29 +155,68 @@ export default function PostPage() {
         }
       }, 100)
     }
-  }, [])
+  }, [isLoading])
 
-  const handleLike = () => {
-    setIsLiked(!isLiked)
-    setLikeCount(prev => isLiked ? prev - 1 : prev + 1)
+  const handleLike = async () => {
+    if (!user) {
+      alert('Пожалуйста, подключите кошелек')
+      return
+    }
+
+    try {
+      const response = await fetch(`/api/posts/${params.id}/like`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ userId: user.id }),
+      })
+
+      if (response.ok) {
+        const data = await response.json()
+        setIsLiked(data.isLiked)
+        setLikeCount(data.likesCount)
+      }
+    } catch (error) {
+      console.error('Error toggling like:', error)
+    }
   }
 
-  const handleAddComment = () => {
-    if (newComment.trim()) {
-      const comment = {
-        id: comments.length + 1,
-        user: {
-          name: 'You',
-          username: 'you',
-          avatar: null,
-          isVerified: false
+  const handleAddComment = async () => {
+    if (!user) {
+      alert('Пожалуйста, подключите кошелек')
+      return
+    }
+
+    if (!newComment.trim()) return
+
+    setIsSubmittingComment(true)
+    setCommentError(null)
+
+    try {
+      const response = await fetch(`/api/posts/${params.id}/comments`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
         },
-        content: newComment,
-        createdAt: new Date().toISOString(),
-        likes: 0
+        body: JSON.stringify({
+          userId: user.id,
+          content: newComment,
+        }),
+      })
+
+      if (response.ok) {
+        const data = await response.json()
+        setComments([data.comment, ...comments])
+        setNewComment('')
+      } else {
+        setCommentError('Ошибка при добавлении комментария')
       }
-      setComments([...comments, comment])
-      setNewComment('')
+    } catch (error) {
+      console.error('Error adding comment:', error)
+      setCommentError('Ошибка подключения к серверу')
+    } finally {
+      setIsSubmittingComment(false)
     }
   }
 
@@ -118,6 +229,34 @@ export default function PostPage() {
       minute: '2-digit'
     })
   }
+
+  // Состояние загрузки
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-slate-900 flex items-center justify-center">
+        <div className="w-16 h-16 border-4 border-purple-500 border-t-transparent rounded-full animate-spin"></div>
+      </div>
+    )
+  }
+
+  // Состояние ошибки
+  if (error) {
+    return (
+      <div className="min-h-screen bg-slate-900 flex items-center justify-center">
+        <div className="text-center">
+          <h2 className="text-2xl font-bold text-white mb-4">{error}</h2>
+          <button
+            onClick={() => router.push('/feed')}
+            className="bg-purple-500 hover:bg-purple-600 text-white font-semibold px-6 py-3 rounded-xl transition-colors"
+          >
+            Вернуться к ленте
+          </button>
+        </div>
+      </div>
+    )
+  }
+
+  if (!post) return null
 
   return (
     <div className="min-h-screen bg-slate-900">
@@ -140,12 +279,12 @@ export default function PostPage() {
 
           <article className="bg-slate-800/50 backdrop-blur-sm border border-slate-700/50 rounded-3xl overflow-hidden mb-8">
             <div className="flex items-center gap-4 p-6 pb-4">
-              <Link href={`/creator/${mockPost.creator.id}`} className="flex items-center gap-4 group/creator">
+              <Link href={`/creator/${post.creator.id}`} className="flex items-center gap-4 group/creator">
                 <div className="relative w-16 h-16 rounded-2xl overflow-hidden border border-purple-500/30 bg-gradient-to-br from-purple-500/20 to-pink-500/20">
                   <Avatar
-                    src={mockPost.creator.avatar}
-                    alt={mockPost.creator.name}
-                    seed={mockPost.creator.username}
+                    src={post.creator.avatar}
+                    alt={post.creator.name}
+                    seed={post.creator.username}
                     size={64}
                     rounded="2xl"
                   />
@@ -153,35 +292,35 @@ export default function PostPage() {
                 <div>
                   <div className="flex items-center gap-2">
                     <h3 className="text-xl font-bold text-white group-hover/creator:text-purple-300 transition-colors">
-                      {mockPost.creator.name}
+                      {post.creator.name}
                     </h3>
-                    {mockPost.creator.isVerified && (
+                    {post.creator.isVerified && (
                       <CheckBadgeIcon className="w-5 h-5 text-blue-400" />
                     )}
                   </div>
-                  <p className="text-slate-400">@{mockPost.creator.username}</p>
+                  <p className="text-slate-400">@{post.creator.username}</p>
                 </div>
               </Link>
               
               <div className="ml-auto text-slate-400">
-                {formatDate(mockPost.createdAt)}
+                {formatDate(post.createdAt)}
               </div>
             </div>
 
             <div className="px-6">
               <h1 className="text-3xl font-bold text-white mb-4 leading-tight">
-                {mockPost.title}
+                {post.title}
               </h1>
 
               <p className="text-slate-300 leading-relaxed mb-6 text-lg">
-                {mockPost.content}
+                {post.content}
               </p>
 
-              {mockPost.image && (
+              {post.image && (
                 <div className="relative mb-6 rounded-2xl overflow-hidden bg-gradient-to-br from-purple-900/10 to-pink-900/10">
                   <Image
-                    src={mockPost.image || '/avatars/default.jpg'}
-                    alt={mockPost.title}
+                    src={post.image}
+                    alt={post.title}
                     width={800}
                     height={400}
                     className="w-full h-96 object-cover"
@@ -190,7 +329,7 @@ export default function PostPage() {
               )}
 
               <div className="flex flex-wrap gap-2 mb-6">
-                {mockPost.tags.map((tag) => (
+                {post.tags.map((tag) => (
                   <span
                     key={tag}
                     className="px-4 py-2 bg-slate-700/50 text-slate-300 text-sm rounded-xl hover:bg-slate-600/50 transition-colors cursor-pointer"
@@ -225,7 +364,7 @@ export default function PostPage() {
 
                 <div className="flex items-center gap-3 text-slate-400">
                   <EyeIcon className="w-6 h-6" />
-                  <span className="font-semibold text-lg">{mockPost.views}</span>
+                  <span className="font-semibold text-lg">{post.views || 0}</span>
                 </div>
               </div>
 
@@ -245,70 +384,99 @@ export default function PostPage() {
 
             <div className="bg-slate-700/30 backdrop-blur-sm border border-slate-600/50 rounded-2xl p-6 mb-8">
               <div className="flex gap-4">
-                <div className="w-12 h-12 bg-gradient-to-r from-purple-500 to-pink-500 rounded-2xl flex items-center justify-center flex-shrink-0">
-                  <span className="text-white font-bold text-lg">Я</span>
+                <div className="w-12 h-12 rounded-2xl overflow-hidden flex-shrink-0">
+                  {user ? (
+                    <Avatar
+                      src={user.avatar}
+                      alt={user.fullName || user.nickname || 'User'}
+                      seed={user.wallet}
+                      size={48}
+                      rounded="2xl"
+                    />
+                  ) : (
+                    <div className="w-full h-full bg-gradient-to-r from-purple-500 to-pink-500 flex items-center justify-center">
+                      <span className="text-white font-bold text-lg">?</span>
+                    </div>
+                  )}
                 </div>
                 <div className="flex-1">
                   <textarea
                     value={newComment}
                     onChange={(e) => setNewComment(e.target.value)}
-                    placeholder="Напишите комментарий..."
-                    className="w-full px-4 py-3 bg-slate-600/50 border border-slate-500/50 rounded-xl text-white placeholder-slate-400 focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-300 resize-none"
+                    placeholder={user ? "Напишите комментарий..." : "Подключите кошелек, чтобы комментировать"}
+                    disabled={!user || isSubmittingComment}
+                    className="w-full px-4 py-3 bg-slate-600/50 border border-slate-500/50 rounded-xl text-white placeholder-slate-400 focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-300 resize-none disabled:opacity-50 disabled:cursor-not-allowed"
                     rows={3}
                   />
+                  {commentError && (
+                    <p className="text-red-400 text-sm mt-2">{commentError}</p>
+                  )}
                   <div className="flex justify-end mt-4">
                     <button
                       onClick={handleAddComment}
-                      disabled={!newComment.trim()}
-                      className="bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 disabled:from-slate-600 disabled:to-slate-600 text-white font-semibold px-6 py-3 rounded-xl transition-all duration-300 flex items-center gap-2 hover:scale-105 disabled:hover:scale-100"
+                      disabled={!user || !newComment.trim() || isSubmittingComment}
+                      className="bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 disabled:from-slate-600 disabled:to-slate-600 text-white font-semibold px-6 py-3 rounded-xl transition-all duration-300 flex items-center gap-2 hover:scale-105 disabled:hover:scale-100 disabled:cursor-not-allowed"
                     >
-                      <PaperAirplaneIcon className="w-5 h-5" />
-                      Отправить
+                      {isSubmittingComment ? (
+                        <>
+                          <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                          Отправка...
+                        </>
+                      ) : (
+                        <>
+                          <PaperAirplaneIcon className="w-5 h-5" />
+                          Отправить
+                        </>
+                      )}
                     </button>
                   </div>
                 </div>
               </div>
             </div>
 
-            <div className="space-y-6">
-              {comments.map((comment) => (
-                <div key={comment.id} className="bg-slate-700/20 backdrop-blur-sm border border-slate-600/30 rounded-2xl p-6 hover:bg-slate-700/30 transition-all duration-300">
-                  <div className="flex gap-4">
-                    <div className="relative w-12 h-12 rounded-2xl overflow-hidden border border-purple-500/20 bg-gradient-to-br from-purple-500/10 to-pink-500/10 flex-shrink-0">
-                      <Avatar
-                        src={comment.user.avatar}
-                        alt={comment.user.name}
-                        seed={comment.user.username}
-                        size={48}
-                        rounded="2xl"
-                      />
-                    </div>
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2 mb-2">
-                        <h4 className="font-semibold text-white">{comment.user.name}</h4>
-                        {comment.user.isVerified && (
-                          <CheckBadgeIcon className="w-4 h-4 text-blue-400" />
-                        )}
-                        <span className="text-slate-400 text-sm">@{comment.user.username}</span>
-                        <span className="text-slate-500 text-sm">•</span>
-                        <span className="text-slate-500 text-sm">{formatDate(comment.createdAt)}</span>
+            {isLoadingComments ? (
+              <div className="flex justify-center py-8">
+                <div className="w-8 h-8 border-2 border-purple-500 border-t-transparent rounded-full animate-spin"></div>
+              </div>
+            ) : (
+              <div className="space-y-6">
+                {comments.map((comment) => (
+                  <div key={comment.id} className="bg-slate-700/20 backdrop-blur-sm border border-slate-600/30 rounded-2xl p-6 hover:bg-slate-700/30 transition-all duration-300">
+                    <div className="flex gap-4">
+                      <div className="relative w-12 h-12 rounded-2xl overflow-hidden border border-purple-500/20 bg-gradient-to-br from-purple-500/10 to-pink-500/10 flex-shrink-0">
+                        <Avatar
+                          src={comment.user.avatar}
+                          alt={comment.user.name}
+                          seed={comment.user.username}
+                          size={48}
+                          rounded="2xl"
+                        />
                       </div>
-                      <p className="text-slate-300 leading-relaxed mb-3">{comment.content}</p>
-                      <button className="flex items-center gap-2 text-slate-400 hover:text-red-400 transition-colors group">
-                        <HeartIcon className="w-4 h-4 group-hover:scale-110 transition-transform" />
-                        <span className="text-sm font-medium">{comment.likes}</span>
-                      </button>
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 mb-2">
+                          <h4 className="font-semibold text-white">{comment.user.name}</h4>
+                          {comment.user.isVerified && (
+                            <CheckBadgeIcon className="w-4 h-4 text-blue-400" />
+                          )}
+                          <span className="text-slate-400 text-sm">@{comment.user.username}</span>
+                          <span className="text-slate-500 text-sm">•</span>
+                          <span className="text-slate-500 text-sm">{formatDate(comment.createdAt)}</span>
+                        </div>
+                        <p className="text-slate-300 leading-relaxed mb-3">{comment.content}</p>
+                        <button className="flex items-center gap-2 text-slate-400 hover:text-red-400 transition-colors group">
+                          <HeartIcon className="w-4 h-4 group-hover:scale-110 transition-transform" />
+                          <span className="text-sm font-medium">{comment.likes}</span>
+                        </button>
+                      </div>
                     </div>
                   </div>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            )}
 
-            {comments.length > 0 && (
-              <div className="text-center mt-8">
-                <button className="bg-slate-700/50 hover:bg-slate-600/50 text-slate-300 hover:text-white font-medium px-6 py-3 rounded-xl transition-all duration-300 hover:scale-105">
-                  Загрузить еще комментарии
-                </button>
+            {comments.length === 0 && !isLoadingComments && (
+              <div className="text-center py-8">
+                <p className="text-slate-400">Пока нет комментариев. Будьте первым!</p>
               </div>
             )}
           </div>
