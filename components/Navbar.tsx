@@ -13,14 +13,9 @@ import {
   UserIcon,
   Bars3Icon,
   XMarkIcon,
-  BellIcon,
-  Cog6ToothIcon,
   ArrowRightOnRectangleIcon,
-  RocketLaunchIcon,
-  VideoCameraIcon,
-  PuzzlePieceIcon,
-  Squares2X2Icon,
-  BookOpenIcon
+  BellIcon,
+  Cog6ToothIcon
 } from '@heroicons/react/24/outline'
 import { MobileWalletConnect } from './MobileWalletConnect'
 import { useWallet } from '@solana/wallet-adapter-react'
