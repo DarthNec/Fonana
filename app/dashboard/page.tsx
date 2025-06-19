@@ -294,103 +294,100 @@ export default function Dashboard() {
           </div>
         </div>
 
-        {/* Main Dashboard Content */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {/* Left Column - Quick Actions */}
-          <div className="lg:col-span-2">
-            <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-4">Quick Actions</h2>
-            
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
-              <Link 
-                href="/create" 
-                className="group bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 rounded-2xl p-6 transition-all duration-300 hover:scale-105 hover:shadow-xl hover:shadow-purple-500/25"
-              >
-                <div className="flex items-center gap-4">
-                  <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center">
-                    <DocumentTextIcon className="w-6 h-6 text-white" />
-                  </div>
-                  <div>
-                    <h3 className="text-white font-bold text-lg">Create Post</h3>
-                    <p className="text-purple-200 text-sm">Share new content</p>
-                  </div>
+        {/* Quick Actions */}
+        <div className="mb-8">
+          <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-4">Quick Actions</h2>
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+            <Link 
+              href="/create" 
+              className="group bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 rounded-2xl p-6 transition-all duration-300 hover:scale-105 hover:shadow-xl hover:shadow-purple-500/25"
+            >
+              <div className="flex items-center gap-4">
+                <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center">
+                  <DocumentTextIcon className="w-6 h-6 text-white" />
                 </div>
-              </Link>
-
-              <Link 
-                href="/analytics" 
-                className="group bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600 rounded-2xl p-6 transition-all duration-300 hover:scale-105 hover:shadow-xl hover:shadow-blue-500/25"
-              >
-                <div className="flex items-center gap-4">
-                  <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center">
-                    <ChartBarIcon className="w-6 h-6 text-white" />
-                  </div>
-                  <div>
-                    <h3 className="text-white font-bold text-lg">Analytics</h3>
-                    <p className="text-blue-200 text-sm">View insights</p>
-                  </div>
+                <div>
+                  <h3 className="text-white font-bold text-lg">Create Post</h3>
+                  <p className="text-purple-200 text-sm">Share new content</p>
                 </div>
-              </Link>
+              </div>
+            </Link>
 
-              <Link 
-                href="/profile" 
-                className="group bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 rounded-2xl p-6 transition-all duration-300 hover:scale-105 hover:shadow-xl hover:shadow-green-500/25"
-              >
-                <div className="flex items-center gap-4">
-                  <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center">
-                    <Cog6ToothIcon className="w-6 h-6 text-white" />
-                  </div>
-                  <div>
-                    <h3 className="text-white font-bold text-lg">Settings</h3>
-                    <p className="text-green-200 text-sm">Manage profile</p>
-                  </div>
+            <Link 
+              href="/analytics" 
+              className="group bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600 rounded-2xl p-6 transition-all duration-300 hover:scale-105 hover:shadow-xl hover:shadow-blue-500/25"
+            >
+              <div className="flex items-center gap-4">
+                <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center">
+                  <ChartBarIcon className="w-6 h-6 text-white" />
                 </div>
-              </Link>
-
-              <Link 
-                href="/dashboard/referrals" 
-                className="group bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 rounded-2xl p-6 transition-all duration-300 hover:scale-105 hover:shadow-xl hover:shadow-orange-500/25"
-              >
-                <div className="flex items-center gap-4">
-                  <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center">
-                    <UsersIcon className="w-6 h-6 text-white" />
-                  </div>
-                  <div>
-                    <h3 className="text-white font-bold text-lg">Referrals</h3>
-                    <p className="text-orange-200 text-sm">Invite friends</p>
-                  </div>
+                <div>
+                  <h3 className="text-white font-bold text-lg">Analytics</h3>
+                  <p className="text-blue-200 text-sm">View insights</p>
                 </div>
-              </Link>
-            </div>
+              </div>
+            </Link>
 
-            {/* Admin Section */}
-            {isAdmin && (
-              <>
-                <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-4">Admin Tools</h2>
-                
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
-                  <Link 
-                    href="/admin/referrals" 
-                    className="group bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 rounded-2xl p-6 transition-all duration-300 hover:scale-105 hover:shadow-xl hover:shadow-indigo-500/25"
-                  >
-                    <div className="flex items-center gap-4">
-                      <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center">
-                        <ShieldCheckIcon className="w-6 h-6 text-white" />
-                      </div>
-                      <div>
-                        <h3 className="text-white font-bold text-lg">Manage Referrals</h3>
-                        <p className="text-indigo-200 text-sm">Admin panel</p>
-                      </div>
+            <Link 
+              href="/profile" 
+              className="group bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 rounded-2xl p-6 transition-all duration-300 hover:scale-105 hover:shadow-xl hover:shadow-green-500/25"
+            >
+              <div className="flex items-center gap-4">
+                <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center">
+                  <Cog6ToothIcon className="w-6 h-6 text-white" />
+                </div>
+                <div>
+                  <h3 className="text-white font-bold text-lg">Settings</h3>
+                  <p className="text-green-200 text-sm">Manage profile</p>
+                </div>
+              </div>
+            </Link>
+
+            <Link 
+              href="/dashboard/referrals" 
+              className="group bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 rounded-2xl p-6 transition-all duration-300 hover:scale-105 hover:shadow-xl hover:shadow-orange-500/25"
+            >
+              <div className="flex items-center gap-4">
+                <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center">
+                  <UsersIcon className="w-6 h-6 text-white" />
+                </div>
+                <div>
+                  <h3 className="text-white font-bold text-lg">Referrals</h3>
+                  <p className="text-orange-200 text-sm">Invite friends</p>
+                </div>
+              </div>
+            </Link>
+          </div>
+
+          {/* Admin Section */}
+          {isAdmin && (
+            <>
+              <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-4">Admin Tools</h2>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+                <Link 
+                  href="/admin/referrals" 
+                  className="group bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 rounded-2xl p-6 transition-all duration-300 hover:scale-105 hover:shadow-xl hover:shadow-indigo-500/25"
+                >
+                  <div className="flex items-center gap-4">
+                    <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center">
+                      <ShieldCheckIcon className="w-6 h-6 text-white" />
                     </div>
-                  </Link>
-                </div>
-              </>
-            )}
-          </div>
+                    <div>
+                      <h3 className="text-white font-bold text-lg">Manage Referrals</h3>
+                      <p className="text-indigo-200 text-sm">Admin panel</p>
+                    </div>
+                  </div>
+                </Link>
+              </div>
+            </>
+          )}
+        </div>
 
-          {/* Right Column - Subscription Management */}
-          <div className="lg:col-span-1">
-            <SubscriptionManager />
-          </div>
+        {/* Subscription Management - Full Width */}
+        <div className="mb-8">
+          <SubscriptionManager />
         </div>
 
         {/* Recent Activity */}
