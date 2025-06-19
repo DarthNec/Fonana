@@ -656,9 +656,14 @@ export default function CreatePostModal({ onPostCreated, onClose }: CreatePostMo
                     }))}
                     className="w-5 h-5 text-purple-600 bg-gray-100 border-gray-300 rounded focus:ring-purple-500 dark:focus:ring-purple-600 dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600"
                   />
-                  <span className="text-lg font-semibold text-gray-900 dark:text-white">
-                    💰 Make this post sellable
-                  </span>
+                  <div>
+                    <span className="text-lg font-semibold text-gray-900 dark:text-white">
+                      💰 Make this post sellable
+                    </span>
+                    <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+                      Продажа физических или цифровых товаров через пост. Это НЕ для открытия доступа к контенту поста.
+                    </p>
+                  </div>
                 </label>
 
                 {formData.isSellable && (

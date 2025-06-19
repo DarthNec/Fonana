@@ -27,6 +27,7 @@ import { HeartIcon as HeartSolidIcon } from '@heroicons/react/24/solid'
 import { useUser } from '@/lib/hooks/useUser'
 import { getProfileLink } from '@/lib/utils/links'
 import EditPostModal from './EditPostModal'
+import FlashSale from './FlashSale'
 
 interface Creator {
   id: string
@@ -87,6 +88,15 @@ interface PostCardProps {
   soldAt?: string
   soldTo?: { id: string; nickname?: string; wallet: string }
   soldPrice?: number
+  flashSale?: {
+    id: string
+    discount: number
+    endAt: string
+    maxRedemptions?: number
+    usedCount: number
+    remainingRedemptions?: number
+    timeLeft: number
+  }
   onSubscribeClick?: (creatorData: any, preferredTier?: 'basic' | 'premium' | 'vip') => void
   onPurchaseClick?: (postData: any) => void
   onSellableClick?: (postData: any) => void  // Новый callback для продаваемых постов
@@ -127,6 +137,7 @@ export default function PostCard({
   soldAt,
   soldTo,
   soldPrice,
+  flashSale,
   onSubscribeClick,
   onPurchaseClick,
   onSellableClick,
@@ -701,9 +712,26 @@ export default function PostCard({
                   }
                 </p>
                 {needsPayment && (
-                  <div className="text-purple-600 dark:text-purple-400 font-bold text-2xl mb-4">
-                    {price} {currency}
-                  </div>
+                  <>
+                    {flashSale ? (
+                      <FlashSale 
+                        flashSale={{
+                          ...flashSale,
+                          post: {
+                            id: id.toString(),
+                            title,
+                            price,
+                            currency
+                          }
+                        }}
+                        className="mb-4 max-w-sm mx-auto"
+                      />
+                    ) : (
+                      <div className="text-purple-600 dark:text-purple-400 font-bold text-2xl mb-4">
+                        {price} {currency}
+                      </div>
+                    )}
+                  </>
                 )}
                 <button 
                   onClick={() => {
@@ -735,7 +763,9 @@ export default function PostCard({
                   className="px-6 py-3 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white rounded-xl font-medium transition-all transform hover:scale-105"
                 >
                   {needsPayment 
-                    ? `Buy for ${price} ${currency}`
+                    ? flashSale 
+                      ? `Buy for ${(price! * (1 - flashSale.discount / 100)).toFixed(2)} ${currency} (${flashSale.discount}% OFF)`
+                      : `Buy for ${price} ${currency}`
                     : isTierContent && tierInfo
                     ? userTier 
                       ? `Upgrade to ${tierInfo.required.name}`
@@ -843,6 +873,19 @@ export default function PostCard({
                         </div>
                       )}
                     </>
+                  ) : flashSale ? (
+                    <FlashSale 
+                      flashSale={{
+                        ...flashSale,
+                        post: {
+                          id: id.toString(),
+                          title,
+                          price,
+                          currency
+                        }
+                      }}
+                      className="max-w-xs"
+                    />
                   ) : (
                     <div className="text-xl font-bold text-yellow-600 dark:text-yellow-400">
                       {price} {currency}
@@ -871,7 +914,7 @@ export default function PostCard({
                 })}
                 className="w-full py-2 bg-gradient-to-r from-yellow-500 to-orange-500 hover:from-yellow-600 hover:to-orange-600 text-white rounded-lg font-medium transition-all transform hover:scale-105"
               >
-                {sellType === 'AUCTION' ? 'Place Bid' : `Buy for ${price} ${currency}`}
+                {sellType === 'AUCTION' ? 'Place Bid' : flashSale ? `Buy for ${(price! * (1 - flashSale.discount / 100)).toFixed(2)} ${currency} (${flashSale.discount}% OFF)` : `Buy for ${price} ${currency}`}
               </button>
             </div>
           )}

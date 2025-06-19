@@ -6,7 +6,8 @@ import {
   XMarkIcon,
   LockClosedIcon,
   CheckIcon,
-  ShoppingCartIcon
+  ShoppingCartIcon,
+  BoltIcon
 } from '@heroicons/react/24/outline'
 import { CheckBadgeIcon } from '@heroicons/react/24/solid'
 import { useWallet } from '@solana/wallet-adapter-react'
@@ -40,6 +41,15 @@ interface PurchaseModalProps {
         wallet?: string | null
       } | null
     }
+    flashSale?: {
+      id: string
+      discount: number
+      endAt: string
+      maxRedemptions?: number
+      usedCount: number
+      remainingRedemptions?: number
+      timeLeft: number
+    }
   }
   onClose: () => void
   onSuccess?: () => void
@@ -49,6 +59,12 @@ export default function PurchaseModal({ post, onClose, onSuccess }: PurchaseModa
   const { publicKey, connected, sendTransaction } = useWallet()
   const [isProcessing, setIsProcessing] = useState(false)
   const [creatorData, setCreatorData] = useState<any>(null)
+  const [flashSaleApplied, setFlashSaleApplied] = useState(false)
+  
+  // Вычисляем финальную цену с учетом Flash Sale
+  const finalPrice = post.flashSale && !flashSaleApplied
+    ? post.price * (1 - post.flashSale.discount / 100)
+    : post.price
 
   useEffect(() => {
     // Загружаем актуальные данные создателя
@@ -95,9 +111,29 @@ export default function PurchaseModal({ post, onClose, onSuccess }: PurchaseModa
     setIsProcessing(true)
 
     try {
+      // Если есть Flash Sale, сначала проверяем и применяем его
+      let actualPrice = post.price
+      let appliedFlashSaleId: string | undefined
+      
+      if (post.flashSale && !flashSaleApplied) {
+        try {
+          // Проверяем доступность Flash Sale
+          const checkResponse = await fetch(`/api/flash-sales/apply/check?flashSaleId=${post.flashSale.id}&userId=${publicKey.toBase58()}&price=${post.price}`)
+          const checkData = await checkResponse.json()
+          
+          if (checkData.canApply) {
+            actualPrice = checkData.pricing.finalPrice
+            appliedFlashSaleId = post.flashSale.id
+          }
+        } catch (error) {
+          console.error('Error checking flash sale:', error)
+          // Продолжаем без скидки если проверка не удалась
+        }
+      }
+      
       // Calculate payment distribution
       const distribution = calculatePaymentDistribution(
-        post.price,
+        actualPrice,
         creatorWallet,
         hasReferrer,
         referrerWallet
@@ -191,12 +227,14 @@ export default function PurchaseModal({ post, onClose, onSuccess }: PurchaseModa
         body: JSON.stringify({
           postId: post.id,
           userId: publicKey.toBase58(),
-          price: post.price,
+          price: actualPrice,
+          originalPrice: post.price,
           currency: post.currency,
           signature,
           creatorId: post.creator.id,
           hasReferrer,
-          distribution
+          distribution,
+          flashSaleId: appliedFlashSaleId
         })
       })
 
@@ -304,36 +342,69 @@ export default function PurchaseModal({ post, onClose, onSuccess }: PurchaseModa
               </div>
             </div>
             <div className="text-right">
-              <p className="text-xl font-bold text-gray-900 dark:text-white">
-                {formatSolAmount(post.price)}
-              </p>
-              <p className="text-xs text-gray-500 dark:text-gray-400">
-                ≈ ${(post.price * 45).toFixed(2)} USD
-              </p>
+              {post.flashSale ? (
+                <>
+                  <p className="text-xl font-bold text-orange-600 dark:text-orange-400">
+                    {formatSolAmount(finalPrice)}
+                  </p>
+                  <p className="text-sm text-gray-500 dark:text-gray-400 line-through">
+                    {formatSolAmount(post.price)}
+                  </p>
+                  <p className="text-xs text-green-600 dark:text-green-400 font-medium">
+                    {post.flashSale.discount}% OFF!
+                  </p>
+                </>
+              ) : (
+                <>
+                  <p className="text-xl font-bold text-gray-900 dark:text-white">
+                    {formatSolAmount(post.price)}
+                  </p>
+                  <p className="text-xs text-gray-500 dark:text-gray-400">
+                    ≈ ${(post.price * 45).toFixed(2)} USD
+                  </p>
+                </>
+              )}
             </div>
           </div>
         </div>
 
         {/* Payment distribution */}
         <div className="space-y-2 mb-6">
+          {post.flashSale && (
+            <div className="bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-800 rounded-lg p-3 mb-3">
+              <div className="flex items-center gap-2 text-orange-700 dark:text-orange-300">
+                <BoltIcon className="w-5 h-5" />
+                <span className="font-medium">Flash Sale: {post.flashSale.discount}% OFF!</span>
+              </div>
+              <p className="text-xs text-orange-600 dark:text-orange-400 mt-1">
+                Осталось {post.flashSale.remainingRedemptions || '∞'} использований
+              </p>
+            </div>
+          )}
           <div className="flex justify-between text-sm">
             <span className="text-gray-600 dark:text-gray-400">Создатель получит:</span>
             <span className="text-gray-900 dark:text-white font-medium">
-              {formatSolAmount(post.price * 0.9)}
+              {formatSolAmount(finalPrice * 0.9)}
             </span>
           </div>
           <div className="flex justify-between text-sm">
             <span className="text-gray-600 dark:text-gray-400">Комиссия платформы:</span>
             <span className="text-gray-900 dark:text-white font-medium">
-              {formatSolAmount(post.price * (hasReferrerDisplay ? 0.05 : 0.1))}
+              {formatSolAmount(finalPrice * (hasReferrerDisplay ? 0.05 : 0.1))}
             </span>
           </div>
           {hasReferrerDisplay && (
             <div className="flex justify-between text-sm">
               <span className="text-gray-600 dark:text-gray-400">Реферальная комиссия:</span>
               <span className="text-gray-900 dark:text-white font-medium">
-                {formatSolAmount(post.price * 0.05)}
+                {formatSolAmount(finalPrice * 0.05)}
               </span>
+            </div>
+          )}
+          {post.flashSale && (
+            <div className="flex justify-between text-sm text-green-600 dark:text-green-400 font-medium pt-2 border-t border-gray-200 dark:border-gray-700">
+              <span>Вы экономите:</span>
+              <span>{formatSolAmount(post.price - finalPrice)}</span>
             </div>
           )}
         </div>
@@ -395,7 +466,14 @@ export default function PurchaseModal({ post, onClose, onSuccess }: PurchaseModa
               ) : (
                 <>
                   <ShoppingCartIcon className="w-5 h-5" />
-                  <span>Купить за {formatSolAmount(post.price)}</span>
+                  <span>
+                    Купить за {formatSolAmount(finalPrice)}
+                    {post.flashSale && (
+                      <span className="ml-2 text-sm line-through opacity-75">
+                        {formatSolAmount(post.price)}
+                      </span>
+                    )}
+                  </span>
                 </>
               )}
             </button>

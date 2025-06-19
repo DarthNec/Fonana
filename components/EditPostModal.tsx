@@ -280,10 +280,8 @@ export default function EditPostModal({ isOpen, onClose, post, onPostUpdated }: 
             accessType === 'premium' ? 'premium' :
             accessType === 'subscribers' ? 'basic' :
             null,
-          // Сохраняем sellable поля если они есть
-          isSellable: post.isSellable || false,
-          sellType: post.sellType || null,
-          quantity: post.quantity || null
+          // НЕ передаем sellable поля при редактировании - они не должны меняться через EditPostModal
+          // isSellable, sellType и quantity управляются только через CreatePostModal
         }),
       })
 

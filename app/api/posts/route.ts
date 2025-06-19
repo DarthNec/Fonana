@@ -96,6 +96,21 @@ export async function GET(req: Request) {
             amount: true,
             userId: true
           }
+        },
+        // Flash Sales
+        flashSales: {
+          where: {
+            isActive: true,
+            endAt: { gte: new Date() },
+            startAt: { lte: new Date() }
+          },
+          select: {
+            id: true,
+            discount: true,
+            endAt: true,
+            maxRedemptions: true,
+            usedCount: true
+          }
         }
       },
       orderBy: {
@@ -258,7 +273,14 @@ export async function GET(req: Request) {
         soldPrice: post.soldPrice,
         sellerConfirmedAt: post.sellerConfirmedAt,
         // Текущая ставка для аукционов
-        auctionCurrentBid: post.auctionBids && post.auctionBids.length > 0 ? post.auctionBids[0].amount : null
+        auctionCurrentBid: post.auctionBids && post.auctionBids.length > 0 ? post.auctionBids[0].amount : null,
+        // Flash Sale (берем первую активную)
+        flashSale: post.flashSales && post.flashSales.length > 0 ? {
+          ...post.flashSales[0],
+          remainingRedemptions: post.flashSales[0].maxRedemptions ? 
+            post.flashSales[0].maxRedemptions - post.flashSales[0].usedCount : null,
+          timeLeft: Math.floor((new Date(post.flashSales[0].endAt).getTime() - Date.now()) / 1000)
+        } : null
       }
     })
 

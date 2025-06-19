@@ -65,6 +65,10 @@ model User {
   auctionDeposits        AuctionDeposit[]
   auctionBids           AuctionBid[]
   auctionPayments       AuctionPayment[]
+  
+  // Flash sales
+  flashSales            FlashSale[]
+  flashSaleRedemptions  FlashSaleRedemption[]
 
   @@map("users")
 }
@@ -116,6 +120,7 @@ model Post {
   auctionDeposits AuctionDeposit[]
   auctionBids     AuctionBid[]
   auctionPayment  AuctionPayment?
+  flashSales    FlashSale[]
 
   @@map("posts")
 }
@@ -490,4 +495,52 @@ enum AuctionPaymentStatus {
   CONFIRMED   // Подтвержден продавцом
   EXPIRED     // Истек срок оплаты
   CANCELLED   // Отменен
+}
+
+// Flash Sales model
+model FlashSale {
+  id              String   @id @default(cuid())
+  creatorId       String?  // null = platform-wide sale
+  postId          String?  // specific post sale
+  subscriptionPlan String? // 'basic' | 'premium' | 'vip' - for subscription sales
+  
+  discount        Float    // Percentage discount (10-90)
+  maxRedemptions  Int?     // Max number of uses
+  usedCount       Int      @default(0)
+  
+  startAt         DateTime @default(now())
+  endAt           DateTime // When sale expires
+  
+  isActive        Boolean  @default(true)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  
+  // Relations
+  creator         User?    @relation(fields: [creatorId], references: [id], onDelete: Cascade)
+  post            Post?    @relation(fields: [postId], references: [id], onDelete: Cascade)
+  redemptions     FlashSaleRedemption[]
+  
+  @@index([creatorId, isActive])
+  @@index([endAt, isActive])
+  @@map("flash_sales")
+}
+
+// Track who used flash sales
+model FlashSaleRedemption {
+  id            String    @id @default(cuid())
+  flashSaleId   String
+  userId        String
+  
+  originalPrice Float     // Price before discount
+  discountAmount Float    // Amount saved
+  finalPrice    Float     // Price paid
+  
+  redeemedAt    DateTime  @default(now())
+  
+  // Relations
+  flashSale     FlashSale @relation(fields: [flashSaleId], references: [id], onDelete: Cascade)
+  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  @@unique([flashSaleId, userId]) // One redemption per user per sale
+  @@map("flash_sale_redemptions")
 }
