@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
-import { PlayIcon } from '@heroicons/react/24/solid'
+import { PlayIcon, PauseIcon } from '@heroicons/react/24/solid'
 
 interface OptimizedImageProps {
   src: string | null
@@ -25,7 +25,10 @@ export default function OptimizedImage({
   const [currentSrc, setCurrentSrc] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [isInView, setIsInView] = useState(false)
+  const [showVideo, setShowVideo] = useState(false)
+  const [isPlaying, setIsPlaying] = useState(false)
   const imgRef = useRef<HTMLImageElement>(null)
+  const videoRef = useRef<HTMLVideoElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
 
   // Определяем, какое изображение показывать
@@ -84,25 +87,76 @@ export default function OptimizedImage({
     }
   }, [isInView, preview, thumbSrc, previewSrc, imageSrc])
 
+  const handleVideoClick = () => {
+    if (!showVideo) {
+      setShowVideo(true)
+      setTimeout(() => {
+        if (videoRef.current) {
+          videoRef.current.play()
+          setIsPlaying(true)
+        }
+      }, 100)
+    } else {
+      if (videoRef.current) {
+        if (isPlaying) {
+          videoRef.current.pause()
+          setIsPlaying(false)
+        } else {
+          videoRef.current.play()
+          setIsPlaying(true)
+        }
+      }
+    }
+  }
+
   if (type === 'video') {
     return (
       <div 
         ref={containerRef}
         className={`relative ${className}`}
-        onClick={onClick}
       >
-        <img
-          ref={imgRef}
-          src={currentSrc || previewSrc}
-          alt={alt}
-          className={`${className} ${isLoading ? 'blur-sm' : ''} transition-all duration-300`}
-          loading="lazy"
-        />
-        <div className="absolute inset-0 flex items-center justify-center">
-          <div className="w-16 h-16 bg-black/50 backdrop-blur-sm rounded-full flex items-center justify-center hover:scale-110 transition-transform cursor-pointer">
-            <PlayIcon className="w-8 h-8 text-white" />
-          </div>
-        </div>
+        {!showVideo ? (
+          <>
+            <img
+              ref={imgRef}
+              src={currentSrc || previewSrc}
+              alt={alt}
+              className={`${className} ${isLoading ? 'blur-sm' : ''} transition-all duration-300`}
+              loading="lazy"
+            />
+            <div 
+              className="absolute inset-0 flex items-center justify-center cursor-pointer"
+              onClick={handleVideoClick}
+            >
+              <div className="w-16 h-16 bg-black/50 backdrop-blur-sm rounded-full flex items-center justify-center hover:scale-110 transition-transform">
+                <PlayIcon className="w-8 h-8 text-white" />
+              </div>
+            </div>
+          </>
+        ) : (
+          <>
+            <video
+              ref={videoRef}
+              src={src || ''}
+              className={className}
+              controls
+              onClick={handleVideoClick}
+              onEnded={() => setIsPlaying(false)}
+            >
+              Your browser does not support the video tag.
+            </video>
+            {!isPlaying && (
+              <div 
+                className="absolute inset-0 flex items-center justify-center cursor-pointer"
+                onClick={handleVideoClick}
+              >
+                <div className="w-16 h-16 bg-black/50 backdrop-blur-sm rounded-full flex items-center justify-center hover:scale-110 transition-transform">
+                  <PlayIcon className="w-8 h-8 text-white" />
+                </div>
+              </div>
+            )}
+          </>
+        )}
       </div>
     )
   }
