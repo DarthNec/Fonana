@@ -4,6 +4,7 @@ import path from 'path'
 import crypto from 'crypto'
 import fs from 'fs'
 import sharp from 'sharp'
+import { generateVideoThumbnailAtPercentage } from '@/lib/utils/video-processor'
 
 export async function POST(request: NextRequest) {
   try {
@@ -139,6 +140,43 @@ export async function POST(request: NextRequest) {
           // Продолжаем даже если оптимизация не удалась
         }
       }
+      
+      // Если это видео, пытаемся извлечь кадр
+      if (type === 'video') {
+        const thumbFileName = `thumb_${hash}.jpg`
+        const thumbPath = path.join(uploadDir, thumbFileName)
+        
+        console.log('Attempting to extract video thumbnail...')
+        
+        // Пытаемся извлечь кадр на 10% длительности видео
+        const thumbnailExtracted = await generateVideoThumbnailAtPercentage(
+          filePath,
+          thumbPath,
+          10 // 10% of video duration
+        )
+        
+        if (thumbnailExtracted) {
+          console.log('Video thumbnail extracted successfully')
+          
+          // Оптимизируем извлеченный кадр
+          try {
+            const optimizedThumbPath = path.join(uploadDir, `thumb_${hash}.webp`)
+            await sharp(thumbPath)
+              .resize(800, null, { 
+                withoutEnlargement: true,
+                fit: 'inside'
+              })
+              .webp({ quality: 85 })
+              .toFile(optimizedThumbPath)
+              
+            // Удаляем оригинальный jpg
+            await fs.promises.unlink(thumbPath)
+            console.log('Video thumbnail optimized')
+          } catch (optimizeError) {
+            console.error('Error optimizing video thumbnail:', optimizeError)
+          }
+        }
+      }
     } catch (writeError) {
       console.error('Error writing file:', writeError)
       throw writeError
@@ -149,10 +187,20 @@ export async function POST(request: NextRequest) {
     let thumbUrl = type === 'image' ? `/posts/${mediaType}/thumb_${fileName.replace(ext, '.webp')}` : null
     let previewUrl = type === 'image' ? `/posts/${mediaType}/preview_${fileName.replace(ext, '.webp')}` : null
 
-    // Для видео используем enhanced placeholder
+    // Для видео проверяем, был ли создан тумбнейл
     if (type === 'video') {
-      thumbUrl = '/placeholder-video-enhanced.png'
-      previewUrl = '/placeholder-video-enhanced.png'
+      const videoThumbPath = `/posts/${mediaType}/thumb_${hash}.webp`
+      const videoThumbFile = path.join(uploadDir, `thumb_${hash}.webp`)
+      
+      // Проверяем существование файла тумбнейла
+      if (fs.existsSync(videoThumbFile)) {
+        thumbUrl = videoThumbPath
+        previewUrl = videoThumbPath
+      } else {
+        // Fallback на enhanced placeholder если не удалось извлечь кадр
+        thumbUrl = '/placeholder-video-enhanced.png'
+        previewUrl = '/placeholder-video-enhanced.png'
+      }
     }
 
     return NextResponse.json({ 
