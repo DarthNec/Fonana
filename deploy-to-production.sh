@@ -48,6 +48,20 @@ ssh -p $PORT $SERVER "cd $REMOTE_PATH && git pull origin main" || {
 echo -e "${GREEN}📦 Checking dependencies...${NC}"
 ssh -p $PORT $SERVER "cd $REMOTE_PATH && npm install --production"
 
+# Run database migrations
+echo -e "${GREEN}🗄️  Running database migrations...${NC}"
+ssh -p $PORT $SERVER "cd $REMOTE_PATH && npx prisma migrate deploy" || {
+    echo -e "${RED}❌ Migration failed${NC}"
+    exit 1
+}
+
+# Generate Prisma Client
+echo -e "${GREEN}🔧 Generating Prisma Client...${NC}"
+ssh -p $PORT $SERVER "cd $REMOTE_PATH && npx prisma generate" || {
+    echo -e "${RED}❌ Prisma generate failed${NC}"
+    exit 1
+}
+
 # Build on server
 echo -e "${GREEN}🔨 Building application...${NC}"
 ssh -p $PORT $SERVER "cd $REMOTE_PATH && npm run build" || {
