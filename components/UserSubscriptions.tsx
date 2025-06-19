@@ -12,8 +12,6 @@ import {
   CreditCardIcon,
   CalendarIcon,
   TrashIcon,
-  ArrowUpIcon,
-  ArrowDownIcon,
   SparklesIcon,
   UserIcon
 } from '@heroicons/react/24/outline'
@@ -43,8 +41,6 @@ export default function UserSubscriptions() {
   const [subscriptions, setSubscriptions] = useState<Subscription[]>([])
   const [loading, setLoading] = useState(true)
   const [selectedSub, setSelectedSub] = useState<string | null>(null)
-  const [showUpgradeModal, setShowUpgradeModal] = useState(false)
-  const [selectedUpgrade, setSelectedUpgrade] = useState<Subscription | null>(null)
 
   useEffect(() => {
     if (user) {
@@ -93,33 +89,6 @@ export default function UserSubscriptions() {
     } catch (error) {
       console.error('Error cancelling subscription:', error)
       toast.error('Error cancelling subscription')
-    }
-  }
-
-  const handleUpgradeTier = async (subscriptionId: string, newTier: string, newPrice: number) => {
-    try {
-      const response = await fetch(`/api/subscriptions/${subscriptionId}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          plan: newTier,
-          price: newPrice
-        })
-      })
-
-      if (response.ok) {
-        toast.success(`Subscription upgraded to ${newTier}`)
-        fetchSubscriptions()
-        setShowUpgradeModal(false)
-        setSelectedUpgrade(null)
-      } else {
-        toast.error('Error upgrading subscription')
-      }
-    } catch (error) {
-      console.error('Error upgrading subscription:', error)
-      toast.error('Error upgrading subscription')
     }
   }
 
@@ -275,18 +244,6 @@ export default function UserSubscriptions() {
                         View Profile
                       </Link>
 
-                      {/* Upgrade/Downgrade */}
-                      <button
-                        onClick={() => {
-                          setSelectedUpgrade(subscription)
-                          setShowUpgradeModal(true)
-                        }}
-                        className="inline-flex items-center gap-2 px-4 py-2 bg-purple-500/20 hover:bg-purple-500/30 text-purple-700 dark:text-purple-300 rounded-xl text-sm font-medium transition-all"
-                      >
-                        <ArrowUpIcon className="w-4 h-4" />
-                        Change Tier
-                      </button>
-
                       {/* Cancel */}
                       <button
                         onClick={() => {
@@ -307,60 +264,6 @@ export default function UserSubscriptions() {
           })}
         </div>
       </div>
-
-      {/* Upgrade Modal */}
-      {showUpgradeModal && selectedUpgrade && (
-        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-white dark:bg-slate-800 rounded-3xl p-8 max-w-md w-full border border-gray-200 dark:border-slate-700/50 shadow-2xl">
-            <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-6">Change Subscription Tier</h3>
-            
-            <div className="mb-6">
-              <p className="text-gray-600 dark:text-slate-400 mb-2">Current tier:</p>
-              <div className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-sm font-medium text-white bg-gradient-to-r ${getTierColor(selectedUpgrade.plan)}`}>
-                <span>{getTierIcon(selectedUpgrade.plan)}</span>
-                <span>{selectedUpgrade.plan}</span>
-              </div>
-            </div>
-
-            <div className="space-y-3 mb-6">
-              {['Basic', 'Premium', 'VIP'].map((tier) => {
-                if (tier.toLowerCase() === selectedUpgrade.plan.toLowerCase()) return null
-                
-                const price = tier === 'Basic' ? 0.05 : tier === 'Premium' ? 0.15 : 0.35
-                
-                return (
-                  <button
-                    key={tier}
-                    onClick={() => handleUpgradeTier(selectedUpgrade.id, tier, price)}
-                    className="w-full p-4 bg-gray-50 dark:bg-slate-700/50 hover:bg-gray-100 dark:hover:bg-slate-700 rounded-xl transition-all flex items-center justify-between group"
-                  >
-                    <div className="flex items-center gap-3">
-                      <div className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-sm font-medium text-white bg-gradient-to-r ${getTierColor(tier)}`}>
-                        <span>{getTierIcon(tier)}</span>
-                        <span>{tier}</span>
-                      </div>
-                      <span className="text-gray-700 dark:text-slate-300">
-                        {price} SOL/mo
-                      </span>
-                    </div>
-                    <ArrowUpIcon className="w-5 h-5 text-gray-400 dark:text-slate-500 group-hover:text-gray-900 dark:group-hover:text-white transition-colors" />
-                  </button>
-                )
-              })}
-            </div>
-
-            <button
-              onClick={() => {
-                setShowUpgradeModal(false)
-                setSelectedUpgrade(null)
-              }}
-              className="w-full px-6 py-3 bg-gray-100 dark:bg-slate-700 hover:bg-gray-200 dark:hover:bg-slate-600 text-gray-700 dark:text-white rounded-xl font-medium transition-all"
-            >
-              Cancel
-            </button>
-          </div>
-        </div>
-      )}
     </>
   )
 } 
