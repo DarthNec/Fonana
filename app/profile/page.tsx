@@ -631,6 +631,17 @@ export default function ProfilePage() {
                   {/* Background Image Section */}
                   <div className="border-t border-gray-200 dark:border-slate-700/50 pt-8">
                     <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Profile Background Image</h3>
+                    
+                    {/* Temporary notification about lost backgrounds */}
+                    {!formData.backgroundImage && !user?.backgroundImage && (
+                      <div className="mb-4 p-4 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700/50 rounded-xl">
+                        <p className="text-sm text-amber-800 dark:text-amber-200">
+                          ⚠️ Due to a recent system update, background images need to be re-uploaded. 
+                          Please upload your background image again.
+                        </p>
+                      </div>
+                    )}
+
                     <div className="space-y-4">
                       {/* Preview */}
                       {(formData.backgroundImage || user?.backgroundImage) && (

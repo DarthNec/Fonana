@@ -59,12 +59,14 @@ export default function CreatorPage() {
   const [activeTab, setActiveTab] = useState<'posts' | 'photos' | 'videos'>('posts')
   const [showSubscribeModal, setShowSubscribeModal] = useState(false)
   const [isSubscribed, setIsSubscribed] = useState(false)
+  const [currentSubscriptionTier, setCurrentSubscriptionTier] = useState<string | null>(null)
   const [isFollowing, setIsFollowing] = useState(false)
   const [showPurchaseModal, setShowPurchaseModal] = useState(false)
   const [selectedPurchaseData, setSelectedPurchaseData] = useState<any>(null)
   const [selectedCreatorData, setSelectedCreatorData] = useState<any>(null)
   const [selectedTier, setSelectedTier] = useState<'basic' | 'premium' | 'vip' | undefined>(undefined)
   const [isLoadingPosts, setIsLoadingPosts] = useState(false)
+  const [creatorTiers, setCreatorTiers] = useState<any>(null)
 
   useEffect(() => {
     if (params.id) {
@@ -143,7 +145,17 @@ export default function CreatorPage() {
         if (subResponse.ok) {
           const subData = await subResponse.json()
           setIsSubscribed(subData.isSubscribed)
+          if (subData.subscription && subData.isSubscribed) {
+            setCurrentSubscriptionTier(subData.subscription.plan)
+          }
         }
+      }
+
+      // Load creator tier settings
+      const tierResponse = await fetch(`/api/user/tier-settings?wallet=${creatorInfo.wallet}`)
+      if (tierResponse.ok) {
+        const tierData = await tierResponse.json()
+        setCreatorTiers(tierData.settings)
       }
     } catch (error) {
       console.error('Error loading creator data:', error)
@@ -165,6 +177,7 @@ export default function CreatorPage() {
   }
 
   const handleSubscribeClick = (creatorData: any, tier: 'basic' | 'premium' | 'vip' = 'basic') => {
+    setSelectedTier(tier)
     setShowSubscribeModal(true)
   }
 
@@ -282,10 +295,17 @@ export default function CreatorPage() {
                             Subscribe
                           </button>
                         ) : (
-                          <button className="px-8 py-3 bg-gradient-to-r from-emerald-500 to-green-500 text-white rounded-2xl font-bold shadow-lg flex items-center gap-2">
-                            <CheckIcon className="w-5 h-5" />
-                            Subscribed
-                          </button>
+                          <div className="flex flex-col items-end gap-2">
+                            <button className="px-8 py-3 bg-gradient-to-r from-emerald-500 to-green-500 text-white rounded-2xl font-bold shadow-lg flex items-center gap-2">
+                              <CheckIcon className="w-5 h-5" />
+                              Subscribed
+                            </button>
+                            {currentSubscriptionTier && (
+                              <span className="text-sm text-gray-600 dark:text-slate-400">
+                                {currentSubscriptionTier} tier
+                              </span>
+                            )}
+                          </div>
                         )}
                       </div>
                     </div>
@@ -364,10 +384,17 @@ export default function CreatorPage() {
                       Subscribe
                     </button>
                   ) : (
-                    <button className="w-full px-8 py-3 bg-gradient-to-r from-emerald-500 to-green-500 text-white rounded-2xl font-bold shadow-lg flex items-center justify-center gap-2">
-                      <CheckIcon className="w-5 h-5" />
-                      Subscribed
-                    </button>
+                    <div className="flex flex-col gap-2">
+                      <button className="w-full px-8 py-3 bg-gradient-to-r from-emerald-500 to-green-500 text-white rounded-2xl font-bold shadow-lg flex items-center justify-center gap-2">
+                        <CheckIcon className="w-5 h-5" />
+                        Subscribed
+                      </button>
+                      {currentSubscriptionTier && (
+                        <p className="text-center text-sm text-gray-600 dark:text-slate-400">
+                          {currentSubscriptionTier} tier
+                        </p>
+                      )}
+                    </div>
                   )}
                 </div>
               </div>
@@ -427,7 +454,152 @@ export default function CreatorPage() {
             <div className="mt-12">
               <div className="bg-white dark:bg-slate-800/50 backdrop-blur-xl border border-gray-200 dark:border-slate-700/50 rounded-3xl p-8">
                 <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-6">Subscription Tiers</h2>
-                <p className="text-gray-600 dark:text-slate-400">Coming soon...</p>
+                {creatorTiers ? (
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    {/* Basic Tier */}
+                    {creatorTiers.basicTier?.enabled && (
+                      <div className="bg-gradient-to-br from-gray-50 to-gray-100 dark:from-slate-700/30 dark:to-slate-700/50 rounded-2xl p-6 border border-gray-200 dark:border-slate-600/50">
+                        <div className="flex items-center justify-between mb-4">
+                          <h3 className="text-xl font-bold text-gray-900 dark:text-white">Basic</h3>
+                          <span className="text-2xl font-bold text-gray-900 dark:text-white">
+                            {creatorTiers.basicTier.price} SOL
+                          </span>
+                        </div>
+                        <p className="text-gray-600 dark:text-slate-400 mb-4">
+                          {creatorTiers.basicTier.description || 'Access to basic content'}
+                        </p>
+                        {creatorTiers.basicTier.features && (
+                          <ul className="space-y-2">
+                            {creatorTiers.basicTier.features
+                              .filter((f: any) => f.enabled)
+                              .map((feature: any) => (
+                                <li key={feature.id} className="flex items-start gap-2 text-sm text-gray-700 dark:text-slate-300">
+                                  <CheckIcon className="w-4 h-4 text-green-500 mt-0.5 flex-shrink-0" />
+                                  <span>{feature.text}</span>
+                                </li>
+                              ))}
+                          </ul>
+                        )}
+                        {currentSubscriptionTier !== 'basic' && (
+                          <button
+                            onClick={() => handleSubscribeClick({
+                              id: creator.id,
+                              name: creator.fullName || creator.nickname,
+                              username: creator.nickname,
+                              avatar: creator.avatar || '',
+                              isVerified: creator.isVerified
+                            }, 'basic')}
+                            className="w-full mt-4 px-4 py-2 bg-gray-200 dark:bg-slate-600 hover:bg-gray-300 dark:hover:bg-slate-500 text-gray-900 dark:text-white rounded-xl font-medium transition-all"
+                          >
+                            {isSubscribed ? 'Switch to Basic' : 'Subscribe'}
+                          </button>
+                        )}
+                        {currentSubscriptionTier === 'basic' && (
+                          <div className="w-full mt-4 px-4 py-2 bg-green-500/20 text-green-700 dark:text-green-300 rounded-xl font-medium text-center">
+                            Current Plan
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Premium Tier */}
+                    {creatorTiers.premiumTier?.enabled && (
+                      <div className="bg-gradient-to-br from-purple-50 to-pink-50 dark:from-purple-900/20 dark:to-pink-900/20 rounded-2xl p-6 border border-purple-200 dark:border-purple-700/50 relative overflow-hidden">
+                        <div className="absolute top-0 right-0 bg-gradient-to-br from-purple-500 to-pink-500 text-white text-xs font-bold px-3 py-1 rounded-bl-xl">
+                          POPULAR
+                        </div>
+                        <div className="flex items-center justify-between mb-4">
+                          <h3 className="text-xl font-bold text-gray-900 dark:text-white">Premium</h3>
+                          <span className="text-2xl font-bold text-gray-900 dark:text-white">
+                            {creatorTiers.premiumTier.price} SOL
+                          </span>
+                        </div>
+                        <p className="text-gray-600 dark:text-slate-400 mb-4">
+                          {creatorTiers.premiumTier.description || 'Extended access with exclusive content'}
+                        </p>
+                        {creatorTiers.premiumTier.features && (
+                          <ul className="space-y-2">
+                            {creatorTiers.premiumTier.features
+                              .filter((f: any) => f.enabled)
+                              .map((feature: any) => (
+                                <li key={feature.id} className="flex items-start gap-2 text-sm text-gray-700 dark:text-slate-300">
+                                  <CheckIcon className="w-4 h-4 text-purple-500 mt-0.5 flex-shrink-0" />
+                                  <span>{feature.text}</span>
+                                </li>
+                              ))}
+                          </ul>
+                        )}
+                        {currentSubscriptionTier !== 'premium' && (
+                          <button
+                            onClick={() => handleSubscribeClick({
+                              id: creator.id,
+                              name: creator.fullName || creator.nickname,
+                              username: creator.nickname,
+                              avatar: creator.avatar || '',
+                              isVerified: creator.isVerified
+                            }, 'premium')}
+                            className="w-full mt-4 px-4 py-2 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white rounded-xl font-medium transition-all transform hover:scale-105"
+                          >
+                            {isSubscribed ? 'Upgrade to Premium' : 'Subscribe'}
+                          </button>
+                        )}
+                        {currentSubscriptionTier === 'premium' && (
+                          <div className="w-full mt-4 px-4 py-2 bg-purple-500/20 text-purple-700 dark:text-purple-300 rounded-xl font-medium text-center">
+                            Current Plan
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    {/* VIP Tier */}
+                    {creatorTiers.vipTier?.enabled && (
+                      <div className="bg-gradient-to-br from-yellow-50 to-orange-50 dark:from-yellow-900/20 dark:to-orange-900/20 rounded-2xl p-6 border border-yellow-200 dark:border-yellow-700/50">
+                        <div className="flex items-center justify-between mb-4">
+                          <h3 className="text-xl font-bold text-gray-900 dark:text-white">VIP</h3>
+                          <span className="text-2xl font-bold text-gray-900 dark:text-white">
+                            {creatorTiers.vipTier.price} SOL
+                          </span>
+                        </div>
+                        <p className="text-gray-600 dark:text-slate-400 mb-4">
+                          {creatorTiers.vipTier.description || 'Maximum access with personal interaction'}
+                        </p>
+                        {creatorTiers.vipTier.features && (
+                          <ul className="space-y-2">
+                            {creatorTiers.vipTier.features
+                              .filter((f: any) => f.enabled)
+                              .map((feature: any) => (
+                                <li key={feature.id} className="flex items-start gap-2 text-sm text-gray-700 dark:text-slate-300">
+                                  <CheckIcon className="w-4 h-4 text-yellow-500 mt-0.5 flex-shrink-0" />
+                                  <span>{feature.text}</span>
+                                </li>
+                              ))}
+                          </ul>
+                        )}
+                        {currentSubscriptionTier !== 'vip' && (
+                          <button
+                            onClick={() => handleSubscribeClick({
+                              id: creator.id,
+                              name: creator.fullName || creator.nickname,
+                              username: creator.nickname,
+                              avatar: creator.avatar || '',
+                              isVerified: creator.isVerified
+                            }, 'vip')}
+                            className="w-full mt-4 px-4 py-2 bg-gradient-to-r from-yellow-400 to-orange-500 hover:from-yellow-500 hover:to-orange-600 text-white rounded-xl font-medium transition-all transform hover:scale-105"
+                          >
+                            {isSubscribed ? 'Upgrade to VIP' : 'Subscribe'}
+                          </button>
+                        )}
+                        {currentSubscriptionTier === 'vip' && (
+                          <div className="w-full mt-4 px-4 py-2 bg-yellow-500/20 text-yellow-700 dark:text-yellow-300 rounded-xl font-medium text-center">
+                            Current Plan
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <p className="text-gray-600 dark:text-slate-400">Loading tiers...</p>
+                )}
               </div>
             </div>
           )}
