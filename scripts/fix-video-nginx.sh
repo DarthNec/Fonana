@@ -1,6 +1,18 @@
+#!/bin/bash
+
+# Скрипт для исправления nginx конфигурации для видео файлов
+
+echo "🔧 Обновление nginx конфигурации для поддержки видео..."
+
+# Создаем резервную копию текущей конфигурации
+echo "📋 Создание резервной копии..."
+sudo cp /etc/nginx/sites-available/fonana /etc/nginx/sites-available/fonana.backup.$(date +%Y%m%d_%H%M%S)
+
+# Создаем временный файл с новой конфигурацией
+cat > /tmp/nginx-fonana-new.conf << 'EOF'
 server {
     listen 80;
-    server_name 69.10.59.234 fonana.cc www.fonana.cc;
+    server_name 69.10.59.234 fonana.me www.fonana.me;
     
     # Increase client body size for file uploads
     client_max_body_size 100M;
@@ -151,4 +163,52 @@ server {
 map $http_upgrade $connection_upgrade {
     default upgrade;
     '' close;
-} 
+}
+EOF
+
+# Копируем новую конфигурацию
+echo "📝 Применение новой конфигурации..."
+sudo cp /tmp/nginx-fonana-new.conf /etc/nginx/sites-available/fonana
+
+# Проверяем конфигурацию
+echo "🔍 Проверка конфигурации nginx..."
+if sudo nginx -t; then
+    echo "✅ Конфигурация валидна"
+    
+    # Перезагружаем nginx
+    echo "🔄 Перезагрузка nginx..."
+    sudo systemctl reload nginx
+    
+    echo "✅ Nginx успешно перезагружен"
+else
+    echo "❌ Ошибка в конфигурации nginx!"
+    echo "🔙 Восстановление из резервной копии..."
+    sudo cp /etc/nginx/sites-available/fonana.backup.$(date +%Y%m%d_%H%M%S) /etc/nginx/sites-available/fonana
+    exit 1
+fi
+
+# Создаем директории если их нет
+echo "📁 Проверка директорий..."
+sudo mkdir -p /var/www/fonana/public/posts/videos
+sudo mkdir -p /var/www/fonana/public/posts/images
+sudo mkdir -p /var/www/fonana/public/posts/audio
+sudo mkdir -p /var/www/fonana/public/avatars
+sudo mkdir -p /var/www/fonana/public/backgrounds
+
+# Устанавливаем правильные права доступа
+echo "🔐 Установка прав доступа..."
+sudo chown -R www-data:www-data /var/www/fonana/public/
+sudo chmod -R 755 /var/www/fonana/public/posts/
+sudo chmod -R 755 /var/www/fonana/public/avatars/
+sudo chmod -R 755 /var/www/fonana/public/backgrounds/
+
+echo "✨ Готово! Nginx настроен для обслуживания видео файлов."
+echo "📹 Видео файлы теперь доступны по адресу: https://fonana.me/posts/videos/"
+
+# Проверяем наличие видео файлов
+VIDEO_COUNT=$(find /var/www/fonana/public/posts/videos -type f -name "*.mp4" -o -name "*.webm" | wc -l)
+if [ "$VIDEO_COUNT" -gt 0 ]; then
+    echo "📊 Найдено видео файлов: $VIDEO_COUNT"
+else
+    echo "⚠️  Видео файлы пока не загружены"
+fi 
