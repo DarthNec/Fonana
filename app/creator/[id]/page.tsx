@@ -7,6 +7,7 @@ import Avatar from '@/components/Avatar'
 import PostCard from '@/components/PostCard'
 import SubscribeModal from '@/components/SubscribeModal'
 import PurchaseModal from '@/components/PurchaseModal'
+import FlashSalesList from '@/components/FlashSalesList'
 import { 
   CheckBadgeIcon, 
   LinkIcon,
@@ -134,7 +135,8 @@ export default function CreatorPage() {
           isSubscribed: post.isSubscribed || false,
           shouldHideContent: post.shouldHideContent || false,
           requiredTier: post.requiredTier || null,
-          userTier: post.userTier || null
+          userTier: post.userTier || null,
+          flashSale: post.flashSale || null
         }))
         setPosts(formattedPosts)
       }
@@ -551,6 +553,13 @@ export default function CreatorPage() {
             </div>
           )}
 
+          {/* Flash Sales */}
+          {creator.isCreator && (
+            <div className="mb-8">
+              <FlashSalesList creatorId={creator.id} isOwner={false} />
+            </div>
+          )}
+
           {/* Content Tabs */}
           <div className="flex gap-2 mb-8 overflow-x-auto">
             {[
@@ -592,6 +601,7 @@ export default function CreatorPage() {
                   key={post.id}
                   {...post}
                   showCreator={false}
+                  flashSale={post.flashSale}
                   onSubscribeClick={handleSubscribeClick}
                   onPurchaseClick={handlePurchaseClick}
                 />

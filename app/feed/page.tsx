@@ -139,7 +139,8 @@ export default function FeedPage() {
         auctionEndAt: post.auctionEndAt,
         soldAt: post.soldAt,
         soldTo: post.soldTo,
-        soldPrice: post.soldPrice
+        soldPrice: post.soldPrice,
+        flashSale: post.flashSale || null
       }))
 
       setPosts(formattedPosts)
@@ -346,7 +347,10 @@ export default function FeedPage() {
 
       {showPurchaseModal && selectedPost && (
         <PurchaseModal
-          post={selectedPost}
+          post={{
+            ...selectedPost,
+            flashSale: selectedPost.flashSale
+          }}
           onClose={() => setShowPurchaseModal(false)}
           onSuccess={() => {
             setShowPurchaseModal(false)

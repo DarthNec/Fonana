@@ -18,13 +18,15 @@ import {
   ShoppingBagIcon,
   Cog6ToothIcon,
   CreditCardIcon,
-  ShieldCheckIcon
+  ShieldCheckIcon,
+  BoltIcon
 } from '@heroicons/react/24/outline'
 import Link from 'next/link'
 import { useUser } from '@/lib/hooks/useUser'
 import { useWallet } from '@solana/wallet-adapter-react'
 import toast from 'react-hot-toast'
 import SubscriptionManager from '@/components/SubscriptionManager'
+import FlashSalesList from '@/components/FlashSalesList'
 
 interface Post {
   id: string
@@ -314,6 +316,25 @@ export default function Dashboard() {
               </div>
             </Link>
 
+            <a 
+              href="#flash-sales" 
+              className="group bg-gradient-to-r from-orange-500 to-pink-500 hover:from-orange-600 hover:to-pink-600 rounded-2xl p-6 transition-all duration-300 hover:scale-105 hover:shadow-xl hover:shadow-orange-500/25 cursor-pointer"
+              onClick={(e) => {
+                e.preventDefault();
+                document.getElementById('flash-sales-section')?.scrollIntoView({ behavior: 'smooth' });
+              }}
+            >
+              <div className="flex items-center gap-4">
+                <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center">
+                  <BoltIcon className="w-6 h-6 text-white" />
+                </div>
+                <div>
+                  <h3 className="text-white font-bold text-lg">Flash Sales</h3>
+                  <p className="text-orange-200 text-sm">Limited time offers</p>
+                </div>
+              </div>
+            </a>
+
             <Link 
               href="/analytics" 
               className="group bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600 rounded-2xl p-6 transition-all duration-300 hover:scale-105 hover:shadow-xl hover:shadow-blue-500/25"
@@ -388,6 +409,11 @@ export default function Dashboard() {
         {/* Subscription Management - Full Width */}
         <div className="mb-8">
           <SubscriptionManager />
+        </div>
+
+        {/* Flash Sales Management */}
+        <div id="flash-sales-section" className="mb-8">
+          <FlashSalesList creatorId={user?.id} isOwner={true} />
         </div>
 
         {/* Recent Activity */}

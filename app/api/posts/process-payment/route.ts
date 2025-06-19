@@ -18,7 +18,8 @@ export async function POST(request: Request) {
       signature, 
       creatorId, 
       hasReferrer,
-      distribution 
+      distribution,
+      flashSaleId 
     }: {
       postId: string | number
       userId: string
@@ -28,6 +29,7 @@ export async function POST(request: Request) {
       creatorId: string | number
       hasReferrer: boolean
       distribution: PaymentDistribution
+      flashSaleId?: string
     } = body
 
     paymentLogger.info('Processing post payment', {
@@ -163,6 +165,34 @@ export async function POST(request: Request) {
         creatorAmount: distribution.creatorAmount
       }
     })
+
+    // Если была использована Flash Sale, создаем запись о её использовании
+    if (flashSaleId) {
+      const flashSale = await prisma.flashSale.findUnique({
+        where: { id: flashSaleId }
+      })
+      
+      if (flashSale) {
+        const originalPrice = price / (1 - flashSale.discount / 100)
+        const discountAmount = originalPrice - price
+        
+        await prisma.flashSaleRedemption.create({
+          data: {
+            flashSaleId,
+            userId: user.id,
+            originalPrice,
+            discountAmount,
+            finalPrice: price
+          }
+        })
+        
+        // Обновляем счетчик использования
+        await prisma.flashSale.update({
+          where: { id: flashSaleId },
+          data: { usedCount: { increment: 1 } }
+        })
+      }
+    }
 
     // Создаем транзакцию
     const transaction = await prisma.transaction.create({
