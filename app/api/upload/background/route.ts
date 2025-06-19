@@ -28,8 +28,15 @@ export async function POST(request: NextRequest) {
     const bytes = await file.arrayBuffer()
     const buffer = Buffer.from(bytes)
 
-    // Создаем директорию если её нет
-    const uploadDir = path.join(process.cwd(), 'public', 'backgrounds')
+    // Определяем директорию для загрузки
+    let uploadDir: string
+    
+    if (process.env.NODE_ENV === 'production') {
+      uploadDir = '/var/www/fonana/public/backgrounds'
+    } else {
+      // Для локальной разработки используем путь относительно корня проекта
+      uploadDir = path.join(process.cwd(), 'public', 'backgrounds')
+    }
     
     // Создаем директорию синхронно с recursive
     if (!existsSync(uploadDir)) {

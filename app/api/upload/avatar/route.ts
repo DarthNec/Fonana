@@ -39,8 +39,16 @@ export async function POST(request: NextRequest) {
     const bytes = await file.arrayBuffer()
     const buffer = Buffer.from(bytes)
 
-    // Создаем директорию если её нет
-    const uploadDir = path.join(process.cwd(), 'public', 'avatars')
+    // Определяем директорию для загрузки
+    let uploadDir: string
+    
+    if (process.env.NODE_ENV === 'production') {
+      uploadDir = '/var/www/fonana/public/avatars'
+    } else {
+      // Для локальной разработки используем путь относительно корня проекта
+      uploadDir = path.join(process.cwd(), 'public', 'avatars')
+    }
+    
     console.log('Upload directory:', uploadDir)
     
     // Создаем директорию синхронно с recursive
