@@ -13,7 +13,8 @@ import {
   CalendarIcon,
   TrashIcon,
   SparklesIcon,
-  UserIcon
+  UserIcon,
+  ArrowUpIcon
 } from '@heroicons/react/24/outline'
 import toast from 'react-hot-toast'
 
@@ -243,6 +244,17 @@ export default function UserSubscriptions() {
                         <UserIcon className="w-4 h-4" />
                         View Profile
                       </Link>
+
+                      {/* Change Tier - безопасная версия, перенаправляет на страницу создателя */}
+                      {subscription.plan.toLowerCase() !== 'vip' && (
+                        <Link
+                          href={`${getProfileLink({ id: subscription.creator.id, nickname: subscription.creator.nickname })}#subscription-tiers`}
+                          className="inline-flex items-center gap-2 px-4 py-2 bg-purple-500/20 hover:bg-purple-500/30 text-purple-700 dark:text-purple-300 rounded-xl text-sm font-medium transition-all"
+                        >
+                          <ArrowUpIcon className="w-4 h-4" />
+                          Upgrade Tier
+                        </Link>
+                      )}
 
                       {/* Cancel */}
                       <button

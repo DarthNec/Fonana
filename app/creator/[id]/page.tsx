@@ -301,9 +301,22 @@ export default function CreatorPage() {
                               Subscribed
                             </button>
                             {currentSubscriptionTier && (
-                              <span className="text-sm text-gray-600 dark:text-slate-400">
-                                {currentSubscriptionTier} tier
-                              </span>
+                              <div className="flex justify-center">
+                                <div className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-sm font-medium text-white bg-gradient-to-r ${
+                                  currentSubscriptionTier.toLowerCase() === 'basic' ? 'from-gray-400 to-gray-600' :
+                                  currentSubscriptionTier.toLowerCase() === 'premium' ? 'from-purple-500 to-pink-500' :
+                                  currentSubscriptionTier.toLowerCase() === 'vip' ? 'from-yellow-400 to-orange-500' :
+                                  'from-blue-400 to-cyan-400'
+                                }`}>
+                                  <span>{
+                                    currentSubscriptionTier.toLowerCase() === 'basic' ? '⭐' :
+                                    currentSubscriptionTier.toLowerCase() === 'premium' ? '💎' :
+                                    currentSubscriptionTier.toLowerCase() === 'vip' ? '👑' :
+                                    '✨'
+                                  }</span>
+                                  <span>{currentSubscriptionTier} tier</span>
+                                </div>
+                              </div>
                             )}
                           </div>
                         )}
@@ -390,9 +403,22 @@ export default function CreatorPage() {
                         Subscribed
                       </button>
                       {currentSubscriptionTier && (
-                        <p className="text-center text-sm text-gray-600 dark:text-slate-400">
-                          {currentSubscriptionTier} tier
-                        </p>
+                        <div className="flex justify-center">
+                          <div className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-sm font-medium text-white bg-gradient-to-r ${
+                            currentSubscriptionTier.toLowerCase() === 'basic' ? 'from-gray-400 to-gray-600' :
+                            currentSubscriptionTier.toLowerCase() === 'premium' ? 'from-purple-500 to-pink-500' :
+                            currentSubscriptionTier.toLowerCase() === 'vip' ? 'from-yellow-400 to-orange-500' :
+                            'from-blue-400 to-cyan-400'
+                          }`}>
+                            <span>{
+                              currentSubscriptionTier.toLowerCase() === 'basic' ? '⭐' :
+                              currentSubscriptionTier.toLowerCase() === 'premium' ? '💎' :
+                              currentSubscriptionTier.toLowerCase() === 'vip' ? '👑' :
+                              '✨'
+                            }</span>
+                            <span>{currentSubscriptionTier} tier</span>
+                          </div>
+                        </div>
                       )}
                     </div>
                   )}
@@ -400,6 +426,130 @@ export default function CreatorPage() {
               </div>
             </div>
           </div>
+
+          {/* Subscription Tiers - перемещено наверх */}
+          {creator.isCreator && creatorTiers && (
+            <div id="subscription-tiers" className="mb-8">
+              <div className="bg-white dark:bg-slate-800/50 backdrop-blur-xl border border-gray-200 dark:border-slate-700/50 rounded-3xl p-6">
+                <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-4">Subscription Tiers</h3>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  {/* Basic Tier */}
+                  {creatorTiers.basicTier?.enabled && (
+                    <div className="bg-gray-50 dark:bg-slate-700/30 rounded-xl p-4 border border-gray-200 dark:border-slate-600/50 hover:shadow-lg transition-all">
+                      <div className="flex items-center justify-between mb-2">
+                        <div className="flex items-center gap-2">
+                          <span className="text-lg">⭐</span>
+                          <h4 className="font-semibold text-gray-900 dark:text-white">Basic</h4>
+                        </div>
+                        <span className="font-bold text-gray-900 dark:text-white">
+                          {creatorTiers.basicTier.price} SOL
+                        </span>
+                      </div>
+                      <p className="text-sm text-gray-600 dark:text-slate-400 mb-3">
+                        {creatorTiers.basicTier.description || 'Access to basic content'}
+                      </p>
+                      {currentSubscriptionTier !== 'basic' && (
+                        <button
+                          onClick={() => handleSubscribeClick({
+                            id: creator.id,
+                            name: creator.fullName || creator.nickname,
+                            username: creator.nickname,
+                            avatar: creator.avatar || '',
+                            isVerified: creator.isVerified
+                          }, 'basic')}
+                          className="w-full px-3 py-2 bg-gray-200 dark:bg-slate-600 hover:bg-gray-300 dark:hover:bg-slate-500 text-gray-900 dark:text-white rounded-lg text-sm font-medium transition-all"
+                        >
+                          {isSubscribed ? 'Switch to Basic' : 'Subscribe'}
+                        </button>
+                      )}
+                      {currentSubscriptionTier === 'basic' && (
+                        <div className="w-full px-3 py-2 bg-green-500/20 text-green-700 dark:text-green-300 rounded-lg text-sm font-medium text-center">
+                          Current Plan
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Premium Tier */}
+                  {creatorTiers.premiumTier?.enabled && (
+                    <div className="bg-purple-50/50 dark:bg-purple-900/10 rounded-xl p-4 border border-purple-200 dark:border-purple-700/50 hover:shadow-lg transition-all relative overflow-hidden">
+                      <div className="absolute top-0 right-0 bg-gradient-to-br from-purple-500 to-pink-500 text-white text-xs font-bold px-2 py-0.5 rounded-bl-lg">
+                        POPULAR
+                      </div>
+                      <div className="flex items-center justify-between mb-2">
+                        <div className="flex items-center gap-2">
+                          <span className="text-lg">💎</span>
+                          <h4 className="font-semibold text-gray-900 dark:text-white">Premium</h4>
+                        </div>
+                        <span className="font-bold text-gray-900 dark:text-white">
+                          {creatorTiers.premiumTier.price} SOL
+                        </span>
+                      </div>
+                      <p className="text-sm text-gray-600 dark:text-slate-400 mb-3">
+                        {creatorTiers.premiumTier.description || 'Extended access'}
+                      </p>
+                      {currentSubscriptionTier !== 'premium' && (
+                        <button
+                          onClick={() => handleSubscribeClick({
+                            id: creator.id,
+                            name: creator.fullName || creator.nickname,
+                            username: creator.nickname,
+                            avatar: creator.avatar || '',
+                            isVerified: creator.isVerified
+                          }, 'premium')}
+                          className="w-full px-3 py-2 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white rounded-lg text-sm font-medium transition-all transform hover:scale-105"
+                        >
+                          {isSubscribed ? 'Upgrade to Premium' : 'Subscribe'}
+                        </button>
+                      )}
+                      {currentSubscriptionTier === 'premium' && (
+                        <div className="w-full px-3 py-2 bg-purple-500/20 text-purple-700 dark:text-purple-300 rounded-lg text-sm font-medium text-center">
+                          Current Plan
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* VIP Tier */}
+                  {creatorTiers.vipTier?.enabled && (
+                    <div className="bg-yellow-50/50 dark:bg-yellow-900/10 rounded-xl p-4 border border-yellow-200 dark:border-yellow-700/50 hover:shadow-lg transition-all">
+                      <div className="flex items-center justify-between mb-2">
+                        <div className="flex items-center gap-2">
+                          <span className="text-lg">👑</span>
+                          <h4 className="font-semibold text-gray-900 dark:text-white">VIP</h4>
+                        </div>
+                        <span className="font-bold text-gray-900 dark:text-white">
+                          {creatorTiers.vipTier.price} SOL
+                        </span>
+                      </div>
+                      <p className="text-sm text-gray-600 dark:text-slate-400 mb-3">
+                        {creatorTiers.vipTier.description || 'Maximum access'}
+                      </p>
+                      {currentSubscriptionTier !== 'vip' && (
+                        <button
+                          onClick={() => handleSubscribeClick({
+                            id: creator.id,
+                            name: creator.fullName || creator.nickname,
+                            username: creator.nickname,
+                            avatar: creator.avatar || '',
+                            isVerified: creator.isVerified
+                          }, 'vip')}
+                          className="w-full px-3 py-2 bg-gradient-to-r from-yellow-400 to-orange-500 hover:from-yellow-500 hover:to-orange-600 text-white rounded-lg text-sm font-medium transition-all transform hover:scale-105"
+                        >
+                          {isSubscribed ? 'Upgrade to VIP' : 'Subscribe'}
+                        </button>
+                      )}
+                      {currentSubscriptionTier === 'vip' && (
+                        <div className="w-full px-3 py-2 bg-yellow-500/20 text-yellow-700 dark:text-yellow-300 rounded-lg text-sm font-medium text-center">
+                          Current Plan
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* Content Tabs */}
           <div className="flex gap-2 mb-8 overflow-x-auto">
@@ -446,161 +596,6 @@ export default function CreatorPage() {
                   onPurchaseClick={handlePurchaseClick}
                 />
               ))}
-            </div>
-          )}
-
-          {/* Subscription Tiers */}
-          {creator.isCreator && (
-            <div className="mt-12">
-              <div className="bg-white dark:bg-slate-800/50 backdrop-blur-xl border border-gray-200 dark:border-slate-700/50 rounded-3xl p-8">
-                <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-6">Subscription Tiers</h2>
-                {creatorTiers ? (
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                    {/* Basic Tier */}
-                    {creatorTiers.basicTier?.enabled && (
-                      <div className="bg-gradient-to-br from-gray-50 to-gray-100 dark:from-slate-700/30 dark:to-slate-700/50 rounded-2xl p-6 border border-gray-200 dark:border-slate-600/50">
-                        <div className="flex items-center justify-between mb-4">
-                          <h3 className="text-xl font-bold text-gray-900 dark:text-white">Basic</h3>
-                          <span className="text-2xl font-bold text-gray-900 dark:text-white">
-                            {creatorTiers.basicTier.price} SOL
-                          </span>
-                        </div>
-                        <p className="text-gray-600 dark:text-slate-400 mb-4">
-                          {creatorTiers.basicTier.description || 'Access to basic content'}
-                        </p>
-                        {creatorTiers.basicTier.features && (
-                          <ul className="space-y-2">
-                            {creatorTiers.basicTier.features
-                              .filter((f: any) => f.enabled)
-                              .map((feature: any) => (
-                                <li key={feature.id} className="flex items-start gap-2 text-sm text-gray-700 dark:text-slate-300">
-                                  <CheckIcon className="w-4 h-4 text-green-500 mt-0.5 flex-shrink-0" />
-                                  <span>{feature.text}</span>
-                                </li>
-                              ))}
-                          </ul>
-                        )}
-                        {currentSubscriptionTier !== 'basic' && (
-                          <button
-                            onClick={() => handleSubscribeClick({
-                              id: creator.id,
-                              name: creator.fullName || creator.nickname,
-                              username: creator.nickname,
-                              avatar: creator.avatar || '',
-                              isVerified: creator.isVerified
-                            }, 'basic')}
-                            className="w-full mt-4 px-4 py-2 bg-gray-200 dark:bg-slate-600 hover:bg-gray-300 dark:hover:bg-slate-500 text-gray-900 dark:text-white rounded-xl font-medium transition-all"
-                          >
-                            {isSubscribed ? 'Switch to Basic' : 'Subscribe'}
-                          </button>
-                        )}
-                        {currentSubscriptionTier === 'basic' && (
-                          <div className="w-full mt-4 px-4 py-2 bg-green-500/20 text-green-700 dark:text-green-300 rounded-xl font-medium text-center">
-                            Current Plan
-                          </div>
-                        )}
-                      </div>
-                    )}
-
-                    {/* Premium Tier */}
-                    {creatorTiers.premiumTier?.enabled && (
-                      <div className="bg-gradient-to-br from-purple-50 to-pink-50 dark:from-purple-900/20 dark:to-pink-900/20 rounded-2xl p-6 border border-purple-200 dark:border-purple-700/50 relative overflow-hidden">
-                        <div className="absolute top-0 right-0 bg-gradient-to-br from-purple-500 to-pink-500 text-white text-xs font-bold px-3 py-1 rounded-bl-xl">
-                          POPULAR
-                        </div>
-                        <div className="flex items-center justify-between mb-4">
-                          <h3 className="text-xl font-bold text-gray-900 dark:text-white">Premium</h3>
-                          <span className="text-2xl font-bold text-gray-900 dark:text-white">
-                            {creatorTiers.premiumTier.price} SOL
-                          </span>
-                        </div>
-                        <p className="text-gray-600 dark:text-slate-400 mb-4">
-                          {creatorTiers.premiumTier.description || 'Extended access with exclusive content'}
-                        </p>
-                        {creatorTiers.premiumTier.features && (
-                          <ul className="space-y-2">
-                            {creatorTiers.premiumTier.features
-                              .filter((f: any) => f.enabled)
-                              .map((feature: any) => (
-                                <li key={feature.id} className="flex items-start gap-2 text-sm text-gray-700 dark:text-slate-300">
-                                  <CheckIcon className="w-4 h-4 text-purple-500 mt-0.5 flex-shrink-0" />
-                                  <span>{feature.text}</span>
-                                </li>
-                              ))}
-                          </ul>
-                        )}
-                        {currentSubscriptionTier !== 'premium' && (
-                          <button
-                            onClick={() => handleSubscribeClick({
-                              id: creator.id,
-                              name: creator.fullName || creator.nickname,
-                              username: creator.nickname,
-                              avatar: creator.avatar || '',
-                              isVerified: creator.isVerified
-                            }, 'premium')}
-                            className="w-full mt-4 px-4 py-2 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white rounded-xl font-medium transition-all transform hover:scale-105"
-                          >
-                            {isSubscribed ? 'Upgrade to Premium' : 'Subscribe'}
-                          </button>
-                        )}
-                        {currentSubscriptionTier === 'premium' && (
-                          <div className="w-full mt-4 px-4 py-2 bg-purple-500/20 text-purple-700 dark:text-purple-300 rounded-xl font-medium text-center">
-                            Current Plan
-                          </div>
-                        )}
-                      </div>
-                    )}
-
-                    {/* VIP Tier */}
-                    {creatorTiers.vipTier?.enabled && (
-                      <div className="bg-gradient-to-br from-yellow-50 to-orange-50 dark:from-yellow-900/20 dark:to-orange-900/20 rounded-2xl p-6 border border-yellow-200 dark:border-yellow-700/50">
-                        <div className="flex items-center justify-between mb-4">
-                          <h3 className="text-xl font-bold text-gray-900 dark:text-white">VIP</h3>
-                          <span className="text-2xl font-bold text-gray-900 dark:text-white">
-                            {creatorTiers.vipTier.price} SOL
-                          </span>
-                        </div>
-                        <p className="text-gray-600 dark:text-slate-400 mb-4">
-                          {creatorTiers.vipTier.description || 'Maximum access with personal interaction'}
-                        </p>
-                        {creatorTiers.vipTier.features && (
-                          <ul className="space-y-2">
-                            {creatorTiers.vipTier.features
-                              .filter((f: any) => f.enabled)
-                              .map((feature: any) => (
-                                <li key={feature.id} className="flex items-start gap-2 text-sm text-gray-700 dark:text-slate-300">
-                                  <CheckIcon className="w-4 h-4 text-yellow-500 mt-0.5 flex-shrink-0" />
-                                  <span>{feature.text}</span>
-                                </li>
-                              ))}
-                          </ul>
-                        )}
-                        {currentSubscriptionTier !== 'vip' && (
-                          <button
-                            onClick={() => handleSubscribeClick({
-                              id: creator.id,
-                              name: creator.fullName || creator.nickname,
-                              username: creator.nickname,
-                              avatar: creator.avatar || '',
-                              isVerified: creator.isVerified
-                            }, 'vip')}
-                            className="w-full mt-4 px-4 py-2 bg-gradient-to-r from-yellow-400 to-orange-500 hover:from-yellow-500 hover:to-orange-600 text-white rounded-xl font-medium transition-all transform hover:scale-105"
-                          >
-                            {isSubscribed ? 'Upgrade to VIP' : 'Subscribe'}
-                          </button>
-                        )}
-                        {currentSubscriptionTier === 'vip' && (
-                          <div className="w-full mt-4 px-4 py-2 bg-yellow-500/20 text-yellow-700 dark:text-yellow-300 rounded-xl font-medium text-center">
-                            Current Plan
-                          </div>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                ) : (
-                  <p className="text-gray-600 dark:text-slate-400">Loading tiers...</p>
-                )}
-              </div>
             </div>
           )}
 
