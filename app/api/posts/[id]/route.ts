@@ -114,6 +114,7 @@ export async function PUT(
     if (updateData.category !== undefined) dataToUpdate.category = updateData.category
     if (updateData.thumbnail !== undefined) dataToUpdate.thumbnail = updateData.thumbnail
     if (updateData.mediaUrl !== undefined) dataToUpdate.mediaUrl = updateData.mediaUrl
+    if (updateData.type !== undefined) dataToUpdate.type = updateData.type
     if (updateData.isLocked !== undefined) dataToUpdate.isLocked = updateData.isLocked
     if (updateData.isPremium !== undefined) dataToUpdate.isPremium = updateData.isPremium
     if (updateData.price !== undefined) dataToUpdate.price = updateData.price

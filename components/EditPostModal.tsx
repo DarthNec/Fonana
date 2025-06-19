@@ -227,8 +227,30 @@ export default function EditPostModal({ isOpen, onClose, post, onPostUpdated }: 
 
         const uploadData = await uploadResponse.json()
         mediaUrl = uploadData.url
-        // Используем оптимизированную версию для thumbnail
-        thumbnail = uploadData.thumbUrl || uploadData.url
+        
+        // Правильно устанавливаем thumbnail для разных типов медиа
+        if (mediaFile.type.startsWith('video/')) {
+          thumbnail = '/placeholder-video.png'
+        } else if (mediaFile.type.startsWith('audio/')) {
+          thumbnail = '/placeholder-audio.png'
+        } else {
+          // Для изображений используем оптимизированную версию как thumbnail
+          thumbnail = uploadData.thumbUrl || uploadData.url
+        }
+      }
+
+      // Определяем тип контента
+      let contentType = post.type || 'text'
+      if (mediaFile) {
+        if (mediaFile.type.startsWith('video/')) {
+          contentType = 'video'
+        } else if (mediaFile.type.startsWith('audio/')) {
+          contentType = 'audio'
+        } else if (mediaFile.type.startsWith('image/')) {
+          contentType = 'image'
+        }
+      } else if (removeExistingMedia) {
+        contentType = 'text'
       }
 
       // Update post
@@ -242,8 +264,9 @@ export default function EditPostModal({ isOpen, onClose, post, onPostUpdated }: 
           title,
           content,
           category,
+          type: contentType, // Отправляем тип контента
           mediaUrl,
-          thumbnail: mediaUrl, // Синхронизируем thumbnail с mediaUrl
+          thumbnail, // Теперь thumbnail будет правильным для видео
           tags,
           accessType,
           // Сохраняем цену для paid постов или если была изначальная цена (для sellable)
