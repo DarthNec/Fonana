@@ -44,4 +44,6 @@ export function UserProvider({ children }: UserProviderProps) {
       )}
     </>
   )
-} 
+}
+
+export default UserProvider 

@@ -46,12 +46,29 @@ export function useUser() {
   const createOrGetUser = async (wallet: string) => {
     setIsLoading(true)
     try {
+      // Получаем реферера из localStorage (fallback)
+      const referrerFromStorage = localStorage.getItem('fonana_referrer')
+      const referrerTimestamp = localStorage.getItem('fonana_referrer_timestamp')
+      
+      let referrerFromClient: string | undefined
+      if (referrerFromStorage && referrerTimestamp) {
+        const sevenDays = 7 * 24 * 60 * 60 * 1000
+        const isExpired = Date.now() - parseInt(referrerTimestamp) > sevenDays
+        
+        if (!isExpired) {
+          referrerFromClient = referrerFromStorage
+        }
+      }
+      
       const response = await fetch('/api/user', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ wallet }),
+        body: JSON.stringify({ 
+          wallet,
+          referrerFromClient // Передаем реферера из localStorage как fallback
+        }),
       })
 
       if (response.ok) {
@@ -62,6 +79,12 @@ export function useUser() {
         // Показываем форму профиля для новых пользователей
         if (data.isNewUser) {
           setShowProfileForm(true)
+        }
+        
+        // Очищаем реферера из localStorage после успешной регистрации
+        if (data.isNewUser && referrerFromClient) {
+          localStorage.removeItem('fonana_referrer')
+          localStorage.removeItem('fonana_referrer_timestamp')
         }
       } else {
         const errorData = await response.json()

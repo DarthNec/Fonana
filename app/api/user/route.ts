@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createOrUpdateUser, getUserByWallet, updateUserProfile, deleteUser, prisma } from '@/lib/db'
 import { generateRandomNickname, generateRandomBio, generateFullNameFromNickname } from '@/lib/usernames'
+import { referralLogger, apiLogger } from '@/lib/utils/logger'
 
 // Отключаем кеширование для этого route
 export const dynamic = 'force-dynamic'
@@ -135,7 +136,7 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
-    const { wallet } = body
+    const { wallet, referrerFromClient } = body
 
     if (!wallet) {
       return NextResponse.json({ error: 'Wallet address required' }, { status: 400 })
@@ -162,6 +163,27 @@ export async function POST(request: NextRequest) {
     const referrerCookie = request.cookies.get('fonana_referrer')
     let referrerNickname = referrerCookie?.value
     
+    // Fallback на реферера из клиента (localStorage)
+    if (!referrerNickname && referrerFromClient) {
+      referrerNickname = referrerFromClient
+      referralLogger.info('Using referrer from localStorage fallback', {
+        referrer: referrerNickname,
+        wallet: wallet.slice(0, 8) + '...'
+      })
+    }
+    
+    if (referrerNickname) {
+      referralLogger.info('Creating user with referrer', {
+        referrer: referrerNickname,
+        wallet: wallet.slice(0, 8) + '...',
+        source: referrerCookie ? 'cookie' : 'localStorage'
+      })
+    } else {
+      referralLogger.info('Creating user without referrer', {
+        wallet: wallet.slice(0, 8) + '...'
+      })
+    }
+    
     // Создаем нового пользователя БЕЗ автоматической генерации данных
     // Пользователь сам заполнит профиль через модалку
     const newUser = await createOrUpdateUser(wallet, {
@@ -179,6 +201,10 @@ export async function POST(request: NextRequest) {
     return response
   } catch (error) {
     console.error('Error creating/updating user:', error)
+    apiLogger.error('Failed to create/update user', {
+      error: error instanceof Error ? error.message : 'Unknown error',
+      wallet: request.body ? JSON.parse(await request.text()).wallet : 'unknown'
+    })
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }

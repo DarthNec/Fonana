@@ -23,7 +23,8 @@ export function middleware(request: NextRequest) {
                         !pathname.startsWith('/post') &&
                         !pathname.startsWith('/category') &&
                         !pathname.startsWith('/intimate') &&
-                        !pathname.startsWith('/test')
+                        !pathname.startsWith('/test') &&
+                        !pathname.startsWith('/admin')
   
   // Handle old /r/username format - redirect to /username
   if (isReferralLink) {
@@ -31,6 +32,10 @@ export function middleware(request: NextRequest) {
     const newUrl = new URL(`/${username}`, request.url)
     // Preserve query parameters
     newUrl.search = request.nextUrl.search
+    
+    // Log via header for debugging (can be read by API)
+    response.headers.set('X-Referral-Redirect', `${pathname} -> ${newUrl.pathname}`)
+    
     return NextResponse.redirect(newUrl, { status: 301 }) // Permanent redirect
   }
   
@@ -52,6 +57,14 @@ export function middleware(request: NextRequest) {
         sameSite: 'lax',
         secure: process.env.NODE_ENV === 'production'
       })
+      
+      // Also set a header to pass referrer info to the client for localStorage
+      response.headers.set('X-Fonana-Referrer', username)
+      response.headers.set('X-Referral-Cookie-Set', 'true')
+    } else if (existingReferrer) {
+      // Pass existing referrer to client
+      response.headers.set('X-Fonana-Referrer', existingReferrer.value)
+      response.headers.set('X-Referral-Cookie-Exists', 'true')
     }
   }
   
