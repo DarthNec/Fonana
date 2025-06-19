@@ -24,7 +24,10 @@ export function middleware(request: NextRequest) {
                         !pathname.startsWith('/category') &&
                         !pathname.startsWith('/intimate') &&
                         !pathname.startsWith('/test') &&
-                        !pathname.startsWith('/admin')
+                        !pathname.startsWith('/admin') &&
+                        !pathname.startsWith('/404') &&
+                        !pathname.startsWith('/_error') &&
+                        !/^\/\d+$/.test(pathname) // Ignore numeric paths like /404, /500 etc
   
   // Handle old /r/username format - redirect to /username
   if (isReferralLink) {
@@ -43,13 +46,19 @@ export function middleware(request: NextRequest) {
   if (isProfileVisit) {
     const username = pathname.substring(1) // Remove leading slash
     
+    // Additional validation: ignore if username is purely numeric or common error codes
+    if (/^\d+$/.test(username) || username === 'undefined' || username === 'null') {
+      return response
+    }
+    
     // Check for existing referrer cookie
     const existingReferrer = request.cookies.get('fonana_referrer')
     
     // Only set referrer cookie if:
     // 1. No existing referrer cookie (first visitor wins)
     // 2. Valid username format
-    if (!existingReferrer && username && /^[a-zA-Z0-9_-]+$/.test(username)) {
+    // 3. Not a numeric value (like 404)
+    if (!existingReferrer && username && /^[a-zA-Z][a-zA-Z0-9_-]*$/.test(username)) {
       // Set referrer cookie for 7 days
       response.cookies.set('fonana_referrer', username, {
         maxAge: 60 * 60 * 24 * 7, // 7 days
