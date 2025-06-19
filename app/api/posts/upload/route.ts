@@ -146,8 +146,14 @@ export async function POST(request: NextRequest) {
 
     // Возвращаем URL файла
     const fileUrl = `/posts/${mediaType}/${fileName}`
-    const thumbUrl = type === 'image' ? `/posts/${mediaType}/thumb_${fileName.replace(ext, '.webp')}` : null
-    const previewUrl = type === 'image' ? `/posts/${mediaType}/preview_${fileName.replace(ext, '.webp')}` : null
+    let thumbUrl = type === 'image' ? `/posts/${mediaType}/thumb_${fileName.replace(ext, '.webp')}` : null
+    let previewUrl = type === 'image' ? `/posts/${mediaType}/preview_${fileName.replace(ext, '.webp')}` : null
+
+    // Для видео используем enhanced placeholder
+    if (type === 'video') {
+      thumbUrl = '/placeholder-video-enhanced.png'
+      previewUrl = '/placeholder-video-enhanced.png'
+    }
 
     return NextResponse.json({ 
       url: fileUrl,

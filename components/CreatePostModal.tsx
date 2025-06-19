@@ -252,11 +252,15 @@ export default function CreatePostModal({ onPostCreated, onClose }: CreatePostMo
         
         mediaUrl = uploadResult.url
         
-        // For video and audio use preview as thumbnail
-        if (formData.type === 'video' || formData.type === 'audio') {
-          thumbnail = '/placeholder-' + formData.type + '.png'
+        // Use thumbUrl from upload result or fallback to placeholder
+        if (uploadResult.thumbUrl) {
+          thumbnail = uploadResult.thumbUrl
+        } else if (formData.type === 'video') {
+          thumbnail = '/placeholder-video-enhanced.png'
+        } else if (formData.type === 'audio') {
+          thumbnail = '/placeholder-audio.png'
         } else {
-          // Для изображений используем оптимизированную версию как thumbnail
+          // For images use optimized version or original
           thumbnail = uploadResult.thumbUrl || uploadResult.url
         }
       }

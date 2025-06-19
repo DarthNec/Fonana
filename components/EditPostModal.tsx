@@ -228,14 +228,15 @@ export default function EditPostModal({ isOpen, onClose, post, onPostUpdated }: 
         const uploadData = await uploadResponse.json()
         mediaUrl = uploadData.url
         
-        // Правильно устанавливаем thumbnail для разных типов медиа
+        // Set thumbnail based on content type
         if (mediaFile.type.startsWith('video/')) {
-          thumbnail = '/placeholder-video.png'
+          thumbnail = '/placeholder-video-enhanced.png'
         } else if (mediaFile.type.startsWith('audio/')) {
           thumbnail = '/placeholder-audio.png'
+        } else if (uploadData.thumbUrl) {
+          thumbnail = uploadData.thumbUrl
         } else {
-          // Для изображений используем оптимизированную версию как thumbnail
-          thumbnail = uploadData.thumbUrl || uploadData.url
+          thumbnail = uploadData.url
         }
       }
 
