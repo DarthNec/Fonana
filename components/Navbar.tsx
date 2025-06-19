@@ -46,6 +46,12 @@ export function Navbar() {
 
   const isActive = (href: string) => pathname === href
 
+  // Добавляем timestamp к аватару для обхода кеширования
+  // Используем updatedAt пользователя для стабильного timestamp
+  const avatarUrl = user?.avatar 
+    ? `${user.avatar}?t=${user.updatedAt ? new Date(user.updatedAt).getTime() : Date.now()}` 
+    : undefined
+
   return (
     <nav className={`fixed top-0 left-0 right-0 z-50 transition-all duration-500 ${
       isScrolled 
@@ -102,7 +108,7 @@ export function Navbar() {
                   className="relative hover:scale-105 transition-transform duration-300"
                 >
                   <Avatar
-                    src={user.avatar}
+                    src={avatarUrl}
                     alt={user.nickname || 'Profile'}
                     seed={user.nickname || user.wallet}
                     size={48}
@@ -117,7 +123,7 @@ export function Navbar() {
                     <div className="p-6 border-b border-gray-200 dark:border-slate-700/50">
                       <div className="flex items-center gap-3">
                         <Avatar
-                          src={user.avatar}
+                          src={avatarUrl}
                           alt={user.nickname || 'Profile'}
                           seed={user.nickname || user.wallet}
                           size={48}
@@ -218,7 +224,7 @@ export function Navbar() {
                     </Link>
                     <Link
                       href="/dashboard"
-                      className="flex items-center gap-3 px-4 py-3 text-gray-600 dark:text-slate-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-slate-800/50 rounded-2xl transition-colors"
+                      className="flex items-center gap-3 px-4 py-3 text-gray-600 dark:text-slate-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-slate-700/50 rounded-2xl transition-colors"
                     >
                       <Cog6ToothIcon className="w-5 h-5" />
                       Dashboard
