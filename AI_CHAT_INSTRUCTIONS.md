@@ -15,6 +15,35 @@ Server has Deploy Key, use ./deploy-to-production.sh
 Production DB has real users and posts
 ```
 
+## Quick commads
+
+### Status:
+```bash
+ssh -p 43988 root@69.10.59.234 "pm2 status"
+```
+
+### Logs:
+```bash
+ssh -p 43988 root@69.10.59.234 "pm2 logs fonana --lines 50"
+```
+
+### Restart:
+```bash
+ssh -p 43988 root@69.10.59.234 "pm2 restart fonana"
+```
+
+## White Screen Fix
+
+### On Server:
+```bash
+ssh -p 43988 root@69.10.59.234
+cd /var/www/fonana
+chmod +x scripts/fix-white-screen.sh
+./scripts/fix-white-screen.sh
+```
+
+
+
 ## Technical Stack
 - Next.js 14 + TypeScript
 - PostgreSQL + Prisma ORM

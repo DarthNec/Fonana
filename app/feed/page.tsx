@@ -129,6 +129,7 @@ export default function FeedPage() {
         shouldHideContent: post.shouldHideContent || false,
         requiredTier: post.requiredTier || null,
         userTier: post.userTier || null,
+        imageAspectRatio: post.imageAspectRatio,
         // Новые поля для продаваемых постов
         isSellable: post.isSellable || false,
         sellType: post.sellType,

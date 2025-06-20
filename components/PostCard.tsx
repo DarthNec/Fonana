@@ -682,9 +682,9 @@ export default function PostCard({
                     alt={title}
                     className={`w-full object-cover cursor-pointer hover:opacity-90 transition-opacity ${
                       imageAspectRatio === 'vertical' 
-                        ? 'aspect-[3/4]' 
+                        ? 'aspect-3/4' 
                         : imageAspectRatio === 'horizontal' 
-                        ? 'aspect-[16/9]' 
+                        ? 'aspect-video' 
                         : 'aspect-square'
                     }`}
                     type={type === 'video' ? 'video' : 'image'}

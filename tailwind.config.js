@@ -8,6 +8,10 @@ module.exports = {
   darkMode: 'class',
   theme: {
     extend: {
+      aspectRatio: {
+        '3/4': '3 / 4',
+        '4/3': '4 / 3',
+      },
       colors: {
         background: 'rgb(var(--background) / <alpha-value>)',
         'background-secondary': 'rgb(var(--background-secondary) / <alpha-value>)',
