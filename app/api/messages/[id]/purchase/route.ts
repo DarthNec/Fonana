@@ -102,7 +102,9 @@ export async function POST(
         receiverId: message.senderId,
         amount: message.price,
         txSignature,
-        status: 'completed'
+        status: 'CONFIRMED',
+        fromWallet: userWallet,
+        toWallet: message.sender.wallet!
       }
     })
     
