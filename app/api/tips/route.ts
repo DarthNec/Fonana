@@ -54,16 +54,6 @@ export async function POST(request: NextRequest) {
       }
     })
     
-    // Обновляем доход создателя
-    await prisma.user.update({
-      where: { id: creatorId },
-      data: {
-        totalEarnings: {
-          increment: amount
-        }
-      }
-    })
-    
     // Создаем уведомление для создателя
     await prisma.notification.create({
       data: {
