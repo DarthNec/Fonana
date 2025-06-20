@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
+import { connection } from '@/lib/solana/connection'
 
 export async function POST(request: NextRequest) {
   try {
@@ -30,14 +31,58 @@ export async function POST(request: NextRequest) {
       )
     }
     
-    // Получаем пользователя
-    const user = await prisma.user.findUnique({
-      where: { wallet: userWallet }
-    })
+    // Verify transaction exists on chain
+    try {
+      const txInfo = await connection.getTransaction(txSignature, {
+        commitment: 'confirmed',
+        maxSupportedTransactionVersion: 0
+      })
+      
+      if (!txInfo) {
+        return NextResponse.json(
+          { error: 'Transaction not found on chain' },
+          { status: 400 }
+        )
+      }
+      
+      if (txInfo.meta?.err) {
+        return NextResponse.json(
+          { error: 'Transaction failed on chain' },
+          { status: 400 }
+        )
+      }
+    } catch (error) {
+      console.error('Error verifying transaction:', error)
+      return NextResponse.json(
+        { error: 'Failed to verify transaction' },
+        { status: 400 }
+      )
+    }
+    
+    // Получаем пользователя и создателя
+    const [user, creator] = await Promise.all([
+      prisma.user.findUnique({
+        where: { wallet: userWallet }
+      }),
+      prisma.user.findUnique({
+        where: { id: creatorId },
+        select: {
+          id: true,
+          wallet: true,
+          solanaWallet: true
+        }
+      })
+    ])
     
     if (!user) {
       return NextResponse.json({ error: 'User not found' }, { status: 404 })
     }
+    
+    if (!creator) {
+      return NextResponse.json({ error: 'Creator not found' }, { status: 404 })
+    }
+    
+    const creatorWallet = creator.solanaWallet || creator.wallet || ''
     
     // Создаем запись о транзакции
     const transaction = await prisma.transaction.create({
@@ -45,7 +90,7 @@ export async function POST(request: NextRequest) {
         senderId: user.id,
         receiverId: creatorId,
         fromWallet: userWallet,
-        toWallet: '', // Would need creator wallet here
+        toWallet: creatorWallet,
         type: 'TIP',
         amount,
         status: 'CONFIRMED',
