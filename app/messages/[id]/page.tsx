@@ -45,6 +45,13 @@ interface Message {
   isOwn: boolean
   isRead: boolean
   createdAt: string
+  metadata?: {
+    type?: string
+    amount?: number
+    tipLevel?: 'small' | 'medium' | 'large' | 'legendary'
+    senderName?: string
+    creatorName?: string
+  }
 }
 
 interface Participant {
@@ -404,6 +411,43 @@ export default function ConversationPage() {
         toast.success(`Sent ${formatSolAmount(amount)} tip!`)
         setShowTipModal(false)
         setTipAmount('')
+        
+        // Добавляем сообщение о донате в чат
+        const tipLevel = amount >= 5 ? 'legendary' : amount >= 1 ? 'large' : amount >= 0.5 ? 'medium' : 'small'
+        const tipMessage: Message = {
+          id: `tip-${Date.now()}`, // Временный ID
+          content: null,
+          mediaUrl: null,
+          mediaType: null,
+          isPaid: false,
+          price: undefined,
+          isPurchased: false,
+          purchases: [],
+          sender: {
+            id: user?.id || '',
+            nickname: user?.nickname || 'Anonymous',
+            fullName: user?.fullName || undefined,
+            avatar: user?.avatar || undefined
+          },
+          isOwn: true,
+          isRead: true,
+          createdAt: new Date().toISOString(),
+          metadata: {
+            type: 'tip',
+            amount,
+            tipLevel,
+            senderName: user?.nickname || user?.fullName || 'Anonymous',
+            creatorName: participant?.fullName || participant?.nickname || 'Creator'
+          }
+        }
+        
+        // Добавляем сообщение в список
+        setMessages(prev => [...prev, tipMessage])
+        
+        // Перезагружаем сообщения через секунду, чтобы получить правильный ID
+        setTimeout(() => {
+          loadMessages()
+        }, 1000)
       } else {
         // If backend fails, but transaction was confirmed
         const error = await response.json()
@@ -612,13 +656,78 @@ export default function ConversationPage() {
                   </div>
                 )}
                 
-                <div
-                  className={`rounded-2xl p-4 ${
-                    message.isOwn
-                      ? 'bg-gradient-to-r from-purple-600 to-pink-600 text-white'
-                      : 'bg-white dark:bg-slate-800 text-gray-900 dark:text-white'
-                  }`}
-                >
+                {/* Специальное отображение для донатов */}
+                {message.metadata?.type === 'tip' ? (
+                  <div className="w-full flex justify-center my-6">
+                    <div className={`
+                      relative p-6 rounded-2xl text-center max-w-sm
+                      ${message.metadata.tipLevel === 'legendary' 
+                        ? 'bg-gradient-to-r from-yellow-400 via-red-500 to-pink-500 animate-pulse shadow-2xl' 
+                        : message.metadata.tipLevel === 'large'
+                        ? 'bg-gradient-to-r from-yellow-400 to-yellow-600 shadow-xl'
+                        : message.metadata.tipLevel === 'medium'
+                        ? 'bg-gradient-to-r from-purple-500 to-pink-500 shadow-lg'
+                        : 'bg-gradient-to-r from-blue-500 to-cyan-500 shadow-md'
+                      }
+                    `}>
+                      {/* Иконка в зависимости от уровня */}
+                      <div className="text-white mb-3">
+                        {message.metadata.tipLevel === 'legendary' ? (
+                          <div className="text-6xl animate-bounce">💎</div>
+                        ) : message.metadata.tipLevel === 'large' ? (
+                          <div className="text-5xl">👑</div>
+                        ) : message.metadata.tipLevel === 'medium' ? (
+                          <div className="text-4xl">💜</div>
+                        ) : (
+                          <div className="text-3xl">💙</div>
+                        )}
+                      </div>
+                      
+                      {/* Текст доната */}
+                      <div className="text-white">
+                        <div className="font-bold text-lg mb-1">
+                          {message.isOwn 
+                            ? `You sent a ${message.metadata.tipLevel === 'legendary' ? 'LEGENDARY' : message.metadata.tipLevel === 'large' ? 'ROYAL' : message.metadata.tipLevel === 'medium' ? 'GENEROUS' : ''} tip!`
+                            : `${message.metadata.senderName} sent a ${message.metadata.tipLevel === 'legendary' ? 'LEGENDARY' : message.metadata.tipLevel === 'large' ? 'ROYAL' : message.metadata.tipLevel === 'medium' ? 'GENEROUS' : ''} tip!`
+                          }
+                        </div>
+                        <div className="text-2xl font-bold">
+                          {formatSolAmount(message.metadata.amount || 0)}
+                        </div>
+                        <div className="text-sm opacity-90 mt-1">
+                          ≈ ${((message.metadata.amount || 0) * 45).toFixed(2)} USD
+                        </div>
+                        
+                        {/* Мотивационное сообщение */}
+                        <div className="text-sm mt-3 opacity-90">
+                          {message.metadata.tipLevel === 'legendary' 
+                            ? '🌟 Absolutely incredible! You are a true legend! 🌟'
+                            : message.metadata.tipLevel === 'large'
+                            ? '👑 Royal support! You\'re amazing! 👑'
+                            : message.metadata.tipLevel === 'medium'
+                            ? '💜 Your generosity is appreciated! 💜'
+                            : '💙 Thank you for your support! 💙'
+                          }
+                        </div>
+                      </div>
+                      
+                      {/* Анимация для легендарного доната */}
+                      {message.metadata.tipLevel === 'legendary' && (
+                        <>
+                          <div className="absolute -inset-0.5 bg-gradient-to-r from-yellow-400 via-red-500 to-pink-500 rounded-2xl blur opacity-75 animate-pulse"></div>
+                          <div className="absolute inset-0 bg-gradient-to-r from-yellow-400 via-red-500 to-pink-500 rounded-2xl opacity-20"></div>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                ) : (
+                  <div
+                    className={`rounded-2xl p-4 ${
+                      message.isOwn
+                        ? 'bg-gradient-to-r from-purple-600 to-pink-600 text-white'
+                        : 'bg-white dark:bg-slate-800 text-gray-900 dark:text-white'
+                    }`}
+                  >
                   {message.isPaid && !message.isPurchased && !message.isOwn ? (
                     <div className="-m-4 p-6 bg-gradient-to-br from-purple-600/20 via-pink-600/20 to-purple-600/20 rounded-2xl backdrop-blur-sm border border-purple-500/30">
                       <div className="text-center">
@@ -673,7 +782,8 @@ export default function ConversationPage() {
                       )}
                     </>
                   )}
-                </div>
+                  </div>
+                )}
                 
                 <div className="flex items-center gap-2 mt-1">
                   <span className="text-xs text-gray-500 dark:text-gray-400">

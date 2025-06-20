@@ -109,7 +109,9 @@ export async function POST(request: NextRequest) {
         select: {
           id: true,
           wallet: true,
-          solanaWallet: true
+          solanaWallet: true,
+          nickname: true,
+          fullName: true
         }
       })
     ])
@@ -153,6 +155,35 @@ export async function POST(request: NextRequest) {
         }
       }
     })
+    
+    // Если это чаевые из чата, создаем сообщение о донате в беседе
+    if (conversationId) {
+      // Определяем уровень доната
+      let tipLevel: 'small' | 'medium' | 'large' | 'legendary' = 'small'
+      if (amount >= 5) tipLevel = 'legendary'
+      else if (amount >= 1) tipLevel = 'large'
+      else if (amount >= 0.5) tipLevel = 'medium'
+      
+      // Создаем системное сообщение о донате
+      await prisma.message.create({
+        data: {
+          conversationId,
+          senderId: user.id,
+          content: null,
+          mediaUrl: null,
+          mediaType: null,
+          isPaid: false,
+          isRead: false,
+          metadata: {
+            type: 'tip',
+            amount,
+            tipLevel,
+            senderName: user.nickname || user.fullName || 'Anonymous',
+            creatorName: creator.nickname || creator.fullName || 'Creator'
+          } as any
+        }
+      })
+    }
     
     return NextResponse.json({ 
       success: true,

@@ -87,7 +87,8 @@ export async function GET(
         sender: msg.sender,
         isOwn,
         isRead: msg.isRead,
-        createdAt: msg.createdAt
+        createdAt: msg.createdAt,
+        metadata: msg.metadata as any
       }
     })
     
@@ -223,7 +224,8 @@ export async function POST(
         isOwn: true,
         isPurchased: false,
         isRead: false,
-        createdAt: message.createdAt
+        createdAt: message.createdAt,
+        metadata: message.metadata as any
       }
     })
   } catch (error) {

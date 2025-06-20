@@ -578,6 +578,7 @@ model Message {
   isPaid         Boolean      @default(false)
   price          Float?
   isRead         Boolean      @default(false)
+  metadata       Json?
   createdAt      DateTime     @default(now())
   
   conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
