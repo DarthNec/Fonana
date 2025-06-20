@@ -19,6 +19,13 @@ import { useConnection } from '@solana/wallet-adapter-react'
 import { LAMPORTS_PER_SOL, SystemProgram, Transaction, PublicKey } from '@solana/web3.js'
 import toast from 'react-hot-toast'
 import { useUser } from '@/lib/hooks/useUser'
+import { 
+  createPostPurchaseTransaction, 
+  calculatePaymentDistribution,
+  formatSolAmount 
+} from '@/lib/solana/payments'
+import { isValidSolanaAddress } from '@/lib/solana/config'
+import { connection } from '@/lib/solana/connection'
 
 interface Message {
   id: string
@@ -265,7 +272,7 @@ export default function ConversationPage() {
   }
 
   const sendTip = async () => {
-    if (!publicKey || !participant?.wallet || !tipAmount || isSendingTip) return
+    if (!publicKey || !participant || !tipAmount || isSendingTip) return
 
     const amount = parseFloat(tipAmount)
     if (isNaN(amount) || amount <= 0) {
@@ -276,19 +283,64 @@ export default function ConversationPage() {
     setIsSendingTip(true)
     
     try {
-      // Create transaction for tip
-      const transaction = new Transaction().add(
+      // Load full creator data to get wallet info
+      const creatorResponse = await fetch(`/api/creators/${participant.id}`)
+      const creatorData = await creatorResponse.json()
+      
+      if (!creatorData.creator) {
+        throw new Error('Failed to load creator data')
+      }
+      
+      const creatorWallet = creatorData.creator.solanaWallet || creatorData.creator.wallet || participant.wallet
+      
+      if (!creatorWallet || !isValidSolanaAddress(creatorWallet)) {
+        toast.error('Creator wallet not configured')
+        return
+      }
+
+      // Get fresh blockhash
+      const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash('confirmed')
+      
+      // Create transaction for tip (100% to creator, no fees)
+      const transaction = new Transaction()
+      transaction.recentBlockhash = blockhash
+      transaction.feePayer = publicKey
+      ;(transaction as any).lastValidBlockHeight = lastValidBlockHeight
+      
+      transaction.add(
         SystemProgram.transfer({
           fromPubkey: publicKey,
-          toPubkey: new PublicKey(participant.wallet),
+          toPubkey: new PublicKey(creatorWallet),
           lamports: Math.floor(amount * LAMPORTS_PER_SOL),
         })
       )
 
-      const signature = await sendTransaction(transaction, connection)
+      // Send with retry logic
+      const sendOptions = {
+        skipPreflight: false,
+        preflightCommitment: 'confirmed' as any,
+        maxRetries: 3
+      }
+      
+      const signature = await sendTransaction(transaction, connection, sendOptions)
+      
+      // Show loading toast
+      toast.loading('Processing tip...')
       
       // Wait for confirmation
-      await connection.confirmTransaction(signature, 'confirmed')
+      await new Promise(resolve => setTimeout(resolve, 2000))
+      
+      try {
+        const status = await connection.getSignatureStatus(signature)
+        if (status.value?.err) {
+          throw new Error('Transaction failed')
+        }
+      } catch (statusError) {
+        console.error('Error checking transaction status:', statusError)
+      }
+      
+      // Wait a bit more for confirmation
+      await new Promise(resolve => setTimeout(resolve, 3000))
 
       // Record tip as a transaction
       const response = await fetch('/api/tips', {
@@ -306,14 +358,14 @@ export default function ConversationPage() {
       })
 
       if (response.ok) {
-        toast.success(`Sent ${amount} SOL tip!`)
+        toast.success(`Sent ${formatSolAmount(amount)} tip!`)
         setShowTipModal(false)
         setTipAmount('')
         
         // Add tip message to chat
         const tipMessage: Message = {
           id: Date.now().toString(),
-          content: `💰 Sent a ${amount} SOL tip`,
+          content: `💰 Sent a ${formatSolAmount(amount)} tip`,
           isPaid: false,
           isPurchased: false,
           sender: {
@@ -332,45 +384,105 @@ export default function ConversationPage() {
       }
     } catch (error) {
       console.error('Error sending tip:', error)
-      toast.error('Failed to send tip')
+      
+      let errorMessage = 'Failed to send tip'
+      
+      if (error instanceof Error) {
+        if (error.message.includes('User rejected')) {
+          errorMessage = 'Transaction cancelled'
+        } else if (error.message.includes('insufficient')) {
+          errorMessage = 'Insufficient balance'
+        }
+      }
+      
+      toast.error(errorMessage)
     } finally {
       setIsSendingTip(false)
     }
   }
 
   const purchaseMessage = async (message: Message) => {
-    if (!publicKey || !participant?.wallet || !message.price) return
+    if (!publicKey || !participant || !message.price) return
 
     setIsPurchasing(message.id)
     
     try {
-      // Создаем транзакцию оплаты
-      const transaction = new Transaction().add(
-        SystemProgram.transfer({
-          fromPubkey: publicKey,
-          toPubkey: new PublicKey(participant.wallet),
-          lamports: Math.floor(message.price * LAMPORTS_PER_SOL),
-        })
+      // Load full creator data to get wallet and referrer info
+      const creatorResponse = await fetch(`/api/creators/${participant.id}`)
+      const creatorData = await creatorResponse.json()
+      
+      if (!creatorData.creator) {
+        throw new Error('Failed to load creator data')
+      }
+      
+      const creator = creatorData.creator
+      const creatorWallet = creator.solanaWallet || creator.wallet || participant.wallet
+      const referrerWallet = creator.referrer?.solanaWallet || creator.referrer?.wallet
+      const hasReferrer = creator.referrerId && referrerWallet && isValidSolanaAddress(referrerWallet)
+      
+      if (!creatorWallet || !isValidSolanaAddress(creatorWallet)) {
+        toast.error('Creator wallet not configured')
+        return
+      }
+      
+      // Calculate payment distribution
+      const distribution = calculatePaymentDistribution(
+        message.price,
+        creatorWallet,
+        hasReferrer,
+        referrerWallet
       )
 
-      const signature = await sendTransaction(transaction, connection)
-      
-      // Ждем подтверждения
-      await connection.confirmTransaction(signature, 'confirmed')
+      // Create transaction using the payment system
+      const transaction = await createPostPurchaseTransaction(
+        publicKey,
+        distribution
+      )
 
-      // Сохраняем покупку
+      // Send with retry logic
+      const sendOptions = {
+        skipPreflight: false,
+        preflightCommitment: 'confirmed' as any,
+        maxRetries: 3
+      }
+      
+      const signature = await sendTransaction(transaction, connection, sendOptions)
+      
+      // Show loading toast
+      toast.loading('Processing payment...')
+      
+      // Wait for confirmation
+      await new Promise(resolve => setTimeout(resolve, 2000))
+      
+      try {
+        const status = await connection.getSignatureStatus(signature)
+        if (status.value?.err) {
+          throw new Error('Transaction failed')
+        }
+      } catch (statusError) {
+        console.error('Error checking transaction status:', statusError)
+      }
+      
+      // Wait a bit more for confirmation
+      await new Promise(resolve => setTimeout(resolve, 5000))
+
+      // Save purchase
       const response = await fetch(`/api/messages/${message.id}/purchase`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'x-user-wallet': publicKey.toString()
         },
-        body: JSON.stringify({ txSignature: signature })
+        body: JSON.stringify({ 
+          txSignature: signature,
+          price: message.price,
+          distribution
+        })
       })
 
       if (response.ok) {
         const data = await response.json()
-        // Обновляем сообщение локально
+        // Update message locally
         setMessages(prev => prev.map(msg => 
           msg.id === message.id 
             ? { 
@@ -388,7 +500,20 @@ export default function ConversationPage() {
       }
     } catch (error) {
       console.error('Error purchasing message:', error)
-      toast.error('Failed to purchase message')
+      
+      let errorMessage = 'Failed to purchase message'
+      
+      if (error instanceof Error) {
+        if (error.message.includes('User rejected')) {
+          errorMessage = 'Transaction cancelled'
+        } else if (error.message.includes('insufficient')) {
+          errorMessage = 'Insufficient balance'
+        } else if (error.message.includes('Минимальная сумма')) {
+          errorMessage = error.message
+        }
+      }
+      
+      toast.error(errorMessage)
     } finally {
       setIsPurchasing(null)
     }
