@@ -132,13 +132,16 @@ export default function CreatePostModal({ onPostCreated, onClose }: CreatePostMo
     
     // For images, open crop modal
     if (contentType === 'image') {
+      console.log('[CreatePostModal] Opening crop modal with preview:', preview)
       setOriginalImage(preview)
       setFormData(prev => ({
         ...prev,
         file,
-        type: contentType
+        type: contentType,
+        preview // Also set preview for consistency
       }))
-      setShowCropModal(true)
+      // Delay opening modal to ensure state is updated
+      setTimeout(() => setShowCropModal(true), 100)
     } else {
       // For video and audio, set directly
       setFormData(prev => ({
@@ -414,7 +417,8 @@ export default function CreatePostModal({ onPostCreated, onClose }: CreatePostMo
 
   return (
     <>
-      <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-start justify-center p-4 overflow-y-auto">
+      {/* Main Modal */}
+      <div className={`fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-start justify-center p-4 overflow-y-auto ${showCropModal ? 'pointer-events-none' : ''}`}>
         <div className="bg-white dark:bg-gradient-to-br dark:from-slate-800/95 dark:to-slate-900/95 backdrop-blur-xl rounded-3xl max-w-4xl w-full my-8 border border-gray-200 dark:border-slate-700/50 shadow-2xl">
           <form onSubmit={handleSubmit} className="p-6 lg:p-8 space-y-6">
           {/* Header */}
@@ -947,6 +951,10 @@ export default function CreatePostModal({ onPostCreated, onClose }: CreatePostMo
         onCancel={() => {
           setShowCropModal(false)
           setOriginalImage('')
+          // If no preview set, clear the file as well
+          if (!formData.preview) {
+            setFormData(prev => ({ ...prev, file: null }))
+          }
         }}
       />
     )}

@@ -1,8 +1,10 @@
 'use client'
 
-import React, { useState, useCallback } from 'react'
+import React, { useState, useCallback, useEffect } from 'react'
 import Cropper, { Point, Area } from 'react-easy-crop'
+import 'react-easy-crop/react-easy-crop.css'
 import { XMarkIcon, CheckIcon } from '@heroicons/react/24/outline'
+import styles from './ImageCropModal.module.css'
 
 interface ImageCropModalProps {
   image: string
@@ -33,6 +35,28 @@ export default function ImageCropModal({ image, onCropComplete, onCancel }: Imag
   const [croppedAreaPixels, setCroppedAreaPixels] = useState<Area | null>(null)
   const [selectedRatio, setSelectedRatio] = useState<AspectRatio>(aspectRatios[0])
   const [isProcessing, setIsProcessing] = useState(false)
+  const [imageError, setImageError] = useState(false)
+
+  // Check if image loads properly
+  useEffect(() => {
+    if (!image) {
+      console.error('[ImageCropModal] No image provided')
+      setImageError(true)
+      return
+    }
+
+    // Create a test image to verify the URL works
+    const testImg = new Image()
+    testImg.onload = () => {
+      console.log('[ImageCropModal] Test image loaded successfully')
+      setImageError(false)
+    }
+    testImg.onerror = () => {
+      console.error('[ImageCropModal] Test image failed to load:', image)
+      setImageError(true)
+    }
+    testImg.src = image
+  }, [image])
 
   const onCropChange = useCallback((location: Point) => {
     setCrop(location)
@@ -104,8 +128,11 @@ export default function ImageCropModal({ image, onCropComplete, onCancel }: Imag
     }
   }
 
+  // Debug log
+  console.log('[ImageCropModal] Image URL:', image)
+
   return (
-    <div className="fixed inset-0 bg-black/90 z-50 flex items-center justify-center p-4">
+    <div className="fixed inset-0 bg-black/90 z-[100] flex items-center justify-center p-4" style={{ zIndex: 100 }}>
       <div className="bg-white dark:bg-gray-900 rounded-2xl max-w-5xl w-full max-h-[90vh] overflow-hidden flex flex-col">
         {/* Header */}
         <div className="p-4 border-b border-gray-200 dark:border-gray-700">
@@ -158,16 +185,29 @@ export default function ImageCropModal({ image, onCropComplete, onCancel }: Imag
         </div>
 
         {/* Cropper */}
-        <div className="relative flex-1 bg-black">
-          <Cropper
-            image={image}
-            crop={crop}
-            zoom={zoom}
-            aspect={selectedRatio.value}
-            onCropChange={onCropChange}
-            onCropComplete={onCropCompleteHandler}
-            onZoomChange={setZoom}
-          />
+        <div className={styles.cropContainer}>
+          {imageError ? (
+            <div className="absolute inset-0 flex items-center justify-center text-white">
+              <div className="text-center">
+                <p className="text-lg mb-2">Failed to load image</p>
+                <p className="text-sm opacity-70">Please try uploading again</p>
+              </div>
+            </div>
+          ) : (
+            <Cropper
+              image={image}
+              crop={crop}
+              zoom={zoom}
+              aspect={selectedRatio.value}
+              onCropChange={onCropChange}
+              onCropComplete={onCropCompleteHandler}
+              onZoomChange={setZoom}
+              onMediaLoaded={() => {
+                console.log('[ImageCropModal] Image loaded successfully')
+                setImageError(false)
+              }}
+            />
+          )}
         </div>
 
         {/* Zoom control */}
