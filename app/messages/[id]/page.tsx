@@ -79,10 +79,17 @@ export default function ConversationPage() {
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [hasMore, setHasMore] = useState(false)
+  const [lastMessageCount, setLastMessageCount] = useState(0)
 
   useEffect(() => {
     if (publicKey && conversationId) {
       loadMessages()
+      
+      // Request notification permission
+      if ('Notification' in window && Notification.permission === 'default') {
+        Notification.requestPermission()
+      }
+      
       // Polling для новых сообщений
       const interval = setInterval(loadMessages, 5000)
       return () => clearInterval(interval)
@@ -114,7 +121,30 @@ export default function ConversationPage() {
         if (before) {
           setMessages(prev => [...data.messages, ...prev])
         } else {
+          // Check for new messages and show notification
+          if (lastMessageCount > 0 && data.messages.length > lastMessageCount) {
+            const newMessagesCount = data.messages.length - lastMessageCount
+            const latestMessage = data.messages[data.messages.length - 1]
+            
+            // Only show notification for messages from others
+            if (!latestMessage.isOwn) {
+              // Show browser notification if permission granted
+              if ('Notification' in window && Notification.permission === 'granted') {
+                new Notification(`New message from ${latestMessage.sender.nickname}`, {
+                  body: latestMessage.isPaid 
+                    ? '💰 Paid message' 
+                    : latestMessage.content?.substring(0, 50) || 'Media message',
+                  icon: '/favicon.png'
+                })
+              }
+              
+              // Show toast notification
+              toast.success(`New message from ${latestMessage.sender.nickname}`)
+            }
+          }
+          
           setMessages(data.messages)
+          setLastMessageCount(data.messages.length)
         }
         
         setHasMore(data.hasMore)
@@ -327,20 +357,37 @@ export default function ConversationPage() {
       // Show loading toast
       toast.loading('Processing tip...')
       
-      // Wait for confirmation
-      await new Promise(resolve => setTimeout(resolve, 2000))
+      // Wait for confirmation with better error handling
+      toast.loading('Confirming transaction...')
       
-      try {
-        const status = await connection.getSignatureStatus(signature)
-        if (status.value?.err) {
-          throw new Error('Transaction failed')
+      let confirmed = false
+      let attempts = 0
+      const maxAttempts = 30 // 30 seconds timeout
+      
+      while (!confirmed && attempts < maxAttempts) {
+        attempts++
+        
+        try {
+          const status = await connection.getSignatureStatus(signature)
+          
+          if (status.value?.confirmationStatus === 'confirmed' || status.value?.confirmationStatus === 'finalized') {
+            confirmed = true
+            break
+          }
+          
+          if (status.value?.err) {
+            throw new Error('Transaction failed on-chain')
+          }
+        } catch (statusError) {
+          console.error('Error checking transaction status:', statusError)
         }
-      } catch (statusError) {
-        console.error('Error checking transaction status:', statusError)
+        
+        await new Promise(resolve => setTimeout(resolve, 1000))
       }
       
-      // Wait a bit more for confirmation
-      await new Promise(resolve => setTimeout(resolve, 3000))
+      if (!confirmed) {
+        throw new Error('Transaction was not confirmed in time')
+      }
 
       // Record tip as a transaction
       const response = await fetch('/api/tips', {
@@ -362,7 +409,7 @@ export default function ConversationPage() {
         setShowTipModal(false)
         setTipAmount('')
         
-        // Add tip message to chat
+        // Add tip message to chat only after confirmed
         const tipMessage: Message = {
           id: Date.now().toString(),
           content: `💰 Sent a ${formatSolAmount(amount)} tip`,
@@ -380,7 +427,10 @@ export default function ConversationPage() {
         }
         setMessages(prev => [...prev, tipMessage])
       } else {
-        toast.error('Failed to record tip')
+        // If backend fails, but transaction was confirmed
+        const error = await response.json()
+        console.error('Backend error:', error)
+        toast.error('Tip sent but failed to record. Please contact support.')
       }
     } catch (error) {
       console.error('Error sending tip:', error)
@@ -568,7 +618,7 @@ export default function ConversationPage() {
       </div>
 
       {/* Messages */}
-      <div className="flex-1 overflow-y-auto pt-40 pb-32 px-4">
+      <div className="flex-1 overflow-y-auto pt-32 pb-32 px-4">
         <div className="max-w-3xl mx-auto space-y-4">
           {messages.map((message) => (
             <div
