@@ -276,6 +276,7 @@ enum TransactionType {
   WITHDRAWAL
   REFUND
   MESSAGE_PURCHASE
+  TIP
 }
 
 // Transaction status enum
@@ -420,6 +421,7 @@ enum NotificationType {
   AUCTION_WON
   AUCTION_PAYMENT_REMINDER
   AUCTION_DEPOSIT_REFUNDED
+  TIP_RECEIVED
 }
 
 // Залоги участников аукциона

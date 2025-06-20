@@ -42,12 +42,15 @@ export async function POST(request: NextRequest) {
     // Создаем запись о транзакции
     const transaction = await prisma.transaction.create({
       data: {
-        userId: user.id,
+        senderId: user.id,
+        receiverId: creatorId,
+        fromWallet: userWallet,
+        toWallet: '', // Would need creator wallet here
         type: 'TIP',
         amount,
-        status: 'COMPLETED',
+        status: 'CONFIRMED',
         txSignature,
-        description: `Tip to creator`
+        confirmedAt: new Date()
       }
     })
     
@@ -66,8 +69,13 @@ export async function POST(request: NextRequest) {
       data: {
         userId: creatorId,
         type: 'TIP_RECEIVED',
-        content: `You received a ${amount} SOL tip${conversationId ? ' in a message' : ''}!`,
-        relatedUserId: user.id
+        title: 'New Tip Received!',
+        message: `You received a ${amount} SOL tip${conversationId ? ' in a message' : ''}!`,
+        metadata: {
+          senderId: user.id,
+          amount,
+          conversationId
+        }
       }
     })
     
