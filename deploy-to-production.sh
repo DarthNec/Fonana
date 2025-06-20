@@ -37,6 +37,11 @@ git push origin main || {
     exit 1
 }
 
+# Clean up old processes to prevent white screen issue
+echo -e "${GREEN}🧹 Cleaning up old processes...${NC}"
+ssh -p $PORT $SERVER "pm2 stop fonana 2>/dev/null || true && killall -9 node next-server 2>/dev/null || true"
+sleep 2
+
 # Deploy to server
 echo -e "${GREEN}🔄 Updating code on server...${NC}"
 ssh -p $PORT $SERVER "cd $REMOTE_PATH && git pull origin main" || {
