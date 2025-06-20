@@ -10,13 +10,15 @@ import {
   PhotoIcon,
   LockClosedIcon,
   SparklesIcon,
-  CurrencyDollarIcon
+  CurrencyDollarIcon,
+  XMarkIcon
 } from '@heroicons/react/24/outline'
 import Link from 'next/link'
 import OptimizedImage from '@/components/OptimizedImage'
 import { useConnection } from '@solana/wallet-adapter-react'
 import { LAMPORTS_PER_SOL, SystemProgram, Transaction, PublicKey } from '@solana/web3.js'
 import toast from 'react-hot-toast'
+import { useUser } from '@/lib/hooks/useUser'
 
 interface Message {
   id: string
@@ -48,6 +50,7 @@ interface Participant {
 export default function ConversationPage() {
   const { publicKey, sendTransaction } = useWallet()
   const { connection } = useConnection()
+  const { user } = useUser()
   const params = useParams()
   const router = useRouter()
   const conversationId = params.id as string
@@ -60,7 +63,14 @@ export default function ConversationPage() {
   const [messageText, setMessageText] = useState('')
   const [isPaidMessage, setIsPaidMessage] = useState(false)
   const [messagePrice, setMessagePrice] = useState('')
+  const [selectedMedia, setSelectedMedia] = useState<File | null>(null)
+  const [mediaPreview, setMediaPreview] = useState<string | null>(null)
+  const [isUploadingMedia, setIsUploadingMedia] = useState(false)
+  const [showTipModal, setShowTipModal] = useState(false)
+  const [tipAmount, setTipAmount] = useState('')
+  const [isSendingTip, setIsSendingTip] = useState(false)
   const messagesEndRef = useRef<HTMLDivElement>(null)
+  const fileInputRef = useRef<HTMLInputElement>(null)
   const [hasMore, setHasMore] = useState(false)
 
   useEffect(() => {
@@ -145,11 +155,80 @@ export default function ConversationPage() {
     }
   }
 
+  const handleMediaSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0]
+    if (!file) return
+
+    // Validate file size (max 10MB)
+    if (file.size > 10 * 1024 * 1024) {
+      toast.error('File size must be less than 10MB')
+      return
+    }
+
+    // Validate file type
+    const allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'video/mp4', 'video/webm']
+    if (!allowedTypes.includes(file.type)) {
+      toast.error('Only images and videos are allowed')
+      return
+    }
+
+    setSelectedMedia(file)
+    const reader = new FileReader()
+    reader.onloadend = () => {
+      setMediaPreview(reader.result as string)
+    }
+    reader.readAsDataURL(file)
+  }
+
+  const uploadMedia = async (file: File): Promise<string | null> => {
+    setIsUploadingMedia(true)
+    try {
+      const formData = new FormData()
+      formData.append('file', file)
+      formData.append('type', file.type.startsWith('image/') ? 'image' : 'video')
+
+      const response = await fetch('/api/upload', {
+        method: 'POST',
+        headers: {
+          'x-user-wallet': publicKey?.toString() || ''
+        },
+        body: formData
+      })
+
+      if (response.ok) {
+        const data = await response.json()
+        return data.url
+      } else {
+        toast.error('Failed to upload media')
+        return null
+      }
+    } catch (error) {
+      console.error('Error uploading media:', error)
+      toast.error('Failed to upload media')
+      return null
+    } finally {
+      setIsUploadingMedia(false)
+    }
+  }
+
   const sendMessage = async () => {
-    if (!messageText.trim() || isSending) return
+    if ((!messageText.trim() && !selectedMedia) || isSending) return
 
     setIsSending(true)
     try {
+      let mediaUrl = null
+      let mediaType = null
+
+      // Upload media if selected
+      if (selectedMedia) {
+        mediaUrl = await uploadMedia(selectedMedia)
+        if (!mediaUrl) {
+          setIsSending(false)
+          return
+        }
+        mediaType = selectedMedia.type.startsWith('image/') ? 'image' : 'video'
+      }
+
       const response = await fetch(`/api/conversations/${conversationId}/messages`, {
         method: 'POST',
         headers: {
@@ -158,6 +237,8 @@ export default function ConversationPage() {
         },
         body: JSON.stringify({
           content: messageText,
+          mediaUrl,
+          mediaType,
           isPaid: isPaidMessage,
           price: isPaidMessage ? parseFloat(messagePrice) : null
         })
@@ -169,6 +250,8 @@ export default function ConversationPage() {
         setMessageText('')
         setIsPaidMessage(false)
         setMessagePrice('')
+        setSelectedMedia(null)
+        setMediaPreview(null)
       } else {
         const error = await response.json()
         toast.error(error.error || 'Failed to send message')
@@ -178,6 +261,80 @@ export default function ConversationPage() {
       toast.error('Failed to send message')
     } finally {
       setIsSending(false)
+    }
+  }
+
+  const sendTip = async () => {
+    if (!publicKey || !participant?.wallet || !tipAmount || isSendingTip) return
+
+    const amount = parseFloat(tipAmount)
+    if (isNaN(amount) || amount <= 0) {
+      toast.error('Invalid tip amount')
+      return
+    }
+
+    setIsSendingTip(true)
+    
+    try {
+      // Create transaction for tip
+      const transaction = new Transaction().add(
+        SystemProgram.transfer({
+          fromPubkey: publicKey,
+          toPubkey: new PublicKey(participant.wallet),
+          lamports: Math.floor(amount * LAMPORTS_PER_SOL),
+        })
+      )
+
+      const signature = await sendTransaction(transaction, connection)
+      
+      // Wait for confirmation
+      await connection.confirmTransaction(signature, 'confirmed')
+
+      // Record tip as a transaction
+      const response = await fetch('/api/tips', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-user-wallet': publicKey.toString()
+        },
+        body: JSON.stringify({
+          creatorId: participant.id,
+          amount,
+          txSignature: signature,
+          conversationId
+        })
+      })
+
+      if (response.ok) {
+        toast.success(`Sent ${amount} SOL tip!`)
+        setShowTipModal(false)
+        setTipAmount('')
+        
+        // Add tip message to chat
+        const tipMessage: Message = {
+          id: Date.now().toString(),
+          content: `💰 Sent a ${amount} SOL tip`,
+          isPaid: false,
+          isPurchased: false,
+          sender: {
+            id: user?.id || '',
+            nickname: user?.nickname || '',
+            fullName: user?.fullName,
+            avatar: user?.avatar
+          },
+          isOwn: true,
+          isRead: false,
+          createdAt: new Date().toISOString()
+        }
+        setMessages(prev => [...prev, tipMessage])
+      } else {
+        toast.error('Failed to record tip')
+      }
+    } catch (error) {
+      console.error('Error sending tip:', error)
+      toast.error('Failed to send tip')
+    } finally {
+      setIsSendingTip(false)
     }
   }
 
@@ -286,7 +443,7 @@ export default function ConversationPage() {
       </div>
 
       {/* Messages */}
-      <div className="flex-1 overflow-y-auto pt-32 pb-32 px-4">
+      <div className="flex-1 overflow-y-auto pt-40 pb-32 px-4">
         <div className="max-w-3xl mx-auto space-y-4">
           {messages.map((message) => (
             <div
@@ -370,6 +527,26 @@ export default function ConversationPage() {
       {/* Input */}
       <div className="fixed bottom-0 left-0 right-0 bg-white dark:bg-slate-800 border-t border-gray-200 dark:border-slate-700 p-4">
         <div className="max-w-3xl mx-auto">
+          {/* Media Preview */}
+          {mediaPreview && (
+            <div className="mb-3 relative inline-block">
+              {selectedMedia?.type.startsWith('image/') ? (
+                <img src={mediaPreview} alt="Preview" className="h-20 rounded-lg" />
+              ) : (
+                <video src={mediaPreview} className="h-20 rounded-lg" />
+              )}
+              <button
+                onClick={() => {
+                  setSelectedMedia(null)
+                  setMediaPreview(null)
+                }}
+                className="absolute -top-2 -right-2 w-6 h-6 bg-red-500 hover:bg-red-600 text-white rounded-full flex items-center justify-center text-xs"
+              >
+                ✕
+              </button>
+            </div>
+          )}
+
           {isPaidMessage && (
             <div className="mb-3 flex items-center gap-3 p-3 bg-yellow-50 dark:bg-yellow-900/20 rounded-lg">
               <SparklesIcon className="w-5 h-5 text-yellow-600 dark:text-yellow-400" />
@@ -396,12 +573,32 @@ export default function ConversationPage() {
           
           <div className="flex items-end gap-3">
             <div className="flex gap-2">
-              <button className="p-2 hover:bg-gray-100 dark:hover:bg-slate-700 rounded-lg transition-colors">
+              {/* Hidden file input */}
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*,video/*"
+                onChange={handleMediaSelect}
+                className="hidden"
+              />
+              
+              <button 
+                onClick={() => fileInputRef.current?.click()}
+                disabled={isUploadingMedia}
+                className="p-2 hover:bg-gray-100 dark:hover:bg-slate-700 rounded-lg transition-colors disabled:opacity-50"
+              >
                 <PhotoIcon className="w-5 h-5 text-gray-600 dark:text-gray-400" />
               </button>
-              <button className="p-2 hover:bg-gray-100 dark:hover:bg-slate-700 rounded-lg transition-colors">
-                <PaperClipIcon className="w-5 h-5 text-gray-600 dark:text-gray-400" />
+              
+              <button
+                onClick={() => setShowTipModal(true)}
+                className="p-2 hover:bg-gray-100 dark:hover:bg-slate-700 rounded-lg transition-colors"
+              >
+                <svg className="w-5 h-5 text-gray-600 dark:text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
               </button>
+              
               <button
                 onClick={() => setIsPaidMessage(!isPaidMessage)}
                 className={`p-2 rounded-lg transition-colors ${
@@ -416,23 +613,112 @@ export default function ConversationPage() {
             
             <input
               type="text"
-              placeholder="Type a message..."
+              placeholder={isUploadingMedia ? "Uploading..." : "Type a message..."}
               value={messageText}
               onChange={(e) => setMessageText(e.target.value)}
-              onKeyPress={(e) => e.key === 'Enter' && !e.shiftKey && sendMessage()}
-              className="flex-1 px-4 py-3 bg-gray-100 dark:bg-slate-700 rounded-full text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500"
+              onKeyPress={(e) => e.key === 'Enter' && !e.shiftKey && !isUploadingMedia && sendMessage()}
+              disabled={isUploadingMedia}
+              className="flex-1 px-4 py-3 bg-gray-100 dark:bg-slate-700 rounded-full text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500 disabled:opacity-50"
             />
             
             <button
               onClick={sendMessage}
-              disabled={!messageText.trim() || isSending || (isPaidMessage && !messagePrice)}
+              disabled={(!messageText.trim() && !selectedMedia) || isSending || isUploadingMedia || (isPaidMessage && !messagePrice)}
               className="p-3 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-full hover:from-purple-700 hover:to-pink-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              <PaperAirplaneIcon className="w-5 h-5" />
+              {isSending || isUploadingMedia ? (
+                <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+              ) : (
+                <PaperAirplaneIcon className="w-5 h-5" />
+              )}
             </button>
           </div>
         </div>
       </div>
+
+      {/* Tip Modal */}
+      {showTipModal && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-gray-900 rounded-2xl max-w-md w-full shadow-2xl">
+            <div className="p-6 border-b border-gray-200 dark:border-gray-700">
+              <div className="flex items-center justify-between">
+                <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
+                  Send Tip
+                </h2>
+                <button
+                  onClick={() => setShowTipModal(false)}
+                  className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-xl transition-colors"
+                >
+                  <XMarkIcon className="w-6 h-6 text-gray-600 dark:text-gray-400" />
+                </button>
+              </div>
+            </div>
+
+            <div className="p-6 space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Tip Amount (SOL)
+                </label>
+                <div className="grid grid-cols-4 gap-2 mb-3">
+                  {[0.1, 0.5, 1, 5].map(amount => (
+                    <button
+                      key={amount}
+                      onClick={() => setTipAmount(amount.toString())}
+                      className={`px-4 py-2 rounded-lg font-medium transition-all ${
+                        tipAmount === amount.toString()
+                          ? 'bg-gradient-to-r from-purple-600 to-pink-600 text-white'
+                          : 'bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700'
+                      }`}
+                    >
+                      {amount}
+                    </button>
+                  ))}
+                </div>
+                <input
+                  type="number"
+                  placeholder="Custom amount"
+                  value={tipAmount}
+                  onChange={(e) => setTipAmount(e.target.value)}
+                  className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-xl text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                  step="0.01"
+                  min="0.01"
+                />
+              </div>
+
+              <div className="bg-purple-50 dark:bg-purple-900/20 rounded-xl p-4">
+                <p className="text-sm text-purple-700 dark:text-purple-300">
+                  Tips go directly to {participant?.fullName || participant?.nickname} with no platform fees!
+                </p>
+              </div>
+
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setShowTipModal(false)}
+                  className="flex-1 px-6 py-3 bg-gray-200 dark:bg-gray-800 text-gray-700 dark:text-gray-300 font-medium rounded-xl hover:bg-gray-300 dark:hover:bg-gray-700 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={sendTip}
+                  disabled={!tipAmount || isSendingTip}
+                  className="flex-1 px-6 py-3 bg-gradient-to-r from-purple-600 to-pink-600 text-white font-medium rounded-xl hover:from-purple-700 hover:to-pink-700 transition-all transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 flex items-center justify-center gap-2"
+                >
+                  {isSendingTip ? (
+                    <>
+                      <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                      Sending...
+                    </>
+                  ) : (
+                    <>
+                      💰 Send Tip
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 } 
