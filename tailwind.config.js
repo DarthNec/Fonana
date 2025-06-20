@@ -112,4 +112,9 @@ module.exports = {
     },
   },
   plugins: [],
+  safelist: [
+    'aspect-3/4',
+    'aspect-square',
+    'aspect-video'
+  ]
 } 
