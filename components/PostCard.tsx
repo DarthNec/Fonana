@@ -747,7 +747,8 @@ export default function PostCard({
                           username: creator.username,
                           avatar: creator.avatar,
                           isVerified: creator.isVerified
-                        }
+                        },
+                        flashSale: flashSale
                       })
                     } else {
                       const preferredTier = requiredTier?.toLowerCase() || (isLegacyVipContent ? 'vip' : 'basic')

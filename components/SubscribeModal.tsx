@@ -245,14 +245,22 @@ export default function SubscribeModal({ creator, preferredTier, onClose, onSucc
 
   const loadFlashSales = async () => {
     try {
-      const response = await fetch(`/api/flash-sales/apply/check?creatorId=${creator.id}`)
+      // Загружаем все активные Flash Sales для этого автора
+      const response = await fetch(`/api/flash-sales?creatorId=${creator.id}`)
       if (response.ok) {
         const data = await response.json()
         // Найти Flash Sale для выбранного плана подписки
         const flashSale = data.flashSales.find((sale: any) => 
           sale.subscriptionPlan && sale.subscriptionPlan.toLowerCase() === selectedTier
         )
-        setActiveFlashSale(flashSale)
+        if (flashSale) {
+          setActiveFlashSale({
+            ...flashSale,
+            timeLeft: new Date(flashSale.endAt).getTime() - new Date().getTime()
+          })
+        } else {
+          setActiveFlashSale(null)
+        }
       }
     } catch (error) {
       console.error('Error loading flash sales:', error)

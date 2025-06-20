@@ -99,9 +99,9 @@ export default function FlashSale({ flashSale, onUse, className = '' }: FlashSal
 
   return (
     <div className={`
-      relative overflow-hidden rounded-2xl 
+      relative rounded-2xl 
       bg-gradient-to-r from-orange-500 to-pink-500 p-[2px]
-      animate-pulse-slow z-0 ${className}
+      animate-pulse-slow ${className}
     `}>
       <div className="relative bg-white dark:bg-gray-900 rounded-2xl p-4 overflow-visible">
         {/* Flash icon animation */}
