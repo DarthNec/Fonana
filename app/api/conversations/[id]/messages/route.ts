@@ -1,0 +1,196 @@
+import { NextRequest, NextResponse } from 'next/server'
+import { prisma } from '@/lib/prisma'
+
+// Получение сообщений чата
+export async function GET(
+  request: NextRequest,
+  { params }: { params: { id: string } }
+) {
+  try {
+    const userWallet = request.headers.get('x-user-wallet')
+    
+    if (!userWallet) {
+      return NextResponse.json({ error: 'Wallet not connected' }, { status: 401 })
+    }
+    
+    const conversationId = params.id
+    const searchParams = request.nextUrl.searchParams
+    const limit = parseInt(searchParams.get('limit') || '50')
+    const before = searchParams.get('before') // для пагинации
+    
+    // Проверяем, что пользователь участник чата
+    const user = await prisma.user.findUnique({
+      where: { wallet: userWallet }
+    })
+    
+    if (!user) {
+      return NextResponse.json({ error: 'User not found' }, { status: 404 })
+    }
+    
+    const conversation = await prisma.conversation.findFirst({
+      where: {
+        id: conversationId,
+        participants: {
+          some: { id: user.id }
+        }
+      }
+    })
+    
+    if (!conversation) {
+      return NextResponse.json({ error: 'Conversation not found' }, { status: 404 })
+    }
+    
+    // Получаем сообщения
+    const messages = await prisma.message.findMany({
+      where: {
+        conversationId,
+        ...(before && { createdAt: { lt: new Date(before) } })
+      },
+      include: {
+        sender: {
+          select: {
+            id: true,
+            nickname: true,
+            fullName: true,
+            avatar: true
+          }
+        },
+        purchases: {
+          where: { userId: user.id },
+          select: { id: true }
+        }
+      },
+      orderBy: { createdAt: 'desc' },
+      take: limit
+    })
+    
+    // Форматируем сообщения
+    const formattedMessages = messages.map((msg: any) => ({
+      id: msg.id,
+      content: msg.isPaid && msg.purchases.length === 0 
+        ? null // Скрываем контент платных сообщений
+        : msg.content,
+      mediaUrl: msg.isPaid && msg.purchases.length === 0
+        ? null // Скрываем медиа платных сообщений  
+        : msg.mediaUrl,
+      mediaType: msg.mediaType,
+      isPaid: msg.isPaid,
+      price: msg.price,
+      isPurchased: msg.purchases.length > 0,
+      sender: msg.sender,
+      isOwn: msg.senderId === user.id,
+      isRead: msg.isRead,
+      createdAt: msg.createdAt
+    }))
+    
+    // Отмечаем сообщения как прочитанные
+    await prisma.message.updateMany({
+      where: {
+        conversationId,
+        senderId: { not: user.id },
+        isRead: false
+      },
+      data: { isRead: true }
+    })
+    
+    return NextResponse.json({ 
+      messages: formattedMessages.reverse(),
+      hasMore: messages.length === limit
+    })
+  } catch (error) {
+    console.error('Error fetching messages:', error)
+    return NextResponse.json({ error: 'Failed to fetch messages' }, { status: 500 })
+  }
+}
+
+// Отправка сообщения
+export async function POST(
+  request: NextRequest,
+  { params }: { params: { id: string } }
+) {
+  try {
+    const userWallet = request.headers.get('x-user-wallet')
+    
+    if (!userWallet) {
+      return NextResponse.json({ error: 'Wallet not connected' }, { status: 401 })
+    }
+    
+    const conversationId = params.id
+    const { content, mediaUrl, mediaType, isPaid, price } = await request.json()
+    
+    if (!content && !mediaUrl) {
+      return NextResponse.json({ error: 'Message content or media required' }, { status: 400 })
+    }
+    
+    if (isPaid && (!price || price <= 0)) {
+      return NextResponse.json({ error: 'Valid price required for paid messages' }, { status: 400 })
+    }
+    
+    // Получаем пользователя и проверяем участие в чате
+    const user = await prisma.user.findUnique({
+      where: { wallet: userWallet }
+    })
+    
+    if (!user) {
+      return NextResponse.json({ error: 'User not found' }, { status: 404 })
+    }
+    
+    const conversation = await prisma.conversation.findFirst({
+      where: {
+        id: conversationId,
+        participants: {
+          some: { id: user.id }
+        }
+      },
+      include: {
+        participants: true
+      }
+    })
+    
+    if (!conversation) {
+      return NextResponse.json({ error: 'Conversation not found' }, { status: 404 })
+    }
+    
+    // Создаем сообщение
+    const message = await prisma.message.create({
+      data: {
+        conversationId,
+        senderId: user.id,
+        content,
+        mediaUrl,
+        mediaType,
+        isPaid: isPaid || false,
+        price: isPaid ? price : null
+      },
+      include: {
+        sender: {
+          select: {
+            id: true,
+            nickname: true,
+            fullName: true,
+            avatar: true
+          }
+        }
+      }
+    })
+    
+    // Обновляем lastMessageAt в чате
+    await prisma.conversation.update({
+      where: { id: conversationId },
+      data: { lastMessageAt: new Date() }
+    })
+    
+    // TODO: Отправить push уведомление получателю
+    
+    return NextResponse.json({ 
+      message: {
+        ...message,
+        isOwn: true,
+        isPurchased: false
+      }
+    })
+  } catch (error) {
+    console.error('Error sending message:', error)
+    return NextResponse.json({ error: 'Failed to send message' }, { status: 500 })
+  }
+} 

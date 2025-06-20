@@ -15,7 +15,8 @@ import {
   XMarkIcon,
   ArrowRightOnRectangleIcon,
   BellIcon,
-  Cog6ToothIcon
+  Cog6ToothIcon,
+  ChatBubbleLeftEllipsisIcon
 } from '@heroicons/react/24/outline'
 import { MobileWalletConnect } from './MobileWalletConnect'
 import { useWallet } from '@solana/wallet-adapter-react'
@@ -25,6 +26,7 @@ const navigation = [
   { name: 'Home', href: '/', icon: HomeIcon },
   { name: 'Creators', href: '/creators', icon: UsersIcon },
   { name: 'Feed', href: '/feed', icon: HomeIcon },
+  { name: 'Messages', href: '/messages', icon: ChatBubbleLeftEllipsisIcon },
   { name: 'Create', href: '/create', icon: PlusIcon },
 ]
 

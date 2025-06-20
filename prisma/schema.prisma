@@ -70,6 +70,11 @@ model User {
   flashSales            FlashSale[]
   flashSaleRedemptions  FlashSaleRedemption[]
 
+  // Direct Messages
+  conversations      Conversation[] @relation("UserConversations")
+  sentMessages       Message[]      @relation("SentMessages")
+  messagePurchases   MessagePurchase[]
+
   @@map("users")
 }
 
@@ -234,6 +239,10 @@ model Transaction {
   type            TransactionType
   status          TransactionStatus @default(PENDING)
   
+  // Additional fields for flexible tracking
+  senderId        String?
+  receiverId      String?
+  
   // Fee distribution
   platformFee     Float?
   referrerFee     Float?
@@ -266,6 +275,7 @@ enum TransactionType {
   REFERRER_FEE
   WITHDRAWAL
   REFUND
+  MESSAGE_PURCHASE
 }
 
 // Transaction status enum
@@ -543,4 +553,49 @@ model FlashSaleRedemption {
   
   @@unique([flashSaleId, userId]) // One redemption per user per sale
   @@map("flash_sale_redemptions")
+}
+
+// Direct Messages
+model Conversation {
+  id            String    @id @default(cuid())
+  participants  User[]    @relation("UserConversations")
+  messages      Message[]
+  lastMessageAt DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+}
+
+model Message {
+  id             String       @id @default(cuid())
+  conversationId String
+  senderId       String
+  content        String?      @db.Text
+  mediaUrl       String?
+  mediaType      String?      // 'image' | 'video' | 'audio'
+  isPaid         Boolean      @default(false)
+  price          Float?
+  isRead         Boolean      @default(false)
+  createdAt      DateTime     @default(now())
+  
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  sender         User         @relation("SentMessages", fields: [senderId], references: [id])
+  purchases      MessagePurchase[]
+  
+  @@index([conversationId])
+  @@index([senderId])
+}
+
+model MessagePurchase {
+  id          String   @id @default(cuid())
+  messageId   String
+  userId      String
+  amount      Float
+  txSignature String
+  createdAt   DateTime @default(now())
+  
+  message     Message  @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  user        User     @relation(fields: [userId], references: [id])
+  
+  @@unique([messageId, userId])
+  @@index([userId])
 }

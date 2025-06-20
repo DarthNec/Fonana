@@ -23,7 +23,8 @@ import {
   GlobeAltIcon,
   PaperAirplaneIcon,
   PhotoIcon,
-  VideoCameraIcon
+  VideoCameraIcon,
+  ChatBubbleLeftEllipsisIcon
 } from '@heroicons/react/24/outline'
 import { useUser } from '@/lib/hooks/useUser'
 import { useWallet } from '@solana/wallet-adapter-react'
@@ -188,6 +189,37 @@ export default function CreatorPage() {
     setShowPurchaseModal(true)
   }
 
+  const handleMessageClick = async () => {
+    if (!user || !user.wallet) {
+      toast.error('Please connect your wallet')
+      return
+    }
+
+    try {
+      // Create or get existing conversation
+      const response = await fetch('/api/conversations', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-user-wallet': user.wallet
+        },
+        body: JSON.stringify({
+          participantId: creator!.id
+        })
+      })
+
+      if (response.ok) {
+        const data = await response.json()
+        router.push(`/messages/${data.conversation.id}`)
+      } else {
+        toast.error('Failed to start conversation')
+      }
+    } catch (error) {
+      console.error('Error starting conversation:', error)
+      toast.error('Failed to start conversation')
+    }
+  }
+
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('en-US', {
       year: 'numeric',
@@ -281,7 +313,7 @@ export default function CreatorPage() {
                       </div>
 
                       {/* Subscribe Button (Desktop) */}
-                      <div className="hidden md:block">
+                      <div className="hidden md:flex gap-3">
                         {!isSubscribed ? (
                           <button
                             onClick={() => handleSubscribeClick({
@@ -322,6 +354,15 @@ export default function CreatorPage() {
                             )}
                           </div>
                         )}
+                        
+                        {/* Message Button */}
+                        <button
+                          onClick={handleMessageClick}
+                          className="px-6 py-3 bg-gray-100 dark:bg-slate-700 hover:bg-gray-200 dark:hover:bg-slate-600 text-gray-900 dark:text-white rounded-2xl font-bold shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-300 flex items-center gap-2"
+                        >
+                          <ChatBubbleLeftEllipsisIcon className="w-5 h-5" />
+                          Message
+                        </button>
                       </div>
                     </div>
 
@@ -383,7 +424,7 @@ export default function CreatorPage() {
                 </div>
 
                 {/* Subscribe Button (Mobile) */}
-                <div className="md:hidden mt-6">
+                <div className="md:hidden mt-6 space-y-3">
                   {!isSubscribed ? (
                     <button
                       onClick={() => handleSubscribeClick({
@@ -424,6 +465,15 @@ export default function CreatorPage() {
                       )}
                     </div>
                   )}
+                  
+                  {/* Message Button */}
+                  <button
+                    onClick={handleMessageClick}
+                    className="w-full px-8 py-3 bg-gray-100 dark:bg-slate-700 hover:bg-gray-200 dark:hover:bg-slate-600 text-gray-900 dark:text-white rounded-2xl font-bold shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-300 flex items-center justify-center gap-2"
+                  >
+                    <ChatBubbleLeftEllipsisIcon className="w-5 h-5" />
+                    Message
+                  </button>
                 </div>
               </div>
             </div>
