@@ -356,8 +356,8 @@ export default function ConversationPage() {
       
       toast.loading('Processing tip...')
       
-      // Give transaction time to get into the network (увеличиваем задержку для tips)
-      await new Promise(resolve => setTimeout(resolve, 8000))
+      // Give transaction time to get into the network (еще больше задержка для tips)
+      await new Promise(resolve => setTimeout(resolve, 12000))
 
       // Record tip as a transaction
       const response = await fetch('/api/tips', {
@@ -452,8 +452,8 @@ export default function ConversationPage() {
       
       toast.loading('Waiting for blockchain confirmation...')
       
-      // Give transaction time to get into the network (увеличиваем задержку для стабильности)
-      await new Promise(resolve => setTimeout(resolve, 8000))
+      // Give transaction time to get into the network (больше времени для надежности)
+      await new Promise(resolve => setTimeout(resolve, 10000))
 
       // Save purchase
       const response = await fetch(`/api/messages/${message.id}/purchase`, {
@@ -556,7 +556,7 @@ export default function ConversationPage() {
       </div>
 
       {/* Messages */}
-      <div className="flex-1 overflow-y-auto pt-36 pb-32 px-4 mt-16">
+      <div className="flex-1 overflow-y-auto pt-44 pb-32 px-4 mt-20">
         <div className="max-w-3xl mx-auto space-y-4">
           {messages.map((message) => (
             <div

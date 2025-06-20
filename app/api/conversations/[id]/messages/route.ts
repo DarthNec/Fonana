@@ -65,23 +65,28 @@ export async function GET(
     })
     
     // Форматируем сообщения
-    const formattedMessages = messages.map((msg: any) => ({
-      id: msg.id,
-      content: msg.isPaid && msg.purchases.length === 0 
-        ? null // Скрываем контент платных сообщений
-        : msg.content,
-      mediaUrl: msg.isPaid && msg.purchases.length === 0
-        ? null // Скрываем медиа платных сообщений  
-        : msg.mediaUrl,
-      mediaType: msg.mediaType,
-      isPaid: msg.isPaid,
-      price: msg.price,
-      isPurchased: msg.purchases.length > 0,
-      sender: msg.sender,
-      isOwn: msg.senderId === user.id,
-      isRead: msg.isRead,
-      createdAt: msg.createdAt
-    }))
+    const formattedMessages = messages.map((msg: any) => {
+      const isOwn = msg.senderId === user.id
+      const isPurchased = msg.purchases.length > 0
+      
+      return {
+        id: msg.id,
+        content: msg.isPaid && !isPurchased && !isOwn
+          ? null // Скрываем контент платных сообщений только если не автор и не куплено
+          : msg.content,
+        mediaUrl: msg.isPaid && !isPurchased && !isOwn
+          ? null // Скрываем медиа платных сообщений только если не автор и не куплено
+          : msg.mediaUrl,
+        mediaType: msg.mediaType,
+        isPaid: msg.isPaid,
+        price: msg.price,
+        isPurchased,
+        sender: msg.sender,
+        isOwn,
+        isRead: msg.isRead,
+        createdAt: msg.createdAt
+      }
+    })
     
     // Отмечаем сообщения как прочитанные
     await prisma.message.updateMany({
@@ -205,9 +210,17 @@ export async function POST(
     
     return NextResponse.json({ 
       message: {
-        ...message,
+        id: message.id,
+        content: message.content,
+        mediaUrl: message.mediaUrl,
+        mediaType: message.mediaType,
+        isPaid: message.isPaid,
+        price: message.price,
+        sender: message.sender,
         isOwn: true,
-        isPurchased: false
+        isPurchased: false,
+        isRead: false,
+        createdAt: message.createdAt
       }
     })
   } catch (error) {

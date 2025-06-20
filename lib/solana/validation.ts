@@ -268,7 +268,7 @@ export async function validatePaymentDistribution(
 // Вспомогательная функция для ожидания подтверждения транзакции
 export async function waitForTransactionConfirmation(
   signature: string,
-  maxRetries: number = 120, // Увеличено до 120 попыток (2 минуты)
+  maxRetries: number = 180, // Увеличено до 180 попыток (3 минуты)
   retryDelay: number = 1000
 ): Promise<boolean> {
   console.log(`Waiting for transaction confirmation: ${signature}`)
