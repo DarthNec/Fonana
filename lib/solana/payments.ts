@@ -269,4 +269,70 @@ export async function createPostPurchaseTransaction(
   console.log('Transaction created with feePayer:', transaction.feePayer.toBase58())
   
   return transaction
+}
+
+export async function createTipTransaction(
+  payerPublicKey: PublicKey,
+  creatorWallet: string,
+  amount: number
+): Promise<Transaction> {
+  console.log('Creating tip transaction with:', {
+    payerPublicKey: payerPublicKey.toBase58(),
+    creatorWallet,
+    amount
+  })
+  
+  const connection = getConnection()
+  const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash('confirmed')
+  
+  const transaction = new Transaction()
+  transaction.recentBlockhash = blockhash
+  transaction.feePayer = payerPublicKey
+  ;(transaction as any).lastValidBlockHeight = lastValidBlockHeight
+  
+  console.log('Transaction blockhash set to:', blockhash)
+  console.log('Transaction lastValidBlockHeight:', lastValidBlockHeight)
+  
+  // Получаем динамическую приоритетную комиссию (как в работающих покупках)
+  const priorityFee = await getRecommendedPriorityFee(connection)
+  console.log(`Using priority fee: ${priorityFee} microlamports`)
+  
+  // Добавляем приоритетную комиссию для более быстрого подтверждения
+  transaction.add(
+    ComputeBudgetProgram.setComputeUnitPrice({
+      microLamports: priorityFee
+    })
+  )
+  
+  const creatorPubkey = new PublicKey(creatorWallet)
+  
+  // Проверяем, нужна ли рента для создания аккаунта (как в работающих покупках)
+  const creatorRent = await getAccountRentIfNeeded(connection, creatorPubkey)
+  // Используем точно такую же формулу как в createPostPurchaseTransaction
+  const transferAmount = Math.floor((amount + (creatorRent / LAMPORTS_PER_SOL)) * LAMPORTS_PER_SOL)
+  
+  console.log('Adding tip transfer:', {
+    from: payerPublicKey.toBase58(),
+    to: creatorWallet,
+    amount: amount,
+    amountInLamports: Math.floor(amount * LAMPORTS_PER_SOL),
+    rentIfNeeded: creatorRent,
+    rentInSOL: creatorRent / LAMPORTS_PER_SOL,
+    totalLamports: transferAmount
+  })
+  
+  transaction.add(
+    SystemProgram.transfer({
+      fromPubkey: payerPublicKey,
+      toPubkey: creatorPubkey,
+      lamports: transferAmount
+    })
+  )
+  
+  console.log('Tip transaction created with:')
+  console.log('- feePayer:', transaction.feePayer.toBase58())
+  console.log('- instructions:', transaction.instructions.length)
+  console.log('- signatures:', transaction.signatures.length)
+  
+  return transaction
 } 

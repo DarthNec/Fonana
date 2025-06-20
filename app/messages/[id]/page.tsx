@@ -16,11 +16,12 @@ import {
 import Link from 'next/link'
 import OptimizedImage from '@/components/OptimizedImage'
 import { useConnection } from '@solana/wallet-adapter-react'
-import { LAMPORTS_PER_SOL, SystemProgram, Transaction, PublicKey, ComputeBudgetProgram } from '@solana/web3.js'
+import { PublicKey } from '@solana/web3.js'
 import toast from 'react-hot-toast'
 import { useUser } from '@/lib/hooks/useUser'
 import { 
-  createPostPurchaseTransaction, 
+  createPostPurchaseTransaction,
+  createTipTransaction,
   calculatePaymentDistribution,
   formatSolAmount 
 } from '@/lib/solana/payments'
@@ -335,44 +336,11 @@ export default function ConversationPage() {
         return
       }
 
-      // Get fresh blockhash
-      const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash('confirmed')
-      
-      // Create transaction for tip (100% to creator, no fees)
-      const transaction = new Transaction()
-      transaction.recentBlockhash = blockhash
-      transaction.feePayer = publicKey
-      ;(transaction as any).lastValidBlockHeight = lastValidBlockHeight
-      
-      // Add priority fee for faster confirmation (like working purchase)
-      transaction.add(
-        ComputeBudgetProgram.setComputeUnitPrice({
-          microLamports: 1000000 // 1M microlamports priority fee
-        })
-      )
-      
-      // Check if account exists and add rent if needed
-      const creatorPubkey = new PublicKey(creatorWallet)
-      let transferAmount = Math.floor(amount * LAMPORTS_PER_SOL)
-      
-      try {
-        const accountInfo = await connection.getAccountInfo(creatorPubkey)
-        if (!accountInfo) {
-          // Account doesn't exist, add rent
-          const minRent = await connection.getMinimumBalanceForRentExemption(0)
-          transferAmount += minRent
-          console.log(`Adding rent for new account: ${minRent / LAMPORTS_PER_SOL} SOL`)
-        }
-      } catch (error) {
-        console.error('Error checking account:', error)
-      }
-      
-      transaction.add(
-        SystemProgram.transfer({
-          fromPubkey: publicKey,
-          toPubkey: creatorPubkey,
-          lamports: transferAmount,
-        })
+      // Create transaction using the same pattern as working purchases
+      const transaction = await createTipTransaction(
+        publicKey,
+        creatorWallet,
+        amount
       )
 
       // Send with retry logic (точно как в покупке сообщений)
