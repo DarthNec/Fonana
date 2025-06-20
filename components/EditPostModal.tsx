@@ -11,10 +11,12 @@ import {
   LockOpenIcon,
   UsersIcon,
   StarIcon,
-  SparklesIcon
+  SparklesIcon,
+  ScissorsIcon
 } from '@heroicons/react/24/outline'
 import { useUser } from '@/lib/hooks/useUser'
 import toast from 'react-hot-toast'
+import ImageCropModal from './ImageCropModal'
 
 interface EditPostModalProps {
   isOpen: boolean
@@ -42,6 +44,8 @@ export default function EditPostModal({ isOpen, onClose, post, onPostUpdated }: 
   const [isSubmitting, setIsSubmitting] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const isMountedRef = useRef(true)
+  const [showCropModal, setShowCropModal] = useState(false)
+  const [originalImage, setOriginalImage] = useState<string>('')
   
   // Отслеживаем unmount
   useEffect(() => {
@@ -158,14 +162,53 @@ export default function EditPostModal({ isOpen, onClose, post, onPostUpdated }: 
       
       const reader = new FileReader()
       reader.onload = (e) => {
+        const result = e.target?.result as string
         console.log('[EditPostModal] File loaded successfully, modal open:', isOpen)
-        setMediaPreview(e.target?.result as string)
+        
+        // For images, open crop modal
+        if (file.type.startsWith('image/')) {
+          setOriginalImage(result)
+          setShowCropModal(true)
+        } else {
+          // For other media types, set preview directly
+          setMediaPreview(result)
+        }
       }
       reader.onerror = (e) => {
         console.error('[EditPostModal] File reading error:', e)
         toast.error('Failed to read file')
       }
       reader.readAsDataURL(file)
+    }
+  }
+
+  const handleCropComplete = async (croppedImage: string, aspectRatio?: number) => {
+    // Convert cropped image URL to File
+    try {
+      const response = await fetch(croppedImage)
+      const blob = await response.blob()
+      const croppedFile = new File([blob], mediaFile?.name || 'cropped-image.jpg', {
+        type: 'image/jpeg'
+      })
+      
+      // Determine image aspect ratio based on the crop
+      if (aspectRatio) {
+        if (aspectRatio < 0.8) {
+          setImageAspectRatio('vertical') // Portrait
+        } else if (aspectRatio > 1.2) {
+          setImageAspectRatio('horizontal') // Landscape
+        } else {
+          setImageAspectRatio('square') // Square
+        }
+      }
+      
+      setMediaFile(croppedFile)
+      setMediaPreview(croppedImage)
+      setShowCropModal(false)
+      setOriginalImage('')
+    } catch (error) {
+      console.error('Error processing cropped image:', error)
+      toast.error('Error processing image')
     }
   }
 
@@ -428,88 +471,20 @@ export default function EditPostModal({ isOpen, onClose, post, onPostUpdated }: 
               )}
             </div>
 
-            {/* Image format selection (only for images) */}
+            {/* Crop button for images */}
             {mediaPreview && (post.type === 'image' || (mediaFile && mediaFile.type.startsWith('image/'))) && (
-              <div className="mb-6">
-                <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-2">
-                  Image Format
-                </label>
-                <div className="grid grid-cols-3 gap-3">
-                  <button
-                    type="button"
-                    onClick={() => setImageAspectRatio('vertical')}
-                    className={`p-3 rounded-xl border-2 transition-all ${
-                      imageAspectRatio === 'vertical'
-                        ? 'border-purple-500 bg-purple-500/10'
-                        : 'border-gray-200 dark:border-slate-700 hover:border-gray-300 dark:hover:border-slate-600 bg-gray-50 dark:bg-slate-800/50'
-                    }`}
-                  >
-                    <div className="flex flex-col items-center gap-2">
-                      <div className={`w-10 h-14 rounded border-2 ${
-                        imageAspectRatio === 'vertical' 
-                          ? 'border-purple-500 bg-purple-500/20' 
-                          : 'border-gray-400 dark:border-slate-600'
-                      }`} />
-                      <span className={`text-xs font-medium ${
-                        imageAspectRatio === 'vertical'
-                          ? 'text-purple-600 dark:text-purple-400'
-                          : 'text-gray-600 dark:text-slate-400'
-                      }`}>
-                        Vertical
-                      </span>
-                    </div>
-                  </button>
-                  
-                  <button
-                    type="button"
-                    onClick={() => setImageAspectRatio('square')}
-                    className={`p-3 rounded-xl border-2 transition-all ${
-                      imageAspectRatio === 'square'
-                        ? 'border-purple-500 bg-purple-500/10'
-                        : 'border-gray-200 dark:border-slate-700 hover:border-gray-300 dark:hover:border-slate-600 bg-gray-50 dark:bg-slate-800/50'
-                    }`}
-                  >
-                    <div className="flex flex-col items-center gap-2">
-                      <div className={`w-12 h-12 rounded border-2 ${
-                        imageAspectRatio === 'square' 
-                          ? 'border-purple-500 bg-purple-500/20' 
-                          : 'border-gray-400 dark:border-slate-600'
-                      }`} />
-                      <span className={`text-xs font-medium ${
-                        imageAspectRatio === 'square'
-                          ? 'text-purple-600 dark:text-purple-400'
-                          : 'text-gray-600 dark:text-slate-400'
-                      }`}>
-                        Square
-                      </span>
-                    </div>
-                  </button>
-                  
-                  <button
-                    type="button"
-                    onClick={() => setImageAspectRatio('horizontal')}
-                    className={`p-3 rounded-xl border-2 transition-all ${
-                      imageAspectRatio === 'horizontal'
-                        ? 'border-purple-500 bg-purple-500/10'
-                        : 'border-gray-200 dark:border-slate-700 hover:border-gray-300 dark:hover:border-slate-600 bg-gray-50 dark:bg-slate-800/50'
-                    }`}
-                  >
-                    <div className="flex flex-col items-center gap-2">
-                      <div className={`w-14 h-10 rounded border-2 ${
-                        imageAspectRatio === 'horizontal' 
-                          ? 'border-purple-500 bg-purple-500/20' 
-                          : 'border-gray-400 dark:border-slate-600'
-                      }`} />
-                      <span className={`text-xs font-medium ${
-                        imageAspectRatio === 'horizontal'
-                          ? 'text-purple-600 dark:text-purple-400'
-                          : 'text-gray-600 dark:text-slate-400'
-                      }`}>
-                        Horizontal
-                      </span>
-                    </div>
-                  </button>
-                </div>
+              <div className="mb-6 flex justify-center">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setOriginalImage(mediaPreview)
+                    setShowCropModal(true)
+                  }}
+                  className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-xl transition-colors flex items-center gap-2"
+                >
+                  <ScissorsIcon className="w-4 h-4" />
+                  Edit Crop & Format
+                </button>
               </div>
             )}
 
@@ -648,6 +623,18 @@ export default function EditPostModal({ isOpen, onClose, post, onPostUpdated }: 
           </div>
         </Dialog.Panel>
       </div>
+      
+      {/* Image Crop Modal */}
+      {showCropModal && originalImage && (
+        <ImageCropModal
+          image={originalImage}
+          onCropComplete={handleCropComplete}
+          onCancel={() => {
+            setShowCropModal(false)
+            setOriginalImage('')
+          }}
+        />
+      )}
     </Dialog>
   )
 } 

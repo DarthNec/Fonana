@@ -16,8 +16,10 @@ import {
   CurrencyDollarIcon,
   SparklesIcon,
   LockClosedIcon,
-  StarIcon
+  StarIcon,
+  ScissorsIcon
 } from '@heroicons/react/24/outline'
+import ImageCropModal from './ImageCropModal'
 
 const categories = [
   'Art', 'Music', 'Gaming', 'Lifestyle', 'Fitness', 
@@ -35,6 +37,8 @@ export default function CreatePostModal({ onPostCreated, onClose }: CreatePostMo
   const { user } = useUser()
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [isUploading, setIsUploading] = useState(false)
+  const [showCropModal, setShowCropModal] = useState(false)
+  const [originalImage, setOriginalImage] = useState<string>('')
   
   const [formData, setFormData] = useState({
     title: '',
@@ -124,12 +128,61 @@ export default function CreatePostModal({ onPostCreated, onClose }: CreatePostMo
       return
     }
 
-    setFormData(prev => ({
-      ...prev,
-      file,
-      type: contentType,
-      preview: URL.createObjectURL(file)
-    }))
+    const preview = URL.createObjectURL(file)
+    
+    // For images, open crop modal
+    if (contentType === 'image') {
+      setOriginalImage(preview)
+      setFormData(prev => ({
+        ...prev,
+        file,
+        type: contentType
+      }))
+      setShowCropModal(true)
+    } else {
+      // For video and audio, set directly
+      setFormData(prev => ({
+        ...prev,
+        file,
+        type: contentType,
+        preview
+      }))
+    }
+  }
+
+  const handleCropComplete = async (croppedImage: string, aspectRatio?: number) => {
+    // Convert cropped image URL to File
+    try {
+      const response = await fetch(croppedImage)
+      const blob = await response.blob()
+      const croppedFile = new File([blob], formData.file?.name || 'cropped-image.jpg', {
+        type: 'image/jpeg'
+      })
+      
+      // Determine image aspect ratio based on the crop
+      let imageAspectRatio: 'vertical' | 'square' | 'horizontal' = 'square'
+      if (aspectRatio) {
+        if (aspectRatio < 0.8) {
+          imageAspectRatio = 'vertical' // Portrait
+        } else if (aspectRatio > 1.2) {
+          imageAspectRatio = 'horizontal' // Landscape
+        } else {
+          imageAspectRatio = 'square' // Square
+        }
+      }
+      
+      setFormData(prev => ({
+        ...prev,
+        file: croppedFile,
+        preview: croppedImage,
+        imageAspectRatio
+      }))
+      setShowCropModal(false)
+      setOriginalImage('')
+    } catch (error) {
+      console.error('Error processing cropped image:', error)
+      toast.error('Error processing image')
+    }
   }
 
   const handleDrop = (e: React.DragEvent) => {
@@ -360,9 +413,10 @@ export default function CreatePostModal({ onPostCreated, onClose }: CreatePostMo
   }
 
   return (
-    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-start justify-center p-4 overflow-y-auto">
-      <div className="bg-white dark:bg-gradient-to-br dark:from-slate-800/95 dark:to-slate-900/95 backdrop-blur-xl rounded-3xl max-w-4xl w-full my-8 border border-gray-200 dark:border-slate-700/50 shadow-2xl">
-        <form onSubmit={handleSubmit} className="p-6 lg:p-8 space-y-6">
+    <>
+      <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-start justify-center p-4 overflow-y-auto">
+        <div className="bg-white dark:bg-gradient-to-br dark:from-slate-800/95 dark:to-slate-900/95 backdrop-blur-xl rounded-3xl max-w-4xl w-full my-8 border border-gray-200 dark:border-slate-700/50 shadow-2xl">
+          <form onSubmit={handleSubmit} className="p-6 lg:p-8 space-y-6">
           {/* Header */}
           <div className="flex items-center justify-between mb-6">
             <h2 className="text-2xl font-bold bg-gradient-to-r from-purple-600 to-pink-600 dark:from-purple-400 dark:to-pink-400 bg-clip-text text-transparent">
@@ -472,88 +526,20 @@ export default function CreatePostModal({ onPostCreated, onClose }: CreatePostMo
                 </div>
               )}
 
-              {/* Image format selection (only for images) */}
+              {/* Crop button for images */}
               {formData.type === 'image' && formData.preview && (
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-2">
-                    Image Format
-                  </label>
-                  <div className="grid grid-cols-3 gap-3">
-                    <button
-                      type="button"
-                      onClick={() => setFormData(prev => ({ ...prev, imageAspectRatio: 'vertical' }))}
-                      className={`p-3 rounded-xl border-2 transition-all ${
-                        formData.imageAspectRatio === 'vertical'
-                          ? 'border-purple-500 bg-purple-500/10'
-                          : 'border-gray-200 dark:border-slate-700 hover:border-gray-300 dark:hover:border-slate-600 bg-gray-50 dark:bg-slate-800/50'
-                      }`}
-                    >
-                      <div className="flex flex-col items-center gap-2">
-                        <div className={`w-10 h-14 rounded border-2 ${
-                          formData.imageAspectRatio === 'vertical' 
-                            ? 'border-purple-500 bg-purple-500/20' 
-                            : 'border-gray-400 dark:border-slate-600'
-                        }`} />
-                        <span className={`text-xs font-medium ${
-                          formData.imageAspectRatio === 'vertical'
-                            ? 'text-purple-600 dark:text-purple-400'
-                            : 'text-gray-600 dark:text-slate-400'
-                        }`}>
-                          Vertical
-                        </span>
-                      </div>
-                    </button>
-                    
-                    <button
-                      type="button"
-                      onClick={() => setFormData(prev => ({ ...prev, imageAspectRatio: 'square' }))}
-                      className={`p-3 rounded-xl border-2 transition-all ${
-                        formData.imageAspectRatio === 'square'
-                          ? 'border-purple-500 bg-purple-500/10'
-                          : 'border-gray-200 dark:border-slate-700 hover:border-gray-300 dark:hover:border-slate-600 bg-gray-50 dark:bg-slate-800/50'
-                      }`}
-                    >
-                      <div className="flex flex-col items-center gap-2">
-                        <div className={`w-12 h-12 rounded border-2 ${
-                          formData.imageAspectRatio === 'square' 
-                            ? 'border-purple-500 bg-purple-500/20' 
-                            : 'border-gray-400 dark:border-slate-600'
-                        }`} />
-                        <span className={`text-xs font-medium ${
-                          formData.imageAspectRatio === 'square'
-                            ? 'text-purple-600 dark:text-purple-400'
-                            : 'text-gray-600 dark:text-slate-400'
-                        }`}>
-                          Square
-                        </span>
-                      </div>
-                    </button>
-                    
-                    <button
-                      type="button"
-                      onClick={() => setFormData(prev => ({ ...prev, imageAspectRatio: 'horizontal' }))}
-                      className={`p-3 rounded-xl border-2 transition-all ${
-                        formData.imageAspectRatio === 'horizontal'
-                          ? 'border-purple-500 bg-purple-500/10'
-                          : 'border-gray-200 dark:border-slate-700 hover:border-gray-300 dark:hover:border-slate-600 bg-gray-50 dark:bg-slate-800/50'
-                      }`}
-                    >
-                      <div className="flex flex-col items-center gap-2">
-                        <div className={`w-14 h-10 rounded border-2 ${
-                          formData.imageAspectRatio === 'horizontal' 
-                            ? 'border-purple-500 bg-purple-500/20' 
-                            : 'border-gray-400 dark:border-slate-600'
-                        }`} />
-                        <span className={`text-xs font-medium ${
-                          formData.imageAspectRatio === 'horizontal'
-                            ? 'text-purple-600 dark:text-purple-400'
-                            : 'text-gray-600 dark:text-slate-400'
-                        }`}>
-                          Horizontal
-                        </span>
-                      </div>
-                    </button>
-                  </div>
+                <div className="flex justify-center">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setOriginalImage(formData.preview)
+                      setShowCropModal(true)
+                    }}
+                    className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-xl transition-colors flex items-center gap-2"
+                  >
+                    <ScissorsIcon className="w-4 h-4" />
+                    Edit Crop & Format
+                  </button>
                 </div>
               )}
 
@@ -952,5 +938,18 @@ export default function CreatePostModal({ onPostCreated, onClose }: CreatePostMo
         </form>
       </div>
     </div>
+    
+    {/* Image Crop Modal */}
+    {showCropModal && originalImage && (
+      <ImageCropModal
+        image={originalImage}
+        onCropComplete={handleCropComplete}
+        onCancel={() => {
+          setShowCropModal(false)
+          setOriginalImage('')
+        }}
+      />
+    )}
+    </>
   )
 }
