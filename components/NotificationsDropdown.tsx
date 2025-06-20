@@ -74,6 +74,8 @@ export default function NotificationsDropdown() {
         return <BanknotesIcon className="w-5 h-5 text-yellow-500" />
       case 'NEW_POST_FROM_SUBSCRIPTION':
         return <DocumentIcon className="w-5 h-5 text-purple-500" />
+      case 'NEW_MESSAGE':
+        return <ChatBubbleLeftIcon className="w-5 h-5 text-purple-500" />
       default:
         return <BellIcon className="w-5 h-5 text-gray-500" />
     }
@@ -88,6 +90,8 @@ export default function NotificationsDropdown() {
     // Переход к соответствующему контенту
     if (notification.metadata?.postId) {
       window.location.href = `/post/${notification.metadata.postId}`
+    } else if (notification.metadata?.conversationId) {
+      window.location.href = `/messages/${notification.metadata.conversationId}`
     }
   }
   

@@ -14,11 +14,13 @@ export async function POST(
     }
     
     const messageId = params.id
-    const { txSignature } = await request.json()
+    const { txSignature, price, distribution } = await request.json()
     
     if (!txSignature) {
       return NextResponse.json({ error: 'Transaction signature required' }, { status: 400 })
     }
+    
+    console.log('Purchasing message:', { messageId, txSignature, price, distribution })
     
     // Получаем пользователя
     const user = await prisma.user.findUnique({
@@ -73,14 +75,23 @@ export async function POST(
       return NextResponse.json({ error: 'Message already purchased' }, { status: 400 })
     }
     
-    // Валидируем транзакцию
-    const validation = await validateTransaction(
-      txSignature,
-      message.price,
-      [message.sender.wallet!]
-    )
+    // Валидируем транзакцию с учетом распределения
+    let validation
+    if (distribution) {
+      // Импортируем validatePaymentDistribution
+      const { validatePaymentDistribution } = await import('@/lib/solana/validation')
+      validation = await validatePaymentDistribution(txSignature, distribution)
+    } else {
+      // Fallback на старую валидацию
+      validation = await validateTransaction(
+        txSignature,
+        message.price,
+        [message.sender.wallet!]
+      )
+    }
     
     if (!validation.isValid) {
+      console.error('Transaction validation failed:', validation.error)
       return NextResponse.json({ error: validation.error || 'Invalid transaction' }, { status: 400 })
     }
     

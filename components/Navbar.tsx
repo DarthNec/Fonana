@@ -22,19 +22,20 @@ import { MobileWalletConnect } from './MobileWalletConnect'
 import { useWallet } from '@solana/wallet-adapter-react'
 import { useUser } from '@/lib/hooks/useUser'
 
-const navigation = [
-  { name: 'Home', href: '/', icon: HomeIcon },
-  { name: 'Creators', href: '/creators', icon: UsersIcon },
-  { name: 'Feed', href: '/feed', icon: HomeIcon },
-  { name: 'Messages', href: '/messages', icon: ChatBubbleLeftEllipsisIcon },
-  { name: 'Create', href: '/create', icon: PlusIcon },
-]
+  const navigation = [
+    { name: 'Home', href: '/', icon: HomeIcon },
+    { name: 'Creators', href: '/creators', icon: UsersIcon },
+    { name: 'Feed', href: '/feed', icon: HomeIcon },
+    { name: 'Messages', href: '/messages', icon: ChatBubbleLeftEllipsisIcon, hasIndicator: true },
+    { name: 'Create', href: '/create', icon: PlusIcon },
+  ]
 
 export function Navbar() {
   const [isOpen, setIsOpen] = useState(false)
   const [isProfileOpen, setIsProfileOpen] = useState(false)
   const [isScrolled, setIsScrolled] = useState(false)
-  const { connected, disconnect } = useWallet()
+  const [unreadMessages, setUnreadMessages] = useState(0)
+  const { connected, disconnect, publicKey } = useWallet()
   const { user } = useUser()
   const pathname = usePathname()
 
@@ -45,6 +46,38 @@ export function Navbar() {
     window.addEventListener('scroll', handleScroll)
     return () => window.removeEventListener('scroll', handleScroll)
   }, [])
+
+  // Check for unread messages
+  useEffect(() => {
+    const checkUnreadMessages = async () => {
+      if (!publicKey) return
+      
+      try {
+        const response = await fetch('/api/conversations', {
+          headers: {
+            'x-user-wallet': publicKey.toString()
+          }
+        })
+        
+        if (response.ok) {
+          const data = await response.json()
+          const unreadCount = data.conversations.reduce((count: number, conv: any) => 
+            count + (conv.unreadCount || 0), 0
+          )
+          setUnreadMessages(unreadCount)
+        }
+      } catch (error) {
+        console.error('Error checking unread messages:', error)
+      }
+    }
+    
+    if (publicKey) {
+      checkUnreadMessages()
+      // Check every 10 seconds
+      const interval = setInterval(checkUnreadMessages, 10000)
+      return () => clearInterval(interval)
+    }
+  }, [publicKey])
 
   const isActive = (href: string) => pathname === href
 
@@ -80,7 +113,7 @@ export function Navbar() {
               <Link
                 key={item.name}
                 href={item.href}
-                className={`flex items-center gap-2 px-6 py-3 rounded-2xl font-semibold transition-all duration-300 transform hover:scale-105 ${
+                className={`relative flex items-center gap-2 px-6 py-3 rounded-2xl font-semibold transition-all duration-300 transform hover:scale-105 ${
                   isActive(item.href)
                     ? 'bg-gradient-to-r from-purple-600 to-pink-600 text-white shadow-lg shadow-purple-500/25'
                     : 'text-gray-600 dark:text-slate-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-slate-800/50'
@@ -88,6 +121,11 @@ export function Navbar() {
               >
                 <item.icon className="w-5 h-5" />
                 {item.name}
+                {item.hasIndicator && unreadMessages > 0 && (
+                  <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center animate-pulse">
+                    {unreadMessages > 9 ? '9+' : unreadMessages}
+                  </span>
+                )}
               </Link>
             ))}
           </div>
@@ -199,7 +237,7 @@ export function Navbar() {
                   key={item.name}
                   href={item.href}
                   onClick={() => setIsOpen(false)}
-                  className={`flex items-center gap-3 px-4 py-3 rounded-2xl font-semibold transition-all duration-300 ${
+                  className={`relative flex items-center gap-3 px-4 py-3 rounded-2xl font-semibold transition-all duration-300 ${
                     isActive(item.href)
                       ? 'bg-gradient-to-r from-purple-600 to-pink-600 text-white'
                       : 'text-gray-600 dark:text-slate-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-slate-800/50'
@@ -207,6 +245,11 @@ export function Navbar() {
                 >
                   <item.icon className="w-5 h-5" />
                   {item.name}
+                  {item.hasIndicator && unreadMessages > 0 && (
+                    <span className="absolute top-2 right-2 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center animate-pulse">
+                      {unreadMessages > 9 ? '9+' : unreadMessages}
+                    </span>
+                  )}
                 </Link>
               ))}
               

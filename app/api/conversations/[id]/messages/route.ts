@@ -180,7 +180,28 @@ export async function POST(
       data: { lastMessageAt: new Date() }
     })
     
-    // TODO: Отправить push уведомление получателю
+    // Создаем уведомление для получателя
+    const recipient = conversation.participants.find((p: any) => p.id !== user.id)
+    if (recipient) {
+      await prisma.notification.create({
+        data: {
+          userId: recipient.id,
+          type: 'NEW_MESSAGE',
+          title: 'New message',
+          message: isPaid 
+            ? `${user.nickname || 'User'} sent you a paid message (${price} SOL)`
+            : `${user.nickname || 'User'}: ${content?.substring(0, 50) || 'Sent a media'}`,
+          metadata: {
+            conversationId,
+            messageId: message.id,
+            senderId: user.id,
+            senderName: user.nickname || 'User',
+            isPaid,
+            price
+          }
+        }
+      })
+    }
     
     return NextResponse.json({ 
       message: {

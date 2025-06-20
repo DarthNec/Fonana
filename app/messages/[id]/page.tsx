@@ -501,20 +501,38 @@ export default function ConversationPage() {
       // Show loading toast
       toast.loading('Processing payment...')
       
-      // Wait for confirmation
-      await new Promise(resolve => setTimeout(resolve, 2000))
+      // Show loading toast
+      toast.loading('Confirming transaction...')
       
-      try {
-        const status = await connection.getSignatureStatus(signature)
-        if (status.value?.err) {
-          throw new Error('Transaction failed')
+      // Wait for confirmation with better error handling
+      let confirmed = false
+      let attempts = 0
+      const maxAttempts = 30 // 30 seconds timeout
+      
+      while (!confirmed && attempts < maxAttempts) {
+        attempts++
+        
+        try {
+          const status = await connection.getSignatureStatus(signature)
+          
+          if (status.value?.confirmationStatus === 'confirmed' || status.value?.confirmationStatus === 'finalized') {
+            confirmed = true
+            break
+          }
+          
+          if (status.value?.err) {
+            throw new Error('Transaction failed on-chain')
+          }
+        } catch (statusError) {
+          console.error('Error checking transaction status:', statusError)
         }
-      } catch (statusError) {
-        console.error('Error checking transaction status:', statusError)
+        
+        await new Promise(resolve => setTimeout(resolve, 1000))
       }
       
-      // Wait a bit more for confirmation
-      await new Promise(resolve => setTimeout(resolve, 5000))
+      if (!confirmed) {
+        throw new Error('Transaction was not confirmed in time. Please check your wallet.')
+      }
 
       // Save purchase
       const response = await fetch(`/api/messages/${message.id}/purchase`, {
@@ -648,21 +666,54 @@ export default function ConversationPage() {
                 >
                   {message.isPaid && !message.isPurchased ? (
                     <div className="relative">
-                      <div className="absolute inset-0 bg-black/60 backdrop-blur-md rounded-xl flex flex-col items-center justify-center p-4 text-center">
-                        <LockClosedIcon className="w-8 h-8 text-white mb-2" />
-                        <p className="text-white font-medium mb-1">Paid Message</p>
-                        <p className="text-white/80 text-sm mb-3">${message.price}</p>
-                        <button
-                          onClick={() => purchaseMessage(message)}
-                          disabled={isPurchasing === message.id}
-                          className="px-4 py-2 bg-white text-purple-600 font-medium rounded-lg hover:bg-gray-100 transition-colors disabled:opacity-50"
-                        >
-                          {isPurchasing === message.id ? 'Unlocking...' : 'Unlock'}
-                        </button>
+                      <div className="absolute inset-0 bg-gradient-to-br from-purple-900/90 via-pink-900/90 to-purple-900/90 backdrop-blur-xl rounded-2xl flex flex-col items-center justify-center p-6 text-center border border-purple-500/30">
+                        <div className="absolute inset-0 bg-gradient-to-br from-purple-600/20 via-pink-600/20 to-purple-600/20 rounded-2xl animate-pulse" />
+                        <div className="relative z-10">
+                          <div className="w-16 h-16 bg-gradient-to-br from-purple-500 to-pink-500 rounded-full flex items-center justify-center mb-4 shadow-lg shadow-purple-500/50">
+                            <SparklesIcon className="w-8 h-8 text-white" />
+                          </div>
+                          <h3 className="text-xl font-bold text-white mb-2">
+                            Exclusive Content
+                          </h3>
+                          <p className="text-purple-200 text-sm mb-1">
+                            Unlock this special message
+                          </p>
+                          <div className="flex items-baseline justify-center gap-1 mb-4">
+                            <span className="text-3xl font-bold text-white">
+                              {formatSolAmount(message.price || 0)}
+                            </span>
+                            <span className="text-sm text-purple-300">
+                              ≈ ${((message.price || 0) * 45).toFixed(2)} USD
+                            </span>
+                          </div>
+                          <button
+                            onClick={() => purchaseMessage(message)}
+                            disabled={isPurchasing === message.id}
+                            className="px-6 py-3 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white font-semibold rounded-xl transition-all transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-purple-500/50"
+                          >
+                            {isPurchasing === message.id ? (
+                              <div className="flex items-center justify-center gap-2">
+                                <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                                Unlocking...
+                              </div>
+                            ) : (
+                              <div className="flex items-center justify-center gap-2">
+                                <LockClosedIcon className="w-4 h-4" />
+                                Unlock Now
+                              </div>
+                            )}
+                          </button>
+                        </div>
                       </div>
-                      <p className="opacity-30">
-                        {message.content?.substring(0, 30)}...
-                      </p>
+                      {/* Blur preview */}
+                      <div className="blur-sm opacity-50">
+                        {message.mediaUrl && (
+                          <div className="h-32 bg-gradient-to-br from-purple-600 to-pink-600 rounded-lg mb-2" />
+                        )}
+                        <p className="text-gray-500">
+                          {message.content?.substring(0, 50) || 'Premium content'}...
+                        </p>
+                      </div>
                     </div>
                   ) : (
                     <>
@@ -782,7 +833,7 @@ export default function ConversationPage() {
                     : 'hover:bg-gray-100 dark:hover:bg-slate-700 text-gray-600 dark:text-gray-400'
                 }`}
               >
-                <CurrencyDollarIcon className="w-5 h-5" />
+                <SparklesIcon className="w-5 h-5" />
               </button>
             </div>
             

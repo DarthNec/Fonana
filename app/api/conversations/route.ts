@@ -55,6 +55,25 @@ export async function GET(request: NextRequest) {
       }
     })
     
+    // Получаем непрочитанные сообщения для каждого чата
+    const conversationIds = conversations.map((conv: any) => conv.id)
+    const unreadCounts = await prisma.message.groupBy({
+      by: ['conversationId'],
+      where: {
+        conversationId: { in: conversationIds },
+        senderId: { not: user.id },
+        isRead: false
+      },
+      _count: {
+        id: true
+      }
+    })
+    
+    // Создаем map для быстрого доступа к количеству непрочитанных
+    const unreadMap = new Map(
+      unreadCounts.map((item: any) => [item.conversationId, item._count.id])
+    )
+    
     // Форматируем данные
     const formattedConversations = conversations.map((conv: any) => {
       const otherParticipant = conv.participants.find((p: any) => p.id !== user.id)
@@ -75,7 +94,8 @@ export async function GET(request: NextRequest) {
           price: lastMessage.price
         } : null,
         lastMessageAt: conv.lastMessageAt,
-        createdAt: conv.createdAt
+        createdAt: conv.createdAt,
+        unreadCount: unreadMap.get(conv.id) || 0
       }
     })
     
