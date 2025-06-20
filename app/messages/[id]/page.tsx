@@ -25,7 +25,6 @@ import {
   formatSolAmount 
 } from '@/lib/solana/payments'
 import { isValidSolanaAddress } from '@/lib/solana/config'
-import { connection } from '@/lib/solana/connection'
 
 interface Message {
   id: string
@@ -35,6 +34,7 @@ interface Message {
   isPaid: boolean
   price?: number
   isPurchased: boolean
+  purchases?: Array<{ id: string; userId: string }>
   sender: {
     id: string
     nickname: string
@@ -679,6 +679,11 @@ export default function ConversationPage() {
                   </span>
                   {message.isPaid && (
                     <SparklesIcon className="w-3 h-3 text-yellow-500" />
+                  )}
+                  {message.isPaid && message.isOwn && message.purchases && message.purchases.length > 0 && (
+                    <span className="text-xs text-green-600 dark:text-green-400 font-medium">
+                      ✓ Purchased
+                    </span>
                   )}
                 </div>
               </div>

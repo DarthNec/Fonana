@@ -56,8 +56,10 @@ export async function GET(
           }
         },
         purchases: {
-          where: { userId: user.id },
-          select: { id: true }
+          select: { 
+            id: true,
+            userId: true 
+          }
         }
       },
       orderBy: { createdAt: 'desc' },
@@ -67,20 +69,21 @@ export async function GET(
     // Форматируем сообщения
     const formattedMessages = messages.map((msg: any) => {
       const isOwn = msg.senderId === user.id
-      const isPurchased = msg.purchases.length > 0
+      const isPurchasedByMe = msg.purchases.some((p: any) => p.userId === user.id)
       
       return {
         id: msg.id,
-        content: msg.isPaid && !isPurchased && !isOwn
+        content: msg.isPaid && !isPurchasedByMe && !isOwn
           ? null // Скрываем контент платных сообщений только если не автор и не куплено
           : msg.content,
-        mediaUrl: msg.isPaid && !isPurchased && !isOwn
+        mediaUrl: msg.isPaid && !isPurchasedByMe && !isOwn
           ? null // Скрываем медиа платных сообщений только если не автор и не куплено
           : msg.mediaUrl,
         mediaType: msg.mediaType,
         isPaid: msg.isPaid,
         price: msg.price,
-        isPurchased,
+        isPurchased: isPurchasedByMe,
+        purchases: isOwn ? msg.purchases : [], // Отправитель видит все покупки
         sender: msg.sender,
         isOwn,
         isRead: msg.isRead,
