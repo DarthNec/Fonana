@@ -375,19 +375,21 @@ export default function ConversationPage() {
         })
       )
 
-      // Send with retry logic
+      // Send with retry logic (точно как в покупке сообщений)
       const sendOptions = {
         skipPreflight: false,
         preflightCommitment: 'confirmed' as any,
         maxRetries: 3
       }
       
+      console.log('Sending tip transaction...')
       const signature = await sendTransaction(transaction, connection, sendOptions)
       
-      toast.loading('Processing tip...')
+      console.log('Tip transaction sent:', signature)
+      toast.loading('Waiting for blockchain confirmation...')
       
-      // Give transaction time to get into the network (увеличиваем до 15 сек как максимум)
-      await new Promise(resolve => setTimeout(resolve, 15000))
+      // Give transaction time to get into the network (как в рабочей покупке)
+      await new Promise(resolve => setTimeout(resolve, 10000))
 
       // Record tip as a transaction
       const response = await fetch('/api/tips', {

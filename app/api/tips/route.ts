@@ -12,6 +12,8 @@ export async function POST(request: NextRequest) {
     
     const { creatorId, amount, txSignature, conversationId } = await request.json()
     
+    console.log('Tip request received:', { creatorId, amount, txSignature, conversationId })
+    
     if (!creatorId || !amount || !txSignature) {
       return NextResponse.json(
         { error: 'Creator ID, amount and transaction signature are required' },
@@ -31,7 +33,12 @@ export async function POST(request: NextRequest) {
       )
     }
     
+    // Даем транзакции дополнительное время попасть в сеть (как в других местах)
+    console.log('Waiting 3 seconds before checking transaction...')
+    await new Promise(resolve => setTimeout(resolve, 3000))
+    
     // Ждём подтверждения транзакции (как в рабочих подписках)
+    console.log('Starting transaction confirmation check:', txSignature)
     const isConfirmed = await waitForTransactionConfirmation(txSignature)
     
     if (!isConfirmed) {
@@ -41,6 +48,7 @@ export async function POST(request: NextRequest) {
         { status: 400 }
       )
     }
+    console.log('Transaction confirmed successfully:', txSignature)
     
     // Получаем пользователя и создателя
     const [user, creator] = await Promise.all([
