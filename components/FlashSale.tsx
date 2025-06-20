@@ -101,12 +101,12 @@ export default function FlashSale({ flashSale, onUse, className = '' }: FlashSal
     <div className={`
       relative overflow-hidden rounded-2xl 
       bg-gradient-to-r from-orange-500 to-pink-500 p-[2px]
-      animate-pulse-slow ${className}
+      animate-pulse-slow z-0 ${className}
     `}>
-      <div className="relative bg-white dark:bg-gray-900 rounded-2xl p-4">
+      <div className="relative bg-white dark:bg-gray-900 rounded-2xl p-4 overflow-visible">
         {/* Flash icon animation */}
-        <div className="absolute -top-2 -right-2 animate-bounce">
-          <div className="bg-yellow-400 rounded-full p-2">
+        <div className="absolute -top-2 -right-2 animate-bounce z-10">
+          <div className="bg-yellow-400 rounded-full p-2 shadow-lg">
             <BoltIcon className="w-6 h-6 text-gray-900" />
           </div>
         </div>

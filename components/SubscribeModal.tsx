@@ -123,14 +123,24 @@ export default function SubscribeModal({ creator, preferredTier, onClose, onSucc
   const [showInCarousel, setShowInCarousel] = useState(true)
   const [isProcessing, setIsProcessing] = useState(false)
   const [expandedTiers, setExpandedTiers] = useState<Set<string>>(new Set())
+  const [activeFlashSale, setActiveFlashSale] = useState<any>(null)
 
   const selectedSubscription = subscriptionTiers.find(tier => tier.id === selectedTier)
+
+  // Update flash sale when tier changes
+  useEffect(() => {
+    if (selectedTier && subscriptionTiers.length > 0) {
+      loadFlashSales()
+    }
+  }, [selectedTier, subscriptionTiers])
 
   useEffect(() => {
     // Block scroll when modal is open
     document.body.style.overflow = 'hidden'
     // Load custom tier settings
     loadCreatorTierSettings()
+    // Load active flash sales
+    loadFlashSales()
     
     return () => {
       document.body.style.overflow = 'unset'
@@ -233,6 +243,22 @@ export default function SubscribeModal({ creator, preferredTier, onClose, onSucc
     }
   }
 
+  const loadFlashSales = async () => {
+    try {
+      const response = await fetch(`/api/flash-sales/apply/check?creatorId=${creator.id}`)
+      if (response.ok) {
+        const data = await response.json()
+        // Найти Flash Sale для выбранного плана подписки
+        const flashSale = data.flashSales.find((sale: any) => 
+          sale.subscriptionPlan && sale.subscriptionPlan.toLowerCase() === selectedTier
+        )
+        setActiveFlashSale(flashSale)
+      }
+    } catch (error) {
+      console.error('Error loading flash sales:', error)
+    }
+  }
+
   const handleSubscribe = async () => {
     if (!connected || !publicKey) {
       toast.error('Please connect your wallet')
@@ -284,9 +310,13 @@ export default function SubscribeModal({ creator, preferredTier, onClose, onSucc
       const referrerWallet = creatorData.creator.referrer?.solanaWallet || creatorData.creator.referrer?.wallet
       const hasReferrer = creatorData.creator.referrerId && referrerWallet && isValidSolanaAddress(referrerWallet)
 
-      // Calculate payment distribution
+      // Calculate payment distribution with Flash Sale discount
+      const finalPrice = activeFlashSale 
+        ? selectedSubscription.price * (1 - activeFlashSale.discount / 100)
+        : selectedSubscription.price
+        
       const distribution = calculatePaymentDistribution(
-        selectedSubscription.price,
+        finalPrice,
         creatorWallet,
         hasReferrer,
         referrerWallet
@@ -328,10 +358,12 @@ export default function SubscribeModal({ creator, preferredTier, onClose, onSucc
         body: JSON.stringify({
           creatorId: creator.id,
           plan: selectedSubscription.name,
-          price: selectedSubscription.price,
+          price: finalPrice,
+          originalPrice: selectedSubscription.price,
           signature,
           hasReferrer,
-          distribution
+          distribution,
+          flashSaleId: activeFlashSale?.id
         })
       })
 
@@ -546,15 +578,37 @@ export default function SubscribeModal({ creator, preferredTier, onClose, onSucc
                         {tier.description}
                       </p>
                       <div className="flex items-baseline justify-center gap-1">
-                        <span className="text-3xl font-bold text-white">
-                          {tier.price}
-                        </span>
-                        <span className="text-lg text-purple-400 font-semibold">
-                          {tier.currency}
-                        </span>
-                        <span className="text-slate-400 text-sm">
-                          /{tier.duration}
-                        </span>
+                        {activeFlashSale && tier.id === selectedTier && tier.id === activeFlashSale.subscriptionPlan?.toLowerCase() ? (
+                          <>
+                            <span className="text-xl line-through text-slate-500">
+                              {tier.price}
+                            </span>
+                            <span className="text-3xl font-bold text-white">
+                              {(tier.price * (1 - activeFlashSale.discount / 100)).toFixed(3)}
+                            </span>
+                            <span className="text-lg text-purple-400 font-semibold">
+                              {tier.currency}
+                            </span>
+                            <span className="text-slate-400 text-sm">
+                              /{tier.duration}
+                            </span>
+                            <span className="ml-2 text-xs bg-gradient-to-r from-orange-500 to-pink-500 text-white px-2 py-0.5 rounded-full font-bold">
+                              -{activeFlashSale.discount}%
+                            </span>
+                          </>
+                        ) : (
+                          <>
+                            <span className="text-3xl font-bold text-white">
+                              {tier.price}
+                            </span>
+                            <span className="text-lg text-purple-400 font-semibold">
+                              {tier.currency}
+                            </span>
+                            <span className="text-slate-400 text-sm">
+                              /{tier.duration}
+                            </span>
+                          </>
+                        )}
                       </div>
                       {/* Показываем распределение платежа для платных планов */}
                       {tier.price > 0 && isSelected && (
@@ -647,7 +701,9 @@ export default function SubscribeModal({ creator, preferredTier, onClose, onSucc
               ) : (
                 selectedSubscription?.price === 0 
                   ? 'Subscribe for free'
-                  : `Pay ${formatSolAmount(selectedSubscription?.price || 0)} per ${selectedSubscription?.duration}`
+                  : activeFlashSale && selectedTier === activeFlashSale.subscriptionPlan?.toLowerCase()
+                    ? `Pay ${formatSolAmount((selectedSubscription?.price || 0) * (1 - activeFlashSale.discount / 100))} per ${selectedSubscription?.duration} (Save ${activeFlashSale.discount}%!)`
+                    : `Pay ${formatSolAmount(selectedSubscription?.price || 0)} per ${selectedSubscription?.duration}`
               )}
             </button>
             

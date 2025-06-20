@@ -15,18 +15,22 @@ export async function POST(request: Request) {
       creatorId, 
       plan, 
       price, 
+      originalPrice,
       currency = 'SOL', 
       signature, 
       hasReferrer,
-      distribution 
+      distribution,
+      flashSaleId 
     }: {
       creatorId: string
       plan: string
       price: number
+      originalPrice?: number
       currency?: string
       signature: string
       hasReferrer: boolean
       distribution: PaymentDistribution
+      flashSaleId?: string
     } = body
 
     // Получаем пользователя из заголовков
@@ -239,6 +243,33 @@ export async function POST(request: Request) {
         }
       }
     })
+
+    // Если была использована Flash Sale, создаем запись о её использовании
+    if (flashSaleId) {
+      const flashSale = await prisma.flashSale.findUnique({
+        where: { id: flashSaleId }
+      })
+      
+      if (flashSale) {
+        const discountAmount = (originalPrice || price) - price
+        
+        await prisma.flashSaleRedemption.create({
+          data: {
+            flashSaleId,
+            userId: user.id,
+            originalPrice: originalPrice || price,
+            discountAmount,
+            finalPrice: price
+          }
+        })
+        
+        // Обновляем счетчик использования
+        await prisma.flashSale.update({
+          where: { id: flashSaleId },
+          data: { usedCount: { increment: 1 } }
+        })
+      }
+    }
 
     // Создаем уведомление для креатора о новом подписчике
     if (!existingSubscription || !existingSubscription.isActive) {
