@@ -137,6 +137,7 @@ export default function CreatorPage() {
           shouldHideContent: post.shouldHideContent || false,
           requiredTier: post.requiredTier || null,
           userTier: post.userTier || null,
+          imageAspectRatio: post.imageAspectRatio,
           flashSale: post.flashSale || null
         }))
         setPosts(formattedPosts)

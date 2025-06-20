@@ -13,20 +13,15 @@ interface ImageCropModalProps {
 }
 
 interface AspectRatio {
+  name: string
   value: number
-  label: string
   icon: string
-  width: number
-  height: number
 }
 
 const aspectRatios: AspectRatio[] = [
-  { value: 1, label: 'Square', icon: '1:1', width: 1, height: 1 },
-  { value: 16/9, label: 'Landscape', icon: '16:9', width: 16, height: 9 },
-  { value: 4/3, label: 'Classic', icon: '4:3', width: 4, height: 3 },
-  { value: 9/16, label: 'Portrait', icon: '9:16', width: 9, height: 16 },
-  { value: 3/4, label: 'Portrait Classic', icon: '3:4', width: 3, height: 4 },
-  { value: 2/3, label: 'Phone', icon: '2:3', width: 2, height: 3 },
+  { name: 'Vertical', value: 3/4, icon: '📱' },
+  { name: 'Square', value: 1, icon: '⬜' },
+  { name: 'Horizontal', value: 16/9, icon: '🖼️' }
 ]
 
 export default function ImageCropModal({ image, onCropComplete, onCancel }: ImageCropModalProps) {
@@ -157,7 +152,7 @@ export default function ImageCropModal({ image, onCropComplete, onCancel }: Imag
           <div className="flex gap-3 overflow-x-auto pb-2">
             {aspectRatios.map((ratio) => (
               <button
-                key={ratio.label}
+                key={ratio.name}
                 onClick={() => setSelectedRatio(ratio)}
                 className={`flex-shrink-0 px-4 py-2 rounded-lg border transition-all ${
                   selectedRatio.value === ratio.value
@@ -171,12 +166,12 @@ export default function ImageCropModal({ image, onCropComplete, onCancel }: Imag
                       ? 'border-purple-500'
                       : 'border-gray-400 dark:border-gray-600'
                   }`} style={{
-                    width: ratio.width * 3,
-                    height: ratio.height * 3,
+                    width: 30,
+                    height: 30,
                   }} />
                   <div className="text-sm">
                     <div className="font-medium">{ratio.icon}</div>
-                    <div className="text-xs opacity-75">{ratio.label}</div>
+                    <div className="text-xs opacity-75">{ratio.name}</div>
                   </div>
                 </div>
               </button>
