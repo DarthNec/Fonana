@@ -370,6 +370,9 @@ export default function SellablePostModal({ isOpen, onClose, post }: SellablePos
                   <div className="text-3xl font-bold text-yellow-600 dark:text-yellow-400 mb-2">
                     {currentPrice.toFixed(2)} SOL
                   </div>
+                  <div className="text-sm text-gray-600 dark:text-slate-400">
+                    ≈ ${(currentPrice * 45).toFixed(2)} USD
+                  </div>
                   <div className="text-xs text-gray-500 dark:text-slate-500">
                     + Network fee: ~{dynamicNetworkFee.toFixed(6)} SOL
                   </div>
@@ -399,6 +402,12 @@ export default function SellablePostModal({ isOpen, onClose, post }: SellablePos
                       <span className="text-sm text-gray-600 dark:text-slate-400">Network fee:</span>
                       <span className="text-sm text-gray-600 dark:text-slate-400">
                         ~{dynamicNetworkFee.toFixed(6)} SOL
+                      </span>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm text-gray-600 dark:text-slate-400">In USD:</span>
+                      <span className="text-sm text-gray-600 dark:text-slate-400">
+                        ≈ ${((currentPrice + dynamicNetworkFee) * 45).toFixed(2)}
                       </span>
                     </div>
                     <div className="flex justify-between items-center pt-2 border-t border-yellow-500/20">

@@ -59,10 +59,9 @@ export default function PurchaseModal({ post, onClose, onSuccess }: PurchaseModa
   const { publicKey, connected, sendTransaction } = useWallet()
   const [isProcessing, setIsProcessing] = useState(false)
   const [creatorData, setCreatorData] = useState<any>(null)
-  const [flashSaleApplied, setFlashSaleApplied] = useState(false)
   
-  // Вычисляем финальную цену с учетом Flash Sale
-  const finalPrice = post.flashSale && !flashSaleApplied
+  // Вычисляем цену для отображения с учетом Flash Sale
+  const displayPrice = post.flashSale 
     ? post.price * (1 - post.flashSale.discount / 100)
     : post.price
 
@@ -115,7 +114,7 @@ export default function PurchaseModal({ post, onClose, onSuccess }: PurchaseModa
       let actualPrice = post.price
       let appliedFlashSaleId: string | undefined
       
-      if (post.flashSale && !flashSaleApplied) {
+      if (post.flashSale) {
         try {
           // Проверяем доступность Flash Sale
           const checkResponse = await fetch(`/api/flash-sales/apply/check?flashSaleId=${post.flashSale.id}&userId=${publicKey.toBase58()}&price=${post.price}`)
@@ -345,10 +344,13 @@ export default function PurchaseModal({ post, onClose, onSuccess }: PurchaseModa
               {post.flashSale ? (
                 <>
                   <p className="text-xl font-bold text-orange-600 dark:text-orange-400">
-                    {formatSolAmount(finalPrice)}
+                    {formatSolAmount(displayPrice)}
                   </p>
                   <p className="text-sm text-gray-500 dark:text-gray-400 line-through">
                     {formatSolAmount(post.price)}
+                  </p>
+                  <p className="text-xs text-gray-500 dark:text-gray-400">
+                    ≈ ${(displayPrice * 45).toFixed(2)} USD
                   </p>
                   <p className="text-xs text-green-600 dark:text-green-400 font-medium">
                     {post.flashSale.discount}% OFF!
@@ -384,27 +386,27 @@ export default function PurchaseModal({ post, onClose, onSuccess }: PurchaseModa
           <div className="flex justify-between text-sm">
             <span className="text-gray-600 dark:text-gray-400">Создатель получит:</span>
             <span className="text-gray-900 dark:text-white font-medium">
-              {formatSolAmount(finalPrice * 0.9)}
+              {formatSolAmount(displayPrice * 0.9)}
             </span>
           </div>
           <div className="flex justify-between text-sm">
             <span className="text-gray-600 dark:text-gray-400">Комиссия платформы:</span>
             <span className="text-gray-900 dark:text-white font-medium">
-              {formatSolAmount(finalPrice * (hasReferrerDisplay ? 0.05 : 0.1))}
+              {formatSolAmount(displayPrice * (hasReferrerDisplay ? 0.05 : 0.1))}
             </span>
           </div>
           {hasReferrerDisplay && (
             <div className="flex justify-between text-sm">
               <span className="text-gray-600 dark:text-gray-400">Реферальная комиссия:</span>
               <span className="text-gray-900 dark:text-white font-medium">
-                {formatSolAmount(finalPrice * 0.05)}
+                {formatSolAmount(displayPrice * 0.05)}
               </span>
             </div>
           )}
           {post.flashSale && (
             <div className="flex justify-between text-sm text-green-600 dark:text-green-400 font-medium pt-2 border-t border-gray-200 dark:border-gray-700">
               <span>Вы экономите:</span>
-              <span>{formatSolAmount(post.price - finalPrice)}</span>
+              <span>{formatSolAmount(post.price - displayPrice)}</span>
             </div>
           )}
         </div>
@@ -467,7 +469,7 @@ export default function PurchaseModal({ post, onClose, onSuccess }: PurchaseModa
                 <>
                   <ShoppingCartIcon className="w-5 h-5" />
                   <span>
-                    Купить за {formatSolAmount(finalPrice)}
+                    Купить за {formatSolAmount(displayPrice)}
                     {post.flashSale && (
                       <span className="ml-2 text-sm line-through opacity-75">
                         {formatSolAmount(post.price)}

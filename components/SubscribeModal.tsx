@@ -618,6 +618,14 @@ export default function SubscribeModal({ creator, preferredTier, onClose, onSucc
                           </>
                         )}
                       </div>
+                      {/* Добавляем отображение цены в долларах */}
+                      {tier.price > 0 && (
+                        <p className="text-xs text-slate-400 mt-1">
+                          ≈ ${((activeFlashSale && tier.id === selectedTier && tier.id === activeFlashSale.subscriptionPlan?.toLowerCase() 
+                            ? tier.price * (1 - activeFlashSale.discount / 100) 
+                            : tier.price) * 45).toFixed(2)} USD/{tier.duration}
+                        </p>
+                      )}
                       {/* Показываем распределение платежа для платных планов */}
                       {tier.price > 0 && isSelected && (
                         <div className="mt-2 text-xs text-slate-400 space-y-1">
