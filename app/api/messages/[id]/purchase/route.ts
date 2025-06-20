@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
-import { validateTransaction } from '@/lib/solana/validation'
+import { validatePaymentDistribution, waitForTransactionConfirmation } from '@/lib/solana/validation'
 
 export async function POST(
   request: NextRequest,
@@ -75,24 +75,24 @@ export async function POST(
       return NextResponse.json({ error: 'Message already purchased' }, { status: 400 })
     }
     
-    // Валидируем транзакцию с учетом распределения
-    let validation
-    if (distribution) {
-      // Импортируем validatePaymentDistribution
-      const { validatePaymentDistribution } = await import('@/lib/solana/validation')
-      validation = await validatePaymentDistribution(txSignature, distribution)
-    } else {
-      // Fallback на старую валидацию
-      validation = await validateTransaction(
-        txSignature,
-        message.price,
-        [message.sender.wallet!]
-      )
+    // Ждём подтверждения транзакции (как в рабочих подписках)
+    console.log('Waiting for transaction confirmation:', txSignature)
+    const isConfirmed = await waitForTransactionConfirmation(txSignature)
+    
+    if (!isConfirmed) {
+      console.error('Transaction not confirmed:', txSignature)
+      return NextResponse.json({ error: 'Transaction not confirmed' }, { status: 400 })
     }
     
-    if (!validation.isValid) {
-      console.error('Transaction validation failed:', validation.error)
-      return NextResponse.json({ error: validation.error || 'Invalid transaction' }, { status: 400 })
+    // Валидируем распределение платежа если есть
+    if (distribution) {
+      console.log('Validating payment distribution:', distribution)
+      const validation = await validatePaymentDistribution(txSignature, distribution)
+      
+      if (!validation.isValid) {
+        console.error('Payment validation failed:', validation.error)
+        return NextResponse.json({ error: validation.error || 'Payment validation failed' }, { status: 400 })
+      }
     }
     
     // Создаем запись о покупке

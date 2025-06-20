@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
-import { connection } from '@/lib/solana/connection'
+import { waitForTransactionConfirmation } from '@/lib/solana/validation'
 
 export async function POST(request: NextRequest) {
   try {
@@ -31,30 +31,13 @@ export async function POST(request: NextRequest) {
       )
     }
     
-    // Verify transaction exists on chain
-    try {
-      const txInfo = await connection.getTransaction(txSignature, {
-        commitment: 'confirmed',
-        maxSupportedTransactionVersion: 0
-      })
-      
-      if (!txInfo) {
-        return NextResponse.json(
-          { error: 'Transaction not found on chain' },
-          { status: 400 }
-        )
-      }
-      
-      if (txInfo.meta?.err) {
-        return NextResponse.json(
-          { error: 'Transaction failed on chain' },
-          { status: 400 }
-        )
-      }
-    } catch (error) {
-      console.error('Error verifying transaction:', error)
+    // Ждём подтверждения транзакции (как в рабочих подписках)
+    const isConfirmed = await waitForTransactionConfirmation(txSignature)
+    
+    if (!isConfirmed) {
+      console.error('Transaction not confirmed:', txSignature)
       return NextResponse.json(
-        { error: 'Failed to verify transaction' },
+        { error: 'Transaction not confirmed' },
         { status: 400 }
       )
     }
