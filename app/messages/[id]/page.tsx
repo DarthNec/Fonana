@@ -356,8 +356,8 @@ export default function ConversationPage() {
       
       toast.loading('Processing tip...')
       
-      // Give transaction time to get into the network (same as subscriptions)
-      await new Promise(resolve => setTimeout(resolve, 5000))
+      // Give transaction time to get into the network (увеличиваем задержку для tips)
+      await new Promise(resolve => setTimeout(resolve, 8000))
 
       // Record tip as a transaction
       const response = await fetch('/api/tips', {
@@ -452,8 +452,8 @@ export default function ConversationPage() {
       
       toast.loading('Waiting for blockchain confirmation...')
       
-      // Give transaction time to get into the network (same as subscriptions)
-      await new Promise(resolve => setTimeout(resolve, 5000))
+      // Give transaction time to get into the network (увеличиваем задержку для стабильности)
+      await new Promise(resolve => setTimeout(resolve, 8000))
 
       // Save purchase
       const response = await fetch(`/api/messages/${message.id}/purchase`, {
@@ -464,8 +464,7 @@ export default function ConversationPage() {
         },
         body: JSON.stringify({ 
           txSignature: signature,
-          price: message.price,
-          distribution
+          price: message.price
         })
       })
 
@@ -557,7 +556,7 @@ export default function ConversationPage() {
       </div>
 
       {/* Messages */}
-      <div className="flex-1 overflow-y-auto pt-40 pb-32 px-4">
+      <div className="flex-1 overflow-y-auto pt-48 pb-32 px-4">
         <div className="max-w-3xl mx-auto space-y-4">
           {messages.map((message) => (
             <div
@@ -585,7 +584,7 @@ export default function ConversationPage() {
                       : 'bg-white dark:bg-slate-800 text-gray-900 dark:text-white'
                   }`}
                 >
-                  {message.isPaid && !message.isPurchased ? (
+                  {message.isPaid && !message.isPurchased && !message.isOwn ? (
                     <div className="-m-4 p-6 bg-gradient-to-br from-purple-600/20 via-pink-600/20 to-purple-600/20 rounded-2xl backdrop-blur-sm border border-purple-500/30">
                       <div className="text-center">
                         <div className="w-14 h-14 mx-auto bg-gradient-to-br from-purple-500 to-pink-500 rounded-full flex items-center justify-center mb-3 shadow-lg shadow-purple-500/30">

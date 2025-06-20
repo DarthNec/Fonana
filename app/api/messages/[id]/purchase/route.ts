@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
-import { validatePaymentDistribution, waitForTransactionConfirmation } from '@/lib/solana/validation'
+import { waitForTransactionConfirmation } from '@/lib/solana/validation'
 
 export async function POST(
   request: NextRequest,
@@ -14,13 +14,13 @@ export async function POST(
     }
     
     const messageId = params.id
-    const { txSignature, price, distribution } = await request.json()
+    const { txSignature, price } = await request.json()
     
     if (!txSignature) {
       return NextResponse.json({ error: 'Transaction signature required' }, { status: 400 })
     }
     
-    console.log('Purchasing message:', { messageId, txSignature, price, distribution })
+    console.log('Purchasing message:', { messageId, txSignature, price })
     
     // Получаем пользователя
     const user = await prisma.user.findUnique({
@@ -82,17 +82,6 @@ export async function POST(
     if (!isConfirmed) {
       console.error('Transaction not confirmed:', txSignature)
       return NextResponse.json({ error: 'Transaction not confirmed' }, { status: 400 })
-    }
-    
-    // Валидируем распределение платежа если есть
-    if (distribution) {
-      console.log('Validating payment distribution:', distribution)
-      const validation = await validatePaymentDistribution(txSignature, distribution)
-      
-      if (!validation.isValid) {
-        console.error('Payment validation failed:', validation.error)
-        return NextResponse.json({ error: validation.error || 'Payment validation failed' }, { status: 400 })
-      }
     }
     
     // Создаем запись о покупке
