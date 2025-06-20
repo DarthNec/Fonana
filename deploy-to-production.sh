@@ -39,8 +39,17 @@ git push origin main || {
 
 # Clean up old processes to prevent white screen issue
 echo -e "${GREEN}🧹 Cleaning up old processes...${NC}"
-ssh -p $PORT $SERVER "pm2 stop fonana 2>/dev/null || true && killall -9 node next-server 2>/dev/null || true"
+ssh -p $PORT $SERVER "pm2 stop fonana 2>/dev/null || true && killall -9 node next-server sh 2>/dev/null || true"
 sleep 2
+
+# Extra cleanup - make sure all Node processes are killed
+echo -e "${GREEN}🔪 Force killing any remaining Node processes...${NC}"
+ssh -p $PORT $SERVER "ps aux | grep -E 'node|next' | grep -v grep | awk '{print \$2}' | xargs kill -9 2>/dev/null || true"
+sleep 1
+
+# Clear Next.js cache
+echo -e "${GREEN}🗑️  Clearing Next.js cache...${NC}"
+ssh -p $PORT $SERVER "cd $REMOTE_PATH && rm -rf .next/cache"
 
 # Deploy to server
 echo -e "${GREEN}🔄 Updating code on server...${NC}"
@@ -74,16 +83,29 @@ ssh -p $PORT $SERVER "cd $REMOTE_PATH && npm run build" || {
     exit 1
 }
 
-# Restart application
-echo -e "${GREEN}🔄 Restarting application...${NC}"
-ssh -p $PORT $SERVER "cd $REMOTE_PATH && pm2 restart fonana" || {
-    echo -e "${RED}❌ Failed to restart application${NC}"
+# Start application
+echo -e "${GREEN}🚀 Starting application...${NC}"
+ssh -p $PORT $SERVER "cd $REMOTE_PATH && pm2 delete fonana 2>/dev/null || true && PORT=3000 pm2 start npm --name fonana -- start" || {
+    echo -e "${RED}❌ Failed to start application${NC}"
     exit 1
 }
+
+# Wait for application to start
+echo -e "${GREEN}⏳ Waiting for application to start...${NC}"
+sleep 5
+
+# Reload nginx
+echo -e "${GREEN}🔄 Reloading nginx...${NC}"
+ssh -p $PORT $SERVER "nginx -s reload"
 
 # Check status
 echo -e "${GREEN}📊 Checking application status...${NC}"
 ssh -p $PORT $SERVER "pm2 status fonana"
 
 echo -e "${GREEN}✅ Deployment complete!${NC}"
-echo -e "${GREEN}🌐 Application is live at: https://fonana.me${NC}" 
+echo -e "${GREEN}🌐 Application is live at: https://fonana.me${NC}"
+echo -e ""
+echo -e "${YELLOW}💡 If you see a white screen:${NC}"
+echo -e "   1. Clear browser cache (Ctrl+Shift+R)"
+echo -e "   2. Try incognito mode"
+echo -e "   3. Wait 1-2 minutes for cache to expire" 
