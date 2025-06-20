@@ -343,6 +343,14 @@ export default function ConversationPage() {
         amount
       )
 
+      // Добавляем дополнительное логирование
+      console.log('Transaction details before sending:', {
+        feePayer: transaction.feePayer?.toBase58(),
+        recentBlockhash: transaction.recentBlockhash,
+        instructions: transaction.instructions.length,
+        signatures: transaction.signatures.length
+      })
+      
       // Send with retry logic (точно как в покупке сообщений)
       const sendOptions = {
         skipPreflight: false,
@@ -351,12 +359,30 @@ export default function ConversationPage() {
       }
       
       console.log('Sending tip transaction...')
-      const signature = await sendTransaction(transaction, connection, sendOptions)
+      let signature: string
       
-      console.log('Tip transaction sent:', signature)
+      try {
+        signature = await sendTransaction(transaction, connection, sendOptions)
+        console.log('Tip transaction sent successfully:', signature)
+      } catch (sendError) {
+        console.error('Error sending transaction:', sendError)
+        
+        // Проверяем конкретную ошибку
+        if (sendError instanceof Error) {
+          console.error('Error details:', {
+            message: sendError.message,
+            name: sendError.name,
+            stack: sendError.stack
+          })
+        }
+        
+        throw sendError
+      }
+      
       toast.loading('Waiting for blockchain confirmation...')
       
       // Give transaction time to get into the network (как в рабочей покупке)
+      console.log('Waiting 10 seconds for transaction to propagate...')
       await new Promise(resolve => setTimeout(resolve, 10000))
 
       // Record tip as a transaction
@@ -448,7 +474,16 @@ export default function ConversationPage() {
         maxRetries: 3
       }
       
+      // Добавляем дополнительное логирование для покупки (для сравнения)
+      console.log('Purchase transaction details before sending:', {
+        feePayer: transaction.feePayer?.toBase58(),
+        recentBlockhash: transaction.recentBlockhash,
+        instructions: transaction.instructions.length,
+        signatures: transaction.signatures.length
+      })
+      
       const signature = await sendTransaction(transaction, connection, sendOptions)
+      console.log('Purchase transaction sent:', signature)
       
       toast.loading('Waiting for blockchain confirmation...')
       

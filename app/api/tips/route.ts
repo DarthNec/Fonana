@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { waitForTransactionConfirmation } from '@/lib/solana/validation'
+import { getConnection } from '@/lib/solana/connection'
 
 export async function POST(request: NextRequest) {
   try {
@@ -37,12 +38,60 @@ export async function POST(request: NextRequest) {
     console.log('Waiting 3 seconds before checking transaction...')
     await new Promise(resolve => setTimeout(resolve, 3000))
     
+    // Проверяем транзакцию более подробно
+    try {
+      const connection = getConnection()
+      console.log('Getting transaction status for:', txSignature)
+      
+      const status = await connection.getSignatureStatus(txSignature)
+      console.log('Initial status check:', {
+        value: status.value,
+        slot: status.context.slot
+      })
+      
+      // Если транзакция не найдена, даем больше времени
+      if (!status.value) {
+        console.log('Transaction not found yet, waiting 5 more seconds...')
+        await new Promise(resolve => setTimeout(resolve, 5000))
+      }
+    } catch (error) {
+      console.error('Error checking initial status:', error)
+    }
+    
     // Ждём подтверждения транзакции (как в рабочих подписках)
     console.log('Starting transaction confirmation check:', txSignature)
     const isConfirmed = await waitForTransactionConfirmation(txSignature)
     
     if (!isConfirmed) {
       console.error('Transaction not confirmed:', txSignature)
+      
+      // Дополнительная диагностика
+      try {
+        const connection = getConnection()
+        const finalStatus = await connection.getSignatureStatus(txSignature)
+        console.error('Final status:', {
+          value: finalStatus.value,
+          slot: finalStatus.context.slot
+        })
+        
+        // Пытаемся получить детали транзакции
+        const tx = await connection.getTransaction(txSignature, {
+          maxSupportedTransactionVersion: 0
+        })
+        
+        if (tx) {
+          console.error('Transaction found but not confirmed:', {
+            slot: tx.slot,
+            blockTime: tx.blockTime,
+            err: tx.meta?.err
+          })
+        } else {
+          console.error('Transaction not found in blockchain')
+        }
+      } catch (error) {
+        console.error('Error getting transaction details:', error)
+      }
+      
       return NextResponse.json(
         { error: 'Transaction not confirmed' },
         { status: 400 }
