@@ -271,6 +271,7 @@ export async function createPost(creatorWallet: string, data: {
   currency?: string
   tags?: string[]
   tier?: string
+  imageAspectRatio?: 'vertical' | 'square' | 'horizontal'
   // Новые поля для продаваемых постов
   isSellable?: boolean
   sellType?: 'FIXED_PRICE' | 'AUCTION'
@@ -342,6 +343,7 @@ export async function createPost(creatorWallet: string, data: {
       price: data.price,
       currency: data.currency || 'SOL',
       minSubscriptionTier: minSubscriptionTier,
+      imageAspectRatio: data.imageAspectRatio,
       // Новые поля для продаваемых постов
       isSellable: data.isSellable || false,
       sellType: data.isSellable ? data.sellType : undefined,

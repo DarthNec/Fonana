@@ -413,7 +413,7 @@ export default function ConversationPage() {
         setTipAmount('')
         
         // Добавляем сообщение о донате в чат
-        const tipLevel = amount >= 5 ? 'legendary' : amount >= 1 ? 'large' : amount >= 0.5 ? 'medium' : 'small'
+        const tipLevel = amount >= 5 ? 'legendary' : amount >= 1 ? 'large' : amount >= 0.1 ? 'medium' : 'small'
         const tipMessage: Message = {
           id: `tip-${Date.now()}`, // Временный ID
           content: null,
@@ -944,7 +944,7 @@ export default function ConversationPage() {
                   Tip Amount (SOL)
                 </label>
                 <div className="grid grid-cols-4 gap-2 mb-3">
-                  {[0.1, 0.5, 1, 5].map(amount => (
+                  {[0.001, 0.1, 1, 5].map(amount => (
                     <button
                       key={amount}
                       onClick={() => setTipAmount(amount.toString())}
@@ -964,8 +964,8 @@ export default function ConversationPage() {
                   value={tipAmount}
                   onChange={(e) => setTipAmount(e.target.value)}
                   className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-xl text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                  step="0.01"
-                  min="0.01"
+                  step="0.001"
+                  min="0.001"
                 />
               </div>
 

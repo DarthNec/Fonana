@@ -162,7 +162,7 @@ export async function POST(request: NextRequest) {
       let tipLevel: 'small' | 'medium' | 'large' | 'legendary' = 'small'
       if (amount >= 5) tipLevel = 'legendary'
       else if (amount >= 1) tipLevel = 'large'
-      else if (amount >= 0.5) tipLevel = 'medium'
+      else if (amount >= 0.1) tipLevel = 'medium'
       
       // Создаем системное сообщение о донате
       await prisma.message.create({

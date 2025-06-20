@@ -119,6 +119,7 @@ export async function PUT(
     if (updateData.isPremium !== undefined) dataToUpdate.isPremium = updateData.isPremium
     if (updateData.price !== undefined) dataToUpdate.price = updateData.price
     if (updateData.currency !== undefined) dataToUpdate.currency = updateData.currency
+    if (updateData.imageAspectRatio !== undefined) dataToUpdate.imageAspectRatio = updateData.imageAspectRatio
     
     // Обновляем sellable поля
     if (updateData.isSellable !== undefined) dataToUpdate.isSellable = updateData.isSellable

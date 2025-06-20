@@ -77,6 +77,7 @@ interface PostCardProps {
   showCreator?: boolean
   requiredTier?: string | null
   userTier?: string | null
+  imageAspectRatio?: 'vertical' | 'square' | 'horizontal'
   // Новые поля для продаваемых постов
   isSellable?: boolean
   sellType?: 'FIXED_PRICE' | 'AUCTION'
@@ -127,6 +128,7 @@ export default function PostCard({
   showCreator = true,
   requiredTier,
   userTier,
+  imageAspectRatio,
   isSellable,
   sellType,
   quantity,
@@ -678,7 +680,13 @@ export default function PostCard({
                     thumbnail={thumbnail || null}
                     preview={preview || null}
                     alt={title}
-                    className="w-full aspect-[4/3] object-cover cursor-pointer hover:opacity-90 transition-opacity"
+                    className={`w-full object-cover cursor-pointer hover:opacity-90 transition-opacity ${
+                      imageAspectRatio === 'vertical' 
+                        ? 'aspect-[3/4]' 
+                        : imageAspectRatio === 'horizontal' 
+                        ? 'aspect-[16/9]' 
+                        : 'aspect-square'
+                    }`}
                     type={type === 'video' ? 'video' : 'image'}
                     onClick={() => type !== 'video' && setShowImageViewer(true)}
                   />

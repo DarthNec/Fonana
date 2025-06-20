@@ -68,6 +68,7 @@ export default function EditPostModal({ isOpen, onClose, post, onPostUpdated }: 
   const [mediaFile, setMediaFile] = useState<File | null>(null)
   const [mediaPreview, setMediaPreview] = useState<string | null>(null)
   const [removeExistingMedia, setRemoveExistingMedia] = useState(false)
+  const [imageAspectRatio, setImageAspectRatio] = useState<'vertical' | 'square' | 'horizontal'>('square')
 
   // Load post data when modal opens
   const [hasInitialized, setHasInitialized] = useState(false)
@@ -84,6 +85,7 @@ export default function EditPostModal({ isOpen, onClose, post, onPostUpdated }: 
       setMediaFile(null)
       setRemoveExistingMedia(false)
       setTagInput('')
+      setImageAspectRatio(post.imageAspectRatio || 'square')
       setHasInitialized(true)
       
       // Сбрасываем input файла
@@ -280,6 +282,8 @@ export default function EditPostModal({ isOpen, onClose, post, onPostUpdated }: 
             accessType === 'premium' ? 'premium' :
             accessType === 'subscribers' ? 'basic' :
             null,
+          // Image aspect ratio (для изображений)
+          imageAspectRatio: contentType === 'image' ? imageAspectRatio : undefined,
           // НЕ передаем sellable поля при редактировании - они не должны меняться через EditPostModal
           // isSellable, sellType и quantity управляются только через CreatePostModal
         }),
@@ -423,6 +427,91 @@ export default function EditPostModal({ isOpen, onClose, post, onPostUpdated }: 
                 </label>
               )}
             </div>
+
+            {/* Image format selection (only for images) */}
+            {mediaPreview && (post.type === 'image' || (mediaFile && mediaFile.type.startsWith('image/'))) && (
+              <div className="mb-6">
+                <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-2">
+                  Image Format
+                </label>
+                <div className="grid grid-cols-3 gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setImageAspectRatio('vertical')}
+                    className={`p-3 rounded-xl border-2 transition-all ${
+                      imageAspectRatio === 'vertical'
+                        ? 'border-purple-500 bg-purple-500/10'
+                        : 'border-gray-200 dark:border-slate-700 hover:border-gray-300 dark:hover:border-slate-600 bg-gray-50 dark:bg-slate-800/50'
+                    }`}
+                  >
+                    <div className="flex flex-col items-center gap-2">
+                      <div className={`w-10 h-14 rounded border-2 ${
+                        imageAspectRatio === 'vertical' 
+                          ? 'border-purple-500 bg-purple-500/20' 
+                          : 'border-gray-400 dark:border-slate-600'
+                      }`} />
+                      <span className={`text-xs font-medium ${
+                        imageAspectRatio === 'vertical'
+                          ? 'text-purple-600 dark:text-purple-400'
+                          : 'text-gray-600 dark:text-slate-400'
+                      }`}>
+                        Vertical
+                      </span>
+                    </div>
+                  </button>
+                  
+                  <button
+                    type="button"
+                    onClick={() => setImageAspectRatio('square')}
+                    className={`p-3 rounded-xl border-2 transition-all ${
+                      imageAspectRatio === 'square'
+                        ? 'border-purple-500 bg-purple-500/10'
+                        : 'border-gray-200 dark:border-slate-700 hover:border-gray-300 dark:hover:border-slate-600 bg-gray-50 dark:bg-slate-800/50'
+                    }`}
+                  >
+                    <div className="flex flex-col items-center gap-2">
+                      <div className={`w-12 h-12 rounded border-2 ${
+                        imageAspectRatio === 'square' 
+                          ? 'border-purple-500 bg-purple-500/20' 
+                          : 'border-gray-400 dark:border-slate-600'
+                      }`} />
+                      <span className={`text-xs font-medium ${
+                        imageAspectRatio === 'square'
+                          ? 'text-purple-600 dark:text-purple-400'
+                          : 'text-gray-600 dark:text-slate-400'
+                      }`}>
+                        Square
+                      </span>
+                    </div>
+                  </button>
+                  
+                  <button
+                    type="button"
+                    onClick={() => setImageAspectRatio('horizontal')}
+                    className={`p-3 rounded-xl border-2 transition-all ${
+                      imageAspectRatio === 'horizontal'
+                        ? 'border-purple-500 bg-purple-500/10'
+                        : 'border-gray-200 dark:border-slate-700 hover:border-gray-300 dark:hover:border-slate-600 bg-gray-50 dark:bg-slate-800/50'
+                    }`}
+                  >
+                    <div className="flex flex-col items-center gap-2">
+                      <div className={`w-14 h-10 rounded border-2 ${
+                        imageAspectRatio === 'horizontal' 
+                          ? 'border-purple-500 bg-purple-500/20' 
+                          : 'border-gray-400 dark:border-slate-600'
+                      }`} />
+                      <span className={`text-xs font-medium ${
+                        imageAspectRatio === 'horizontal'
+                          ? 'text-purple-600 dark:text-purple-400'
+                          : 'text-gray-600 dark:text-slate-400'
+                      }`}>
+                        Horizontal
+                      </span>
+                    </div>
+                  </button>
+                </div>
+              </div>
+            )}
 
             {/* Category */}
             <div className="mb-6">

@@ -54,7 +54,8 @@ export default function CreatePostModal({ onPostCreated, onClose }: CreatePostMo
     auctionStartPrice: 0,
     auctionStepPrice: 0.1,
     auctionDuration: 24,
-    auctionDepositAmount: 0.01
+    auctionDepositAmount: 0.01,
+    imageAspectRatio: 'square' as 'vertical' | 'square' | 'horizontal'
   })
 
   const contentTypes = [
@@ -286,6 +287,8 @@ export default function CreatePostModal({ onPostCreated, onClose }: CreatePostMo
                             formData.accessType === 'premium' ? 'premium' :
                             formData.accessType === 'subscribers' ? 'basic' : 
                             undefined,
+        // Добавляем формат изображения (только для изображений)
+        imageAspectRatio: formData.type === 'image' ? formData.imageAspectRatio : undefined,
         // Новые поля для продаваемых постов
                   isSellable: formData.isSellable,
           sellType: formData.isSellable ? formData.sellType : undefined,
@@ -338,7 +341,8 @@ export default function CreatePostModal({ onPostCreated, onClose }: CreatePostMo
         auctionStartPrice: 0,
         auctionStepPrice: 0.1,
         auctionDuration: 24,
-        auctionDepositAmount: 0.01
+        auctionDepositAmount: 0.01,
+        imageAspectRatio: 'square'
       })
 
       // Close modal and update
@@ -465,6 +469,91 @@ export default function CreatePostModal({ onPostCreated, onClose }: CreatePostMo
                     }
                     className="hidden"
                   />
+                </div>
+              )}
+
+              {/* Image format selection (only for images) */}
+              {formData.type === 'image' && formData.preview && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-2">
+                    Image Format
+                  </label>
+                  <div className="grid grid-cols-3 gap-3">
+                    <button
+                      type="button"
+                      onClick={() => setFormData(prev => ({ ...prev, imageAspectRatio: 'vertical' }))}
+                      className={`p-3 rounded-xl border-2 transition-all ${
+                        formData.imageAspectRatio === 'vertical'
+                          ? 'border-purple-500 bg-purple-500/10'
+                          : 'border-gray-200 dark:border-slate-700 hover:border-gray-300 dark:hover:border-slate-600 bg-gray-50 dark:bg-slate-800/50'
+                      }`}
+                    >
+                      <div className="flex flex-col items-center gap-2">
+                        <div className={`w-10 h-14 rounded border-2 ${
+                          formData.imageAspectRatio === 'vertical' 
+                            ? 'border-purple-500 bg-purple-500/20' 
+                            : 'border-gray-400 dark:border-slate-600'
+                        }`} />
+                        <span className={`text-xs font-medium ${
+                          formData.imageAspectRatio === 'vertical'
+                            ? 'text-purple-600 dark:text-purple-400'
+                            : 'text-gray-600 dark:text-slate-400'
+                        }`}>
+                          Vertical
+                        </span>
+                      </div>
+                    </button>
+                    
+                    <button
+                      type="button"
+                      onClick={() => setFormData(prev => ({ ...prev, imageAspectRatio: 'square' }))}
+                      className={`p-3 rounded-xl border-2 transition-all ${
+                        formData.imageAspectRatio === 'square'
+                          ? 'border-purple-500 bg-purple-500/10'
+                          : 'border-gray-200 dark:border-slate-700 hover:border-gray-300 dark:hover:border-slate-600 bg-gray-50 dark:bg-slate-800/50'
+                      }`}
+                    >
+                      <div className="flex flex-col items-center gap-2">
+                        <div className={`w-12 h-12 rounded border-2 ${
+                          formData.imageAspectRatio === 'square' 
+                            ? 'border-purple-500 bg-purple-500/20' 
+                            : 'border-gray-400 dark:border-slate-600'
+                        }`} />
+                        <span className={`text-xs font-medium ${
+                          formData.imageAspectRatio === 'square'
+                            ? 'text-purple-600 dark:text-purple-400'
+                            : 'text-gray-600 dark:text-slate-400'
+                        }`}>
+                          Square
+                        </span>
+                      </div>
+                    </button>
+                    
+                    <button
+                      type="button"
+                      onClick={() => setFormData(prev => ({ ...prev, imageAspectRatio: 'horizontal' }))}
+                      className={`p-3 rounded-xl border-2 transition-all ${
+                        formData.imageAspectRatio === 'horizontal'
+                          ? 'border-purple-500 bg-purple-500/10'
+                          : 'border-gray-200 dark:border-slate-700 hover:border-gray-300 dark:hover:border-slate-600 bg-gray-50 dark:bg-slate-800/50'
+                      }`}
+                    >
+                      <div className="flex flex-col items-center gap-2">
+                        <div className={`w-14 h-10 rounded border-2 ${
+                          formData.imageAspectRatio === 'horizontal' 
+                            ? 'border-purple-500 bg-purple-500/20' 
+                            : 'border-gray-400 dark:border-slate-600'
+                        }`} />
+                        <span className={`text-xs font-medium ${
+                          formData.imageAspectRatio === 'horizontal'
+                            ? 'text-purple-600 dark:text-purple-400'
+                            : 'text-gray-600 dark:text-slate-400'
+                        }`}>
+                          Horizontal
+                        </span>
+                      </div>
+                    </button>
+                  </div>
                 </div>
               )}
 

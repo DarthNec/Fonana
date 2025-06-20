@@ -258,6 +258,7 @@ export async function GET(req: Request) {
         // Добавляем информацию о тирах
         requiredTier: post.minSubscriptionTier || (post.isPremium ? 'vip' : null),
         userTier: userSubscriptionPlan,
+        imageAspectRatio: post.imageAspectRatio,
         // Новые поля для продаваемых постов
         isSellable: post.isSellable,
         sellType: post.sellType,
@@ -347,6 +348,7 @@ export async function POST(request: NextRequest) {
       price: body.price,
       currency: body.currency,
       tags: body.tags || [],
+      imageAspectRatio: body.imageAspectRatio,
       // Принимаем minSubscriptionTier от клиента и мапим обратно на tier для createPost
       tier: body.minSubscriptionTier === 'vip' ? 'vip' :
             body.minSubscriptionTier === 'premium' ? 'premium' :

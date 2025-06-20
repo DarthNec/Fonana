@@ -92,6 +92,7 @@ model Post {
   price         Float?
   currency      String    @default("SOL")
   minSubscriptionTier String?
+  imageAspectRatio String? // 'vertical' | 'square' | 'horizontal'
   likesCount    Int       @default(0)
   commentsCount Int       @default(0)
   viewsCount    Int       @default(0)
