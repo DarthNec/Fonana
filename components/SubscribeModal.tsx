@@ -147,6 +147,18 @@ export default function SubscribeModal({ creator, preferredTier, onClose, onSucc
     }
   }, [])
 
+  // Загружаем все Flash Sales при загрузке компонента
+  useEffect(() => {
+    loadAllFlashSales()
+  }, [])
+
+  // Загружаем Flash Sales при изменении выбранного тира
+  useEffect(() => {
+    if (selectedTier) {
+      loadFlashSales()
+    }
+  }, [selectedTier])
+
   const loadCreatorTierSettings = async () => {
     try {
       const response = await fetch(`/api/user/tier-settings?creatorId=${creator.id}`)
@@ -264,6 +276,32 @@ export default function SubscribeModal({ creator, preferredTier, onClose, onSucc
       }
     } catch (error) {
       console.error('Error loading flash sales:', error)
+    }
+  }
+
+  // Загружаем все Flash Sales для отображения на каждом тире
+  const [allFlashSales, setAllFlashSales] = useState<Record<string, any>>({})
+  
+  const loadAllFlashSales = async () => {
+    try {
+      const response = await fetch(`/api/flash-sales?creatorId=${creator.id}`)
+      if (response.ok) {
+        const data = await response.json()
+        const salesByPlan: Record<string, any> = {}
+        
+        data.flashSales.forEach((sale: any) => {
+          if (sale.subscriptionPlan) {
+            salesByPlan[sale.subscriptionPlan.toLowerCase()] = {
+              ...sale,
+              timeLeft: new Date(sale.endAt).getTime() - new Date().getTime()
+            }
+          }
+        })
+        
+        setAllFlashSales(salesByPlan)
+      }
+    } catch (error) {
+      console.error('Error loading all flash sales:', error)
     }
   }
 
@@ -586,13 +624,13 @@ export default function SubscribeModal({ creator, preferredTier, onClose, onSucc
                         {tier.description}
                       </p>
                       <div className="flex items-baseline justify-center gap-1">
-                        {activeFlashSale && tier.id === selectedTier && tier.id === activeFlashSale.subscriptionPlan?.toLowerCase() ? (
+                        {allFlashSales[tier.id] ? (
                           <>
                             <span className="text-xl line-through text-slate-500">
                               {tier.price}
                             </span>
                             <span className="text-3xl font-bold text-white">
-                              {(tier.price * (1 - activeFlashSale.discount / 100)).toFixed(3)}
+                              {(tier.price * (1 - allFlashSales[tier.id].discount / 100)).toFixed(3)}
                             </span>
                             <span className="text-lg text-purple-400 font-semibold">
                               {tier.currency}
@@ -601,7 +639,7 @@ export default function SubscribeModal({ creator, preferredTier, onClose, onSucc
                               /{tier.duration}
                             </span>
                             <span className="ml-2 text-xs bg-gradient-to-r from-orange-500 to-pink-500 text-white px-2 py-0.5 rounded-full font-bold">
-                              -{activeFlashSale.discount}%
+                              -{allFlashSales[tier.id].discount}%
                             </span>
                           </>
                         ) : (
@@ -621,16 +659,16 @@ export default function SubscribeModal({ creator, preferredTier, onClose, onSucc
                       {/* Добавляем отображение цены в долларах */}
                       {tier.price > 0 && (
                         <p className="text-xs text-slate-400 mt-1">
-                          ≈ ${((activeFlashSale && tier.id === selectedTier && tier.id === activeFlashSale.subscriptionPlan?.toLowerCase() 
-                            ? tier.price * (1 - activeFlashSale.discount / 100) 
+                          ≈ ${((allFlashSales[tier.id]
+                            ? tier.price * (1 - allFlashSales[tier.id].discount / 100) 
                             : tier.price) * 45).toFixed(2)} USD/{tier.duration}
                         </p>
                       )}
                       {/* Показываем распределение платежа для платных планов */}
                       {tier.price > 0 && isSelected && (
                         <div className="mt-2 text-xs text-slate-400 space-y-1">
-                          <p>Creator: {formatSolAmount(tier.price * 0.9)}</p>
-                          <p>Platform: {formatSolAmount(tier.price * 0.1)}</p>
+                          <p>Creator: {formatSolAmount((allFlashSales[tier.id] ? tier.price * (1 - allFlashSales[tier.id].discount / 100) : tier.price) * 0.9)}</p>
+                          <p>Platform: {formatSolAmount((allFlashSales[tier.id] ? tier.price * (1 - allFlashSales[tier.id].discount / 100) : tier.price) * 0.1)}</p>
                         </div>
                       )}
                     </div>
