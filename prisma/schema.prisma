@@ -422,6 +422,7 @@ enum NotificationType {
   AUCTION_PAYMENT_REMINDER
   AUCTION_DEPOSIT_REFUNDED
   TIP_RECEIVED
+  NEW_MESSAGE
 }
 
 // Залоги участников аукциона
