@@ -525,7 +525,7 @@ export default function ConversationPage() {
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-slate-900 flex flex-col">
       {/* Header */}
-      <div className="fixed top-0 left-0 right-0 bg-white dark:bg-slate-800 border-b border-gray-200 dark:border-slate-700 z-10 pt-16">
+      <div className="fixed top-16 left-0 right-0 bg-white dark:bg-slate-800 border-b border-gray-200 dark:border-slate-700 z-10">
         <div className="flex items-center gap-4 p-4">
           <Link
             href="/messages"
@@ -556,7 +556,7 @@ export default function ConversationPage() {
       </div>
 
       {/* Messages */}
-      <div className="flex-1 overflow-y-auto pt-48 pb-32 px-4">
+      <div className="flex-1 overflow-y-auto pt-36 pb-32 px-4 mt-16">
         <div className="max-w-3xl mx-auto space-y-4">
           {messages.map((message) => (
             <div
