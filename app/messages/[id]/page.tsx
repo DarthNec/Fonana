@@ -354,40 +354,10 @@ export default function ConversationPage() {
       
       const signature = await sendTransaction(transaction, connection, sendOptions)
       
-      // Show loading toast
       toast.loading('Processing tip...')
       
-      // Wait for confirmation with better error handling
-      toast.loading('Confirming transaction...')
-      
-      let confirmed = false
-      let attempts = 0
-      const maxAttempts = 30 // 30 seconds timeout
-      
-      while (!confirmed && attempts < maxAttempts) {
-        attempts++
-        
-        try {
-          const status = await connection.getSignatureStatus(signature)
-          
-          if (status.value?.confirmationStatus === 'confirmed' || status.value?.confirmationStatus === 'finalized') {
-            confirmed = true
-            break
-          }
-          
-          if (status.value?.err) {
-            throw new Error('Transaction failed on-chain')
-          }
-        } catch (statusError) {
-          console.error('Error checking transaction status:', statusError)
-        }
-        
-        await new Promise(resolve => setTimeout(resolve, 1000))
-      }
-      
-      if (!confirmed) {
-        throw new Error('Transaction was not confirmed in time')
-      }
+      // Give transaction time to get into the network (same as subscriptions)
+      await new Promise(resolve => setTimeout(resolve, 5000))
 
       // Record tip as a transaction
       const response = await fetch('/api/tips', {
@@ -408,24 +378,6 @@ export default function ConversationPage() {
         toast.success(`Sent ${formatSolAmount(amount)} tip!`)
         setShowTipModal(false)
         setTipAmount('')
-        
-        // Add tip message to chat only after confirmed
-        const tipMessage: Message = {
-          id: Date.now().toString(),
-          content: `💰 Sent a ${formatSolAmount(amount)} tip`,
-          isPaid: false,
-          isPurchased: false,
-          sender: {
-            id: user?.id || '',
-            nickname: user?.nickname || '',
-            fullName: user?.fullName,
-            avatar: user?.avatar
-          },
-          isOwn: true,
-          isRead: false,
-          createdAt: new Date().toISOString()
-        }
-        setMessages(prev => [...prev, tipMessage])
       } else {
         // If backend fails, but transaction was confirmed
         const error = await response.json()
@@ -498,41 +450,10 @@ export default function ConversationPage() {
       
       const signature = await sendTransaction(transaction, connection, sendOptions)
       
-      // Show loading toast
-      toast.loading('Processing payment...')
+      toast.loading('Waiting for blockchain confirmation...')
       
-      // Show loading toast
-      toast.loading('Confirming transaction...')
-      
-      // Wait for confirmation with better error handling
-      let confirmed = false
-      let attempts = 0
-      const maxAttempts = 30 // 30 seconds timeout
-      
-      while (!confirmed && attempts < maxAttempts) {
-        attempts++
-        
-        try {
-          const status = await connection.getSignatureStatus(signature)
-          
-          if (status.value?.confirmationStatus === 'confirmed' || status.value?.confirmationStatus === 'finalized') {
-            confirmed = true
-            break
-          }
-          
-          if (status.value?.err) {
-            throw new Error('Transaction failed on-chain')
-          }
-        } catch (statusError) {
-          console.error('Error checking transaction status:', statusError)
-        }
-        
-        await new Promise(resolve => setTimeout(resolve, 1000))
-      }
-      
-      if (!confirmed) {
-        throw new Error('Transaction was not confirmed in time. Please check your wallet.')
-      }
+      // Give transaction time to get into the network (same as subscriptions)
+      await new Promise(resolve => setTimeout(resolve, 5000))
 
       // Save purchase
       const response = await fetch(`/api/messages/${message.id}/purchase`, {
@@ -658,17 +579,19 @@ export default function ConversationPage() {
                 )}
                 
                 <div
-                  className={`rounded-2xl p-4 ${
-                    message.isOwn
+                  className={`rounded-2xl ${
+                    message.isPaid && !message.isPurchased ? 'p-0' : 'p-4'
+                  } ${
+                    message.isOwn && !(message.isPaid && !message.isPurchased)
                       ? 'bg-gradient-to-r from-purple-600 to-pink-600 text-white'
                       : 'bg-white dark:bg-slate-800 text-gray-900 dark:text-white'
-                  } ${message.isPaid && !message.isPurchased ? 'relative overflow-hidden' : ''}`}
+                  }`}
                 >
                   {message.isPaid && !message.isPurchased ? (
-                    <div className="relative">
-                      <div className="absolute inset-0 bg-gradient-to-br from-purple-900/90 via-pink-900/90 to-purple-900/90 backdrop-blur-xl rounded-2xl flex flex-col items-center justify-center p-6 text-center border border-purple-500/30">
+                    <div className="relative min-h-[250px]">
+                      <div className="absolute inset-0 bg-gradient-to-br from-purple-900 via-pink-900 to-purple-900 rounded-2xl flex flex-col items-center justify-center p-6 text-center border border-purple-500/30 z-20">
                         <div className="absolute inset-0 bg-gradient-to-br from-purple-600/20 via-pink-600/20 to-purple-600/20 rounded-2xl animate-pulse" />
-                        <div className="relative z-10">
+                        <div className="relative z-30">
                           <div className="w-16 h-16 bg-gradient-to-br from-purple-500 to-pink-500 rounded-full flex items-center justify-center mb-4 shadow-lg shadow-purple-500/50">
                             <SparklesIcon className="w-8 h-8 text-white" />
                           </div>
@@ -704,15 +627,6 @@ export default function ConversationPage() {
                             )}
                           </button>
                         </div>
-                      </div>
-                      {/* Blur preview */}
-                      <div className="blur-sm opacity-50">
-                        {message.mediaUrl && (
-                          <div className="h-32 bg-gradient-to-br from-purple-600 to-pink-600 rounded-lg mb-2" />
-                        )}
-                        <p className="text-gray-500">
-                          {message.content?.substring(0, 50) || 'Premium content'}...
-                        </p>
                       </div>
                     </div>
                   ) : (
