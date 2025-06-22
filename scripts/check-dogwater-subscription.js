@@ -3,110 +3,107 @@ const prisma = new PrismaClient()
 
 async function checkDogwaterSubscription() {
   try {
-    console.log('🔍 Checking Dogwater subscription to billyonair...\n')
-    
-    // Найти пользователя Dogwater
-    const dogwater = await prisma.user.findFirst({
+    // Найдем пользователей
+    const dogwater = await prisma.user.findFirst({ 
       where: { nickname: 'Dogwater' },
-      select: { id: true, nickname: true, wallet: true }
+      select: { id: true, nickname: true, wallet: true, solanaWallet: true }
     })
     
-    if (!dogwater) {
-      console.log('❌ User Dogwater not found')
+    const vizer36 = await prisma.user.findFirst({ 
+      where: { nickname: 'vizer36' },
+      select: { id: true, nickname: true, wallet: true, solanaWallet: true }
+    })
+    
+    console.log('=== USERS ===')
+    console.log('Dogwater:', dogwater)
+    console.log('Vizer36:', vizer36)
+    
+    if (!dogwater || !vizer36) {
+      console.error('Users not found!')
       return
     }
     
-    console.log('✅ Found Dogwater:', dogwater.id)
-    
-    // Найти пользователя billyonair
-    const billyonair = await prisma.user.findFirst({
-      where: { nickname: 'billyonair' },
-      select: { id: true, nickname: true, wallet: true }
-    })
-    
-    if (!billyonair) {
-      console.log('❌ User billyonair not found')
-      return
-    }
-    
-    console.log('✅ Found billyonair:', billyonair.id)
-    
-    // Проверить подписку
-    const subscription = await prisma.subscription.findFirst({
+    // Проверим все подписки Dogwater на vizer36
+    const subscriptions = await prisma.subscription.findMany({
       where: {
         userId: dogwater.id,
-        creatorId: billyonair.id,
-        isActive: true,
-        validUntil: { gte: new Date() }
+        creatorId: vizer36.id
       },
-      select: {
-        id: true,
-        plan: true,
-        price: true,
-        currency: true,
-        subscribedAt: true,
-        validUntil: true,
-        isActive: true
-      }
+      orderBy: { subscribedAt: 'desc' }
     })
     
-    if (!subscription) {
-      console.log('❌ No active subscription found')
-    } else {
-      console.log('\n📊 Subscription Details:')
-      console.log('   ID:', subscription.id)
-      console.log('   Plan:', subscription.plan)
-      console.log('   Price:', subscription.price, subscription.currency)
-      console.log('   Subscribed at:', subscription.subscribedAt)
-      console.log('   Valid until:', subscription.validUntil)
-      console.log('   Active:', subscription.isActive)
+    console.log('\n=== ALL SUBSCRIPTIONS ===')
+    subscriptions.forEach((sub, index) => {
+      console.log(`\nSubscription ${index + 1}:`, {
+        id: sub.id,
+        plan: sub.plan,
+        price: sub.price,
+        isActive: sub.isActive,
+        subscribedAt: sub.subscribedAt,
+        validUntil: sub.validUntil,
+        paymentStatus: sub.paymentStatus,
+        txSignature: sub.txSignature
+      })
+    })
+    
+    // Найдем активную подписку
+    const activeSubscription = subscriptions.find(s => s.isActive)
+    console.log('\n=== ACTIVE SUBSCRIPTION ===')
+    console.log(activeSubscription || 'No active subscription found')
+    
+    // Проверим транзакции для всех подписок
+    console.log('\n=== TRANSACTIONS ===')
+    for (const sub of subscriptions) {
+      const transaction = await prisma.transaction.findFirst({
+        where: { subscriptionId: sub.id }
+      })
+      if (transaction) {
+        console.log(`\nTransaction for subscription ${sub.id}:`, {
+          id: transaction.id,
+          amount: transaction.amount,
+          status: transaction.status,
+          type: transaction.type,
+          txSignature: transaction.txSignature,
+          confirmedAt: transaction.confirmedAt,
+          createdAt: transaction.createdAt
+        })
+      }
     }
     
-    // Найти sellable посты billyonair
-    const sellablePosts = await prisma.post.findMany({
-      where: {
-        creatorId: billyonair.id,
-        isSellable: true
-      },
+    // Проверим настройки тиров vizer36
+    const tierSettings = await prisma.creatorTierSettings.findUnique({
+      where: { creatorId: vizer36.id }
+    })
+    
+    console.log('\n=== VIZER36 TIER SETTINGS ===')
+    console.log(tierSettings)
+    
+    // Проверим несколько постов vizer36
+    const posts = await prisma.post.findMany({
+      where: { creatorId: vizer36.id },
+      take: 5,
+      orderBy: { createdAt: 'desc' },
       select: {
         id: true,
         title: true,
-        isLocked: true,
         minSubscriptionTier: true,
-        price: true,
-        sellType: true,
-        soldAt: true,
-        soldToId: true
+        isPremium: true,
+        isLocked: true,
+        price: true
       }
     })
     
-    console.log('\n📝 Sellable posts by billyonair:')
-    for (const post of sellablePosts) {
-      console.log(`\n   Post: "${post.title}" (${post.id})`)
-      console.log('   - Locked:', post.isLocked)
-      console.log('   - Required tier:', post.minSubscriptionTier || 'None')
-      console.log('   - Price:', post.price)
-      console.log('   - Type:', post.sellType)
-      console.log('   - Sold:', post.soldAt ? 'Yes' : 'No')
-      
-      // Проверить доступ
-      if (post.isLocked && post.minSubscriptionTier && subscription) {
-        const TIER_HIERARCHY = {
-          'vip': 4,
-          'premium': 3,
-          'basic': 2,
-          'free': 1
-        }
-        
-        const userLevel = TIER_HIERARCHY[subscription.plan.toLowerCase()] || 0
-        const requiredLevel = TIER_HIERARCHY[post.minSubscriptionTier.toLowerCase()] || 0
-        const hasAccess = userLevel >= requiredLevel
-        
-        console.log('   - User tier level:', userLevel, `(${subscription.plan})`)
-        console.log('   - Required tier level:', requiredLevel, `(${post.minSubscriptionTier})`)
-        console.log('   - Should have access:', hasAccess ? '✅ YES' : '❌ NO')
-      }
-    }
+    console.log('\n=== VIZER36 RECENT POSTS ===')
+    posts.forEach((post, index) => {
+      console.log(`\nPost ${index + 1}:`, {
+        id: post.id,
+        title: post.title,
+        minSubscriptionTier: post.minSubscriptionTier,
+        isPremium: post.isPremium,
+        isLocked: post.isLocked,
+        price: post.price
+      })
+    })
     
   } catch (error) {
     console.error('Error:', error)

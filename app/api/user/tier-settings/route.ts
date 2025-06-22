@@ -47,7 +47,7 @@ export async function GET(req: NextRequest) {
           },
           premiumTier: {
             enabled: true,
-            price: 0.20,
+            price: 0.15,
             description: 'Premium subscription',
             features: [
               { id: 'premium-1', text: 'Everything in Basic', enabled: true },
@@ -57,7 +57,7 @@ export async function GET(req: NextRequest) {
           },
           vipTier: {
             enabled: true,
-            price: 0.40,
+            price: 0.35,
             description: 'VIP subscription',
             features: [
               { id: 'vip-1', text: 'Everything in Premium', enabled: true },

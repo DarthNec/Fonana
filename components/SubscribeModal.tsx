@@ -82,7 +82,7 @@ const getSubscriptionTiers = (creatorCategory?: string): SubscriptionTier[] => {
     {
       id: 'premium',
       name: 'Premium',
-      price: 0.20,
+      price: 0.15,
       currency: 'SOL',
       duration: 'month',
       description: 'Premium subscription',
@@ -98,7 +98,7 @@ const getSubscriptionTiers = (creatorCategory?: string): SubscriptionTier[] => {
     {
       id: 'vip',
       name: 'VIP',
-      price: 0.40,
+      price: 0.35,
       currency: 'SOL',
       duration: 'month',
       description: 'VIP subscription',
@@ -208,7 +208,7 @@ export default function SubscribeModal({ creator, preferredTier, onClose, onSucc
           customTiers.push({
             id: 'premium',
             name: 'Premium',
-            price: settings.premiumTier.price || 0.20,
+            price: settings.premiumTier.price || 0.15,
             currency: 'SOL',
             duration: 'month',
             description: settings.premiumTier.description || 'Premium subscription',
@@ -227,7 +227,7 @@ export default function SubscribeModal({ creator, preferredTier, onClose, onSucc
           customTiers.push({
             id: 'vip',
             name: 'VIP',
-            price: settings.vipTier.price || 0.40,
+            price: settings.vipTier.price || 0.35,
             currency: 'SOL',
             duration: 'month',
             description: settings.vipTier.description || 'VIP subscription',
@@ -360,6 +360,26 @@ export default function SubscribeModal({ creator, preferredTier, onClose, onSucc
       const finalPrice = activeFlashSale 
         ? selectedSubscription.price * (1 - activeFlashSale.discount / 100)
         : selectedSubscription.price
+      
+      // Валидация цены
+      if (!finalPrice || finalPrice <= 0 || isNaN(finalPrice)) {
+        toast.error('Invalid subscription price. Please try again.')
+        setIsProcessing(false)
+        return
+      }
+      
+      // Логирование для отладки
+      console.log('[SubscribeModal] Payment details:', {
+        tier: selectedSubscription.name,
+        originalPrice: selectedSubscription.price,
+        finalPrice: finalPrice,
+        flashSale: activeFlashSale ? {
+          discount: activeFlashSale.discount,
+          id: activeFlashSale.id
+        } : null,
+        creatorWallet,
+        hasReferrer
+      })
         
       const distribution = calculatePaymentDistribution(
         finalPrice,

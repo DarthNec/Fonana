@@ -48,18 +48,49 @@ export async function POST(request: Request) {
       creatorId,
       plan,
       price,
+      originalPrice,
       currency,
       hasReferrer,
-      userWallet: userWallet.slice(0, 8) + '...'
+      flashSaleId,
+      userWallet: userWallet.slice(0, 8) + '...',
+      distribution: {
+        creatorAmount: distribution.creatorAmount,
+        platformAmount: distribution.platformAmount,
+        referrerAmount: distribution.referrerAmount
+      }
     })
 
     // Валидация входных данных
-    if (!creatorId || !plan || !price || !signature || !distribution) {
+    if (!creatorId || !plan || price === undefined || price === null || !signature || !distribution) {
       paymentLogger.warn('Invalid payment data', { creatorId, plan, price })
       return NextResponse.json(
         { error: 'Missing required fields' },
         { status: 400 }
       )
+    }
+    
+    // Валидация цены
+    if (price <= 0 || isNaN(price)) {
+      paymentLogger.error('Invalid price value', { price, plan })
+      return NextResponse.json(
+        { error: 'Invalid price value' },
+        { status: 400 }
+      )
+    }
+    
+    // Проверка ожидаемых цен для планов
+    const expectedPrices: Record<string, number> = {
+      'Basic': 0.05,
+      'Premium': 0.15,
+      'VIP': 0.35
+    }
+    
+    if (!flashSaleId && expectedPrices[plan] && Math.abs(price - expectedPrices[plan]) > 0.001) {
+      paymentLogger.warn('Price mismatch detected', {
+        plan,
+        receivedPrice: price,
+        expectedPrice: expectedPrices[plan]
+      })
     }
 
     // Ждём подтверждения транзакции
