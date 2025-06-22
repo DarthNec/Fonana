@@ -26,6 +26,362 @@ Production DB has real users and posts
 - **Notification** - Уведомления системы
 - **CreatorTierSettings** - Настройки тарифов создателей
 
+## Full Database Schema
+
+### User Model
+```prisma
+model User {
+  id             String         @id @default(cuid())
+  email          String?        @unique
+  emailVerified  DateTime?      
+  name           String?
+  image          String?
+  nickname       String?        @unique  // Уникальный username
+  fullName       String?
+  bio            String?
+  avatar         String?
+  backgroundImage String?
+  website        String?
+  twitter        String?
+  telegram       String?
+  location       String?
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+  isVerified     Boolean        @default(false)
+  isCreator      Boolean        @default(false)
+  followersCount Int            @default(0)
+  followingCount Int            @default(0)
+  postsCount     Int            @default(0)
+  
+  // Wallets
+  wallet         String?        @unique
+  solanaWallet   String?        @unique
+  
+  // Referral system
+  referrerId     String?
+  referrer       User?          @relation("Referrals")
+  referrals      User[]         @relation("Referrals")
+}
+```
+
+### Post Model  
+```prisma
+model Post {
+  id            String    @id @default(cuid())
+  creatorId     String
+  title         String
+  content       String
+  type          String    // 'image' | 'video' | 'audio'
+  category      String?
+  thumbnail     String?
+  mediaUrl      String?
+  isLocked      Boolean   @default(false)
+  isPremium     Boolean   @default(false)
+  price         Float?
+  currency      String    @default("SOL")
+  minSubscriptionTier String?  // 'basic' | 'premium' | 'vip'
+  imageAspectRatio String?     // 'vertical' | 'square' | 'horizontal'
+  likesCount    Int       @default(0)
+  commentsCount Int       @default(0)
+  viewsCount    Int       @default(0)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  
+  // Sellable post fields (NFT-like)
+  isSellable        Boolean   @default(false)
+  sellType          SellType?  // FIXED_PRICE | AUCTION
+  quantity          Int?      @default(1)
+  auctionStartPrice Float?
+  auctionStepPrice  Float?
+  auctionDepositAmount Float?  @default(0.01)
+  auctionStartAt    DateTime?
+  auctionEndAt      DateTime?
+  auctionStatus     AuctionStatus @default(DRAFT)
+  
+  // Sold post fields
+  soldAt            DateTime?
+  soldToId          String?
+  soldPrice         Float?
+  sellerConfirmedAt DateTime?
+}
+```
+
+### Message Model (Direct Messages)
+```prisma
+model Message {
+  id             String       @id @default(cuid())
+  conversationId String
+  senderId       String
+  content        String?      @db.Text
+  mediaUrl       String?
+  mediaType      String?      // 'image' | 'video' | 'audio'
+  isPaid         Boolean      @default(false)  // PPV сообщения
+  price          Float?       // Цена для PPV
+  isRead         Boolean      @default(false)
+  metadata       Json?        // Для tips: { type: 'tip', amount: number }
+  createdAt      DateTime     @default(now())
+}
+```
+
+### Subscription Model
+```prisma
+model Subscription {
+  id           String   @id @default(cuid())
+  userId       String
+  creatorId    String
+  plan         String   // 'basic' | 'premium' | 'vip'
+  price        Float
+  currency     String   @default("SOL")
+  subscribedAt DateTime @default(now())
+  validUntil   DateTime
+  isActive     Boolean  @default(true)
+  txSignature  String?
+  
+  // Payment details
+  paymentStatus    PaymentStatus @default(PENDING)
+  paymentAmount    Float?
+  platformFee      Float?       // 5% комиссия платформы
+  referrerFee      Float?       // 5% реферальная
+  creatorAmount    Float?       // 90% создателю
+}
+```
+
+### Transaction Model
+```prisma
+model Transaction {
+  id              String   @id @default(cuid())
+  subscriptionId  String?
+  postPurchaseId  String?  @unique
+  
+  // Transaction details
+  txSignature     String   @unique  // Solana signature
+  fromWallet      String
+  toWallet        String
+  amount          Float
+  currency        String   @default("SOL")
+  type            TransactionType
+  status          TransactionStatus @default(PENDING)
+  
+  // Fee distribution
+  platformFee     Float?
+  referrerFee     Float?
+  referrerWallet  String?
+  
+  metadata        Json?
+  errorMessage    String?
+  confirmedAt     DateTime?
+  createdAt       DateTime @default(now())
+}
+```
+
+### FlashSale Model
+```prisma
+model FlashSale {
+  id              String   @id @default(cuid())
+  creatorId       String?  // null = platform-wide sale
+  postId          String?  // specific post sale
+  subscriptionPlan String? // 'basic' | 'premium' | 'vip'
+  
+  discount        Float    // Percentage discount (10-90)
+  maxRedemptions  Int?     // Max number of uses
+  usedCount       Int      @default(0)
+  
+  startAt         DateTime @default(now())
+  endAt           DateTime
+  
+  isActive        Boolean  @default(true)
+}
+```
+
+### Enums
+```prisma
+enum TransactionType {
+  SUBSCRIPTION
+  POST_PURCHASE
+  PLATFORM_FEE
+  REFERRER_FEE
+  WITHDRAWAL
+  REFUND
+  MESSAGE_PURCHASE  // PPV messages
+  TIP              // Tips in messages
+}
+
+enum PaymentStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+  REFUNDED
+}
+
+enum NotificationType {
+  LIKE_POST
+  LIKE_COMMENT
+  COMMENT_POST
+  REPLY_COMMENT
+  NEW_SUBSCRIBER
+  POST_PURCHASE
+  NEW_POST_FROM_SUBSCRIPTION
+  AUCTION_NEW_BID
+  AUCTION_WON
+  AUCTION_PAYMENT_REMINDER
+  AUCTION_DEPOSIT_REFUNDED
+  TIP_RECEIVED
+  NEW_MESSAGE
+}
+
+enum SellType {
+  FIXED_PRICE
+  AUCTION
+}
+
+enum AuctionStatus {
+  DRAFT       // Черновик
+  SCHEDULED   // Запланирован
+  ACTIVE      // Идет аукцион
+  ENDED       // Завершен, ждет оплаты
+  SOLD        // Продан
+  CANCELLED   // Отменен
+  EXPIRED     // Истек без оплаты
+}
+```
+
+## Key Database Relationships
+- User → Posts (1:many) - Создатель и его посты
+- User → Subscriptions (many:many) - Подписки пользователей
+- User → Messages (1:many) - Отправленные сообщения
+- Post → Comments (1:many) - Комментарии к посту
+- Post → Likes (1:many) - Лайки поста
+- Post → PostPurchases (1:many) - Покупки поста
+- Conversation → Messages (1:many) - Сообщения в диалоге
+- Message → MessagePurchases (1:many) - Покупки PPV сообщений
+
+## Other Important Models
+
+### Comment Model
+```prisma
+model Comment {
+  id          String    @id @default(cuid())
+  postId      String
+  userId      String
+  content     String
+  isAnonymous Boolean   @default(false)
+  likesCount  Int       @default(0)
+  parentId    String?   // For replies
+  createdAt   DateTime  @default(now())
+}
+```
+
+### Notification Model
+```prisma
+model Notification {
+  id        String   @id @default(cuid())
+  userId    String
+  type      NotificationType
+  title     String
+  message   String
+  isRead    Boolean  @default(false)
+  metadata  Json?    // { postId?, commentId?, senderId?, amount? }
+  createdAt DateTime @default(now())
+}
+```
+
+### CreatorTierSettings Model
+```prisma
+model CreatorTierSettings {
+  id          String   @id @default(cuid())
+  creatorId   String   @unique
+  
+  // JSON structure: { enabled, price, description, features[] }
+  basicTier   Json?    
+  premiumTier Json?    
+  vipTier     Json?    
+}
+```
+
+## Common Prisma Queries
+
+### Get user with subscriptions
+```javascript
+const user = await prisma.user.findUnique({
+  where: { id: userId },
+  include: {
+    subscriptions: {
+      where: { isActive: true }
+    },
+    subscribers: {
+      where: { isActive: true }
+    }
+  }
+});
+```
+
+### Get posts with tier access check
+```javascript
+const posts = await prisma.post.findMany({
+  where: {
+    creatorId,
+    OR: [
+      { minSubscriptionTier: null },
+      { minSubscriptionTier: { in: ['basic', 'premium'] } }
+    ]
+  },
+  include: {
+    creator: true,
+    _count: {
+      select: { likes: true, comments: true }
+    }
+  }
+});
+```
+
+### Check if user purchased post
+```javascript
+const purchase = await prisma.postPurchase.findUnique({
+  where: {
+    userId_postId: { userId, postId }
+  }
+});
+```
+
+### Get conversation with messages
+```javascript
+const conversation = await prisma.conversation.findFirst({
+  where: {
+    participants: {
+      some: { id: userId1 }
+    },
+    AND: {
+      participants: {
+        some: { id: userId2 }
+      }
+    }
+  },
+  include: {
+    messages: {
+      orderBy: { createdAt: 'desc' },
+      take: 50
+    }
+  }
+});
+```
+
+### Create transaction with fees
+```javascript
+const transaction = await prisma.transaction.create({
+  data: {
+    type: 'SUBSCRIPTION',
+    txSignature,
+    fromWallet: userWallet,
+    toWallet: creatorWallet,
+    amount: totalAmount,
+    platformFee: totalAmount * 0.05,
+    referrerFee: referrer ? totalAmount * 0.05 : 0,
+    status: 'PENDING'
+  }
+});
+```
+
 ## Key Components
 - **PostCard.tsx** (49KB) - Главная карточка поста
 - **CreatePostModal.tsx** (41KB) - Создание постов
@@ -224,3 +580,63 @@ git log --oneline -10
 - ❌ Deploy without testing locally first
 - ❌ Ignore pm2 logs after deployment
 - ❌ Remove existing functionality without understanding dependencies 
+
+## Important Constants & Configuration
+
+### Platform Fees
+- **Platform Fee**: 5% от всех транзакций
+- **Referrer Fee**: 5% от реферальных транзакций
+- **Creator Earnings**: 90% (95% если нет реферера)
+
+### Subscription Tiers
+```javascript
+const DEFAULT_TIERS = {
+  basic: { price: 5, description: 'Basic tier' },
+  premium: { price: 10, description: 'Premium tier' },
+  vip: { price: 20, description: 'VIP tier' }
+};
+```
+
+### Image Aspect Ratios
+- **vertical**: 3:4 (aspect-3/4)
+- **square**: 1:1 (aspect-square)
+- **horizontal**: 16:9 (aspect-video)
+
+### File Upload Limits
+- **Images**: 10MB max
+- **Videos**: 100MB max
+- **Supported formats**: jpg, jpeg, png, gif, mp4, webm
+
+### Wallet Configuration
+- **Platform Wallet**: `HdHRAm5bnhBFwuL46BgrN1BzDETSxtxQffiW7FZGPJjW`
+- **Default RPC**: https://tame-smart-panorama.solana-mainnet.quiknode.pro/0e70fc875702b126bf8b93cdcd626680e9c48894/
+
+### Flash Sale Limits
+- **Min Discount**: 10%
+- **Max Discount**: 90%
+- **Default Duration**: 24 hours
+
+### PPV Message Settings
+- **Max Price**: 1000 SOL
+- **Min Price**: 0.01 SOL
+- **Blur Effect**: Applied to isPaid messages
+
+### Notification Settings
+- **Sound Files**: 
+  - Single: `/sounds/notification-single.mp3`
+  - Trill: `/sounds/notification-trill.mp3`
+- **Poll Interval**: 10 seconds
+
+### API Rate Limits
+- **Posts per request**: 20
+- **Messages per request**: 50
+- **Comments per request**: 30
+
+### Environment Variables (Required)
+```bash
+DATABASE_URL=postgresql://...
+NEXTAUTH_URL=https://fonana.ai
+NEXTAUTH_SECRET=...
+GITHUB_ID=...
+GITHUB_SECRET=...
+``` 
