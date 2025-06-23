@@ -6,8 +6,7 @@ import Image from 'next/image'
 import { useRouter, usePathname } from 'next/navigation'
 import Avatar from './Avatar'
 import NotificationsDropdown from './NotificationsDropdown'
-import { SolanaRateDisplay, SolanaRateMobile } from './SolanaRateDisplay'
-import { PricingProvider } from '@/lib/pricing/PricingProvider'
+import SolanaRateDisplay from './SolanaRateDisplay'
 import { 
   HomeIcon, 
   UsersIcon, 
@@ -134,12 +133,11 @@ export function Navbar() {
 
           {/* Desktop Actions */}
           <div className="hidden md:flex items-center gap-4">
-            {/* Solana Rate Display - только на тестовых страницах */}
-            {pathname?.startsWith('/test/pricing') && (
-              <PricingProvider>
-                <SolanaRateDisplay />
-              </PricingProvider>
-            )}
+            {/* Solana Rate Display - теперь всегда */}
+            <div className="flex flex-col items-end">
+              <SolanaRateDisplay />
+              <span className="text-xs text-gray-400 mt-0.5">Курс обновляется автоматически</span>
+            </div>
 
             {/* Notifications */}
             <NotificationsDropdown />
@@ -263,13 +261,6 @@ export function Navbar() {
               ))}
               
               <div className="pt-4 border-t border-gray-200 dark:border-slate-700/50">
-                {/* Solana Rate Mobile - только на тестовых страницах */}
-                {pathname?.startsWith('/test/pricing') && (
-                  <PricingProvider>
-                    <SolanaRateMobile />
-                  </PricingProvider>
-                )}
-                
                 <div className="wallet-adapter-button-wrapper mb-4">
                   <MobileWalletConnect />
                 </div>

@@ -60,7 +60,7 @@ export default function PurchaseModal({ post, onClose, onSuccess }: PurchaseModa
   const { publicKey, connected, sendTransaction } = useWallet()
   const [isProcessing, setIsProcessing] = useState(false)
   const [creatorData, setCreatorData] = useState<any>(null)
-  const { rate: solToUsdRate } = useSolRate()
+  const { rate: solToUsdRate, isLoading: isRateLoading } = useSolRate()
   
   // Вычисляем цену для отображения с учетом Flash Sale
   const displayPrice = post.flashSale 
@@ -353,9 +353,10 @@ export default function PurchaseModal({ post, onClose, onSuccess }: PurchaseModa
                   <p className="text-sm text-gray-500 dark:text-gray-400 line-through">
                     {formatSolAmount(post.price)}
                   </p>
-                  <p className="text-xs text-gray-500 dark:text-gray-400">
-                    ≈ ${(displayPrice * solToUsdRate).toFixed(2)} USD
-                  </p>
+                  <div className="flex items-center gap-2 mt-2">
+                    <span className="text-xs text-purple-600 dark:text-purple-300">Курс SOL/USD: {isRateLoading ? '...' : `$${solToUsdRate.toFixed(2)}`}</span>
+                    <span className="text-xs text-gray-400">(курс обновляется автоматически)</span>
+                  </div>
                   <p className="text-xs text-green-600 dark:text-green-400 font-medium">
                     {post.flashSale.discount}% OFF!
                   </p>
@@ -365,9 +366,10 @@ export default function PurchaseModal({ post, onClose, onSuccess }: PurchaseModa
                   <p className="text-xl font-bold text-gray-900 dark:text-white">
                     {formatSolAmount(post.price)}
                   </p>
-                  <p className="text-xs text-gray-500 dark:text-gray-400">
-                    ≈ ${(post.price * solToUsdRate).toFixed(2)} USD
-                  </p>
+                  <div className="flex items-center gap-2 mt-2">
+                    <span className="text-xs text-purple-600 dark:text-purple-300">Курс SOL/USD: {isRateLoading ? '...' : `$${solToUsdRate.toFixed(2)}`}</span>
+                    <span className="text-xs text-gray-400">(курс обновляется автоматически)</span>
+                  </div>
                 </>
               )}
             </div>

@@ -18,6 +18,7 @@ import {
   calculatePaymentDistribution,
   formatSolAmount 
 } from '@/lib/solana/payments'
+import { useSolRate } from '@/lib/hooks/useSolRate'
 
 // Константа для базовой комиссии сети Solana (5000 lamports = 0.000005 SOL)
 const NETWORK_FEE = 0.000005
@@ -58,7 +59,7 @@ export default function SellablePostModal({ isOpen, onClose, post }: SellablePos
   
   const isAuction = post.sellType === 'AUCTION'
 
-
+  const { rate: solToUsdRate, isLoading: isRateLoading } = useSolRate()
 
   // Обновляем таймер для аукциона
   useEffect(() => {
@@ -371,7 +372,7 @@ export default function SellablePostModal({ isOpen, onClose, post }: SellablePos
                     {currentPrice.toFixed(2)} SOL
                   </div>
                   <div className="text-sm text-gray-600 dark:text-slate-400">
-                    ≈ ${(currentPrice * 45).toFixed(2)} USD
+                    ≈ ${(currentPrice * solToUsdRate).toFixed(2)} USD
                   </div>
                   <div className="text-xs text-gray-500 dark:text-slate-500">
                     + Network fee: ~{dynamicNetworkFee.toFixed(6)} SOL
@@ -384,6 +385,10 @@ export default function SellablePostModal({ isOpen, onClose, post }: SellablePos
                   )}
                   <div className="text-xs text-gray-500 dark:text-slate-500 mt-2">
                     * Network fee applies to each bid
+                  </div>
+                  <div className="flex items-center gap-2 mt-2">
+                    <span className="text-xs text-purple-600 dark:text-purple-300">Курс SOL/USD: {isRateLoading ? '...' : `$${solToUsdRate.toFixed(2)}`}</span>
+                    <span className="text-xs text-gray-400">(курс обновляется автоматически)</span>
                   </div>
                 </div>
               ) : (
@@ -407,7 +412,7 @@ export default function SellablePostModal({ isOpen, onClose, post }: SellablePos
                     <div className="flex justify-between items-center">
                       <span className="text-sm text-gray-600 dark:text-slate-400">In USD:</span>
                       <span className="text-sm text-gray-600 dark:text-slate-400">
-                        ≈ ${((currentPrice + dynamicNetworkFee) * 45).toFixed(2)}
+                        ≈ ${(currentPrice * solToUsdRate).toFixed(2)} USD
                       </span>
                     </div>
                     <div className="flex justify-between items-center pt-2 border-t border-yellow-500/20">

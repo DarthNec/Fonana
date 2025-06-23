@@ -20,6 +20,7 @@ import {
   ScissorsIcon
 } from '@heroicons/react/24/outline'
 import ImageCropModal from './ImageCropModal'
+import { useSolRate } from '@/lib/hooks/useSolRate'
 
 const categories = [
   'Art', 'Music', 'Gaming', 'Lifestyle', 'Fitness', 
@@ -61,6 +62,8 @@ export default function CreatePostModal({ onPostCreated, onClose }: CreatePostMo
     auctionDepositAmount: 0.01,
     imageAspectRatio: 'square' as 'vertical' | 'square' | 'horizontal'
   })
+
+  const { rate: solToUsdRate, isLoading: isRateLoading } = useSolRate()
 
   const contentTypes = [
     { id: 'text', label: 'Text', icon: DocumentTextIcon, color: 'text-blue-400' },
@@ -699,9 +702,10 @@ export default function CreatePostModal({ onPostCreated, onClose }: CreatePostMo
                       required
                     />
                     {formData.price > 0 && (
-                      <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                        ≈ ${(formData.price * 45).toFixed(2)} USD
-                      </p>
+                      <div className="flex items-center gap-2 mt-2">
+                        <span className="text-xs text-purple-600 dark:text-purple-300">Курс SOL/USD: {isRateLoading ? '...' : `$${solToUsdRate.toFixed(2)}`}</span>
+                        <span className="text-xs text-gray-400">(курс обновляется автоматически)</span>
+                      </div>
                     )}
                   </div>
                   <div>
@@ -816,9 +820,10 @@ export default function CreatePostModal({ onPostCreated, onClose }: CreatePostMo
                             required={formData.isSellable}
                           />
                           {formData.price > 0 && (
-                            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                              ≈ ${(formData.price * 45).toFixed(2)} USD
-                            </p>
+                            <div className="flex items-center gap-2 mt-2">
+                              <span className="text-xs text-purple-600 dark:text-purple-300">Курс SOL/USD: {isRateLoading ? '...' : `$${solToUsdRate.toFixed(2)}`}</span>
+                              <span className="text-xs text-gray-400">(курс обновляется автоматически)</span>
+                            </div>
                           )}
                         </div>
                         <div>
@@ -858,9 +863,10 @@ export default function CreatePostModal({ onPostCreated, onClose }: CreatePostMo
                               placeholder="1.0"
                             />
                             {formData.auctionStartPrice > 0 && (
-                              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                                ≈ ${(formData.auctionStartPrice * 45).toFixed(2)} USD
-                              </p>
+                              <div className="flex items-center gap-2 mt-2">
+                                <span className="text-xs text-purple-600 dark:text-purple-300">Курс SOL/USD: {isRateLoading ? '...' : `$${solToUsdRate.toFixed(2)}`}</span>
+                                <span className="text-xs text-gray-400">(курс обновляется автоматически)</span>
+                              </div>
                             )}
                           </div>
                           

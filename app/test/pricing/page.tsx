@@ -66,10 +66,11 @@ function PricingDashboard() {
   useEffect(() => {
     async function loadUsers() {
       try {
-        const response = await fetch('/api/admin/users')
+        const response = await fetch('/api/test/users')
         const data = await response.json()
-        if (data.users) {
-          setUsers(data.users.filter((user: any) => user.wallet))
+        if (data.success && data.users) {
+          setUsers(data.users)
+          console.log(`Loaded ${data.count} users with wallets`)
         }
       } catch (error) {
         console.error('Error loading users:', error)
@@ -210,7 +211,7 @@ function PricingDashboard() {
           <h2 className="text-xl font-semibold mb-4">Выбор получателя платежа</h2>
           <div className="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-sm">
             <h3 className="text-lg font-semibold mb-4 text-gray-900 dark:text-white">
-              Выберите получателя
+              Выберите получателя {users.length > 0 && <span className="text-sm font-normal text-gray-500">({users.length} доступно)</span>}
             </h3>
             
             <select
