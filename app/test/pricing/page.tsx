@@ -79,21 +79,6 @@ function PricingDashboard() {
         return 600000 // По умолчанию
       }
 
-      // Проверяем существование аккаунтов и нужна ли рента
-      const getAccountRentIfNeeded = async (pubkey: PublicKey): Promise<number> => {
-        try {
-          const accountInfo = await connection.getAccountInfo(pubkey)
-          if (!accountInfo) {
-            const minRent = await connection.getMinimumBalanceForRentExemption(0)
-            console.log(`Account ${pubkey.toBase58()} needs rent: ${minRent / LAMPORTS_PER_SOL} SOL`)
-            return minRent
-          }
-        } catch (error) {
-          console.error('Error checking account:', error)
-        }
-        return 0
-      }
-
       // Создаем транзакцию с учетом priority fee и rent
       const createTransaction = async () => {
         // Получаем свежий blockhash
@@ -115,15 +100,19 @@ function PricingDashboard() {
           })
         )
 
-        // 1. Платеж создателю с учетом ренты
-        const creatorRent = await getAccountRentIfNeeded(recipientPubkey)
-        const creatorTransferAmount = creatorAmount + creatorRent
+        // 1. Платеж создателю БЕЗ проверки ренты (как в PurchaseModal)
+        console.log('Adding creator transfer:', {
+          from: publicKey.toBase58(),
+          to: recipientPubkey.toBase58(),
+          amount: creatorAmount / LAMPORTS_PER_SOL,
+          lamports: creatorAmount
+        })
         
         transaction.add(
           SystemProgram.transfer({
             fromPubkey: publicKey,
             toPubkey: recipientPubkey,
-            lamports: creatorTransferAmount
+            lamports: creatorAmount
           })
         )
         
@@ -139,14 +128,12 @@ function PricingDashboard() {
         // 3. Комиссия рефереру (если есть)
         if (selectedUser.referrer?.wallet && referrerFee > 0) {
           const referrerPubkey = new PublicKey(selectedUser.referrer.wallet)
-          const referrerRent = await getAccountRentIfNeeded(referrerPubkey)
-          const referrerTransferAmount = referrerFee + referrerRent
           
           transaction.add(
             SystemProgram.transfer({
               fromPubkey: publicKey,
               toPubkey: referrerPubkey,
-              lamports: referrerTransferAmount
+              lamports: referrerFee
             })
           )
         }
@@ -165,6 +152,8 @@ function PricingDashboard() {
       let signature: string = ''
       let attempts = 0
       const maxAttempts = 3
+      let transactionBlockhash: string = ''
+      let transactionLastValidBlockHeight: number = 0
       
       while (attempts < maxAttempts) {
         attempts++
@@ -173,19 +162,14 @@ function PricingDashboard() {
           // Создаем новую транзакцию с свежим blockhash для каждой попытки
           const transaction = await createTransaction()
           
-          // Симулируем транзакцию перед отправкой
-          try {
-            const simulation = await connection.simulateTransaction(transaction)
-            
-            if (simulation.value.err) {
-              console.error('Simulation failed:', simulation.value.err)
-              if (simulation.value.err !== 'AccountNotFound') {
-                throw new Error(`Симуляция транзакции неуспешна: ${JSON.stringify(simulation.value.err)}`)
-              }
-            }
-          } catch (simError) {
-            console.warn('Simulation error (continuing):', simError)
-          }
+          // Сохраняем blockhash и height из транзакции для подтверждения
+          transactionBlockhash = transaction.recentBlockhash!
+          transactionLastValidBlockHeight = (transaction as any).lastValidBlockHeight
+          
+          // Отправляем транзакцию (без симуляции, как в PurchaseModal)
+          console.log('Sending transaction with blockhash:', transaction.recentBlockhash)
+          console.log('Transaction instructions:', transaction.instructions.length)
+          console.log('Fee payer:', transaction.feePayer?.toBase58())
           
           signature = await sendTransaction(transaction, connection, sendOptions)
           console.log('Transaction sent:', signature)
@@ -208,35 +192,57 @@ function PricingDashboard() {
       // Ждем подтверждения с правильным таймаутом
       console.log('Waiting for confirmation...')
       
+      // Проверяем транзакцию как в PurchaseModal
+      await new Promise(resolve => setTimeout(resolve, 2000))
+      
+      // Проверяем статус транзакции
       try {
-        // Используем confirmTransaction с правильными параметрами
-        const latestBlockhash = await connection.getLatestBlockhash('confirmed')
+        const status = await connection.getSignatureStatus(signature)
+        if (status.value?.err) {
+          throw new Error(`Transaction failed: ${JSON.stringify(status.value.err)}`)
+        }
         
-        const confirmation = await connection.confirmTransaction({
-          signature,
-          blockhash: latestBlockhash.blockhash,
-          lastValidBlockHeight: latestBlockhash.lastValidBlockHeight
-        }, 'confirmed')
-        
-        if (confirmation.value.err) {
-          throw new Error(`Transaction failed: ${JSON.stringify(confirmation.value.err)}`)
+        // Если нет ошибки, но и не подтверждена - ждем еще
+        if (status.value?.confirmationStatus !== 'confirmed' && 
+            status.value?.confirmationStatus !== 'finalized') {
+          console.log('Transaction pending, waiting more...')
+          await new Promise(resolve => setTimeout(resolve, 8000))
+          
+          // Проверяем еще раз
+          const finalStatus = await connection.getSignatureStatus(signature)
+          if (finalStatus.value?.err) {
+            throw new Error(`Transaction failed: ${JSON.stringify(finalStatus.value.err)}`)
+          }
+          
+          if (finalStatus.value?.confirmationStatus !== 'confirmed' && 
+              finalStatus.value?.confirmationStatus !== 'finalized') {
+            // Если все еще не подтверждена, пробуем confirmTransaction с правильными параметрами
+            try {
+              const confirmation = await connection.confirmTransaction({
+                signature,
+                blockhash: transactionBlockhash,
+                lastValidBlockHeight: transactionLastValidBlockHeight
+              }, 'confirmed')
+              
+              if (confirmation.value.err) {
+                throw new Error(`Transaction failed: ${JSON.stringify(confirmation.value.err)}`)
+              }
+            } catch (confirmError) {
+              // Игнорируем ошибку таймаута если транзакция прошла
+              const lastCheck = await connection.getSignatureStatus(signature)
+              if (lastCheck.value?.confirmationStatus !== 'confirmed' && 
+                  lastCheck.value?.confirmationStatus !== 'finalized') {
+                throw confirmError
+              }
+            }
+          }
         }
         
         console.log('Transaction confirmed:', signature)
         
-      } catch (confirmError) {
-        console.error('Confirmation error:', confirmError)
-        
-        // Проверяем статус транзакции даже если подтверждение истекло
-        const status = await connection.getSignatureStatus(signature)
-        
-        if (status.value?.confirmationStatus === 'confirmed' || status.value?.confirmationStatus === 'finalized') {
-          console.log('Transaction was actually confirmed despite timeout')
-        } else if (status.value?.err) {
-          throw new Error(`Transaction failed: ${JSON.stringify(status.value.err)}`)
-        } else {
-          throw new Error('Transaction status unknown after timeout')
-        }
+      } catch (error) {
+        console.error('Transaction confirmation error:', error)
+        throw error
       }
       
       setTransactionResult({
