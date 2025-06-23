@@ -152,8 +152,6 @@ function PricingDashboard() {
       let signature: string = ''
       let attempts = 0
       const maxAttempts = 3
-      let transactionBlockhash: string = ''
-      let transactionLastValidBlockHeight: number = 0
       
       while (attempts < maxAttempts) {
         attempts++
@@ -161,10 +159,6 @@ function PricingDashboard() {
         try {
           // Создаем новую транзакцию с свежим blockhash для каждой попытки
           const transaction = await createTransaction()
-          
-          // Сохраняем blockhash и height из транзакции для подтверждения
-          transactionBlockhash = transaction.recentBlockhash!
-          transactionLastValidBlockHeight = (transaction as any).lastValidBlockHeight
           
           // Отправляем транзакцию (без симуляции, как в PurchaseModal)
           console.log('Sending transaction with blockhash:', transaction.recentBlockhash)
@@ -192,59 +186,57 @@ function PricingDashboard() {
       // Ждем подтверждения с правильным таймаутом
       console.log('Waiting for confirmation...')
       
-      // Проверяем транзакцию как в PurchaseModal
-      await new Promise(resolve => setTimeout(resolve, 2000))
+      // НЕ ИСПОЛЬЗУЕМ confirmTransaction - это вызывает block height exceeded
+      // Используем паттерн из lib/solana/validation.ts - только getSignatureStatus
       
-      // Проверяем статус транзакции
-      try {
-        const status = await connection.getSignatureStatus(signature)
-        if (status.value?.err) {
-          throw new Error(`Transaction failed: ${JSON.stringify(status.value.err)}`)
-        }
-        
-        // Если нет ошибки, но и не подтверждена - ждем еще
-        if (status.value?.confirmationStatus !== 'confirmed' && 
-            status.value?.confirmationStatus !== 'finalized') {
-          console.log('Transaction pending, waiting more...')
-          await new Promise(resolve => setTimeout(resolve, 8000))
+      let confirmed = false
+      const maxConfirmAttempts = 30 // 30 секунд максимум
+      
+      for (let i = 0; i < maxConfirmAttempts; i++) {
+        try {
+          const status = await connection.getSignatureStatus(signature)
           
-          // Проверяем еще раз
-          const finalStatus = await connection.getSignatureStatus(signature)
-          if (finalStatus.value?.err) {
-            throw new Error(`Transaction failed: ${JSON.stringify(finalStatus.value.err)}`)
+          // Логируем каждые 5 попыток
+          if (i % 5 === 0) {
+            console.log(`Checking status (attempt ${i + 1}/${maxConfirmAttempts}):`, {
+              confirmationStatus: status.value?.confirmationStatus,
+              err: status.value?.err
+            })
           }
           
-          if (finalStatus.value?.confirmationStatus !== 'confirmed' && 
-              finalStatus.value?.confirmationStatus !== 'finalized') {
-            // Если все еще не подтверждена, пробуем confirmTransaction с правильными параметрами
-            try {
-              const confirmation = await connection.confirmTransaction({
-                signature,
-                blockhash: transactionBlockhash,
-                lastValidBlockHeight: transactionLastValidBlockHeight
-              }, 'confirmed')
-              
-              if (confirmation.value.err) {
-                throw new Error(`Transaction failed: ${JSON.stringify(confirmation.value.err)}`)
-              }
-            } catch (confirmError) {
-              // Игнорируем ошибку таймаута если транзакция прошла
-              const lastCheck = await connection.getSignatureStatus(signature)
-              if (lastCheck.value?.confirmationStatus !== 'confirmed' && 
-                  lastCheck.value?.confirmationStatus !== 'finalized') {
-                throw confirmError
-              }
+          if (status.value?.confirmationStatus === 'confirmed' || 
+              status.value?.confirmationStatus === 'finalized') {
+            console.log(`Transaction confirmed after ${i + 1} attempts!`)
+            confirmed = true
+            break
+          }
+          
+          if (status.value?.err) {
+            throw new Error(`Transaction failed: ${JSON.stringify(status.value.err)}`)
+          }
+          
+          // Если транзакция еще не видна, ждем больше в начале
+          if (!status.value && i < 10) {
+            await new Promise(resolve => setTimeout(resolve, 2000)) // 2 секунды
+          } else {
+            await new Promise(resolve => setTimeout(resolve, 1000)) // 1 секунда
+          }
+          
+                  } catch (error) {
+            console.error(`Error checking status (attempt ${i + 1}):`, error)
+            // Продолжаем попытки при сетевых ошибках
+            if (i < maxConfirmAttempts - 1) {
+              await new Promise(resolve => setTimeout(resolve, 2000))
+              continue
             }
+            throw error
           }
-        }
-        
-        console.log('Transaction confirmed:', signature)
-        
-      } catch (error) {
-        console.error('Transaction confirmation error:', error)
-        throw error
       }
       
+      if (!confirmed) {
+        throw new Error('Transaction not confirmed after 30 seconds')
+      }
+
       setTransactionResult({
         signature,
         amount,
