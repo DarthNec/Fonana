@@ -19,6 +19,7 @@ import {
 } from '@/lib/solana/payments'
 import { isValidSolanaAddress } from '@/lib/solana/config'
 import { connection } from '@/lib/solana/connection'
+import { useSolRate } from '@/lib/hooks/useSolRate'
 
 interface SubscriptionTier {
   id: string
@@ -124,6 +125,8 @@ export default function SubscribeModal({ creator, preferredTier, onClose, onSucc
   const [isProcessing, setIsProcessing] = useState(false)
   const [expandedTiers, setExpandedTiers] = useState<Set<string>>(new Set())
   const [activeFlashSale, setActiveFlashSale] = useState<any>(null)
+  const [allFlashSales, setAllFlashSales] = useState<Record<string, any>>({})
+  const { rate: solRate } = useSolRate()
 
   const selectedSubscription = subscriptionTiers.find(tier => tier.id === selectedTier)
 
@@ -280,8 +283,6 @@ export default function SubscribeModal({ creator, preferredTier, onClose, onSucc
   }
 
   // Загружаем все Flash Sales для отображения на каждом тире
-  const [allFlashSales, setAllFlashSales] = useState<Record<string, any>>({})
-  
   const loadAllFlashSales = async () => {
     try {
       const response = await fetch(`/api/flash-sales?creatorId=${creator.id}`)
@@ -681,7 +682,7 @@ export default function SubscribeModal({ creator, preferredTier, onClose, onSucc
                         <p className="text-xs text-slate-400 mt-1">
                           ≈ ${((allFlashSales[tier.id]
                             ? tier.price * (1 - allFlashSales[tier.id].discount / 100) 
-                            : tier.price) * 45).toFixed(2)} USD/{tier.duration}
+                            : tier.price) * solRate).toFixed(2)} USD/{tier.duration}
                         </p>
                       )}
                       {/* Показываем распределение платежа для платных планов */}

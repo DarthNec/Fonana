@@ -3,12 +3,19 @@ import { prisma } from '@/lib/db'
 
 export async function GET() {
   try {
-    // Получаем пользователей у которых есть кошельки
+    // Получаем пользователей у которых есть кошельки И nickname
     const users = await prisma.user.findMany({
       where: {
-        OR: [
-          { wallet: { not: null } },
-          { solanaWallet: { not: null } }
+        AND: [
+          {
+            OR: [
+              { wallet: { not: null } },
+              { solanaWallet: { not: null } }
+            ]
+          },
+          {
+            nickname: { not: null }
+          }
         ]
       },
       select: {
@@ -31,6 +38,8 @@ export async function GET() {
       },
       take: 20 // Ограничиваем для теста
     })
+
+    console.log(`Found ${users.length} users with wallets and nicknames`)
 
     return NextResponse.json({
       success: true,

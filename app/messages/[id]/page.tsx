@@ -26,6 +26,7 @@ import {
   formatSolAmount 
 } from '@/lib/solana/payments'
 import { isValidSolanaAddress } from '@/lib/solana/config'
+import { useSolRate } from '@/lib/hooks/useSolRate'
 
 interface Message {
   id: string
@@ -88,6 +89,7 @@ export default function ConversationPage() {
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [hasMore, setHasMore] = useState(false)
   const [lastMessageCount, setLastMessageCount] = useState(0)
+  const { rate: solRate } = useSolRate()
 
   useEffect(() => {
     if (publicKey && conversationId) {
@@ -695,7 +697,7 @@ export default function ConversationPage() {
                           {formatSolAmount(message.metadata.amount || 0)}
                         </div>
                         <div className="text-sm opacity-90 mt-1">
-                          ≈ ${((message.metadata.amount || 0) * 45).toFixed(2)} USD
+                          ≈ ${((message.metadata.amount || 0) * solRate).toFixed(2)} USD
                         </div>
                         
                         {/* Мотивационное сообщение */}
@@ -745,7 +747,7 @@ export default function ConversationPage() {
                             {formatSolAmount(message.price || 0)}
                           </span>
                           <span className="text-xs text-purple-300">
-                            ≈ ${((message.price || 0) * 45).toFixed(2)} USD
+                            ≈ ${((message.price || 0) * solRate).toFixed(2)} USD
                           </span>
                         </div>
                         <button

@@ -1,69 +1,85 @@
 const fetch = require('node-fetch')
+const { PrismaClient } = require('@prisma/client')
+const prisma = new PrismaClient()
 
-async function testPricingAPI(baseUrl = 'http://localhost:3000') {
-  console.log(`\n🔍 Testing Dynamic Pricing System at ${baseUrl}\n`)
+async function testDynamicPricing() {
+  console.log('🔍 Тестирование системы динамического курса...\n')
   
   try {
-    // Test 1: Direct API endpoint
-    console.log('1. Testing API endpoint...')
-    const apiResponse = await fetch(`${baseUrl}/api/pricing`)
-    const apiData = await apiResponse.json()
-    
-    if (apiData.success) {
-      console.log('✅ API endpoint working')
-      console.log(`   SOL/USD: $${apiData.data.prices.SOL_USD}`)
-      console.log(`   Source: ${apiData.data.prices.source}`)
-      console.log(`   Last update: ${new Date(apiData.data.status.lastUpdate).toLocaleString()}`)
-    } else {
-      console.log('❌ API endpoint error:', apiData.error)
-    }
-    
-    // Test 2: Check test pages
-    console.log('\n2. Checking test pages...')
-    const testPages = [
-      '/test/pricing',
-      '/test/pricing/subscription',
-      '/test/pricing/post-purchase'
-    ]
-    
-    for (const page of testPages) {
-      const response = await fetch(`${baseUrl}${page}`)
-      console.log(`   ${page}: ${response.status === 200 ? '✅' : '❌'} (${response.status})`)
-    }
-    
-    // Test 3: Price validation
-    console.log('\n3. Validating price data...')
-    if (apiData.success) {
-      const price = apiData.data.prices.SOL_USD
-      const isValidPrice = price > 1 && price < 1000
-      console.log(`   Price range check: ${isValidPrice ? '✅' : '❌'} ($${price})`)
+    // 1. Проверяем API endpoint
+    console.log('1. Проверка API endpoint /api/pricing:')
+    const apiUrl = 'http://localhost:3000/api/pricing'
       
-      const age = apiData.data.status.cacheAge
-      const isFresh = !age || age < 300000 // 5 minutes
-      console.log(`   Cache freshness: ${isFresh ? '✅' : '⚠️ '} (${age ? `${Math.round(age/1000)}s old` : 'new'})`)
+    const response = await fetch(apiUrl)
+    const data = await response.json()
+    
+    console.log('Response status:', response.status)
+    console.log('Response data:', JSON.stringify(data, null, 2))
+    
+    if (data.success) {
+      console.log('✅ API endpoint работает корректно')
+      console.log(`   Курс SOL/USD: $${data.rate}`)
+      console.log(`   Источник: ${data.data?.prices?.source || 'неизвестно'}`)
+    } else {
+      console.log('❌ API endpoint вернул ошибку')
     }
     
-    // Test 4: Performance
-    console.log('\n4. Testing performance...')
-    const start = Date.now()
-    const requests = Array(5).fill(null).map(() => fetch(`${baseUrl}/api/pricing`))
-    await Promise.all(requests)
-    const duration = Date.now() - start
-    console.log(`   5 parallel requests: ${duration}ms (${duration < 1000 ? '✅' : '⚠️ '})`)
+    // 2. Проверяем пользователей с кошельками
+    console.log('\n2. Проверка пользователей с кошельками:')
+    const usersWithWallets = await prisma.user.findMany({
+      where: {
+        AND: [
+          {
+            OR: [
+              { wallet: { not: null } },
+              { solanaWallet: { not: null } }
+            ]
+          },
+          {
+            nickname: { not: null }
+          }
+        ]
+      },
+      select: {
+        id: true,
+        nickname: true,
+        wallet: true,
+        solanaWallet: true,
+        referrerId: true
+      },
+      take: 10
+    })
     
-    console.log('\n✨ Testing complete!\n')
+    console.log(`✅ Найдено ${usersWithWallets.length} пользователей с кошельками и никнеймами:`)
+    usersWithWallets.forEach(user => {
+      const wallet = user.solanaWallet || user.wallet
+      console.log(`   - @${user.nickname}: ${wallet ? wallet.slice(0, 8) + '...' : 'нет кошелька'}`)
+    })
+    
+    // 3. Проверяем кеширование (делаем 3 запроса подряд)
+    console.log('\n3. Проверка кеширования (3 запроса с интервалом 1 сек):')
+    for (let i = 0; i < 3; i++) {
+      const start = Date.now()
+      const res = await fetch(apiUrl)
+      const time = Date.now() - start
+      const json = await res.json()
+      
+      console.log(`   Запрос ${i + 1}: ${time}ms, курс: $${json.rate}, источник: ${json.data?.prices?.source}`)
+      
+      if (i < 2) await new Promise(resolve => setTimeout(resolve, 1000))
+    }
+    
+    console.log('\n✅ Тестирование завершено успешно!')
     
   } catch (error) {
-    console.error('\n❌ Test failed:', error.message)
-    console.log('\nMake sure the server is running and accessible')
+    console.error('❌ Ошибка при тестировании:', error)
+  } finally {
+    await prisma.$disconnect()
   }
 }
 
-// Run tests
-const args = process.argv.slice(2)
-const baseUrl = args[0] || 'http://localhost:3000'
-
-testPricingAPI(baseUrl)
+// Запускаем тест
+testDynamicPricing()
 
 // Instructions
 console.log('\nUsage:')

@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { getCachedRate, updateRatesCache, needsUpdate } from '@/lib/config/ratesCache'
+import { PRICING_CONFIG } from '@/lib/pricing/config'
 
 // Убираем edge runtime чтобы можно было делать внешние запросы
 // export const runtime = 'edge'
@@ -28,6 +29,7 @@ async function fetchSolanaRate(): Promise<number | null> {
 export async function GET() {
   try {
     let rate = getCachedRate()
+    let source: 'coingecko' | 'cache' | 'fallback' = 'cache'
     
     // Если нужно обновление, пробуем получить новый курс
     if (needsUpdate()) {
@@ -35,22 +37,52 @@ export async function GET() {
       if (newRate && newRate > 0 && newRate < 10000) { // Простая проверка на адекватность
         updateRatesCache(newRate)
         rate = newRate
+        source = 'coingecko'
+      } else {
+        source = 'fallback'
       }
     }
     
+    // Формируем полный объект цен для совместимости с priceService
+    const prices = {
+      SOL_USD: rate,
+      BTC_USD: PRICING_CONFIG.FALLBACK_PRICES.BTC_USD,
+      ETH_USD: PRICING_CONFIG.FALLBACK_PRICES.ETH_USD,
+      timestamp: Date.now(),
+      source: source
+    }
+    
+    // Возвращаем данные в двух форматах для обратной совместимости
     return NextResponse.json({
       success: true,
-      rate,
-      lastUpdate: new Date().toISOString()
+      // Старый формат для обратной совместимости
+      rate: rate,
+      lastUpdate: new Date().toISOString(),
+      // Новый формат для priceService
+      data: {
+        prices: prices
+      }
     })
   } catch (error) {
     console.error('Pricing API error:', error)
     
+    const fallbackRate = getCachedRate()
+    const fallbackPrices = {
+      SOL_USD: fallbackRate,
+      BTC_USD: PRICING_CONFIG.FALLBACK_PRICES.BTC_USD,
+      ETH_USD: PRICING_CONFIG.FALLBACK_PRICES.ETH_USD,
+      timestamp: Date.now(),
+      source: 'fallback' as const
+    }
+    
     // В случае ошибки возвращаем кешированный или дефолтный курс
     return NextResponse.json({
       success: true,
-      rate: getCachedRate(),
-      lastUpdate: new Date().toISOString()
+      rate: fallbackRate,
+      lastUpdate: new Date().toISOString(),
+      data: {
+        prices: fallbackPrices
+      }
     })
   }
 } 
