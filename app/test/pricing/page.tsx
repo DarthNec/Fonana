@@ -1,18 +1,14 @@
 'use client'
 
-import { PricingProvider, usePricing } from '@/lib/pricing/PricingProvider'
-import { useDynamicPrice, formatSolAmount, formatUsdAmount } from '@/lib/pricing/hooks/useDynamicPrice'
-import { useSolanaRate } from '@/lib/pricing/hooks/usePriceDisplay'
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
-import { UserSelector } from '@/components/UserSelector'
 import { useWallet } from '@solana/wallet-adapter-react'
 import { WalletMultiButton } from '@solana/wallet-adapter-react-ui'
 import { Connection, PublicKey, Transaction, SystemProgram, LAMPORTS_PER_SOL } from '@solana/web3.js'
 import { SOLANA_CONFIG } from '@/lib/solana/config'
 import { WalletProvider } from '@/components/WalletProvider'
 import { toast } from 'react-hot-toast'
-import { createPostPurchaseTransaction, calculatePaymentDistribution } from '@/lib/solana/payments'
+import { createPostPurchaseTransaction, calculatePaymentDistribution, formatSolAmount } from '@/lib/solana/payments'
 import { isValidSolanaAddress } from '@/lib/solana/config'
 import { connection } from '@/lib/solana/connection'
 
@@ -31,20 +27,44 @@ interface User {
 }
 
 function PricingDashboard() {
-  const { prices, isLoading, error, lastUpdate, refresh } = usePricing()
-  const solanaRate = useSolanaRate()
+  const [solRate, setSolRate] = useState<number>(135)
+  const [isLoading, setIsLoading] = useState(true)
+  const [lastUpdate, setLastUpdate] = useState<Date | null>(null)
   const [testAmount, setTestAmount] = useState(0.1)
   const [selectedUser, setSelectedUser] = useState<User | null>(null)
   const { publicKey, sendTransaction, connected } = useWallet()
   const [isProcessing, setIsProcessing] = useState(false)
   const [transactionResult, setTransactionResult] = useState<any>(null)
   const [users, setUsers] = useState<User[]>([])
-  const [loadingUsers, setLoadingUsers] = useState(false)
   
+  // Загружаем курс
+  const loadRate = async () => {
+    try {
+      setIsLoading(true)
+      const res = await fetch('/api/pricing')
+      const data = await res.json()
+      if (data.success && data.rate) {
+        setSolRate(data.rate)
+        setLastUpdate(new Date())
+      }
+    } catch (error) {
+      console.error('Error loading rate:', error)
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  // Загружаем курс при монтировании
+  useEffect(() => {
+    loadRate()
+    // Обновляем каждые 30 секунд для теста
+    const interval = setInterval(loadRate, 30000)
+    return () => clearInterval(interval)
+  }, [])
+
   // Загружаем пользователей при монтировании
   useEffect(() => {
     async function loadUsers() {
-      setLoadingUsers(true)
       try {
         const response = await fetch('/api/admin/users')
         const data = await response.json()
@@ -53,8 +73,6 @@ function PricingDashboard() {
         }
       } catch (error) {
         console.error('Error loading users:', error)
-      } finally {
-        setLoadingUsers(false)
       }
     }
     loadUsers()
@@ -65,7 +83,7 @@ function PricingDashboard() {
 
   const handleSendTransaction = async () => {
     if (!publicKey || !selectedUser || !selectedUser.wallet) {
-      toast.error('Пожалуйста, подключите кошелек и выберите получателя с настроенным Solana кошельком')
+      toast.error('Пожалуйста, подключите кошелек и выберите получателя')
       return
     }
 
@@ -75,25 +93,12 @@ function PricingDashboard() {
       return
     }
 
-    // КРИТИЧЕСКАЯ ПРОВЕРКА: запрещаем покупки с кошелька платформы
-    const PLATFORM_WALLET = 'npzAZaN9fDMgLV63b3kv3FF8cLSd8dQSLxyMXASA5T4'
-    if (publicKey.toBase58() === PLATFORM_WALLET) {
-      toast.error('❌ Вы не можете покупать контент с кошелька платформы!')
-      return
-    }
-
     const creatorWallet = selectedUser.solanaWallet || selectedUser.wallet
     const referrerWallet = selectedUser.referrer?.solanaWallet || selectedUser.referrer?.wallet
     const hasReferrer = !!(selectedUser.referrerId && referrerWallet && isValidSolanaAddress(referrerWallet || ''))
 
     if (!creatorWallet || !isValidSolanaAddress(creatorWallet)) {
       toast.error('Кошелек создателя не настроен')
-      return
-    }
-    
-    // Дополнительная проверка: создатель не может покупать свой контент
-    if (creatorWallet === publicKey.toBase58()) {
-      toast.error('Вы не можете покупать свой собственный контент')
       return
     }
 
@@ -114,88 +119,19 @@ function PricingDashboard() {
         distribution
       )
 
-      // Проверяем что feePayer установлен правильно
-      if (transaction.feePayer?.toBase58() !== publicKey.toBase58()) {
-        console.error('CRITICAL: Fee payer mismatch!', {
-          transactionFeePayer: transaction.feePayer?.toBase58(),
-          userPublicKey: publicKey.toBase58()
-        })
-        // Принудительно устанавливаем правильный feePayer
-        transaction.feePayer = publicKey
-      }
+      // Send transaction
+      const signature = await sendTransaction(transaction, connection)
 
-      // Send transaction with retry logic
-      let signature: string = ''
-      let attempts = 0
-      const maxAttempts = 3
-      
-      // Параметры для отправки транзакции
-      const sendOptions = {
-        skipPreflight: false,
-        preflightCommitment: 'confirmed' as any,
-        maxRetries: 3
-      }
-      
-      while (attempts < maxAttempts) {
-        attempts++
-        
-        try {
-          // Получаем свежий blockhash прямо перед отправкой
-          const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash('confirmed')
-          transaction.recentBlockhash = blockhash
-          ;(transaction as any).lastValidBlockHeight = lastValidBlockHeight
-          
-          // Симулируем транзакцию перед отправкой (опционально)
-          try {
-            const simulation = await connection.simulateTransaction(transaction)
-            
-            if (simulation.value.err && simulation.value.err !== 'AccountNotFound') {
-              console.error('Simulation failed:', simulation.value.err)
-              throw new Error(`Симуляция транзакции неуспешна: ${JSON.stringify(simulation.value.err)}`)
-            }
-          } catch (simError) {
-            // Продолжаем даже если симуляция не удалась
-          }
-          
-          signature = await sendTransaction(transaction, connection, sendOptions)
-          
-          // Успешно отправлено, выходим из цикла
-          break
-          
-        } catch (sendError) {
-          if (attempts === maxAttempts) {
-            throw new Error(`Не удалось отправить транзакцию после ${maxAttempts} попыток: ${sendError instanceof Error ? sendError.message : 'Неизвестная ошибка'}`)
-          }
-          // Ждем перед следующей попыткой
-          await new Promise(resolve => setTimeout(resolve, 2000))
-        }
-      }
+      // Wait for confirmation
+      toast.loading('Подтверждаем транзакцию...')
+      await new Promise(resolve => setTimeout(resolve, 5000))
 
-      // Проверяем транзакцию
-      toast.loading('Проверяем транзакцию в блокчейне...')
-      await new Promise(resolve => setTimeout(resolve, 2000))
-      
-      // Проверяем статус транзакции
-      try {
-        const status = await connection.getSignatureStatus(signature)
-        if (status.value?.err) {
-          throw new Error(`Транзакция отклонена: ${JSON.stringify(status.value.err)}`)
-        }
-      } catch (statusError) {
-        console.error('Error checking transaction status:', statusError)
-      }
-
-      // Ждем подтверждения
-      toast.loading('Подтверждаем транзакцию в блокчейне...')
-      await new Promise(resolve => setTimeout(resolve, 8000))
-
-      // Success!
       toast.success('Транзакция успешно отправлена!')
       
       setTransactionResult({
         signature,
         solAmount,
-        usdAmount: solAmount * (prices?.SOL_USD || 135), // Используем динамический курс!
+        usdAmount: solAmount * solRate,
         recipientWallet: creatorWallet,
         platformFee: distribution.platformAmount,
         referrerFee: distribution.referrerAmount || 0,
@@ -204,24 +140,7 @@ function PricingDashboard() {
 
     } catch (error) {
       console.error('Payment error:', error)
-      
-      let errorMessage = 'Произошла ошибка при оплате'
-      
-      if (error instanceof Error) {
-        if (error.message.includes('User rejected')) {
-          errorMessage = 'Вы отменили транзакцию'
-        } else if (error.message.includes('insufficient')) {
-          errorMessage = 'Недостаточно средств на кошельке'
-        } else if (error.message.includes('Transaction not confirmed')) {
-          errorMessage = 'Транзакция не была подтверждена. Попробуйте еще раз'
-        } else if (error.message.includes('block height exceeded')) {
-          errorMessage = 'Транзакция истекла. Попробуйте еще раз'
-        } else {
-          errorMessage = error.message
-        }
-      }
-      
-      toast.error(errorMessage)
+      toast.error('Произошла ошибка при оплате')
     } finally {
       setIsProcessing(false)
     }
@@ -257,42 +176,28 @@ function PricingDashboard() {
         <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 mb-8">
           <h2 className="text-xl font-semibold mb-4">Статус системы</h2>
           
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="p-4 bg-gray-50 dark:bg-gray-700 rounded-lg">
               <p className="text-sm text-gray-600 dark:text-gray-400">Курс SOL/USD</p>
               <p className="text-2xl font-bold">
-                {isLoading && !prices ? (
+                {isLoading ? (
                   <span className="animate-pulse">Загрузка...</span>
                 ) : (
-                  solanaRate.display || 'Недоступно'
+                  `$${solRate.toFixed(2)}`
                 )}
-              </p>
-            </div>
-            
-            <div className="p-4 bg-gray-50 dark:bg-gray-700 rounded-lg">
-              <p className="text-sm text-gray-600 dark:text-gray-400">Источник</p>
-              <p className="text-lg font-semibold">
-                {prices?.source || 'N/A'}
-                {prices?.isStale && ' (устарел)'}
               </p>
             </div>
             
             <div className="p-4 bg-gray-50 dark:bg-gray-700 rounded-lg">
               <p className="text-sm text-gray-600 dark:text-gray-400">Последнее обновление</p>
               <p className="text-lg font-semibold">
-                {lastUpdate ? new Date(lastUpdate).toLocaleTimeString() : 'Никогда'}
+                {lastUpdate ? lastUpdate.toLocaleTimeString() : 'Никогда'}
               </p>
             </div>
           </div>
 
-          {error && (
-            <div className="mt-4 p-4 bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 rounded-lg">
-              Ошибка: {error}
-            </div>
-          )}
-
           <button
-            onClick={refresh}
+            onClick={loadRate}
             disabled={isLoading}
             className="mt-4 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
           >
@@ -367,6 +272,7 @@ function PricingDashboard() {
           <PaymentBreakdown 
             amount={testAmount} 
             hasReferrer={!!selectedUser?.referrer?.wallet}
+            solRate={solRate}
           />
           
           <button
@@ -380,39 +286,32 @@ function PricingDashboard() {
 
         {/* Transaction Result */}
         {transactionResult && (
-          <div className={`bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 mb-8 ${
-            transactionResult.status === 'success' ? 'ring-2 ring-green-500' : 'ring-2 ring-red-500'
-          }`}>
-            <h3 className="text-lg font-semibold mb-4">
-              {transactionResult.status === 'success' ? '✅ Транзакция успешна!' : '❌ Ошибка транзакции'}
-            </h3>
+          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 mb-8 ring-2 ring-green-500">
+            <h3 className="text-lg font-semibold mb-4">✅ Транзакция успешна!</h3>
             
-            {transactionResult.status === 'success' ? (
-              <div className="space-y-2">
-                <p>Сумма: <span className="font-bold">{formatSolAmount(transactionResult.solAmount)}</span></p>
-                <p>Получатель: <span className="font-bold">{transactionResult.recipientWallet}</span></p>
-                <div className="pt-2 border-t">
-                  <p>Создателю: {formatSolAmount(transactionResult.creatorReceived)}</p>
-                  <p>Платформе: {formatSolAmount(transactionResult.platformFee)}</p>
-                  {transactionResult.referrerFee > 0 && (
-                    <p>Рефереру: {formatSolAmount(transactionResult.referrerFee)}</p>
-                  )}
-                </div>
-                <p className="pt-2 border-t">
-                  Подпись: 
-                  <a 
-                    href={`https://solscan.io/tx/${transactionResult.signature}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="ml-2 text-purple-600 hover:text-purple-700 underline"
-                  >
-                    {transactionResult.signature.slice(0, 20)}...
-                  </a>
-                </p>
+            <div className="space-y-2">
+              <p>Сумма: <span className="font-bold">{formatSolAmount(transactionResult.solAmount)}</span></p>
+              <p>В долларах: <span className="font-bold">${transactionResult.usdAmount.toFixed(2)}</span></p>
+              <p>Получатель: <span className="font-bold">{transactionResult.recipientWallet}</span></p>
+              <div className="pt-2 border-t">
+                <p>Создателю: {formatSolAmount(transactionResult.creatorReceived)}</p>
+                <p>Платформе: {formatSolAmount(transactionResult.platformFee)}</p>
+                {transactionResult.referrerFee > 0 && (
+                  <p>Рефереру: {formatSolAmount(transactionResult.referrerFee)}</p>
+                )}
               </div>
-            ) : (
-              <p className="text-red-600 dark:text-red-400">{transactionResult.error}</p>
-            )}
+              <p className="pt-2 border-t">
+                Подпись: 
+                <a 
+                  href={`https://solscan.io/tx/${transactionResult.signature}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="ml-2 text-purple-600 hover:text-purple-700 underline"
+                >
+                  {transactionResult.signature.slice(0, 20)}...
+                </a>
+              </p>
+            </div>
           </div>
         )}
 
@@ -433,7 +332,10 @@ function PricingDashboard() {
                 disabled={!publicKey || !selectedUser?.wallet || isProcessing}
                 className="p-4 bg-gray-50 dark:bg-gray-700 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
               >
-                <PriceDisplay amount={price} />
+                <p className="text-lg font-bold">{formatSolAmount(price)}</p>
+                <p className="text-sm text-gray-600 dark:text-gray-400">
+                  ≈ ${(price * solRate).toFixed(2)}
+                </p>
               </button>
             ))}
           </div>
@@ -470,8 +372,11 @@ function PricingDashboard() {
   )
 }
 
-function PaymentBreakdown({ amount, hasReferrer }: { amount: number; hasReferrer: boolean }) {
-  const price = useDynamicPrice(amount)
+function PaymentBreakdown({ amount, hasReferrer, solRate }: { 
+  amount: number; 
+  hasReferrer: boolean;
+  solRate: number;
+}) {
   const platformFee = amount * 0.05
   const referrerFee = hasReferrer ? amount * 0.05 : 0
   const creatorAmount = amount - platformFee - referrerFee
@@ -501,7 +406,9 @@ function PaymentBreakdown({ amount, hasReferrer }: { amount: number; hasReferrer
         <div className="pt-2 border-t border-gray-300 dark:border-gray-600">
           <div className="flex justify-between font-bold">
             <span>Итого:</span>
-            <span>{price.displayPrice}</span>
+            <span>
+              {formatSolAmount(amount)} ≈ ${(amount * solRate).toFixed(2)}
+            </span>
           </div>
         </div>
       </div>
@@ -509,29 +416,10 @@ function PaymentBreakdown({ amount, hasReferrer }: { amount: number; hasReferrer
   )
 }
 
-function PriceDisplay({ amount }: { amount: number }) {
-  const price = useDynamicPrice(amount)
-  
-  return (
-    <div>
-      <p className="text-lg font-bold">{formatSolAmount(amount)}</p>
-      {price.usd && (
-        <p className="text-sm text-gray-600 dark:text-gray-400">
-          ≈ {formatUsdAmount(price.usd)}
-        </p>
-      )}
-    </div>
-  )
-}
-
 export default function PricingTestPage() {
-  const [enabled, setEnabled] = useState(true)
-  
   return (
     <WalletProvider>
-      <PricingProvider enabled={enabled}>
-        <PricingDashboard />
-      </PricingProvider>
+      <PricingDashboard />
     </WalletProvider>
   )
 } 

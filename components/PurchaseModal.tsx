@@ -20,6 +20,7 @@ import {
 } from '@/lib/solana/payments'
 import { isValidSolanaAddress } from '@/lib/solana/config'
 import { connection } from '@/lib/solana/connection'
+import { useSolRate } from '@/lib/hooks/useSolRate'
 
 interface PurchaseModalProps {
   post: {
@@ -59,7 +60,7 @@ export default function PurchaseModal({ post, onClose, onSuccess }: PurchaseModa
   const { publicKey, connected, sendTransaction } = useWallet()
   const [isProcessing, setIsProcessing] = useState(false)
   const [creatorData, setCreatorData] = useState<any>(null)
-  const [solToUsdRate, setSolToUsdRate] = useState<number>(45) // Дефолтное значение
+  const { rate: solToUsdRate } = useSolRate()
   
   // Вычисляем цену для отображения с учетом Flash Sale
   const displayPrice = post.flashSale 
@@ -78,20 +79,7 @@ export default function PurchaseModal({ post, onClose, onSuccess }: PurchaseModa
       .catch(err => console.error('Error loading creator data:', err))
   }, [post.creator.id])
 
-  // Загружаем актуальный курс SOL/USD
-  useEffect(() => {
-    fetch('/api/pricing')
-      .then(res => res.json())
-      .then(data => {
-        if (data.success && data.data?.prices?.SOL_USD) {
-          setSolToUsdRate(data.data.prices.SOL_USD)
-        }
-      })
-      .catch(err => {
-        console.error('Error loading SOL rate:', err)
-        // Используем дефолтное значение если не удалось загрузить
-      })
-  }, [])
+
 
   const handlePurchase = async () => {
     if (!publicKey || !connected) {
