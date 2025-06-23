@@ -752,15 +752,27 @@ export default function CreatorPage() {
             
             // Оптимистичное обновление UI
             if (data?.subscription) {
+              console.log('[CreatorPage] Subscription success:', data.subscription)
+              
+              const newTier = data.subscription.tier || data.subscription.plan
               setIsSubscribed(true)
-              setCurrentSubscriptionTier(data.subscription.tier || data.subscription.plan)
-              updatePostsAfterSubscription(data.subscription.tier || data.subscription.plan)
+              setCurrentSubscriptionTier(newTier)
+              updatePostsAfterSubscription(newTier)
+              
+              // Прокручиваем к доступному контенту
+              setTimeout(() => {
+                const firstPost = document.querySelector('.post-card')
+                if (firstPost) {
+                  firstPost.scrollIntoView({ behavior: 'smooth', block: 'center' })
+                }
+              }, 100)
             }
             
             // Проверяем с сервера через небольшую задержку
             setTimeout(() => {
+              console.log('[CreatorPage] Reloading creator data after subscription')
               loadCreatorData()
-            }, 2000)
+            }, 2500)
           }}
         />
       )}

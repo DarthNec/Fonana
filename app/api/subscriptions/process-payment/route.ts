@@ -116,44 +116,47 @@ export async function POST(request: Request) {
     // Нормализуем план к нижнему регистру для проверки
     const normalizedPlan = plan.toLowerCase()
     
-    // Если нет Flash Sale, проверяем соответствие цены плану
-    if (!flashSaleId && tierPrices[normalizedPlan]) {
-      const expectedPrice = tierPrices[normalizedPlan]
+    // Проверяем валидность цены, НО НЕ КОРРЕКТИРУЕМ ПЛАН!
+    if (!flashSaleId) {
+      const requestedTierPrice = tierPrices[normalizedPlan]
       
-      // Если цена не соответствует плану, определяем правильный план по цене
-      if (Math.abs(price - expectedPrice) > 0.001) {
-        // Находим план, соответствующий оплаченной цене
-        const actualPlan = Object.entries(tierPrices).find(([_, p]) => 
-          Math.abs(price - p) < 0.001
-        )
+      // Проверяем, соответствует ли оплаченная цена ЛЮБОМУ из тиров создателя
+      const paidTierExists = Object.values(tierPrices).some(tierPrice => 
+        Math.abs(price - tierPrice) < 0.001
+      )
+      
+      if (!paidTierExists) {
+        // Цена не соответствует ни одному тиру
+        paymentLogger.error('Price does not match any tier', {
+          price,
+          requestedPlan: plan,
+          availableTiers: tierPrices,
+          hasCustomTiers: !!creatorTierSettings
+        })
         
-        if (actualPlan) {
-          // Используем план, соответствующий оплаченной цене
-          const originalPlan = plan
-          plan = actualPlan[0].charAt(0).toUpperCase() + actualPlan[0].slice(1) // 'basic' -> 'Basic'
-          
-          paymentLogger.warn('Plan adjusted based on price', {
-            requestedPlan: originalPlan,
-            adjustedPlan: plan,
-            price,
-            expectedPrice,
-            customTiers: !!creatorTierSettings
-          })
-        } else {
-          // Если цена не соответствует ни одному плану создателя
-          paymentLogger.error('Price does not match any tier', {
-            price,
-            requestedPlan: plan,
-            availableTiers: tierPrices,
-            hasCustomTiers: !!creatorTierSettings
-          })
-          
-          return NextResponse.json(
-            { error: `Invalid subscription price ${price} SOL. Available tiers: Basic ${tierPrices.basic} SOL, Premium ${tierPrices.premium} SOL, VIP ${tierPrices.vip} SOL` },
-            { status: 400 }
-          )
-        }
+        return NextResponse.json(
+          { error: `Invalid subscription price ${price} SOL. Available tiers: Basic ${tierPrices.basic} SOL, Premium ${tierPrices.premium} SOL, VIP ${tierPrices.vip} SOL` },
+          { status: 400 }
+        )
       }
+      
+      // Если цена валидна, но не соответствует запрошенному плану - это предупреждение, не ошибка
+      if (requestedTierPrice && Math.abs(price - requestedTierPrice) > 0.001) {
+        paymentLogger.warn('Price mismatch for requested plan - but price is valid for another tier', {
+          requestedPlan: plan,
+          requestedPrice: requestedTierPrice,
+          actualPrice: price,
+          customTiers: !!creatorTierSettings,
+          note: 'Saving requested plan as is'
+        })
+      }
+      
+      // ВАЖНО: Мы НЕ изменяем план! Сохраняем тот, который был запрошен
+      paymentLogger.info('Saving subscription with requested plan', {
+        plan,
+        price,
+        tierPrices
+      })
     }
 
     // Ждём подтверждения транзакции

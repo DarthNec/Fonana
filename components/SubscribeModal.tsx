@@ -446,14 +446,20 @@ export default function SubscribeModal({ creator, preferredTier, onClose, onSucc
       
       // Вызываем callback успеха с данными о подписке
       if (onSuccess) {
+        console.log('[SubscribeModal] Calling onSuccess with:', {
+          plan: data.subscription.plan,
+          selectedPlan: selectedSubscription.name,
+          responseData: data
+        })
+        
         onSuccess({
           subscription: {
             id: data.subscription.id,
-            plan: selectedSubscription.name,
+            plan: data.subscription.plan || selectedSubscription.name, // Используем план из ответа сервера
             creatorId: creator.id,
             isActive: true,
             price: finalPrice,
-            tier: selectedSubscription.name
+            tier: data.subscription.plan || selectedSubscription.name
           }
         })
       }
