@@ -15,6 +15,47 @@ Server has Deploy Key, use ./deploy-to-production.sh
 Production DB has real users and posts
 ```
 
+## ⚠️ CRITICAL: Preventing Duplicate Processes
+
+### Problem
+Sometimes systemd and PM2 can run the app simultaneously on different ports (3000/3001), causing conflicts.
+
+### Prevention
+1. **Before EVERY deployment**: Check for duplicates
+   ```bash
+   ssh -p 43988 root@69.10.59.234 "ps aux | grep -E 'node|next' | grep -v grep"
+   ```
+
+2. **If duplicates found**: Run cleanup
+   ```bash
+   ./scripts/disable-systemd-service.sh
+   ```
+
+3. **Use ONLY PM2**: Never use systemd service for this project
+
+### Quick Fix
+```bash
+# Kill all node processes and restart
+ssh -p 43988 root@69.10.59.234 "pkill -f node && cd /var/www/fonana && pm2 start ecosystem.config.js"
+```
+
+## 📋 Version Management
+
+### Automatic Versioning
+- Version format: `YYYYMMDD-HHMMSS-<commit-hash>`
+- Auto-generated on each deployment
+- Displayed in footer (bottom-right corner)
+- File: `lib/version.ts` (gitignored)
+
+### Check Current Version
+```bash
+# On production
+ssh -p 43988 root@69.10.59.234 "cat /var/www/fonana/lib/version.ts"
+
+# In browser
+Look at bottom-right corner of any page
+```
+
 ## Database Models (Key Tables)
 - **User** - Пользователи (32 на проде)
 - **Post** - Посты (119 на проде) 

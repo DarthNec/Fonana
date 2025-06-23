@@ -1,111 +1,96 @@
 #!/bin/bash
 
-# Deploy script for Fonana
+# Fonana Production Deployment Script
 # Usage: ./deploy-to-production.sh
 
-set -e  # Exit on error
+set -e
 
-# Configuration
-SERVER="root@69.10.59.234"
-PORT="43988"
-REMOTE_PATH="/var/www/fonana"
-LOCAL_BUILD=false  # Set to true to build locally before deploy
+echo "🚀 Starting Fonana deployment..."
 
-# Colors for output
-RED='\033[0;31m'
-GREEN='\033[0;32m'
-YELLOW='\033[1;33m'
-NC='\033[0m' # No Color
-
-echo -e "${GREEN}🚀 Starting Fonana deployment...${NC}"
-
-# Check if we have uncommitted changes
-if [[ -n $(git status -s) ]]; then
-    echo -e "${YELLOW}⚠️  Warning: You have uncommitted changes${NC}"
-    read -p "Continue anyway? (y/n) " -n 1 -r
-    echo
-    if [[ ! $REPLY =~ ^[Yy]$ ]]; then
-        exit 1
-    fi
+# Проверка на дубликаты процессов
+echo "🔍 Checking for duplicate processes..."
+PROCESS_COUNT=$(ssh -p 43988 root@69.10.59.234 "ps aux | grep -E 'node|next' | grep -v grep | wc -l" 2>/dev/null || echo "0")
+if [ "$PROCESS_COUNT" -gt "2" ]; then
+    echo "⚠️  Warning: Found $PROCESS_COUNT node processes running!"
+    echo "🛑 Running cleanup..."
+    ssh -p 43988 root@69.10.59.234 "pkill -f node || true"
+    sleep 2
 fi
 
+# Проверка портов
+echo "🔍 Checking ports 3000 and 3001..."
+ssh -p 43988 root@69.10.59.234 "lsof -i :3000 -i :3001 | grep LISTEN || echo 'Ports are free'"
+
 # Push to GitHub
-echo -e "${GREEN}📤 Pushing to GitHub...${NC}"
-git push origin main || {
-    echo -e "${RED}❌ Failed to push to GitHub${NC}"
-    echo "Make sure you have committed your changes first"
-    exit 1
-}
+echo "📤 Pushing to GitHub..."
+git push origin main
 
-# Clean up old processes to prevent white screen issue
-echo -e "${GREEN}🧹 Cleaning up old processes...${NC}"
-ssh -p $PORT $SERVER "pm2 stop fonana 2>/dev/null || true && killall -9 node next-server sh 2>/dev/null || true"
-sleep 2
+# Stop any existing processes
+echo "🧹 Cleaning up old processes..."
+ssh -p 43988 root@69.10.59.234 "pm2 stop fonana || true && pm2 delete fonana || true"
 
-# Extra cleanup - make sure all Node processes are killed
-echo -e "${GREEN}🔪 Force killing any remaining Node processes...${NC}"
-ssh -p $PORT $SERVER "ps aux | grep -E 'node|next' | grep -v grep | awk '{print \$2}' | xargs kill -9 2>/dev/null || true"
-sleep 1
+# Kill any remaining node processes
+echo "🔪 Force killing any remaining Node processes..."
+ssh -p 43988 root@69.10.59.234 "pkill -f node || true"
 
 # Clear Next.js cache
-echo -e "${GREEN}🗑️  Clearing Next.js cache...${NC}"
-ssh -p $PORT $SERVER "cd $REMOTE_PATH && rm -rf .next/cache"
+echo "🗑️  Clearing Next.js cache..."
+ssh -p 43988 root@69.10.59.234 "cd /var/www/fonana && rm -rf .next"
 
-# Deploy to server
-echo -e "${GREEN}🔄 Updating code on server...${NC}"
-ssh -p $PORT $SERVER "cd $REMOTE_PATH && git pull origin main" || {
-    echo -e "${RED}❌ Failed to update code${NC}"
-    exit 1
-}
+# Update code on server
+echo "🔄 Updating code on server..."
+ssh -p 43988 root@69.10.59.234 "cd /var/www/fonana && git pull origin main"
 
-# Install dependencies if package.json changed
-echo -e "${GREEN}📦 Checking dependencies...${NC}"
-ssh -p $PORT $SERVER "cd $REMOTE_PATH && npm install --production"
+# Generate version file
+echo "📝 Generating version information..."
+VERSION=$(date +%Y%m%d-%H%M%S)
+COMMIT=$(git rev-parse --short HEAD)
+ssh -p 43988 root@69.10.59.234 "cd /var/www/fonana && echo 'export const APP_VERSION = \"$VERSION-$COMMIT\";' > lib/version.ts"
+
+# Install dependencies
+echo "📦 Checking dependencies..."
+ssh -p 43988 root@69.10.59.234 "cd /var/www/fonana && npm ci --production"
 
 # Run database migrations
-echo -e "${GREEN}🗄️  Running database migrations...${NC}"
-ssh -p $PORT $SERVER "cd $REMOTE_PATH && npx prisma migrate deploy" || {
-    echo -e "${RED}❌ Migration failed${NC}"
-    exit 1
-}
+echo "🗄️  Running database migrations..."
+ssh -p 43988 root@69.10.59.234 "cd /var/www/fonana && npx prisma migrate deploy"
 
 # Generate Prisma Client
-echo -e "${GREEN}🔧 Generating Prisma Client...${NC}"
-ssh -p $PORT $SERVER "cd $REMOTE_PATH && npx prisma generate" || {
-    echo -e "${RED}❌ Prisma generate failed${NC}"
-    exit 1
-}
+echo "🔧 Generating Prisma Client..."
+ssh -p 43988 root@69.10.59.234 "cd /var/www/fonana && npx prisma generate"
 
-# Build on server
-echo -e "${GREEN}🔨 Building application...${NC}"
-ssh -p $PORT $SERVER "cd $REMOTE_PATH && npm run build" || {
-    echo -e "${RED}❌ Build failed${NC}"
-    exit 1
-}
+# Build the application
+echo "🔨 Building application..."
+ssh -p 43988 root@69.10.59.234 "cd /var/www/fonana && npm run build"
 
-# Start application
-echo -e "${GREEN}🚀 Starting application...${NC}"
-ssh -p $PORT $SERVER "cd $REMOTE_PATH && pm2 delete fonana 2>/dev/null || true && PORT=3000 pm2 start npm --name fonana -- start" || {
-    echo -e "${RED}❌ Failed to start application${NC}"
-    exit 1
-}
+# Start the application with PM2
+echo "🚀 Starting application..."
+ssh -p 43988 root@69.10.59.234 "cd /var/www/fonana && pm2 start ecosystem.config.js"
 
 # Wait for application to start
-echo -e "${GREEN}⏳ Waiting for application to start...${NC}"
+echo "⏳ Waiting for application to start..."
 sleep 5
 
 # Reload nginx
-echo -e "${GREEN}🔄 Reloading nginx...${NC}"
-ssh -p $PORT $SERVER "nginx -s reload"
+echo "🔄 Reloading nginx..."
+ssh -p 43988 root@69.10.59.234 "nginx -s reload"
 
-# Check status
-echo -e "${GREEN}📊 Checking application status...${NC}"
-ssh -p $PORT $SERVER "pm2 status fonana"
+# Check application status
+echo "📊 Checking application status..."
+ssh -p 43988 root@69.10.59.234 "pm2 status"
 
-echo -e "${GREEN}✅ Deployment complete!${NC}"
-echo -e "${GREEN}🌐 Application is live at: https://fonana.me${NC}"
-echo -e ""
-echo -e "${YELLOW}💡 If you see a white screen:${NC}"
-echo -e "   1. Clear browser cache (Ctrl+Shift+R)"
-echo -e "   2. Try incognito mode"
-echo -e "   3. Wait 1-2 minutes for cache to expire" 
+# Final check for duplicate processes
+echo "🔍 Final check for duplicate processes..."
+FINAL_COUNT=$(ssh -p 43988 root@69.10.59.234 "ps aux | grep -E 'node|next' | grep -v grep | wc -l" 2>/dev/null || echo "0")
+if [ "$FINAL_COUNT" -gt "2" ]; then
+    echo "⚠️  Warning: Multiple node processes detected after deployment!"
+fi
+
+echo "✅ Deployment complete!"
+echo "🌐 Application is live at: https://fonana.me"
+echo "📋 Version deployed: $VERSION-$COMMIT"
+echo ""
+echo "💡 If you see a white screen:"
+echo "   1. Clear browser cache (Ctrl+Shift+R)"
+echo "   2. Try incognito mode"
+echo "   3. Wait 1-2 minutes for cache to expire" 

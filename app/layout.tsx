@@ -10,6 +10,7 @@ import { Toaster } from 'react-hot-toast'
 import { ThemeProvider } from '@/lib/contexts/ThemeContext'
 import { ErrorBoundary } from '@/components/ErrorBoundary'
 import ReferralNotification from '@/components/ReferralNotification'
+import Footer from '@/components/Footer'
 import { headers } from 'next/headers'
 
 const inter = Inter({ subsets: ['latin'] })
@@ -61,13 +62,7 @@ export default function RootLayout({
                       {children}
                     </main>
                     <ReferralNotification />
-                    <footer className="bg-slate-800 dark:bg-slate-950 border-t border-slate-700 dark:border-slate-800 py-4">
-                      <div className="container mx-auto px-4 text-center">
-                        <p className="text-slate-400 text-sm">
-                          Fonana v1.0.0-beta.5 | © 2025 Fonana. All rights reserved.
-                        </p>
-                      </div>
-                    </footer>
+                    <Footer />
                   </div>
                   <Toaster
                     position="top-right"

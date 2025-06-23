@@ -1,7 +1,10 @@
+# See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
+
 # dependencies
 /node_modules
 /.pnp
 .pnp.js
+.yarn/install-state.gz
 
 # testing
 /coverage
@@ -34,24 +37,32 @@ yarn-error.log*
 next-env.d.ts
 
 # prisma
-/lib/generated/prisma
+/prisma/dev.db
+/prisma/dev.db-journal
 
-# uploads
-/public/uploads
+# upload directories
 /public/avatars/*
-!/public/avatars/.gitkeep
+/public/backgrounds/*
 /public/posts/*
+!/public/avatars/.gitkeep
+!/public/backgrounds/.gitkeep
 !/public/posts/.gitkeep
 
-# logs
-*.log
-
 # IDE
-.idea
-.vscode
-*.swp
-*.swo
+.idea/
+.vscode/
 
 # OS
 .DS_Store
 Thumbs.db
+
+# Logs
+logs
+*.log
+pm2/
+
+# Build files
+dist/
+
+# Version file (auto-generated on deploy)
+/lib/version.ts
