@@ -82,6 +82,7 @@ module.exports = {
         'background-shift': 'backgroundShift 20s ease-in-out infinite alternate',
         'shimmer': 'shimmer 2s infinite',
         'slide-in-from-top': 'slideInFromTop 300ms ease-out',
+        'fade-in': 'fadeIn 0.3s ease-in-out',
       },
       keyframes: {
         float: {
@@ -108,10 +109,17 @@ module.exports = {
           'from': { opacity: '0', transform: 'translateY(-20px)' },
           'to': { opacity: '1', transform: 'translateY(0)' },
         },
+        fadeIn: {
+          '0%': { opacity: '0', transform: 'scale(0.9)' },
+          '100%': { opacity: '1', transform: 'scale(1)' },
+        },
       },
     },
   },
-  plugins: [],
+  plugins: [
+    require('@tailwindcss/forms'),
+    require('@tailwindcss/aspect-ratio'),
+  ],
   safelist: [
     'aspect-3/4',
     'aspect-square',
