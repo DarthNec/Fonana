@@ -13,6 +13,7 @@ Project: Fonana (Next.js + Solana)
 Private repo: DukeDeSouth/Fonana
 Server has Deploy Key, use ./deploy-to-production.sh
 Production DB has real users and posts
+PM2 manages the app with ecosystem.config.js
 ```
 
 ## ⚠️ CRITICAL: Preventing Duplicate Processes
@@ -56,16 +57,61 @@ ssh -p 43988 root@69.10.59.234 "cat /var/www/fonana/lib/version.ts"
 Look at bottom-right corner of any page
 ```
 
+## 💱 Dynamic SOL/USD Exchange Rate System
+
+### Overview
+- Real-time SOL/USD rate from CoinGecko API
+- 5-minute cache for performance
+- Fallback rate: 135 USD
+- Auto-updates across all components
+
+### API Endpoint
+```bash
+GET /api/pricing
+Response: {
+  "success": true,
+  "rate": 134.66,
+  "lastUpdate": "2025-06-23T17:29:22.593Z",
+  "data": {
+    "prices": {
+      "SOL_USD": 134.66,
+      "BTC_USD": 50000,
+      "ETH_USD": 3000,
+      "timestamp": 1750699762593,
+      "source": "coingecko"
+    }
+  }
+}
+```
+
+### Usage in Components
+```typescript
+import { useSolRate } from '@/lib/hooks/useSolRate'
+
+function MyComponent() {
+  const { rate: solRate, isLoading } = useSolRate()
+  
+  return (
+    <div>
+      <span>0.1 SOL</span>
+      <span>(≈ ${(0.1 * solRate).toFixed(2)} USD)</span>
+    </div>
+  )
+}
+```
+
 ## Database Models (Key Tables)
-- **User** - Пользователи (32 на проде)
-- **Post** - Посты (119 на проде) 
-- **Subscription** - Подписки (64 на проде)
-- **Message** - Личные сообщения (87 на проде)
-- **Comment** - Комментарии (16 на проде)
-- **FlashSale** - Flash-распродажи (7 на проде)
+- **User** - Пользователи
+- **Post** - Посты
+- **Subscription** - Подписки  
+- **Message** - Личные сообщения
+- **Comment** - Комментарии
+- **FlashSale** - Flash-распродажи
 - **Transaction** - Все транзакции (Solana + внутренние)
 - **Notification** - Уведомления системы
 - **CreatorTierSettings** - Настройки тарифов создателей
+- **PostPurchase** - Покупки постов
+- **MessagePurchase** - Покупки PPV сообщений
 
 ## Full Database Schema
 
@@ -424,14 +470,18 @@ const transaction = await prisma.transaction.create({
 ```
 
 ## Key Components
-- **PostCard.tsx** (49KB) - Главная карточка поста
-- **CreatePostModal.tsx** (41KB) - Создание постов
-- **SubscribeModal.tsx** (29KB) - Подписки
-- **EditPostModal.tsx** (25KB) - Редактирование постов
-- **CreatorsExplorer.tsx** (22KB) - Обзор создателей
-- **PurchaseModal.tsx** (19KB) - Покупка контента
-- **ImageCropModal.tsx** (8KB) - Кроп изображений
-- **OptimizedImage.tsx** (6KB) - Оптимизация изображений
+- **PostCard.tsx** - Главная карточка поста (с поддержкой Flash Sales и USD)
+- **CreatePostModal.tsx** - Создание постов с ценами и тирами
+- **SubscribeModal.tsx** - Подписки с динамическими ценами
+- **EditPostModal.tsx** - Редактирование постов
+- **CreatorsExplorer.tsx** - Обзор создателей
+- **PurchaseModal.tsx** - Покупка контента с USD отображением
+- **SellablePostModal.tsx** - Создание продаваемых постов/аукционов
+- **FlashSalesList.tsx** - Управление Flash Sales
+- **FlashSale.tsx** - Компонент Flash Sale с таймером
+- **ImageCropModal.tsx** - Кроп изображений
+- **OptimizedImage.tsx** - Оптимизация изображений  
+- **SolanaRateDisplay.tsx** - Отображение курса SOL/USD в navbar
 
 ## API Endpoints Structure
 - `/api/posts` - CRUD постов
@@ -444,6 +494,7 @@ const transaction = await prisma.transaction.create({
 - `/api/user` - Профиль пользователя
 - `/api/creators` - Создатели
 - `/api/admin` - Админ функции
+- `/api/pricing` - Динамический курс SOL/USD
 
 ## Quick Commands
 
@@ -527,6 +578,7 @@ node scripts/check-flash-sales.js
 node scripts/check-backgrounds.js
 node scripts/check-creator-earnings.js
 node scripts/check-transaction.js
+node scripts/test-dynamic-pricing.js
 
 # Test specific functionality  
 node scripts/test-sellable-posts.js
@@ -538,13 +590,16 @@ node scripts/test-tier-access.js
 ✅ **COMPLETED & WORKING:**
 - Personal Messages + PPV (Pay-per-view)
 - Tips система
-- Flash Sales
-- Subscription tiers (3 levels)
+- Flash Sales with countdown timers
+- Subscription tiers (3 levels) - настраиваемые создателями
 - Post creation/editing with image crop
 - Solana wallet integration
-- Notification system
-- Comment system
-- Creator earnings
+- Notification system with sounds
+- Comment system with replies
+- Creator earnings dashboard
+- Dynamic SOL/USD exchange rate
+- Sellable posts (fixed price & auctions)
+- Referral system (5% commission)
 
 🔄 **IN DEVELOPMENT:**
 - Live streaming (waiting for user base)
@@ -559,10 +614,15 @@ app/
 ├── creator/[id]/  # Creator profiles
 ├── messages/      # Direct messages
 ├── profile/       # User profiles
-└── create/        # Content creation
+├── create/        # Content creation
+├── dashboard/     # Creator dashboard
+└── test/          # Test pages
 
 components/        # React components
 lib/              # Utilities & configs
+├── hooks/        # React hooks
+├── pricing/      # Pricing system
+└── solana/       # Blockchain integration
 prisma/           # Database schema
 scripts/          # Diagnostic tools
 public/           # Static assets
@@ -572,12 +632,14 @@ public/           # Static assets
 - Next.js 14 + TypeScript
 - PostgreSQL + Prisma ORM
 - Solana Web3 integration
-- PM2 process manager
-- Port 3000 (default, may auto-increment if busy)
+- PM2 process manager (ecosystem.config.js)
+- Port 3000 (default)
+- Tailwind CSS
 
-## Solana RPC
-- HTTPS: `https://tame-smart-panorama.solana-mainnet.quiknode.pro/0e70fc875702b126bf8b93cdcd626680e9c48894/`
-- WSS: `wss://tame-smart-panorama.solana-mainnet.quiknode.pro/0e70fc875702b126bf8b93cdcd626680e9c48894/`
+## Solana Configuration
+- **Platform Wallet**: `npzAZaN9fDMgLV63b3kv3FF8cLSd8dQSLxyMXASA5T4`
+- **RPC Endpoint**: `https://tame-smart-panorama.solana-mainnet.quiknode.pro/0e70fc875702b126bf8b93cdcd626680e9c48894/`
+- **WSS Endpoint**: `wss://tame-smart-panorama.solana-mainnet.quiknode.pro/0e70fc875702b126bf8b93cdcd626680e9c48894/`
 
 ## Development Guidelines
 1. **Analyze First**: Check both local and server states before changes
@@ -640,13 +702,9 @@ git log --oneline -10
 - **Creator Earnings**: 90% (95% если нет реферера)
 
 ### Subscription Tiers
-```javascript
-const DEFAULT_TIERS = {
-  basic: { price: 5, description: 'Basic tier' },
-  premium: { price: 10, description: 'Premium tier' },
-  vip: { price: 20, description: 'VIP tier' }
-};
-```
+- Цены и описания настраиваются каждым создателем индивидуально
+- Три уровня: Basic, Premium, VIP
+- Хранятся в CreatorTierSettings
 
 ### Image Aspect Ratios
 - **vertical**: 3:4 (aspect-3/4)
@@ -657,10 +715,6 @@ const DEFAULT_TIERS = {
 - **Images**: 10MB max
 - **Videos**: 100MB max
 - **Supported formats**: jpg, jpeg, png, gif, mp4, webm
-
-### Wallet Configuration
-- **Platform Wallet**: `HdHRAm5bnhBFwuL46BgrN1BzDETSxtxQffiW7FZGPJjW`
-- **Default RPC**: https://tame-smart-panorama.solana-mainnet.quiknode.pro/0e70fc875702b126bf8b93cdcd626680e9c48894/
 
 ### Flash Sale Limits
 - **Min Discount**: 10%
@@ -682,6 +736,11 @@ const DEFAULT_TIERS = {
 - **Posts per request**: 20
 - **Messages per request**: 50
 - **Comments per request**: 30
+
+### Dynamic Pricing Settings
+- **Exchange Rate Cache**: 5 minutes
+- **Fallback Rate**: 135 USD/SOL
+- **Price Sources**: CoinGecko (primary)
 
 ### Environment Variables (Required)
 ```bash
