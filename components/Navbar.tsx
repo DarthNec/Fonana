@@ -134,10 +134,7 @@ export function Navbar() {
           {/* Desktop Actions */}
           <div className="hidden md:flex items-center gap-4">
             {/* Solana Rate Display - теперь всегда */}
-            <div className="flex flex-col items-end">
-              <SolanaRateDisplay />
-              <span className="text-xs text-gray-400 mt-0.5">Курс обновляется автоматически</span>
-            </div>
+            <SolanaRateDisplay />
 
             {/* Notifications */}
             <NotificationsDropdown />

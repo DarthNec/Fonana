@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
 import { useUser } from '@/lib/hooks/useUser'
 import PostCard from '@/components/PostCard'
@@ -33,6 +33,7 @@ export default function FeedPage() {
   const [isLoading, setIsLoading] = useState(true)
   const [selectedCategory, setSelectedCategory] = useState('All')
   const [sortBy, setSortBy] = useState<'latest' | 'popular' | 'trending' | 'most-liked' | 'most-commented' | 'following' | 'my-posts'>('latest')
+  const scrollPositionRef = useRef(0)
   
   // Состояние для модалок
   const [showSubscribeModal, setShowSubscribeModal] = useState(false)
@@ -70,8 +71,58 @@ export default function FeedPage() {
     }
   }, [])
 
+  // Функция для точечного обновления поста после покупки
+  const updatePostPurchaseStatus = (postId: string, purchased: boolean) => {
+    setPosts(prevPosts => prevPosts.map(post => 
+      post.id === postId 
+        ? { 
+            ...post, 
+            hasPurchased: purchased, 
+            shouldHideContent: false,
+            isSubscribed: post.isSubscribed || purchased
+          }
+        : post
+    ))
+  }
+
+  // Функция для обновления постов после подписки
+  const updatePostsAfterSubscription = (creatorId: string, tier: string) => {
+    setPosts(prevPosts => prevPosts.map(post => {
+      if (post.creator.id === creatorId) {
+        const hasAccess = checkTierAccess(post.requiredTier, tier)
+        return {
+          ...post,
+          isSubscribed: true,
+          userTier: tier,
+          shouldHideContent: post.isLocked && !hasAccess && !post.price
+        }
+      }
+      return post
+    }))
+  }
+
+  // Проверка доступа к тиру
+  const checkTierAccess = (requiredTier: string | null, userTier: string): boolean => {
+    if (!requiredTier) return true
+    
+    const tierHierarchy: { [key: string]: number } = {
+      'free': 0,
+      'basic': 1,
+      'premium': 2,
+      'vip': 3
+    }
+    
+    const userLevel = tierHierarchy[userTier.toLowerCase()] || 0
+    const requiredLevel = tierHierarchy[requiredTier.toLowerCase()] || 0
+    
+    return userLevel >= requiredLevel
+  }
+
   const loadPosts = async () => {
     try {
+      // Сохраняем позицию скролла
+      scrollPositionRef.current = window.scrollY
+      
       // Не устанавливаем isLoading в true, если посты уже загружены
       // Это предотвратит unmount компонентов
       if (posts.length === 0) {
@@ -145,6 +196,11 @@ export default function FeedPage() {
       }))
 
       setPosts(formattedPosts)
+      
+      // Восстанавливаем позицию скролла после загрузки
+      requestAnimationFrame(() => {
+        window.scrollTo(0, scrollPositionRef.current)
+      })
     } catch (error) {
       console.error('Error loading posts:', error)
       toast.error('Error loading posts')
@@ -335,13 +391,19 @@ export default function FeedPage() {
           creator={selectedCreator}
           preferredTier={preferredTier}
           onClose={() => setShowSubscribeModal(false)}
-          onSuccess={() => {
+          onSuccess={(data) => {
             setShowSubscribeModal(false)
-            // Add delay to allow database to update
+            
+            // Оптимистичное обновление UI
+            if (data?.subscription) {
+              updatePostsAfterSubscription(selectedCreator.id, data.subscription.tier || data.subscription.plan)
+            }
+            
+            // Проверяем с сервера через небольшую задержку
             setTimeout(() => {
-              console.log('[Feed] Reloading posts after subscription')
+              console.log('[Feed] Checking posts after subscription')
               loadPosts()
-            }, 1000) // 1 second delay
+            }, 2000)
           }}
         />
       )}
@@ -353,13 +415,29 @@ export default function FeedPage() {
             flashSale: selectedPost.flashSale
           }}
           onClose={() => setShowPurchaseModal(false)}
-          onSuccess={() => {
+          onSuccess={(data) => {
             setShowPurchaseModal(false)
-            // Add delay to allow database to update
+            
+            // Оптимистичное обновление
+            if (data?.postId) {
+              updatePostPurchaseStatus(data.postId, true)
+            }
+            
+            // Затем проверяем с сервера (без полной перезагрузки)
             setTimeout(() => {
-              console.log('[Feed] Reloading posts after purchase')
-              loadPosts()
-            }, 1000) // 1 second delay
+              if (data?.postId && user?.wallet) {
+                fetch(`/api/posts/${data.postId}?userWallet=${user.wallet}`)
+                  .then(res => res.json())
+                  .then(postData => {
+                    if (postData.post) {
+                      setPosts(prevPosts => prevPosts.map(post => 
+                        post.id === data.postId ? { ...postData.post } : post
+                      ))
+                    }
+                  })
+                  .catch(err => console.error('Error fetching updated post:', err))
+              }
+            }, 1000)
           }}
         />
       )}

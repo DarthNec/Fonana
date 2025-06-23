@@ -223,6 +223,49 @@ export default function CreatorPage() {
     }
   }
 
+  // Проверка доступа к тиру
+  const checkTierAccess = (requiredTier: string | null, userTier: string): boolean => {
+    if (!requiredTier) return true
+    
+    const tierHierarchy: { [key: string]: number } = {
+      'free': 0,
+      'basic': 1,
+      'premium': 2,
+      'vip': 3
+    }
+    
+    const userLevel = tierHierarchy[userTier.toLowerCase()] || 0
+    const requiredLevel = tierHierarchy[requiredTier.toLowerCase()] || 0
+    
+    return userLevel >= requiredLevel
+  }
+
+  // Обновление постов после подписки
+  const updatePostsAfterSubscription = (tier: string) => {
+    setPosts(prevPosts => prevPosts.map(post => {
+      const hasAccess = checkTierAccess(post.requiredTier, tier)
+      return {
+        ...post,
+        isSubscribed: true,
+        userTier: tier,
+        shouldHideContent: post.isLocked && !hasAccess && !post.price
+      }
+    }))
+  }
+
+  // Обновление поста после покупки
+  const updatePostAfterPurchase = (postId: string) => {
+    setPosts(prevPosts => prevPosts.map(post => 
+      post.id === postId 
+        ? { 
+            ...post, 
+            hasPurchased: true, 
+            shouldHideContent: false
+          }
+        : post
+    ))
+  }
+
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('en-US', {
       year: 'numeric',
@@ -702,10 +745,22 @@ export default function CreatorPage() {
             avatar: creator.avatar || '',
             isVerified: creator.isVerified
           }}
+          preferredTier={selectedTier}
           onClose={() => setShowSubscribeModal(false)}
-          onSuccess={() => {
+          onSuccess={(data) => {
             setShowSubscribeModal(false)
-            loadCreatorData() // Reload data
+            
+            // Оптимистичное обновление UI
+            if (data?.subscription) {
+              setIsSubscribed(true)
+              setCurrentSubscriptionTier(data.subscription.tier || data.subscription.plan)
+              updatePostsAfterSubscription(data.subscription.tier || data.subscription.plan)
+            }
+            
+            // Проверяем с сервера через небольшую задержку
+            setTimeout(() => {
+              loadCreatorData()
+            }, 2000)
           }}
         />
       )}
@@ -715,9 +770,18 @@ export default function CreatorPage() {
         <PurchaseModal
           post={selectedPurchaseData}
           onClose={() => setShowPurchaseModal(false)}
-          onSuccess={() => {
+          onSuccess={(data) => {
             setShowPurchaseModal(false)
-            loadCreatorData() // Reload posts after purchase
+            
+            // Оптимистичное обновление
+            if (data?.postId) {
+              updatePostAfterPurchase(data.postId)
+            }
+            
+            // Затем проверяем с сервера
+            setTimeout(() => {
+              loadCreatorData()
+            }, 1000)
           }}
         />
       )}

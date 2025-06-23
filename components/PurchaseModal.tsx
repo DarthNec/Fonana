@@ -53,7 +53,7 @@ interface PurchaseModalProps {
     }
   }
   onClose: () => void
-  onSuccess?: () => void
+  onSuccess?: (data?: any) => void
 }
 
 export default function PurchaseModal({ post, onClose, onSuccess }: PurchaseModalProps) {
@@ -250,7 +250,13 @@ export default function PurchaseModal({ post, onClose, onSuccess }: PurchaseModa
       toast.success('Пост успешно куплен!')
       
       if (onSuccess) {
-        onSuccess()
+        // Передаем данные о покупке для оптимистичного обновления
+        onSuccess({
+          postId: post.id,
+          purchased: true,
+          transaction: data.transaction,
+          purchase: data.purchase
+        })
       }
       
       onClose()

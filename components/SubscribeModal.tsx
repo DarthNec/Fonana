@@ -47,7 +47,7 @@ interface SubscribeModalProps {
   }
   preferredTier?: string
   onClose: () => void
-  onSuccess?: () => void
+  onSuccess?: (data?: any) => void
 }
 
 const getSubscriptionTiers = (creatorCategory?: string): SubscriptionTier[] => {
@@ -442,15 +442,21 @@ export default function SubscribeModal({ creator, preferredTier, onClose, onSucc
       
       toast.success(`Successfully subscribed to ${creator.name}!`)
       
-      // Вызываем callback успеха
+      // Вызываем callback успеха с данными о подписке
       if (onSuccess) {
-        onSuccess()
+        onSuccess({
+          subscription: {
+            id: data.subscription.id,
+            plan: selectedSubscription.name,
+            creatorId: creator.id,
+            isActive: true,
+            price: finalPrice,
+            tier: selectedSubscription.name
+          }
+        })
       }
       
-      // Принудительно обновляем страницу через небольшую задержку
-      setTimeout(() => {
-        window.location.reload()
-      }, 1500)
+      onClose()
     } catch (error) {
       console.error('Error subscribing:', error)
       
@@ -531,12 +537,21 @@ export default function SubscribeModal({ creator, preferredTier, onClose, onSucc
       }
       
       toast.success(`You have successfully subscribed to ${creator.name}!`)
-      onSuccess?.()
       
-      // Принудительно обновляем страницу через небольшую задержку
-      setTimeout(() => {
-        window.location.reload()
-      }, 1500)
+      if (onSuccess) {
+        onSuccess({
+          subscription: {
+            id: response.ok ? 'free-sub' : '',
+            plan: 'Free',
+            creatorId: creator.id,
+            isActive: true,
+            price: 0,
+            tier: 'free'
+          }
+        })
+      }
+      
+      onClose()
     } catch (error) {
       console.error('Error subscribing:', error)
       toast.error(error instanceof Error ? error.message : 'Error processing subscription')
