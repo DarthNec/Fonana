@@ -23,7 +23,7 @@ async function fixWrongSubscriptionPlans() {
         creator: {
           select: {
             nickname: true,
-            creatorTierSettings: true
+            tierSettings: true
           }
         }
       }
@@ -39,11 +39,18 @@ async function fixWrongSubscriptionPlans() {
       let correctPlan = 'Basic' // по умолчанию
       
       // Проверяем кастомные цены создателя
-      const tierSettings = sub.creator.creatorTierSettings
+      const tierSettings = sub.creator.tierSettings
       if (tierSettings) {
-        const basicTier = tierSettings.basicTier ? JSON.parse(tierSettings.basicTier) : null
-        const premiumTier = tierSettings.premiumTier ? JSON.parse(tierSettings.premiumTier) : null
-        const vipTier = tierSettings.vipTier ? JSON.parse(tierSettings.vipTier) : null
+        // tierSettings может уже быть объектом, а не строкой
+        const basicTier = typeof tierSettings.basicTier === 'string' 
+          ? JSON.parse(tierSettings.basicTier) 
+          : tierSettings.basicTier
+        const premiumTier = typeof tierSettings.premiumTier === 'string'
+          ? JSON.parse(tierSettings.premiumTier)
+          : tierSettings.premiumTier
+        const vipTier = typeof tierSettings.vipTier === 'string'
+          ? JSON.parse(tierSettings.vipTier)
+          : tierSettings.vipTier
         
         if (basicTier?.enabled && Math.abs(sub.price - basicTier.price) < 0.001) {
           correctPlan = 'Basic'
