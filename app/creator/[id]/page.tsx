@@ -549,7 +549,7 @@ export default function CreatorPage() {
                       <p className="text-sm text-gray-600 dark:text-slate-400 mb-3">
                         {creatorTiers.basicTier.description || 'Access to basic content'}
                       </p>
-                      {currentSubscriptionTier !== 'basic' && (
+                      {currentSubscriptionTier?.toLowerCase() !== 'basic' && (
                         <button
                           onClick={() => handleSubscribeClick({
                             id: creator.id,
@@ -563,7 +563,7 @@ export default function CreatorPage() {
                           {isSubscribed ? 'Switch to Basic' : 'Subscribe'}
                         </button>
                       )}
-                      {currentSubscriptionTier === 'basic' && (
+                      {currentSubscriptionTier?.toLowerCase() === 'basic' && (
                         <div className="w-full px-3 py-2 bg-green-500/20 text-green-700 dark:text-green-300 rounded-lg text-sm font-medium text-center">
                           Current Plan
                         </div>
@@ -592,7 +592,7 @@ export default function CreatorPage() {
                       <p className="text-sm text-gray-600 dark:text-slate-400 mb-3">
                         {creatorTiers.premiumTier.description || 'Extended access'}
                       </p>
-                      {currentSubscriptionTier !== 'premium' && (
+                      {currentSubscriptionTier?.toLowerCase() !== 'premium' && (
                         <button
                           onClick={() => handleSubscribeClick({
                             id: creator.id,
@@ -606,7 +606,7 @@ export default function CreatorPage() {
                           {isSubscribed ? 'Upgrade to Premium' : 'Subscribe'}
                         </button>
                       )}
-                      {currentSubscriptionTier === 'premium' && (
+                      {currentSubscriptionTier?.toLowerCase() === 'premium' && (
                         <div className="w-full px-3 py-2 bg-purple-500/20 text-purple-700 dark:text-purple-300 rounded-lg text-sm font-medium text-center">
                           Current Plan
                         </div>
@@ -632,7 +632,7 @@ export default function CreatorPage() {
                       <p className="text-sm text-gray-600 dark:text-slate-400 mb-3">
                         {creatorTiers.vipTier.description || 'Maximum access'}
                       </p>
-                      {currentSubscriptionTier !== 'vip' && (
+                      {currentSubscriptionTier?.toLowerCase() !== 'vip' && (
                         <button
                           onClick={() => handleSubscribeClick({
                             id: creator.id,
@@ -646,7 +646,7 @@ export default function CreatorPage() {
                           {isSubscribed ? 'Upgrade to VIP' : 'Subscribe'}
                         </button>
                       )}
-                      {currentSubscriptionTier === 'vip' && (
+                      {currentSubscriptionTier?.toLowerCase() === 'vip' && (
                         <div className="w-full px-3 py-2 bg-yellow-500/20 text-yellow-700 dark:text-yellow-300 rounded-lg text-sm font-medium text-center">
                           Current Plan
                         </div>

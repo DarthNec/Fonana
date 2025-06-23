@@ -201,19 +201,8 @@ export async function POST(request: Request) {
 
     // Рассчитываем срок действия подписки
     const validUntil = new Date()
-    switch (plan) {
-      case 'weekly':
-        validUntil.setDate(validUntil.getDate() + 7)
-        break
-      case 'monthly':
-        validUntil.setMonth(validUntil.getMonth() + 1)
-        break
-      case 'yearly':
-        validUntil.setFullYear(validUntil.getFullYear() + 1)
-        break
-      default:
-        validUntil.setMonth(validUntil.getMonth() + 1) // По умолчанию месяц
-    }
+    // Всегда устанавливаем месяц для любого плана подписки
+    validUntil.setMonth(validUntil.getMonth() + 1)
 
     // Создаем или обновляем подписку
     const subscription = existingSubscription
