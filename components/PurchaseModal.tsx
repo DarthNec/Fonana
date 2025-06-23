@@ -59,6 +59,7 @@ export default function PurchaseModal({ post, onClose, onSuccess }: PurchaseModa
   const { publicKey, connected, sendTransaction } = useWallet()
   const [isProcessing, setIsProcessing] = useState(false)
   const [creatorData, setCreatorData] = useState<any>(null)
+  const [solToUsdRate, setSolToUsdRate] = useState<number>(45) // Дефолтное значение
   
   // Вычисляем цену для отображения с учетом Flash Sale
   const displayPrice = post.flashSale 
@@ -76,6 +77,21 @@ export default function PurchaseModal({ post, onClose, onSuccess }: PurchaseModa
       })
       .catch(err => console.error('Error loading creator data:', err))
   }, [post.creator.id])
+
+  // Загружаем актуальный курс SOL/USD
+  useEffect(() => {
+    fetch('/api/pricing')
+      .then(res => res.json())
+      .then(data => {
+        if (data.success && data.data?.prices?.SOL_USD) {
+          setSolToUsdRate(data.data.prices.SOL_USD)
+        }
+      })
+      .catch(err => {
+        console.error('Error loading SOL rate:', err)
+        // Используем дефолтное значение если не удалось загрузить
+      })
+  }, [])
 
   const handlePurchase = async () => {
     if (!publicKey || !connected) {
@@ -350,7 +366,7 @@ export default function PurchaseModal({ post, onClose, onSuccess }: PurchaseModa
                     {formatSolAmount(post.price)}
                   </p>
                   <p className="text-xs text-gray-500 dark:text-gray-400">
-                    ≈ ${(displayPrice * 45).toFixed(2)} USD
+                    ≈ ${(displayPrice * solToUsdRate).toFixed(2)} USD
                   </p>
                   <p className="text-xs text-green-600 dark:text-green-400 font-medium">
                     {post.flashSale.discount}% OFF!
@@ -362,7 +378,7 @@ export default function PurchaseModal({ post, onClose, onSuccess }: PurchaseModa
                     {formatSolAmount(post.price)}
                   </p>
                   <p className="text-xs text-gray-500 dark:text-gray-400">
-                    ≈ ${(post.price * 45).toFixed(2)} USD
+                    ≈ ${(post.price * solToUsdRate).toFixed(2)} USD
                   </p>
                 </>
               )}

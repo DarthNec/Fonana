@@ -3,7 +3,7 @@
 import { PricingProvider, usePricing } from '@/lib/pricing/PricingProvider'
 import { useDynamicPrice, formatSolAmount, formatUsdAmount } from '@/lib/pricing/hooks/useDynamicPrice'
 import { useSolanaRate } from '@/lib/pricing/hooks/usePriceDisplay'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { UserSelector } from '@/components/UserSelector'
 import { useWallet } from '@solana/wallet-adapter-react'
@@ -11,21 +11,23 @@ import { WalletMultiButton } from '@solana/wallet-adapter-react-ui'
 import { Connection, PublicKey, Transaction, SystemProgram, LAMPORTS_PER_SOL } from '@solana/web3.js'
 import { SOLANA_CONFIG } from '@/lib/solana/config'
 import { WalletProvider } from '@/components/WalletProvider'
+import { toast } from 'react-hot-toast'
+import { createPostPurchaseTransaction, calculatePaymentDistribution } from '@/lib/solana/payments'
+import { isValidSolanaAddress } from '@/lib/solana/config'
+import { connection } from '@/lib/solana/connection'
 
 interface User {
   id: string
   nickname: string
-  fullName: string | null
   wallet: string | null
-  isCreator: boolean
-  postsCount: number
-  subscribersCount: number
-  referrer: {
+  solanaWallet?: string | null
+  referrerId?: string | null
+  referrer?: {
     id: string
     nickname: string
     wallet: string | null
+    solanaWallet?: string | null
   } | null
-  isCurrent?: boolean
 }
 
 function PricingDashboard() {
@@ -33,239 +35,193 @@ function PricingDashboard() {
   const solanaRate = useSolanaRate()
   const [testAmount, setTestAmount] = useState(0.1)
   const [selectedUser, setSelectedUser] = useState<User | null>(null)
-  const { publicKey, sendTransaction } = useWallet()
+  const { publicKey, sendTransaction, connected } = useWallet()
   const [isProcessing, setIsProcessing] = useState(false)
   const [transactionResult, setTransactionResult] = useState<any>(null)
+  const [users, setUsers] = useState<User[]>([])
+  const [loadingUsers, setLoadingUsers] = useState(false)
   
+  // Загружаем пользователей при монтировании
+  useEffect(() => {
+    async function loadUsers() {
+      setLoadingUsers(true)
+      try {
+        const response = await fetch('/api/admin/users')
+        const data = await response.json()
+        if (data.users) {
+          setUsers(data.users.filter((user: any) => user.wallet))
+        }
+      } catch (error) {
+        console.error('Error loading users:', error)
+      } finally {
+        setLoadingUsers(false)
+      }
+    }
+    loadUsers()
+  }, [])
+
   // Тестовые цены
   const testPrices = [0.01, 0.05, 0.1, 0.5, 1, 5, 10]
 
-  // Функция отправки тестовой транзакции
-  const sendTestTransaction = async (amount: number) => {
-    if (!publicKey || !selectedUser?.wallet) {
-      alert('Подключите кошелек и выберите получателя')
+  const handleSendTransaction = async () => {
+    if (!publicKey || !selectedUser || !selectedUser.wallet) {
+      toast.error('Пожалуйста, подключите кошелек и выберите получателя с настроенным Solana кошельком')
+      return
+    }
+
+    const solAmount = parseFloat(testAmount.toString())
+    if (isNaN(solAmount) || solAmount <= 0) {
+      toast.error('Введите корректную сумму')
+      return
+    }
+
+    // КРИТИЧЕСКАЯ ПРОВЕРКА: запрещаем покупки с кошелька платформы
+    const PLATFORM_WALLET = 'npzAZaN9fDMgLV63b3kv3FF8cLSd8dQSLxyMXASA5T4'
+    if (publicKey.toBase58() === PLATFORM_WALLET) {
+      toast.error('❌ Вы не можете покупать контент с кошелька платформы!')
+      return
+    }
+
+    const creatorWallet = selectedUser.solanaWallet || selectedUser.wallet
+    const referrerWallet = selectedUser.referrer?.solanaWallet || selectedUser.referrer?.wallet
+    const hasReferrer = !!(selectedUser.referrerId && referrerWallet && isValidSolanaAddress(referrerWallet || ''))
+
+    if (!creatorWallet || !isValidSolanaAddress(creatorWallet)) {
+      toast.error('Кошелек создателя не настроен')
+      return
+    }
+    
+    // Дополнительная проверка: создатель не может покупать свой контент
+    if (creatorWallet === publicKey.toBase58()) {
+      toast.error('Вы не можете покупать свой собственный контент')
       return
     }
 
     setIsProcessing(true)
-    setTransactionResult(null)
 
     try {
-      const connection = new Connection(SOLANA_CONFIG.RPC_HOST, 'confirmed')
-      const recipientPubkey = new PublicKey(selectedUser.wallet)
-      const platformPubkey = new PublicKey(SOLANA_CONFIG.PLATFORM_WALLET)
-      
-      // Рассчитываем распределение
-      const totalAmount = amount * LAMPORTS_PER_SOL
-      const platformFee = Math.floor(totalAmount * 0.05) // 5% платформе
-      const referrerFee = selectedUser.referrer?.wallet ? Math.floor(totalAmount * 0.05) : 0 // 5% рефереру
-      const creatorAmount = totalAmount - platformFee - referrerFee
+      // Calculate payment distribution
+      const distribution = calculatePaymentDistribution(
+        solAmount,
+        creatorWallet,
+        hasReferrer,
+        referrerWallet || undefined
+      )
 
-      // Получаем рекомендуемую приоритетную комиссию
-      const getPriorityFee = async (): Promise<number> => {
-        try {
-          const fees = await connection.getRecentPrioritizationFees()
-          if (fees && fees.length > 0) {
-            const nonZeroFees = fees.filter(f => f.prioritizationFee > 0)
-            if (nonZeroFees.length > 0) {
-              const feeValues = nonZeroFees.map(f => f.prioritizationFee).sort((a, b) => a - b)
-              const p90 = feeValues[Math.floor(feeValues.length * 0.9)]
-              return Math.min(Math.max(p90 || 600000, 600000), 2000000)
-            }
-          }
-        } catch (error) {
-          console.error('Error getting priority fees:', error)
-        }
-        return 600000 // По умолчанию
-      }
+      // Create transaction
+      const transaction = await createPostPurchaseTransaction(
+        publicKey,
+        distribution
+      )
 
-      // Создаем транзакцию с учетом priority fee и rent
-      const createTransaction = async () => {
-        // Получаем свежий blockhash
-        const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash('confirmed')
-        
-        const transaction = new Transaction()
-        transaction.recentBlockhash = blockhash
-        transaction.feePayer = publicKey
-        ;(transaction as any).lastValidBlockHeight = lastValidBlockHeight
-
-        // Добавляем приоритетную комиссию
-        const priorityFee = await getPriorityFee()
-        console.log(`Using priority fee: ${priorityFee} microlamports`)
-        
-        const { ComputeBudgetProgram } = await import('@solana/web3.js')
-        transaction.add(
-          ComputeBudgetProgram.setComputeUnitPrice({
-            microLamports: priorityFee
-          })
-        )
-
-        // 1. Платеж создателю БЕЗ проверки ренты (как в PurchaseModal)
-        console.log('Adding creator transfer:', {
-          from: publicKey.toBase58(),
-          to: recipientPubkey.toBase58(),
-          amount: creatorAmount / LAMPORTS_PER_SOL,
-          lamports: creatorAmount
+      // Проверяем что feePayer установлен правильно
+      if (transaction.feePayer?.toBase58() !== publicKey.toBase58()) {
+        console.error('CRITICAL: Fee payer mismatch!', {
+          transactionFeePayer: transaction.feePayer?.toBase58(),
+          userPublicKey: publicKey.toBase58()
         })
-        
-        transaction.add(
-          SystemProgram.transfer({
-            fromPubkey: publicKey,
-            toPubkey: recipientPubkey,
-            lamports: creatorAmount
-          })
-        )
-        
-        // 2. Комиссия платформе
-        transaction.add(
-          SystemProgram.transfer({
-            fromPubkey: publicKey,
-            toPubkey: platformPubkey,
-            lamports: platformFee
-          })
-        )
-        
-        // 3. Комиссия рефереру (если есть)
-        if (selectedUser.referrer?.wallet && referrerFee > 0) {
-          const referrerPubkey = new PublicKey(selectedUser.referrer.wallet)
-          
-          transaction.add(
-            SystemProgram.transfer({
-              fromPubkey: publicKey,
-              toPubkey: referrerPubkey,
-              lamports: referrerFee
-            })
-          )
-        }
-
-        return transaction
+        // Принудительно устанавливаем правильный feePayer
+        transaction.feePayer = publicKey
       }
 
+      // Send transaction with retry logic
+      let signature: string = ''
+      let attempts = 0
+      const maxAttempts = 3
+      
       // Параметры для отправки транзакции
       const sendOptions = {
         skipPreflight: false,
         preflightCommitment: 'confirmed' as any,
         maxRetries: 3
       }
-
-      // Отправляем транзакцию с retry логикой
-      let signature: string = ''
-      let attempts = 0
-      const maxAttempts = 3
       
       while (attempts < maxAttempts) {
         attempts++
         
         try {
-          // Создаем новую транзакцию с свежим blockhash для каждой попытки
-          const transaction = await createTransaction()
+          // Получаем свежий blockhash прямо перед отправкой
+          const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash('confirmed')
+          transaction.recentBlockhash = blockhash
+          ;(transaction as any).lastValidBlockHeight = lastValidBlockHeight
           
-          // Отправляем транзакцию (без симуляции, как в PurchaseModal)
-          console.log('Sending transaction with blockhash:', transaction.recentBlockhash)
-          console.log('Transaction instructions:', transaction.instructions.length)
-          console.log('Fee payer:', transaction.feePayer?.toBase58())
+          // Симулируем транзакцию перед отправкой (опционально)
+          try {
+            const simulation = await connection.simulateTransaction(transaction)
+            
+            if (simulation.value.err && simulation.value.err !== 'AccountNotFound') {
+              console.error('Simulation failed:', simulation.value.err)
+              throw new Error(`Симуляция транзакции неуспешна: ${JSON.stringify(simulation.value.err)}`)
+            }
+          } catch (simError) {
+            // Продолжаем даже если симуляция не удалась
+          }
           
           signature = await sendTransaction(transaction, connection, sendOptions)
-          console.log('Transaction sent:', signature)
           
           // Успешно отправлено, выходим из цикла
           break
           
         } catch (sendError) {
-          console.error(`Attempt ${attempts} failed:`, sendError)
-          
           if (attempts === maxAttempts) {
             throw new Error(`Не удалось отправить транзакцию после ${maxAttempts} попыток: ${sendError instanceof Error ? sendError.message : 'Неизвестная ошибка'}`)
           }
-          
           // Ждем перед следующей попыткой
           await new Promise(resolve => setTimeout(resolve, 2000))
         }
       }
 
-      // Ждем подтверждения с правильным таймаутом
-      console.log('Waiting for confirmation...')
+      // Проверяем транзакцию
+      toast.loading('Проверяем транзакцию в блокчейне...')
+      await new Promise(resolve => setTimeout(resolve, 2000))
       
-      // НЕ ИСПОЛЬЗУЕМ confirmTransaction - это вызывает block height exceeded
-      // Используем паттерн из lib/solana/validation.ts - только getSignatureStatus
-      
-      let confirmed = false
-      const maxConfirmAttempts = 30 // 30 секунд максимум
-      
-      for (let i = 0; i < maxConfirmAttempts; i++) {
-        try {
-          const status = await connection.getSignatureStatus(signature)
-          
-          // Логируем каждые 5 попыток
-          if (i % 5 === 0) {
-            console.log(`Checking status (attempt ${i + 1}/${maxConfirmAttempts}):`, {
-              confirmationStatus: status.value?.confirmationStatus,
-              err: status.value?.err
-            })
-          }
-          
-          if (status.value?.confirmationStatus === 'confirmed' || 
-              status.value?.confirmationStatus === 'finalized') {
-            console.log(`Transaction confirmed after ${i + 1} attempts!`)
-            confirmed = true
-            break
-          }
-          
-          if (status.value?.err) {
-            throw new Error(`Transaction failed: ${JSON.stringify(status.value.err)}`)
-          }
-          
-          // Если транзакция еще не видна, ждем больше в начале
-          if (!status.value && i < 10) {
-            await new Promise(resolve => setTimeout(resolve, 2000)) // 2 секунды
-          } else {
-            await new Promise(resolve => setTimeout(resolve, 1000)) // 1 секунда
-          }
-          
-                  } catch (error) {
-            console.error(`Error checking status (attempt ${i + 1}):`, error)
-            // Продолжаем попытки при сетевых ошибках
-            if (i < maxConfirmAttempts - 1) {
-              await new Promise(resolve => setTimeout(resolve, 2000))
-              continue
-            }
-            throw error
-          }
-      }
-      
-      if (!confirmed) {
-        throw new Error('Transaction not confirmed after 30 seconds')
+      // Проверяем статус транзакции
+      try {
+        const status = await connection.getSignatureStatus(signature)
+        if (status.value?.err) {
+          throw new Error(`Транзакция отклонена: ${JSON.stringify(status.value.err)}`)
+        }
+      } catch (statusError) {
+        console.error('Error checking transaction status:', statusError)
       }
 
+      // Ждем подтверждения
+      toast.loading('Подтверждаем транзакцию в блокчейне...')
+      await new Promise(resolve => setTimeout(resolve, 8000))
+
+      // Success!
+      toast.success('Транзакция успешно отправлена!')
+      
       setTransactionResult({
         signature,
-        amount,
-        recipient: selectedUser.nickname,
-        creatorAmount: creatorAmount / LAMPORTS_PER_SOL,
-        platformFee: platformFee / LAMPORTS_PER_SOL,
-        referrerFee: referrerFee / LAMPORTS_PER_SOL,
-        referrer: selectedUser.referrer?.nickname,
-        status: 'success'
+        solAmount,
+        usdAmount: solAmount * (prices?.SOL_USD || 135), // Используем динамический курс!
+        recipientWallet: creatorWallet,
+        platformFee: distribution.platformAmount,
+        referrerFee: distribution.referrerAmount || 0,
+        creatorReceived: distribution.creatorAmount
       })
 
-    } catch (error: any) {
-      console.error('Transaction error:', error)
+    } catch (error) {
+      console.error('Payment error:', error)
       
-      let errorMessage = error.message || 'Transaction failed'
+      let errorMessage = 'Произошла ошибка при оплате'
       
-      // Обработка специфичных ошибок
-      if (errorMessage.includes('User rejected')) {
-        errorMessage = 'Вы отменили транзакцию'
-      } else if (errorMessage.includes('insufficient')) {
-        errorMessage = 'Недостаточно средств на кошельке (включая комиссию сети)'
-      } else if (errorMessage.includes('blockhash not found')) {
-        errorMessage = 'Транзакция истекла. Попробуйте еще раз'
+      if (error instanceof Error) {
+        if (error.message.includes('User rejected')) {
+          errorMessage = 'Вы отменили транзакцию'
+        } else if (error.message.includes('insufficient')) {
+          errorMessage = 'Недостаточно средств на кошельке'
+        } else if (error.message.includes('Transaction not confirmed')) {
+          errorMessage = 'Транзакция не была подтверждена. Попробуйте еще раз'
+        } else if (error.message.includes('block height exceeded')) {
+          errorMessage = 'Транзакция истекла. Попробуйте еще раз'
+        } else {
+          errorMessage = error.message
+        }
       }
       
-      setTransactionResult({
-        status: 'error',
-        error: errorMessage
-      })
+      toast.error(errorMessage)
     } finally {
       setIsProcessing(false)
     }
@@ -347,10 +303,28 @@ function PricingDashboard() {
         {/* User Selection */}
         <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 mb-8">
           <h2 className="text-xl font-semibold mb-4">Выбор получателя платежа</h2>
-          <UserSelector 
-            onUserSelect={setSelectedUser} 
-            selectedUser={selectedUser}
-          />
+          <div className="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-sm">
+            <h3 className="text-lg font-semibold mb-4 text-gray-900 dark:text-white">
+              Выберите получателя
+            </h3>
+            
+            <select
+              value={selectedUser?.id || ''}
+              onChange={(e) => {
+                const user = users.find(u => u.id === e.target.value)
+                setSelectedUser(user || null)
+              }}
+              className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+            >
+              <option value="">Выберите пользователя...</option>
+              {users.map(user => (
+                <option key={user.id} value={user.id}>
+                  @{user.nickname} - {user.wallet ? '✓ Wallet' : '✗ No wallet'}
+                  {user.referrer && ` (ref: @${user.referrer.nickname})`}
+                </option>
+              ))}
+            </select>
+          </div>
           
           {selectedUser && (
             <div className="mt-4 p-4 bg-purple-50 dark:bg-purple-900/20 rounded-lg">
@@ -396,7 +370,7 @@ function PricingDashboard() {
           />
           
           <button
-            onClick={() => sendTestTransaction(testAmount)}
+            onClick={handleSendTransaction}
             disabled={!publicKey || !selectedUser?.wallet || isProcessing}
             className="w-full mt-4 px-6 py-3 bg-gradient-to-r from-purple-600 to-pink-600 text-white font-semibold rounded-xl hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed transition-opacity"
           >
@@ -415,13 +389,13 @@ function PricingDashboard() {
             
             {transactionResult.status === 'success' ? (
               <div className="space-y-2">
-                <p>Сумма: <span className="font-bold">{formatSolAmount(transactionResult.amount)}</span></p>
-                <p>Получатель: <span className="font-bold">{transactionResult.recipient}</span></p>
+                <p>Сумма: <span className="font-bold">{formatSolAmount(transactionResult.solAmount)}</span></p>
+                <p>Получатель: <span className="font-bold">{transactionResult.recipientWallet}</span></p>
                 <div className="pt-2 border-t">
-                  <p>Создателю: {formatSolAmount(transactionResult.creatorAmount)}</p>
+                  <p>Создателю: {formatSolAmount(transactionResult.creatorReceived)}</p>
                   <p>Платформе: {formatSolAmount(transactionResult.platformFee)}</p>
-                  {transactionResult.referrer && (
-                    <p>Рефереру ({transactionResult.referrer}): {formatSolAmount(transactionResult.referrerFee)}</p>
+                  {transactionResult.referrerFee > 0 && (
+                    <p>Рефереру: {formatSolAmount(transactionResult.referrerFee)}</p>
                   )}
                 </div>
                 <p className="pt-2 border-t">
@@ -453,7 +427,7 @@ function PricingDashboard() {
                 onClick={() => {
                   setTestAmount(price)
                   if (publicKey && selectedUser?.wallet) {
-                    sendTestTransaction(price)
+                    handleSendTransaction()
                   }
                 }}
                 disabled={!publicKey || !selectedUser?.wallet || isProcessing}

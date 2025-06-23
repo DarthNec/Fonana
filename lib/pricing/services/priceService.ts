@@ -68,6 +68,41 @@ class PriceService {
   }
 
   private async fetchPrices(): Promise<PriceData> {
+    // Используем наш API endpoint вместо прямых запросов
+    try {
+      const response = await fetch('/api/pricing', {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        // Не кешируем на клиенте, полагаемся на серверный кеш
+        cache: 'no-store'
+      })
+
+      if (!response.ok) {
+        throw new Error(`API error: ${response.status}`)
+      }
+
+      const data = await response.json()
+      
+      if (data.success && data.data?.prices) {
+        return data.data.prices
+      }
+
+      throw new Error(data.error || 'Invalid API response')
+    } catch (error) {
+      console.error('Failed to fetch prices from API:', error)
+      
+      // Fallback на прямые запросы только на сервере
+      if (typeof window === 'undefined') {
+        return this.fetchFromExternalAPIs()
+      }
+      
+      throw error
+    }
+  }
+
+  private async fetchFromExternalAPIs(): Promise<PriceData> {
     const errors: Error[] = []
 
     // Пробуем CoinGecko
