@@ -29,6 +29,7 @@ import {
 import { useUser } from '@/lib/hooks/useUser'
 import { useWallet } from '@solana/wallet-adapter-react'
 import toast from 'react-hot-toast'
+import { useSolRate } from '@/lib/hooks/useSolRate'
 
 interface Creator {
   id: string
@@ -54,7 +55,8 @@ export default function CreatorPage() {
   const params = useParams()
   const router = useRouter()
   const { user } = useUser()
-  const { connected } = useWallet()
+  const { connected, publicKey } = useWallet()
+  const { rate: solRate } = useSolRate()
   const [creator, setCreator] = useState<Creator | null>(null)
   const [posts, setPosts] = useState<any[]>([])
   const [isLoading, setIsLoading] = useState(true)
@@ -496,6 +498,9 @@ export default function CreatorPage() {
                         </div>
                         <span className="font-bold text-gray-900 dark:text-white">
                           {creatorTiers.basicTier.price} SOL
+                          <span className="text-xs text-gray-600 dark:text-gray-400 font-normal ml-1">
+                            (≈ ${(creatorTiers.basicTier.price * solRate).toFixed(2)})
+                          </span>
                         </span>
                       </div>
                       <p className="text-sm text-gray-600 dark:text-slate-400 mb-3">
@@ -536,6 +541,9 @@ export default function CreatorPage() {
                         </div>
                         <span className="font-bold text-gray-900 dark:text-white">
                           {creatorTiers.premiumTier.price} SOL
+                          <span className="text-xs text-purple-600 dark:text-purple-400 font-normal ml-1">
+                            (≈ ${(creatorTiers.premiumTier.price * solRate).toFixed(2)})
+                          </span>
                         </span>
                       </div>
                       <p className="text-sm text-gray-600 dark:text-slate-400 mb-3">
@@ -573,6 +581,9 @@ export default function CreatorPage() {
                         </div>
                         <span className="font-bold text-gray-900 dark:text-white">
                           {creatorTiers.vipTier.price} SOL
+                          <span className="text-xs text-yellow-600 dark:text-yellow-400 font-normal ml-1">
+                            (≈ ${(creatorTiers.vipTier.price * solRate).toFixed(2)})
+                          </span>
                         </span>
                       </div>
                       <p className="text-sm text-gray-600 dark:text-slate-400 mb-3">

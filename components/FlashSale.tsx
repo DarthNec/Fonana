@@ -7,6 +7,7 @@ import {
   ShoppingCartIcon,
   UserGroupIcon
 } from '@heroicons/react/24/outline'
+import { useSolRate } from '@/lib/hooks/useSolRate'
 
 interface FlashSaleProps {
   flashSale: {
@@ -32,6 +33,7 @@ interface FlashSaleProps {
 export default function FlashSale({ flashSale, onUse, className = '' }: FlashSaleProps) {
   const [timeLeft, setTimeLeft] = useState(flashSale.timeLeft)
   const [isExpired, setIsExpired] = useState(false)
+  const { rate: solRate } = useSolRate()
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -129,6 +131,20 @@ export default function FlashSale({ flashSale, onUse, className = '' }: FlashSal
             </span>
             <span className="text-2xl font-bold text-orange-600 dark:text-orange-400">
               {getDiscountedPrice().toFixed(2)} {flashSale.post?.currency || 'SOL'}
+            </span>
+          </div>
+        )}
+        
+        {/* USD Price */}
+        {getOriginalPrice() > 0 && (flashSale.post?.currency === 'SOL' || !flashSale.post?.currency) && (
+          <div className="text-sm text-gray-600 dark:text-gray-400 mb-3">
+            <span className="line-through">≈ ${(getOriginalPrice() * solRate).toFixed(2)}</span>
+            {' → '}
+            <span className="font-bold text-orange-600 dark:text-orange-400">
+              ≈ ${(getDiscountedPrice() * solRate).toFixed(2)} USD
+            </span>
+            <span className="ml-1 text-xs text-green-600 dark:text-green-400">
+              (Save ${((getOriginalPrice() - getDiscountedPrice()) * solRate).toFixed(2)})
             </span>
           </div>
         )}

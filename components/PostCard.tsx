@@ -28,6 +28,7 @@ import { useUser } from '@/lib/hooks/useUser'
 import { getProfileLink } from '@/lib/utils/links'
 import EditPostModal from './EditPostModal'
 import FlashSale from './FlashSale'
+import { useSolRate } from '@/lib/hooks/useSolRate'
 
 interface Creator {
   id: string
@@ -161,6 +162,7 @@ export default function PostCard({
   const [isExpanded, setIsExpanded] = useState(false)
   const [showImageViewer, setShowImageViewer] = useState(false)
   const actionsRef = useRef<HTMLDivElement>(null)
+  const { rate: solRate } = useSolRate()
 
   // Загружаем статус лайка при монтировании
   useEffect(() => {
@@ -618,7 +620,12 @@ export default function PostCard({
                 <>
                   <span className="w-2 h-2 rounded-full bg-gray-500 dark:bg-gray-400"></span>
                   ✅ Sold {soldTo && `@${soldTo.nickname || soldTo.wallet.slice(0, 6) + '...'}`}
-                  {soldPrice && ` for ${soldPrice} SOL`}
+                  {soldPrice && (
+                    <>
+                      {' '}for {soldPrice} SOL
+                      <span className="text-xs ml-1">(≈ ${(soldPrice * solRate).toFixed(2)})</span>
+                    </>
+                  )}
                 </>
               ) : sellType === 'AUCTION' ? (
                 <>
@@ -637,6 +644,7 @@ export default function PostCard({
                   {auctionCurrentBid && auctionCurrentBid > 0 && (
                     <span className="text-xs font-bold ml-1">
                       Current bid: {auctionCurrentBid} SOL
+                      <span className="text-xs ml-1">(≈ ${(auctionCurrentBid * solRate).toFixed(2)})</span>
                     </span>
                   )}
                 </>
@@ -644,6 +652,9 @@ export default function PostCard({
                 <>
                   <span className="w-2 h-2 rounded-full bg-yellow-500 dark:bg-yellow-400"></span>
                   🛒 Buy for {price} {currency}
+                  {currency === 'SOL' && price && (
+                    <span className="text-xs ml-1">(≈ ${(price * solRate).toFixed(2)})</span>
+                  )}
                 </>
               )}
             </div>
@@ -737,6 +748,11 @@ export default function PostCard({
                     ) : (
                       <div className="text-purple-600 dark:text-purple-400 font-bold text-2xl mb-4">
                         {price} {currency}
+                        {currency === 'SOL' && price && (
+                          <div className="text-sm font-normal text-gray-600 dark:text-gray-400">
+                            ≈ ${(price * solRate).toFixed(2)} USD
+                          </div>
+                        )}
                       </div>
                     )}
                   </>
@@ -865,10 +881,14 @@ export default function PostCard({
                       {auctionCurrentBid && auctionCurrentBid > 0 ? (
                         <div className="text-lg font-bold text-yellow-600 dark:text-yellow-400">
                           Current: {auctionCurrentBid} SOL
+                          <div className="text-sm font-normal">≈ ${(auctionCurrentBid * solRate).toFixed(2)}</div>
                         </div>
                       ) : (
                         <div className="text-lg font-bold text-yellow-600 dark:text-yellow-400">
                           Start: {auctionStartPrice} SOL
+                          {auctionStartPrice && (
+                            <div className="text-sm font-normal">≈ ${(auctionStartPrice * solRate).toFixed(2)}</div>
+                          )}
                         </div>
                       )}
                       {auctionEndAt && (
@@ -898,6 +918,9 @@ export default function PostCard({
                   ) : (
                     <div className="text-xl font-bold text-yellow-600 dark:text-yellow-400">
                       {price} {currency}
+                      {currency === 'SOL' && price && (
+                        <div className="text-sm font-normal">≈ ${(price * solRate).toFixed(2)}</div>
+                      )}
                     </div>
                   )}
                 </div>
