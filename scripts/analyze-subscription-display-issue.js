@@ -1,129 +1,138 @@
 const { PrismaClient } = require('@prisma/client')
 const prisma = new PrismaClient()
 
-async function analyzeIssue() {
+async function analyzeSubscriptionDisplayIssue() {
   try {
-    console.log('=== АНАЛИЗ ПРОБЛЕМЫ ОТОБРАЖЕНИЯ ПОДПИСОК ===\n')
+    console.log('=== SUBSCRIPTION DISPLAY ISSUE ANALYSIS ===\n')
     
-    // 1. Проверяем данные Pal в таблице users
-    const pal = await prisma.user.findFirst({
-      where: { nickname: 'Pal' }
+    // 1. Проверяем lafufu и его настройки тиров
+    const lafufu = await prisma.user.findFirst({
+      where: { 
+        nickname: { equals: 'lafufu', mode: 'insensitive' } 
+      }
     })
     
-    console.log('1. Данные Pal в базе:')
-    console.log('- ID:', pal?.id)
-    console.log('- Nickname:', pal?.nickname)
-    console.log('- isCreator:', pal?.isCreator)
-    console.log('- Wallet:', pal?.wallet)
-    
-    if (!pal?.isCreator) {
-      console.log('\n⚠️  ПРОБЛЕМА: Pal не отмечен как creator!')
+    if (!lafufu) {
+      console.log('Lafufu not found!')
+      return
     }
     
-    // 2. Проверяем, возвращается ли Pal в списке creators
-    const creators = await prisma.user.findMany({
-      where: { isCreator: true },
-      select: {
-        id: true,
-        nickname: true,
-        wallet: true
-      }
+    console.log('LAFUFU INFO:')
+    console.log(`- ID: ${lafufu.id}`)
+    console.log(`- Nickname: ${lafufu.nickname}`)
+    console.log(`- Wallet: ${lafufu.solanaWallet || lafufu.wallet}\n`)
+    
+    // Проверяем настройки тиров
+    const tierSettings = await prisma.creatorTierSettings.findUnique({
+      where: { creatorId: lafufu.id }
     })
     
-    console.log('\n2. Список всех creators:')
-    console.log(`Всего creators: ${creators.length}`)
-    const palInCreators = creators.find(c => c.id === pal?.id)
-    console.log('Pal в списке creators:', palInCreators ? 'ДА' : 'НЕТ')
-    
-    // 3. Проверяем подписку Dogwater на Pal
-    const dogwater = await prisma.user.findFirst({
-      where: { nickname: 'Dogwater' }
-    })
-    
-    console.log('\n3. Проверка подписки Dogwater на Pal:')
-    
-    const subscription = await prisma.subscription.findUnique({
-      where: {
-        userId_creatorId: {
-          userId: dogwater.id,
-          creatorId: pal.id
-        }
-      }
-    })
-    
-    if (subscription) {
-      console.log('✅ Подписка существует:')
-      console.log('- Активна:', subscription.isActive)
-      console.log('- Действует до:', subscription.validUntil)
-      console.log('- Статус платежа:', subscription.paymentStatus)
-      console.log('- Активная по API логике:', subscription.isActive && subscription.validUntil > new Date())
+    console.log('TIER SETTINGS:')
+    if (tierSettings) {
+      console.log('Custom tiers found:')
+      console.log(JSON.stringify({
+        basicTier: tierSettings.basicTier,
+        premiumTier: tierSettings.premiumTier,
+        vipTier: tierSettings.vipTier
+      }, null, 2))
     } else {
-      console.log('❌ Подписка не найдена')
+      console.log('❌ NO CUSTOM TIERS - Using default prices (0.05, 0.15, 0.35)')
     }
     
-    // 4. Проверяем, что вернет API /api/subscriptions/check
-    const activeSubs = await prisma.subscription.findMany({
-      where: {
-        userId: dogwater.id,
-        isActive: true,
-        validUntil: { gt: new Date() }
+    // 2. Проверяем подписки на lafufu
+    console.log('\n\nSUBSCRIPTIONS TO LAFUFU:')
+    const subscriptions = await prisma.subscription.findMany({
+      where: { 
+        creatorId: lafufu.id,
+        isActive: true
       },
-      select: {
-        creatorId: true,
-        creator: {
-          select: {
-            nickname: true
+      include: {
+        user: {
+          select: { nickname: true, wallet: true, solanaWallet: true }
+        }
+      },
+      orderBy: { subscribedAt: 'desc' },
+      take: 10
+    })
+    
+    subscriptions.forEach(sub => {
+      console.log(`\n- User: ${sub.user.nickname}`)
+      console.log(`  Plan: ${sub.plan}`)
+      console.log(`  Price: ${sub.price} SOL`)
+      console.log(`  Valid until: ${sub.validUntil}`)
+      console.log(`  Subscribed: ${sub.subscribedAt}`)
+    })
+    
+    // 3. Ищем специфично подписку Dogwater на lafufu
+    const dogwater = await prisma.user.findFirst({
+      where: { 
+        nickname: { equals: 'Dogwater', mode: 'insensitive' } 
+      }
+    })
+    
+    if (dogwater) {
+      console.log('\n\nDOGWATER SUBSCRIPTION TO LAFUFU:')
+      const dogwaterSub = await prisma.subscription.findUnique({
+        where: {
+          userId_creatorId: {
+            userId: dogwater.id,
+            creatorId: lafufu.id
           }
         }
+      })
+      
+      if (dogwaterSub) {
+        console.log(`- Current Plan: ${dogwaterSub.plan}`)
+        console.log(`- Price Paid: ${dogwaterSub.price} SOL`)
+        console.log(`- Is Active: ${dogwaterSub.isActive}`)
+        console.log(`- Valid Until: ${dogwaterSub.validUntil}`)
+        console.log(`- TX Signature: ${dogwaterSub.txSignature?.slice(0, 20)}...`)
+        
+        // Проверяем транзакции
+        const transaction = await prisma.transaction.findUnique({
+          where: { txSignature: dogwaterSub.txSignature || '' }
+        })
+        
+        if (transaction) {
+          console.log('\nTRANSACTION DETAILS:')
+          console.log(`- Amount: ${transaction.amount} SOL`)
+          console.log(`- Type: ${transaction.type}`)
+          console.log(`- Status: ${transaction.status}`)
+          console.log(`- Metadata: ${JSON.stringify(transaction.metadata)}`)
+        }
+      } else {
+        console.log('No subscription found')
       }
+    }
+    
+    // 4. Проверяем последние транзакции подписок для lafufu
+    console.log('\n\nLAST 5 SUBSCRIPTION TRANSACTIONS TO LAFUFU:')
+    const recentTxs = await prisma.transaction.findMany({
+      where: {
+        type: 'SUBSCRIPTION',
+        metadata: {
+          path: ['creatorId'],
+          equals: lafufu.id
+        }
+      },
+      orderBy: { createdAt: 'desc' },
+      take: 5
     })
     
-    console.log('\n4. Активные подписки Dogwater (как вернет API):')
-    console.log(`Всего активных: ${activeSubs.length}`)
-    const subscribedCreatorIds = activeSubs.map(s => s.creatorId)
-    console.log('Creator IDs:', subscribedCreatorIds)
-    console.log('Включает Pal?', subscribedCreatorIds.includes(pal.id))
-    
-    activeSubs.forEach(sub => {
-      console.log(`- ${sub.creator.nickname} (${sub.creatorId})`)
+    recentTxs.forEach(tx => {
+      const metadata = tx.metadata
+      console.log(`\n- TX: ${tx.txSignature?.slice(0, 20)}...`)
+      console.log(`  Plan: ${metadata?.plan}`)
+      console.log(`  Amount: ${tx.amount} SOL`)
+      console.log(`  Created: ${tx.createdAt}`)
+      console.log(`  Status: ${tx.status}`)
     })
-    
-    // 5. Проверим посты Pal
-    const palPosts = await prisma.post.count({
-      where: { creatorId: pal.id }
-    })
-    
-    console.log(`\n5. Количество постов Pal: ${palPosts}`)
-    
-    // 6. Возможные причины
-    console.log('\n=== ВОЗМОЖНЫЕ ПРИЧИНЫ ПРОБЛЕМЫ ===')
-    
-    if (!pal?.isCreator) {
-      console.log('❌ Pal не отмечен как creator в базе данных')
-    }
-    
-    if (!palInCreators) {
-      console.log('❌ Pal не возвращается в списке creators из API')
-    }
-    
-    if (!subscription || !subscription.isActive || subscription.validUntil < new Date()) {
-      console.log('❌ Подписка неактивна или истекла')
-    }
-    
-    if (!subscribedCreatorIds.includes(pal.id)) {
-      console.log('❌ Pal не включен в список подписок через API')
-    }
-    
-    console.log('\n=== РЕКОМЕНДАЦИИ ===')
-    console.log('1. Проверьте консоль браузера для отладочных сообщений')
-    console.log('2. Очистите localStorage и перезагрузите страницу')
-    console.log('3. Проверьте сетевые запросы в DevTools')
     
   } catch (error) {
-    console.error('Ошибка:', error)
+    console.error('Analysis error:', error)
   } finally {
     await prisma.$disconnect()
   }
 }
 
-analyzeIssue() 
+analyzeSubscriptionDisplayIssue() 
