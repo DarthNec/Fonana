@@ -369,11 +369,13 @@ export default function SubscribeModal({ creator, preferredTier, onClose, onSucc
         return
       }
       
-      // Логирование для отладки
-      console.log('[SubscribeModal] Payment details:', {
-        tier: selectedSubscription.name,
+      // Детальное логирование для отладки
+      console.log('[SubscribeModal] Subscription attempt:', {
+        selectedTier: selectedTier,
+        selectedPlan: selectedSubscription.name,
         originalPrice: selectedSubscription.price,
         finalPrice: finalPrice,
+        creatorHasCustomTiers: subscriptionTiers.some(t => t.price !== getSubscriptionTiers()[subscriptionTiers.indexOf(t)]?.price),
         flashSale: activeFlashSale ? {
           discount: activeFlashSale.discount,
           id: activeFlashSale.id

@@ -11,7 +11,7 @@ export async function POST(request: Request) {
   
   try {
     const body = await request.json()
-    const { 
+    let { 
       creatorId, 
       plan, 
       price, 
@@ -78,19 +78,52 @@ export async function POST(request: Request) {
       )
     }
     
-    // Проверка ожидаемых цен для планов
-    const expectedPrices: Record<string, number> = {
-      'Basic': 0.05,
-      'Premium': 0.15,
-      'VIP': 0.35
+    // Валидация и корректировка плана по цене
+    const tierPrices: Record<string, number> = {
+      'basic': 0.05,
+      'premium': 0.15,
+      'vip': 0.35
     }
     
-    if (!flashSaleId && expectedPrices[plan] && Math.abs(price - expectedPrices[plan]) > 0.001) {
-      paymentLogger.warn('Price mismatch detected', {
-        plan,
-        receivedPrice: price,
-        expectedPrice: expectedPrices[plan]
-      })
+    // Нормализуем план к нижнему регистру для проверки
+    const normalizedPlan = plan.toLowerCase()
+    
+    // Если нет Flash Sale, проверяем соответствие цены плану
+    if (!flashSaleId && tierPrices[normalizedPlan]) {
+      const expectedPrice = tierPrices[normalizedPlan]
+      
+      // Если цена не соответствует плану, определяем правильный план по цене
+      if (Math.abs(price - expectedPrice) > 0.001) {
+        // Находим план, соответствующий оплаченной цене
+        const actualPlan = Object.entries(tierPrices).find(([_, p]) => 
+          Math.abs(price - p) < 0.001
+        )
+        
+        if (actualPlan) {
+          // Используем план, соответствующий оплаченной цене
+          const originalPlan = plan
+          plan = actualPlan[0].charAt(0).toUpperCase() + actualPlan[0].slice(1) // 'basic' -> 'Basic'
+          
+          paymentLogger.warn('Plan adjusted based on price', {
+            requestedPlan: originalPlan,
+            adjustedPlan: plan,
+            price,
+            expectedPrice
+          })
+        } else {
+          // Если цена не соответствует ни одному стандартному плану
+          paymentLogger.error('Price does not match any standard tier', {
+            price,
+            requestedPlan: plan,
+            availableTiers: tierPrices
+          })
+          
+          return NextResponse.json(
+            { error: 'Invalid subscription price. Please select a valid subscription tier.' },
+            { status: 400 }
+          )
+        }
+      }
     }
 
     // Ждём подтверждения транзакции
