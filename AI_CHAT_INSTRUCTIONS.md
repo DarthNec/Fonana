@@ -453,8 +453,15 @@ ssh -p 43988 root@69.10.59.234 "pm2 status"
 ```
 
 ### Logs:
+⚠️ **ВАЖНО**: НЕ читайте логи напрямую через SSH - они зависают! Сначала скачайте:
 ```bash
-ssh -p 43988 root@69.10.59.234 "pm2 logs fonana --lines 50"
+# Скачать логи в файл
+ssh -p 43988 root@69.10.59.234 "pm2 logs fonana --lines 100 --nostream > /tmp/fonana-logs.txt && cat /tmp/fonana-logs.txt"
+
+# Или для ошибок
+ssh -p 43988 root@69.10.59.234 "tail -n 100 /root/.pm2/logs/fonana-error.log > /tmp/fonana-error.txt && cat /tmp/fonana-error.txt"
+
+# НЕ ИСПОЛЬЗУЙТЕ: ssh ... "pm2 logs fonana --lines 50" - это зависнет!
 ```
 
 ### Restart:
@@ -583,12 +590,15 @@ public/           # Static assets
 ## Before Making Changes - ALWAYS CHECK:
 ```bash
 # 1. Current status
-ssh -p 43988 root@69.10.59.234 "pm2 status && pm2 logs fonana --lines 10"
+ssh -p 43988 root@69.10.59.234 "pm2 status"
 
-# 2. Database health  
+# 2. Check last errors (без зависания!)
+ssh -p 43988 root@69.10.59.234 "tail -n 20 /root/.pm2/logs/fonana-error.log > /tmp/quick-check.txt && cat /tmp/quick-check.txt"
+
+# 3. Database health  
 ssh -p 43988 root@69.10.59.234 "cd /var/www/fonana && node scripts/health-check.js"
 
-# 3. Recent changes
+# 4. Recent changes
 git log --oneline -10
 ```
 
