@@ -61,44 +61,183 @@ function PricingDashboard() {
       const referrerFee = selectedUser.referrer?.wallet ? Math.floor(totalAmount * 0.05) : 0 // 5% рефереру
       const creatorAmount = totalAmount - platformFee - referrerFee
 
-      // Создаем транзакцию
-      const transaction = new Transaction()
-      
-      // 1. Платеж создателю
-      transaction.add(
-        SystemProgram.transfer({
-          fromPubkey: publicKey,
-          toPubkey: recipientPubkey,
-          lamports: creatorAmount
-        })
-      )
-      
-      // 2. Комиссия платформе
-      transaction.add(
-        SystemProgram.transfer({
-          fromPubkey: publicKey,
-          toPubkey: platformPubkey,
-          lamports: platformFee
-        })
-      )
-      
-      // 3. Комиссия рефереру (если есть)
-      if (selectedUser.referrer?.wallet && referrerFee > 0) {
-        const referrerPubkey = new PublicKey(selectedUser.referrer.wallet)
+      // Получаем рекомендуемую приоритетную комиссию
+      const getPriorityFee = async (): Promise<number> => {
+        try {
+          const fees = await connection.getRecentPrioritizationFees()
+          if (fees && fees.length > 0) {
+            const nonZeroFees = fees.filter(f => f.prioritizationFee > 0)
+            if (nonZeroFees.length > 0) {
+              const feeValues = nonZeroFees.map(f => f.prioritizationFee).sort((a, b) => a - b)
+              const p90 = feeValues[Math.floor(feeValues.length * 0.9)]
+              return Math.min(Math.max(p90 || 600000, 600000), 2000000)
+            }
+          }
+        } catch (error) {
+          console.error('Error getting priority fees:', error)
+        }
+        return 600000 // По умолчанию
+      }
+
+      // Проверяем существование аккаунтов и нужна ли рента
+      const getAccountRentIfNeeded = async (pubkey: PublicKey): Promise<number> => {
+        try {
+          const accountInfo = await connection.getAccountInfo(pubkey)
+          if (!accountInfo) {
+            const minRent = await connection.getMinimumBalanceForRentExemption(0)
+            console.log(`Account ${pubkey.toBase58()} needs rent: ${minRent / LAMPORTS_PER_SOL} SOL`)
+            return minRent
+          }
+        } catch (error) {
+          console.error('Error checking account:', error)
+        }
+        return 0
+      }
+
+      // Создаем транзакцию с учетом priority fee и rent
+      const createTransaction = async () => {
+        // Получаем свежий blockhash
+        const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash('confirmed')
+        
+        const transaction = new Transaction()
+        transaction.recentBlockhash = blockhash
+        transaction.feePayer = publicKey
+        ;(transaction as any).lastValidBlockHeight = lastValidBlockHeight
+
+        // Добавляем приоритетную комиссию
+        const priorityFee = await getPriorityFee()
+        console.log(`Using priority fee: ${priorityFee} microlamports`)
+        
+        const { ComputeBudgetProgram } = await import('@solana/web3.js')
+        transaction.add(
+          ComputeBudgetProgram.setComputeUnitPrice({
+            microLamports: priorityFee
+          })
+        )
+
+        // 1. Платеж создателю с учетом ренты
+        const creatorRent = await getAccountRentIfNeeded(recipientPubkey)
+        const creatorTransferAmount = creatorAmount + creatorRent
+        
         transaction.add(
           SystemProgram.transfer({
             fromPubkey: publicKey,
-            toPubkey: referrerPubkey,
-            lamports: referrerFee
+            toPubkey: recipientPubkey,
+            lamports: creatorTransferAmount
           })
         )
+        
+        // 2. Комиссия платформе
+        transaction.add(
+          SystemProgram.transfer({
+            fromPubkey: publicKey,
+            toPubkey: platformPubkey,
+            lamports: platformFee
+          })
+        )
+        
+        // 3. Комиссия рефереру (если есть)
+        if (selectedUser.referrer?.wallet && referrerFee > 0) {
+          const referrerPubkey = new PublicKey(selectedUser.referrer.wallet)
+          const referrerRent = await getAccountRentIfNeeded(referrerPubkey)
+          const referrerTransferAmount = referrerFee + referrerRent
+          
+          transaction.add(
+            SystemProgram.transfer({
+              fromPubkey: publicKey,
+              toPubkey: referrerPubkey,
+              lamports: referrerTransferAmount
+            })
+          )
+        }
+
+        return transaction
       }
 
-      // Отправляем транзакцию
-      const signature = await sendTransaction(transaction, connection)
+      // Параметры для отправки транзакции
+      const sendOptions = {
+        skipPreflight: false,
+        preflightCommitment: 'confirmed' as any,
+        maxRetries: 3
+      }
+
+      // Отправляем транзакцию с retry логикой
+      let signature: string = ''
+      let attempts = 0
+      const maxAttempts = 3
       
-      // Ждем подтверждения
-      const confirmation = await connection.confirmTransaction(signature, 'confirmed')
+      while (attempts < maxAttempts) {
+        attempts++
+        
+        try {
+          // Создаем новую транзакцию с свежим blockhash для каждой попытки
+          const transaction = await createTransaction()
+          
+          // Симулируем транзакцию перед отправкой
+          try {
+            const simulation = await connection.simulateTransaction(transaction)
+            
+            if (simulation.value.err) {
+              console.error('Simulation failed:', simulation.value.err)
+              if (simulation.value.err !== 'AccountNotFound') {
+                throw new Error(`Симуляция транзакции неуспешна: ${JSON.stringify(simulation.value.err)}`)
+              }
+            }
+          } catch (simError) {
+            console.warn('Simulation error (continuing):', simError)
+          }
+          
+          signature = await sendTransaction(transaction, connection, sendOptions)
+          console.log('Transaction sent:', signature)
+          
+          // Успешно отправлено, выходим из цикла
+          break
+          
+        } catch (sendError) {
+          console.error(`Attempt ${attempts} failed:`, sendError)
+          
+          if (attempts === maxAttempts) {
+            throw new Error(`Не удалось отправить транзакцию после ${maxAttempts} попыток: ${sendError instanceof Error ? sendError.message : 'Неизвестная ошибка'}`)
+          }
+          
+          // Ждем перед следующей попыткой
+          await new Promise(resolve => setTimeout(resolve, 2000))
+        }
+      }
+
+      // Ждем подтверждения с правильным таймаутом
+      console.log('Waiting for confirmation...')
+      
+      try {
+        // Используем confirmTransaction с правильными параметрами
+        const latestBlockhash = await connection.getLatestBlockhash('confirmed')
+        
+        const confirmation = await connection.confirmTransaction({
+          signature,
+          blockhash: latestBlockhash.blockhash,
+          lastValidBlockHeight: latestBlockhash.lastValidBlockHeight
+        }, 'confirmed')
+        
+        if (confirmation.value.err) {
+          throw new Error(`Transaction failed: ${JSON.stringify(confirmation.value.err)}`)
+        }
+        
+        console.log('Transaction confirmed:', signature)
+        
+      } catch (confirmError) {
+        console.error('Confirmation error:', confirmError)
+        
+        // Проверяем статус транзакции даже если подтверждение истекло
+        const status = await connection.getSignatureStatus(signature)
+        
+        if (status.value?.confirmationStatus === 'confirmed' || status.value?.confirmationStatus === 'finalized') {
+          console.log('Transaction was actually confirmed despite timeout')
+        } else if (status.value?.err) {
+          throw new Error(`Transaction failed: ${JSON.stringify(status.value.err)}`)
+        } else {
+          throw new Error('Transaction status unknown after timeout')
+        }
+      }
       
       setTransactionResult({
         signature,
@@ -113,9 +252,21 @@ function PricingDashboard() {
 
     } catch (error: any) {
       console.error('Transaction error:', error)
+      
+      let errorMessage = error.message || 'Transaction failed'
+      
+      // Обработка специфичных ошибок
+      if (errorMessage.includes('User rejected')) {
+        errorMessage = 'Вы отменили транзакцию'
+      } else if (errorMessage.includes('insufficient')) {
+        errorMessage = 'Недостаточно средств на кошельке (включая комиссию сети)'
+      } else if (errorMessage.includes('blockhash not found')) {
+        errorMessage = 'Транзакция истекла. Попробуйте еще раз'
+      }
+      
       setTransactionResult({
         status: 'error',
-        error: error.message || 'Transaction failed'
+        error: errorMessage
       })
     } finally {
       setIsProcessing(false)
