@@ -78,12 +78,40 @@ export async function POST(request: Request) {
       )
     }
     
-    // Валидация и корректировка плана по цене
+    // Получаем настройки тиров создателя
+    const creatorTierSettings = await prisma.creatorTierSettings.findUnique({
+      where: { creatorId }
+    })
+    
+    // Определяем ожидаемые цены (кастомные или дефолтные)
     const tierPrices: Record<string, number> = {
       'basic': 0.05,
       'premium': 0.15,
       'vip': 0.35
     }
+    
+    // Если есть кастомные настройки, используем их
+    if (creatorTierSettings) {
+      const basicTier = creatorTierSettings.basicTier as any
+      const premiumTier = creatorTierSettings.premiumTier as any
+      const vipTier = creatorTierSettings.vipTier as any
+      
+      if (basicTier?.enabled !== false && basicTier?.price) {
+        tierPrices.basic = basicTier.price
+      }
+      if (premiumTier?.enabled !== false && premiumTier?.price) {
+        tierPrices.premium = premiumTier.price
+      }
+      if (vipTier?.enabled !== false && vipTier?.price) {
+        tierPrices.vip = vipTier.price
+      }
+    }
+    
+    paymentLogger.info('Creator tier prices', {
+      creatorId,
+      hasCustomTiers: !!creatorTierSettings,
+      tierPrices
+    })
     
     // Нормализуем план к нижнему регистру для проверки
     const normalizedPlan = plan.toLowerCase()
@@ -108,18 +136,20 @@ export async function POST(request: Request) {
             requestedPlan: originalPlan,
             adjustedPlan: plan,
             price,
-            expectedPrice
+            expectedPrice,
+            customTiers: !!creatorTierSettings
           })
         } else {
-          // Если цена не соответствует ни одному стандартному плану
-          paymentLogger.error('Price does not match any standard tier', {
+          // Если цена не соответствует ни одному плану создателя
+          paymentLogger.error('Price does not match any tier', {
             price,
             requestedPlan: plan,
-            availableTiers: tierPrices
+            availableTiers: tierPrices,
+            hasCustomTiers: !!creatorTierSettings
           })
           
           return NextResponse.json(
-            { error: 'Invalid subscription price. Please select a valid subscription tier.' },
+            { error: `Invalid subscription price ${price} SOL. Available tiers: Basic ${tierPrices.basic} SOL, Premium ${tierPrices.premium} SOL, VIP ${tierPrices.vip} SOL` },
             { status: 400 }
           )
         }
