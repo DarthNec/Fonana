@@ -350,13 +350,12 @@ export default function PurchaseModal({ post, onClose, onSuccess }: PurchaseModa
                   <p className="text-xl font-bold text-orange-600 dark:text-orange-400">
                     {formatSolAmount(displayPrice)}
                   </p>
+                  <p className="text-sm text-gray-600 dark:text-gray-400">
+                    ≈ ${(displayPrice * solToUsdRate).toFixed(2)} USD
+                  </p>
                   <p className="text-sm text-gray-500 dark:text-gray-400 line-through">
                     {formatSolAmount(post.price)}
                   </p>
-                  <div className="flex items-center gap-2 mt-2">
-                    <span className="text-xs text-purple-600 dark:text-purple-300">Курс SOL/USD: {isRateLoading ? '...' : `$${solToUsdRate.toFixed(2)}`}</span>
-                    <span className="text-xs text-gray-400">(курс обновляется автоматически)</span>
-                  </div>
                   <p className="text-xs text-green-600 dark:text-green-400 font-medium">
                     {post.flashSale.discount}% OFF!
                   </p>
@@ -366,10 +365,9 @@ export default function PurchaseModal({ post, onClose, onSuccess }: PurchaseModa
                   <p className="text-xl font-bold text-gray-900 dark:text-white">
                     {formatSolAmount(post.price)}
                   </p>
-                  <div className="flex items-center gap-2 mt-2">
-                    <span className="text-xs text-purple-600 dark:text-purple-300">Курс SOL/USD: {isRateLoading ? '...' : `$${solToUsdRate.toFixed(2)}`}</span>
-                    <span className="text-xs text-gray-400">(курс обновляется автоматически)</span>
-                  </div>
+                  <p className="text-sm text-gray-600 dark:text-gray-400">
+                    ≈ ${(post.price * solToUsdRate).toFixed(2)} USD
+                  </p>
                 </>
               )}
             </div>
@@ -393,12 +391,18 @@ export default function PurchaseModal({ post, onClose, onSuccess }: PurchaseModa
             <span className="text-gray-600 dark:text-gray-400">Создатель получит:</span>
             <span className="text-gray-900 dark:text-white font-medium">
               {formatSolAmount(displayPrice * 0.9)}
+              <span className="text-xs text-gray-500 dark:text-gray-400 ml-1">
+                (≈ ${(displayPrice * 0.9 * solToUsdRate).toFixed(2)})
+              </span>
             </span>
           </div>
           <div className="flex justify-between text-sm">
             <span className="text-gray-600 dark:text-gray-400">Комиссия платформы:</span>
             <span className="text-gray-900 dark:text-white font-medium">
               {formatSolAmount(displayPrice * (hasReferrerDisplay ? 0.05 : 0.1))}
+              <span className="text-xs text-gray-500 dark:text-gray-400 ml-1">
+                (≈ ${(displayPrice * (hasReferrerDisplay ? 0.05 : 0.1) * solToUsdRate).toFixed(2)})
+              </span>
             </span>
           </div>
           {hasReferrerDisplay && (
@@ -406,13 +410,21 @@ export default function PurchaseModal({ post, onClose, onSuccess }: PurchaseModa
               <span className="text-gray-600 dark:text-gray-400">Реферальная комиссия:</span>
               <span className="text-gray-900 dark:text-white font-medium">
                 {formatSolAmount(displayPrice * 0.05)}
+                <span className="text-xs text-gray-500 dark:text-gray-400 ml-1">
+                  (≈ ${(displayPrice * 0.05 * solToUsdRate).toFixed(2)})
+                </span>
               </span>
             </div>
           )}
           {post.flashSale && (
             <div className="flex justify-between text-sm text-green-600 dark:text-green-400 font-medium pt-2 border-t border-gray-200 dark:border-gray-700">
               <span>Вы экономите:</span>
-              <span>{formatSolAmount(post.price - displayPrice)}</span>
+              <span>
+                {formatSolAmount(post.price - displayPrice)}
+                <span className="ml-1">
+                  (≈ ${((post.price - displayPrice) * solToUsdRate).toFixed(2)})
+                </span>
+              </span>
             </div>
           )}
         </div>
