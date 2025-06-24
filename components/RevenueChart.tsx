@@ -25,7 +25,12 @@ import {
   UsersIcon,
   DocumentTextIcon,
   ChatBubbleLeftEllipsisIcon,
-  GiftIcon
+  GiftIcon,
+  ShoppingBagIcon,
+  CalendarIcon,
+  ClockIcon,
+  ChevronDownIcon,
+  ChevronUpIcon
 } from '@heroicons/react/24/outline'
 import toast from 'react-hot-toast'
 import { useSolRate } from '@/lib/hooks/useSolRate'
@@ -45,6 +50,25 @@ ChartJS.register(
 
 interface RevenueChartProps {
   creatorId: string
+}
+
+interface SubscriberData {
+  user: {
+    id: string
+    nickname: string | null
+    fullName: string | null
+    avatar: string | null
+    wallet: string | null
+  }
+  totalSpent: number
+  breakdown: {
+    subscriptions: number
+    posts: number
+    messages: number
+    tips: number
+  }
+  transactions: number
+  lastActivity: string | null
 }
 
 interface AnalyticsData {
@@ -88,16 +112,8 @@ interface AnalyticsData {
     premium: number
     vip: number
   }
-  topSubscribers: Array<{
-    user: {
-      id: string
-      nickname: string | null
-      fullName: string | null
-      avatar: string | null
-    }
-    totalSpent: number
-    transactions: number
-  }>
+  topSubscribers: SubscriberData[]
+  allSubscribers: SubscriberData[]
   engagement: {
     totalViews: number
     totalLikes: number
@@ -116,7 +132,11 @@ export default function RevenueChart({ creatorId }: RevenueChartProps) {
   const [period, setPeriod] = useState<'day' | 'week' | 'month'>('week')
   const [analytics, setAnalytics] = useState<AnalyticsData | null>(null)
   const [isLoading, setIsLoading] = useState(true)
+  const [showAllSubscribers, setShowAllSubscribers] = useState(false)
+  const [subscribersPage, setSubscribersPage] = useState(0)
   const { rate: solRate } = useSolRate()
+  
+  const subscribersPerPage = 10
 
   useEffect(() => {
     if (creatorId) {
@@ -166,6 +186,21 @@ export default function RevenueChart({ creatorId }: RevenueChartProps) {
     csvData.push(['PPV сообщения', analytics.revenue.bySource.messages.ppv.total.toFixed(4), (analytics.revenue.bySource.messages.ppv.total * solRate).toFixed(2), analytics.revenue.bySource.messages.ppv.count])
     csvData.push(['Чаевые', analytics.revenue.bySource.messages.tips.total.toFixed(4), (analytics.revenue.bySource.messages.tips.total * solRate).toFixed(2), analytics.revenue.bySource.messages.tips.count])
     
+    csvData.push([])
+    csvData.push(['Все подписчики'])
+    csvData.push(['Пользователь', 'Всего потрачено (SOL)', 'Подписки', 'Посты', 'Сообщения', 'Чаевые', 'Транзакций'])
+    analytics.allSubscribers.forEach(item => {
+      csvData.push([
+        item.user.fullName || item.user.nickname || 'Anonymous',
+        item.totalSpent.toFixed(4),
+        item.breakdown.subscriptions.toFixed(4),
+        item.breakdown.posts.toFixed(4),
+        item.breakdown.messages.toFixed(4),
+        item.breakdown.tips.toFixed(4),
+        item.transactions
+      ])
+    })
+    
     // Convert to CSV string
     const csvContent = csvData.map(row => row.join(',')).join('\n')
     
@@ -181,6 +216,20 @@ export default function RevenueChart({ creatorId }: RevenueChartProps) {
     document.body.removeChild(link)
     
     toast.success('Данные экспортированы')
+  }
+
+  const formatPeriodLabel = (dateStr: string) => {
+    const date = new Date(dateStr)
+    switch (period) {
+      case 'day':
+        return format(date, 'd MMM')
+      case 'week':
+        return `Неделя с ${format(date, 'd MMM')}`
+      case 'month':
+        return format(date, 'MMM yyyy')
+      default:
+        return dateStr
+    }
   }
 
   if (isLoading) {
@@ -199,18 +248,7 @@ export default function RevenueChart({ creatorId }: RevenueChartProps) {
   }
 
   // Prepare chart data
-  const chartLabels = Object.keys(analytics.revenue.byPeriod).map(key => {
-    switch (period) {
-      case 'day':
-        return format(new Date(key), 'd MMM')
-      case 'week':
-        return `Неделя ${key.split('-')[1]}`
-      case 'month':
-        return format(new Date(key + '-01'), 'MMM yyyy')
-      default:
-        return key
-    }
-  })
+  const chartLabels = Object.keys(analytics.revenue.byPeriod).map(formatPeriodLabel)
 
   const chartData = {
     labels: chartLabels,
@@ -299,6 +337,13 @@ export default function RevenueChart({ creatorId }: RevenueChartProps) {
       }
     ]
   }
+
+  // Paginate subscribers
+  const paginatedSubscribers = showAllSubscribers 
+    ? analytics.allSubscribers.slice(subscribersPage * subscribersPerPage, (subscribersPage + 1) * subscribersPerPage)
+    : analytics.topSubscribers
+
+  const totalPages = Math.ceil(analytics.allSubscribers.length / subscribersPerPage)
 
   return (
     <div className="space-y-6">
@@ -569,6 +614,160 @@ export default function RevenueChart({ creatorId }: RevenueChartProps) {
             )}
           </div>
         </div>
+      </div>
+
+      {/* All Subscribers Table */}
+      <div className="bg-white dark:bg-slate-800 rounded-2xl p-6 border border-gray-200 dark:border-slate-700">
+        <div className="flex items-center justify-between mb-6">
+          <h3 className="text-lg font-bold text-gray-900 dark:text-white">
+            {showAllSubscribers ? 'Все подписчики' : 'Топ-10 подписчиков'} ({analytics.allSubscribers.length})
+          </h3>
+          <button
+            onClick={() => {
+              setShowAllSubscribers(!showAllSubscribers)
+              setSubscribersPage(0)
+            }}
+            className="flex items-center gap-2 px-4 py-2 bg-purple-500 hover:bg-purple-600 text-white rounded-lg transition-colors text-sm font-medium"
+          >
+            {showAllSubscribers ? (
+              <>
+                Показать топ-10
+                <ChevronUpIcon className="w-4 h-4" />
+              </>
+            ) : (
+              <>
+                Показать всех
+                <ChevronDownIcon className="w-4 h-4" />
+              </>
+            )}
+          </button>
+        </div>
+
+        <div className="overflow-x-auto">
+          <table className="w-full">
+            <thead>
+              <tr className="text-left border-b border-gray-200 dark:border-slate-700">
+                <th className="pb-3 text-sm font-medium text-gray-600 dark:text-slate-400">#</th>
+                <th className="pb-3 text-sm font-medium text-gray-600 dark:text-slate-400">Пользователь</th>
+                <th className="pb-3 text-sm font-medium text-gray-600 dark:text-slate-400 text-right">Всего (SOL)</th>
+                <th className="pb-3 text-sm font-medium text-gray-600 dark:text-slate-400 text-right">
+                  <div className="flex items-center justify-end gap-1">
+                    <UsersIcon className="w-4 h-4" />
+                    <span>Подписки</span>
+                  </div>
+                </th>
+                <th className="pb-3 text-sm font-medium text-gray-600 dark:text-slate-400 text-right">
+                  <div className="flex items-center justify-end gap-1">
+                    <DocumentTextIcon className="w-4 h-4" />
+                    <span>Посты</span>
+                  </div>
+                </th>
+                <th className="pb-3 text-sm font-medium text-gray-600 dark:text-slate-400 text-right">
+                  <div className="flex items-center justify-end gap-1">
+                    <ChatBubbleLeftEllipsisIcon className="w-4 h-4" />
+                    <span>PPV</span>
+                  </div>
+                </th>
+                <th className="pb-3 text-sm font-medium text-gray-600 dark:text-slate-400 text-right">
+                  <div className="flex items-center justify-end gap-1">
+                    <GiftIcon className="w-4 h-4" />
+                    <span>Чаевые</span>
+                  </div>
+                </th>
+                <th className="pb-3 text-sm font-medium text-gray-600 dark:text-slate-400 text-right">Активность</th>
+              </tr>
+            </thead>
+            <tbody>
+              {paginatedSubscribers.map((item, index) => {
+                const globalIndex = showAllSubscribers ? subscribersPage * subscribersPerPage + index : index
+                return (
+                  <tr key={item.user.id} className="border-b border-gray-100 dark:border-slate-700/50">
+                    <td className="py-3 text-sm font-bold text-purple-600 dark:text-purple-400">
+                      {globalIndex + 1}
+                    </td>
+                    <td className="py-3">
+                      <div className="flex items-center gap-3">
+                        {item.user.avatar && (
+                          <img 
+                            src={item.user.avatar} 
+                            alt={item.user.nickname || 'User'} 
+                            className="w-8 h-8 rounded-full"
+                          />
+                        )}
+                        <div>
+                          <p className="text-sm font-medium text-gray-900 dark:text-white">
+                            {item.user.fullName || item.user.nickname || 'Anonymous'}
+                          </p>
+                          {item.user.nickname && (
+                            <p className="text-xs text-gray-500 dark:text-slate-500">
+                              @{item.user.nickname}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                    </td>
+                    <td className="py-3 text-right">
+                      <p className="text-sm font-bold text-gray-900 dark:text-white">
+                        {item.totalSpent.toFixed(4)}
+                      </p>
+                      <p className="text-xs text-gray-500 dark:text-slate-500">
+                        ≈ ${(item.totalSpent * solRate).toFixed(2)}
+                      </p>
+                    </td>
+                    <td className="py-3 text-right text-sm text-gray-600 dark:text-slate-400">
+                      {item.breakdown.subscriptions > 0 ? item.breakdown.subscriptions.toFixed(4) : '-'}
+                    </td>
+                    <td className="py-3 text-right text-sm text-gray-600 dark:text-slate-400">
+                      {item.breakdown.posts > 0 ? item.breakdown.posts.toFixed(4) : '-'}
+                    </td>
+                    <td className="py-3 text-right text-sm text-gray-600 dark:text-slate-400">
+                      {item.breakdown.messages > 0 ? item.breakdown.messages.toFixed(4) : '-'}
+                    </td>
+                    <td className="py-3 text-right text-sm text-gray-600 dark:text-slate-400">
+                      {item.breakdown.tips > 0 ? item.breakdown.tips.toFixed(4) : '-'}
+                    </td>
+                    <td className="py-3 text-right">
+                      {item.lastActivity && (
+                        <div className="flex items-center justify-end gap-1 text-xs text-gray-500 dark:text-slate-500">
+                          <ClockIcon className="w-3 h-3" />
+                          {format(new Date(item.lastActivity), 'd MMM')}
+                        </div>
+                      )}
+                    </td>
+                  </tr>
+                )
+              })}
+            </tbody>
+          </table>
+        </div>
+
+        {/* Pagination */}
+        {showAllSubscribers && totalPages > 1 && (
+          <div className="flex items-center justify-between mt-6">
+            <p className="text-sm text-gray-600 dark:text-slate-400">
+              Показано {subscribersPage * subscribersPerPage + 1}-{Math.min((subscribersPage + 1) * subscribersPerPage, analytics.allSubscribers.length)} из {analytics.allSubscribers.length}
+            </p>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setSubscribersPage(Math.max(0, subscribersPage - 1))}
+                disabled={subscribersPage === 0}
+                className="px-3 py-1 bg-gray-100 dark:bg-slate-700 rounded text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-200 dark:hover:bg-slate-600 transition-colors"
+              >
+                Назад
+              </button>
+              <span className="text-sm text-gray-600 dark:text-slate-400">
+                {subscribersPage + 1} / {totalPages}
+              </span>
+              <button
+                onClick={() => setSubscribersPage(Math.min(totalPages - 1, subscribersPage + 1))}
+                disabled={subscribersPage === totalPages - 1}
+                className="px-3 py-1 bg-gray-100 dark:bg-slate-700 rounded text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-200 dark:hover:bg-slate-600 transition-colors"
+              >
+                Вперед
+              </button>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   )
