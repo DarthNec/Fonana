@@ -490,6 +490,8 @@ const transaction = await prisma.transaction.create({
 - **OptimizedImage.tsx** - Оптимизация изображений  
 - **SolanaRateDisplay.tsx** - Отображение курса SOL/USD в navbar
 - **SearchBar.tsx** - Универсальный компонент поиска с автокомплитом и фильтрами
+- **RevenueChart.tsx** - Графики доходов создателя с экспортом в CSV
+- **WithdrawButton.tsx** - Кнопка вывода средств с проверкой баланса
 
 ## API Endpoints Structure
 - `/api/posts` - CRUD постов
@@ -503,6 +505,8 @@ const transaction = await prisma.transaction.create({
 - `/api/search/autocomplete` - Автокомплит для поиска
 - `/api/user` - Профиль пользователя
 - `/api/creators` - Создатели
+- `/api/creators/analytics` - Расширенная аналитика создателя (графики, топ контент)
+- `/api/withdrawals` - Вывод средств создателями
 - `/api/admin` - Админ функции
 - `/api/pricing` - Динамический курс SOL/USD
 
@@ -667,6 +671,11 @@ node scripts/test-tier-access.js
 node scripts/test-solana-transaction.js
 node scripts/test-search.js
 
+# Analytics & Revenue
+node scripts/test-creator-analytics.js
+node scripts/check-withdrawal-requests.js
+node scripts/check-creator-balance.js
+
 # Transaction debugging
 node scripts/check-failed-transactions.js
 node scripts/fix-missing-transaction.js
@@ -698,6 +707,19 @@ node scripts/check-price-discrepancy.js
 - **Endpoints**: `/api/search` and `/api/search/autocomplete`
 - **Test**: `node scripts/test-search.js`
 
+### Creator Analytics Dashboard (June 24, 2025)
+- **Added**: Comprehensive analytics dashboard for creators
+- **Features**:
+  - Revenue charts with day/week/month periods
+  - Top posts by revenue with purchase details
+  - Top subscribers by spending amount
+  - Engagement metrics (views, likes, comments)
+  - Withdrawal button with balance check
+  - CSV export for all analytics data
+- **Components**: `RevenueChart.tsx`, `WithdrawButton.tsx`
+- **Endpoints**: `/api/creators/analytics`, `/api/withdrawals`
+- **Dependencies**: `chart.js`, `react-chartjs-2`, `date-fns`
+
 ### Subscription System Fix (June 23, 2025)
 - **Issue**: Plans were auto-corrected based on price, breaking custom tier pricing
 - **Fix**: Removed automatic plan correction in `process-payment`
@@ -727,6 +749,10 @@ node scripts/check-price-discrepancy.js
 - Search by creators (nickname, name, bio)
 - Search by posts (title, content)
 - Advanced filters (category, price, content type, tier)
+- Creator analytics with revenue charts
+- Top posts/subscribers analytics
+- Withdrawal system for creators
+- CSV export of analytics data
 
 🔄 **IN DEVELOPMENT:**
 - Live streaming (waiting for user base)
@@ -763,6 +789,8 @@ public/           # Static assets
 - PM2 process manager (ecosystem.config.js)
 - Port 3000 (default)
 - Tailwind CSS
+- Chart.js + react-chartjs-2 (analytics)
+- date-fns (date formatting)
 
 ## Solana Configuration
 - **Platform Wallet**: `npzAZaN9fDMgLV63b3kv3FF8cLSd8dQSLxyMXASA5T4`
@@ -874,6 +902,12 @@ git log --oneline -10
 - **Exchange Rate Cache**: 5 minutes
 - **Fallback Rate**: 135 USD/SOL
 - **Price Sources**: CoinGecko (primary)
+
+### Withdrawal Settings
+- **Minimum Withdrawal**: 0.1 SOL
+- **Processing Time**: Up to 24 hours
+- **Platform Wallet**: `npzAZaN9fDMgLV63b3kv3FF8cLSd8dQSLxyMXASA5T4`
+- **Status**: Manual processing (automated in future)
 
 ### Environment Variables (Required)
 ```bash
