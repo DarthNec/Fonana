@@ -346,6 +346,7 @@ enum AuctionStatus {
 - Post → PostPurchases (1:many) - Покупки поста
 - Conversation → Messages (1:many) - Сообщения в диалоге
 - Message → MessagePurchases (1:many) - Покупки PPV сообщений
+- Transaction → Subscription/PostPurchase (1:1) - Связь с покупками
 
 ## Other Important Models
 
@@ -490,7 +491,7 @@ const transaction = await prisma.transaction.create({
 - **OptimizedImage.tsx** - Оптимизация изображений  
 - **SolanaRateDisplay.tsx** - Отображение курса SOL/USD в navbar
 - **SearchBar.tsx** - Универсальный компонент поиска с автокомплитом и фильтрами
-- **RevenueChart.tsx** - Графики доходов создателя с экспортом в CSV
+- **RevenueChart.tsx** - Графики доходов создателя с экспортом в CSV и списком подписчиков
 
 ## API Endpoints Structure
 - `/api/posts` - CRUD постов
@@ -504,7 +505,7 @@ const transaction = await prisma.transaction.create({
 - `/api/search/autocomplete` - Автокомплит для поиска
 - `/api/user` - Профиль пользователя
 - `/api/creators` - Создатели
-- `/api/creators/analytics` - Расширенная аналитика создателя (графики, топ контент)
+- `/api/creators/analytics` - Расширенная аналитика создателя (графики, топ контент, все подписчики)
 - `/api/admin` - Админ функции
 - `/api/pricing` - Динамический курс SOL/USD
 
@@ -633,7 +634,7 @@ ssh -p 43988 root@69.10.59.234 "chmod -R 755 /var/www/fonana/public/"
 - **Impact**: None - these are API routes that should be dynamic
 - **Solution**: These warnings are expected and can be ignored
 
-### 5. Subscription Plan Mismatch
+### 6. Subscription Plan Mismatch
 **Problem**: System was auto-correcting subscription plans based on price, causing Premium subscriptions to save as Basic/Free.
 
 **Solution**:
@@ -681,17 +682,17 @@ node scripts/check-price-discrepancy.js
 
 ## Recent Updates & Fixes
 
-### DevOps Infrastructure (January 2025)
-- **CI/CD**: GitHub Actions workflow for automated testing
-- **Monitoring**: Comprehensive status check script
-- **Logging**: Automated log rotation with 7-day retention
-- **Security**: SSH key setup script for passwordless access
-- **Metadata Fix**: Added metadataBase to fix social media preview warnings
-- **Fixed Issues**:
-  - ✅ SSH passwordless access configured
-  - ✅ Metadata warning resolved (added metadataBase: https://fonana.me)
-  - ✅ Log rotation preventing disk overflow
-  - ✅ CI/CD pipeline testing every commit
+### Creator Analytics Update (December 24, 2024)
+- **Fixed**: Period display bugs (days, weeks, months now show correctly)
+- **Added**: Complete subscriber list with spending breakdown
+- **Enhanced**: 
+  - Detailed spending by category (subscriptions, posts, PPV, tips)
+  - Last activity date for each subscriber
+  - Pagination for large subscriber lists
+  - Toggle between top-10 and all subscribers
+- **Improved**: CSV export now includes all subscribers and their detailed spending
+- **Optimized**: Database queries with better relations and includes
+- **Note**: Withdrawal functionality removed (funds go directly to creators' wallets)
 
 ### Search Functionality (June 24, 2025)
 - **Added**: Full-text search with autocomplete
@@ -703,18 +704,6 @@ node scripts/check-price-discrepancy.js
   - Integrated into Navbar, Feed, and Creators pages
 - **Endpoints**: `/api/search` and `/api/search/autocomplete`
 - **Test**: `node scripts/test-search.js`
-
-### Creator Analytics Dashboard (June 24, 2025)
-- **Added**: Comprehensive analytics dashboard for creators
-- **Features**:
-  - Revenue charts with day/week/month periods
-  - Top posts by revenue with purchase details
-  - Top subscribers by spending amount
-  - Engagement metrics (views, likes, comments)
-  - CSV export for all analytics data
-- **Components**: `RevenueChart.tsx`
-- **Endpoints**: `/api/creators/analytics`
-- **Dependencies**: `chart.js`, `react-chartjs-2`, `date-fns`
 
 ### Subscription System Fix (June 23, 2025)
 - **Issue**: Plans were auto-corrected based on price, breaking custom tier pricing
@@ -736,7 +725,7 @@ node scripts/check-price-discrepancy.js
 - Solana wallet integration
 - Notification system with sounds
 - Comment system with replies
-- Creator earnings dashboard
+- Creator earnings dashboard with full analytics
 - Dynamic SOL/USD exchange rate
 - Sellable posts (fixed price & auctions)
 - Referral system (5% commission)
@@ -747,7 +736,8 @@ node scripts/check-price-discrepancy.js
 - Advanced filters (category, price, content type, tier)
 - Creator analytics with revenue charts
 - Top posts/subscribers analytics
-- CSV export of analytics data
+- Complete subscriber list with spending breakdown
+- CSV export of all analytics data
 
 🔄 **IN DEVELOPMENT:**
 - Live streaming (waiting for user base)
@@ -897,8 +887,6 @@ git log --oneline -10
 - **Exchange Rate Cache**: 5 minutes
 - **Fallback Rate**: 135 USD/SOL
 - **Price Sources**: CoinGecko (primary)
-
-
 
 ### Environment Variables (Required)
 ```bash
