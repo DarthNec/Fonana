@@ -18,6 +18,7 @@ const inter = Inter({ subsets: ['latin'] })
 export const metadata: Metadata = {
   title: 'Fonana - Decentralized Content Platform',
   description: 'Share exclusive content and earn with cryptocurrency',
+  metadataBase: new URL('https://fonana.me'),
   icons: {
     icon: [
       { url: '/favicon.ico' },
