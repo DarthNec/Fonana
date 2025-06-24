@@ -27,6 +27,8 @@ import { useWallet } from '@solana/wallet-adapter-react'
 import toast from 'react-hot-toast'
 import SubscriptionManager from '@/components/SubscriptionManager'
 import FlashSalesList from '@/components/FlashSalesList'
+import RevenueChart from '@/components/RevenueChart'
+import WithdrawButton from '@/components/WithdrawButton'
 
 interface Post {
   id: string
@@ -57,6 +59,7 @@ export default function Dashboard() {
     postsCount: 0
   })
   const [recentActivity, setRecentActivity] = useState<any[]>([])
+  const [availableBalance, setAvailableBalance] = useState(0)
 
   // Check if user is admin
   const isAdmin = user?.wallet === 'npzAZaN9fDMgLV63b3kv3FF8cLSd8dQSLxyMXASA5T4' || 
@@ -109,6 +112,17 @@ export default function Dashboard() {
         const totalViews = allPostsData.posts?.reduce((sum: number, post: any) => {
           return sum + (post.viewsCount || 0)
         }, 0) || 0
+
+        // Get creator's balance (completed transactions)
+        try {
+          const analyticsResponse = await fetch(`/api/creators/analytics?creatorId=${user.id}&period=month`)
+          if (analyticsResponse.ok) {
+            const analyticsData = await analyticsResponse.json()
+            setAvailableBalance(analyticsData.revenue.current || 0)
+          }
+        } catch (error) {
+          console.error('Error loading balance:', error)
+        }
 
         setStats({
           totalRevenue,
@@ -249,8 +263,18 @@ export default function Dashboard() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* User Info Header */}
         <div className="bg-gradient-to-r from-purple-600 to-pink-600 rounded-3xl p-8 mb-8 text-white">
-          <h1 className="text-3xl font-bold mb-2">Welcome back, {user.fullName || user.nickname || 'Creator'}!</h1>
-          <p className="text-purple-100">Manage your content and track your earnings</p>
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-3xl font-bold mb-2">Добро пожаловать, {user.fullName || user.nickname || 'Создатель'}!</h1>
+              <p className="text-purple-100">Управляйте контентом и отслеживайте доходы</p>
+            </div>
+            {availableBalance > 0 && (
+              <WithdrawButton 
+                balance={availableBalance} 
+                onWithdraw={loadDashboardData}
+              />
+            )}
+          </div>
         </div>
 
         {/* Quick Stats */}
@@ -258,8 +282,8 @@ export default function Dashboard() {
           <div className="bg-white dark:bg-slate-800 rounded-2xl p-6 border border-gray-200 dark:border-slate-700">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-gray-600 dark:text-slate-400">Total Earnings</p>
-                <p className="text-2xl font-bold text-gray-900 dark:text-white">0 SOL</p>
+                <p className="text-sm text-gray-600 dark:text-slate-400">Доступный баланс</p>
+                <p className="text-2xl font-bold text-gray-900 dark:text-white">{availableBalance.toFixed(4)} SOL</p>
               </div>
               <CurrencyDollarIcon className="w-8 h-8 text-green-500" />
             </div>
@@ -268,8 +292,8 @@ export default function Dashboard() {
           <div className="bg-white dark:bg-slate-800 rounded-2xl p-6 border border-gray-200 dark:border-slate-700">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-gray-600 dark:text-slate-400">Subscribers</p>
-                <p className="text-2xl font-bold text-gray-900 dark:text-white">{user.followersCount || 0}</p>
+                <p className="text-sm text-gray-600 dark:text-slate-400">Подписчики</p>
+                <p className="text-2xl font-bold text-gray-900 dark:text-white">{stats.subscribers}</p>
               </div>
               <UsersIcon className="w-8 h-8 text-blue-500" />
             </div>
@@ -278,8 +302,8 @@ export default function Dashboard() {
           <div className="bg-white dark:bg-slate-800 rounded-2xl p-6 border border-gray-200 dark:border-slate-700">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-gray-600 dark:text-slate-400">Total Posts</p>
-                <p className="text-2xl font-bold text-gray-900 dark:text-white">{user.postsCount || 0}</p>
+                <p className="text-sm text-gray-600 dark:text-slate-400">Всего постов</p>
+                <p className="text-2xl font-bold text-gray-900 dark:text-white">{stats.postsCount}</p>
               </div>
               <DocumentTextIcon className="w-8 h-8 text-purple-500" />
             </div>
@@ -288,17 +312,22 @@ export default function Dashboard() {
           <div className="bg-white dark:bg-slate-800 rounded-2xl p-6 border border-gray-200 dark:border-slate-700">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-gray-600 dark:text-slate-400">Total Likes</p>
-                <p className="text-2xl font-bold text-gray-900 dark:text-white">0</p>
+                <p className="text-sm text-gray-600 dark:text-slate-400">Просмотры</p>
+                <p className="text-2xl font-bold text-gray-900 dark:text-white">{stats.views}</p>
               </div>
-              <HeartIcon className="w-8 h-8 text-red-500" />
+              <EyeIcon className="w-8 h-8 text-orange-500" />
             </div>
           </div>
         </div>
 
+        {/* Revenue Analytics */}
+        {user && (
+          <RevenueChart creatorId={user.id} />
+        )}
+
         {/* Quick Actions */}
         <div className="mb-8">
-          <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-4">Quick Actions</h2>
+          <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-4">Быстрые действия</h2>
           
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
             <Link 
@@ -310,8 +339,8 @@ export default function Dashboard() {
                   <DocumentTextIcon className="w-6 h-6 text-white" />
                 </div>
                 <div>
-                  <h3 className="text-white font-bold text-lg">Create Post</h3>
-                  <p className="text-purple-200 text-sm">Share new content</p>
+                  <h3 className="text-white font-bold text-lg">Создать пост</h3>
+                  <p className="text-purple-200 text-sm">Поделитесь новым контентом</p>
                 </div>
               </div>
             </Link>
