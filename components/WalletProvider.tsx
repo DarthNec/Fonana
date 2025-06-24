@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useMemo, useEffect, useState } from 'react'
+import { useMemo, useEffect, useState } from 'react'
 import { ConnectionProvider, WalletProvider as SolanaWalletProvider } from '@solana/wallet-adapter-react'
 import { WalletAdapterNetwork } from '@solana/wallet-adapter-base'
 import { WalletModalProvider } from '@solana/wallet-adapter-react-ui'
@@ -8,59 +8,57 @@ import {
   PhantomWalletAdapter,
   SolflareWalletAdapter,
   TorusWalletAdapter,
+  LedgerWalletAdapter,
+  TrustWalletAdapter,
 } from '@solana/wallet-adapter-wallets'
 import { clusterApiUrl } from '@solana/web3.js'
-
-// Default styles that can be overridden by your app
-require('@solana/wallet-adapter-react-ui/styles.css')
+import '@solana/wallet-adapter-react-ui/styles.css'
 
 // Проверка мобильного устройства
 const isMobileDevice = () => {
   if (typeof window === 'undefined') return false
-  
   const userAgent = window.navigator.userAgent.toLowerCase()
-  const isMobile = /android|webos|iphone|ipad|ipod|blackberry|iemobile|opera mini/i.test(userAgent)
-  const isTablet = /ipad|tablet|playbook|silk/i.test(userAgent)
-  
-  return isMobile || isTablet
+  return /android|webos|iphone|ipad|ipod|blackberry|iemobile|opera mini/i.test(userAgent)
 }
 
 // Проверка, установлен ли Phantom в мобильном браузере
-const isPhantomInstalled = () => {
+const isPhantomInstalled = (): boolean => {
   if (typeof window === 'undefined') return false
-  return window.solana && window.solana.isPhantom
+  return !!(window as any).phantom?.solana?.isPhantom
 }
 
 export function WalletProvider({ children }: { children: React.ReactNode }) {
   const [mounted, setMounted] = useState(false)
   
-  // Get network from environment or default to devnet
-  const network = process.env.NEXT_PUBLIC_SOLANA_NETWORK === 'mainnet-beta' 
-    ? WalletAdapterNetwork.Mainnet 
-    : WalletAdapterNetwork.Devnet
+  // Определяем сеть
+  const network = process.env.NEXT_PUBLIC_SOLANA_NETWORK === 'devnet' 
+    ? WalletAdapterNetwork.Devnet 
+    : WalletAdapterNetwork.Mainnet
 
-  // Use custom RPC endpoint if provided, otherwise use cluster URL
-  const endpoint = useMemo(
-    () => process.env.NEXT_PUBLIC_SOLANA_RPC_URL || clusterApiUrl(network),
-    [network]
-  )
+  const endpoint = useMemo(() => {
+    if (process.env.NEXT_PUBLIC_SOLANA_RPC_URL) {
+      return process.env.NEXT_PUBLIC_SOLANA_RPC_URL
+    }
+    return clusterApiUrl(network)
+  }, [network])
 
   const wallets = useMemo(() => {
     const walletsArray = []
-    
-    // Добавляем Phantom адаптер только если это не мобильное устройство 
-    // или если Phantom установлен в мобильном браузере
-    if (!isMobileDevice() || isPhantomInstalled()) {
-      walletsArray.push(new PhantomWalletAdapter())
-    }
-    
+
+    // Пока отключаем MWA из-за проблем с типами
+    // TODO: Добавить MWA после исправления типов в @solana-mobile/wallet-adapter-mobile
+
+    // Десктопные кошельки
     walletsArray.push(
+      new PhantomWalletAdapter(),
       new SolflareWalletAdapter(),
+      new LedgerWalletAdapter(),
+      new TrustWalletAdapter(),
       new TorusWalletAdapter()
     )
-    
+
     return walletsArray
-  }, [])
+  }, [network])
 
   useEffect(() => {
     setMounted(true)
@@ -72,7 +70,10 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
 
   return (
     <ConnectionProvider endpoint={endpoint}>
-      <SolanaWalletProvider wallets={wallets} autoConnect>
+      <SolanaWalletProvider 
+        wallets={wallets} 
+        autoConnect={false} // Отключаем автоподключение
+      >
         <WalletModalProvider>
           {children}
         </WalletModalProvider>
