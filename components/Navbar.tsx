@@ -22,6 +22,7 @@ import {
 import { MobileWalletConnect } from './MobileWalletConnect'
 import { useWallet } from '@solana/wallet-adapter-react'
 import { useUser } from '@/lib/hooks/useUser'
+import SearchBar from './SearchBar'
 
   const navigation = [
     { name: 'Home', href: '/', icon: HomeIcon },
@@ -109,26 +110,37 @@ export function Navbar() {
           </Link>
 
           {/* Desktop Navigation */}
-          <div className="hidden md:flex items-center gap-2">
-            {navigation.map((item) => (
-              <Link
-                key={item.name}
-                href={item.href}
-                className={`relative flex items-center gap-2 px-6 py-3 rounded-2xl font-semibold transition-all duration-300 transform hover:scale-105 ${
-                  isActive(item.href)
-                    ? 'bg-gradient-to-r from-purple-600 to-pink-600 text-white shadow-lg shadow-purple-500/25'
-                    : 'text-gray-600 dark:text-slate-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-slate-800/50'
-                }`}
-              >
-                <item.icon className="w-5 h-5" />
-                {item.name}
-                {item.hasIndicator && unreadMessages > 0 && (
-                  <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center animate-pulse">
-                    {unreadMessages > 9 ? '9+' : unreadMessages}
-                  </span>
-                )}
-              </Link>
-            ))}
+          <div className="hidden md:flex items-center gap-2 flex-1">
+            <div className="flex items-center gap-2">
+              {navigation.map((item) => (
+                <Link
+                  key={item.name}
+                  href={item.href}
+                  className={`relative flex items-center gap-2 px-6 py-3 rounded-2xl font-semibold transition-all duration-300 transform hover:scale-105 ${
+                    isActive(item.href)
+                      ? 'bg-gradient-to-r from-purple-600 to-pink-600 text-white shadow-lg shadow-purple-500/25'
+                      : 'text-gray-600 dark:text-slate-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-slate-800/50'
+                  }`}
+                >
+                  <item.icon className="w-5 h-5" />
+                  {item.name}
+                  {item.hasIndicator && unreadMessages > 0 && (
+                    <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center animate-pulse">
+                      {unreadMessages > 9 ? '9+' : unreadMessages}
+                    </span>
+                  )}
+                </Link>
+              ))}
+            </div>
+
+            {/* Search Bar */}
+            <div className="ml-8 flex-1 max-w-md">
+              <SearchBar 
+                className="w-full"
+                placeholder="Поиск..."
+                showFilters={false}
+              />
+            </div>
           </div>
 
           {/* Desktop Actions */}
@@ -236,6 +248,13 @@ export function Navbar() {
         {isOpen && (
           <div className="md:hidden absolute top-full left-0 right-0 bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl border-b border-gray-200 dark:border-slate-700/50">
             <div className="p-4 space-y-2">
+              {/* Search Bar */}
+              <SearchBar 
+                className="mb-4"
+                placeholder="Поиск..."
+                showFilters={false}
+              />
+              
               {navigation.map((item) => (
                 <Link
                   key={item.name}

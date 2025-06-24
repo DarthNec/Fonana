@@ -20,6 +20,7 @@ import {
   ArrowTrendingUpIcon
 } from '@heroicons/react/24/outline'
 import { toast } from 'react-hot-toast'
+import SearchBar from '@/components/SearchBar'
 
 const categories = [
   'All', 'Art', 'Music', 'Gaming', 'Lifestyle', 'Fitness', 
@@ -292,6 +293,15 @@ export default function FeedPage() {
             <PlusIcon className="w-5 h-5" />
             Create
           </Link>
+        </div>
+
+        {/* Search Bar */}
+        <div className="mb-8">
+          <SearchBar 
+            placeholder="Поиск по постам и создателям..."
+            showFilters={true}
+            className="max-w-2xl mx-auto"
+          />
         </div>
 
         {/* Filters and Sort */}
