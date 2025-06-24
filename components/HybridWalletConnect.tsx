@@ -8,6 +8,7 @@ import toast from 'react-hot-toast'
 import { useUser } from '@/lib/hooks/useUser'
 import { WalletIcon, CheckCircleIcon, XCircleIcon } from '@heroicons/react/24/outline'
 import bs58 from 'bs58'
+import { useRouter, useSearchParams } from 'next/navigation'
 
 export function HybridWalletConnect() {
   const { connected, connect, disconnect, wallet, publicKey, signMessage } = useWallet()
@@ -15,11 +16,24 @@ export function HybridWalletConnect() {
   const [isAuthenticated, setIsAuthenticated] = useState(false)
   const [isAuthenticating, setIsAuthenticating] = useState(false)
   const [showUXHint, setShowUXHint] = useState(false)
+  const router = useRouter()
+  const searchParams = useSearchParams()
   
   // Проверяем JWT авторизацию при загрузке
   useEffect(() => {
     checkAuthStatus()
   }, [])
+
+  // Проверяем токен из URL (для синхронизации между браузерами)
+  useEffect(() => {
+    const tokenFromUrl = searchParams.get('auth_token')
+    const returnPath = searchParams.get('return_path') || '/'
+    
+    if (tokenFromUrl) {
+      // Сохраняем токен и обновляем статус
+      handleTokenFromUrl(tokenFromUrl, returnPath)
+    }
+  }, [searchParams])
 
   // Определяем окружение
   useEffect(() => {
@@ -31,6 +45,30 @@ export function HybridWalletConnect() {
       setTimeout(() => setShowUXHint(false), 10000) // Скрываем через 10 секунд
     }
   }, [])
+
+  const handleTokenFromUrl = async (token: string, returnPath: string) => {
+    try {
+      // Отправляем токен на сервер для установки cookie
+      const response = await fetch('/api/auth/wallet/sync', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token })
+      })
+
+      if (response.ok) {
+        setIsAuthenticated(true)
+        toast.success('Авторизация успешна!')
+        
+        // Очищаем URL от токена
+        router.replace(returnPath)
+        
+        // Обновляем данные пользователя
+        await refreshUser()
+      }
+    } catch (error) {
+      console.error('Token sync error:', error)
+    }
+  }
 
   const checkAuthStatus = async () => {
     try {
@@ -90,6 +128,32 @@ export function HybridWalletConnect() {
         // Сохраняем токен в localStorage как fallback
         if (data.token) {
           localStorage.setItem('fonana-jwt', data.token)
+          
+          // Для мобильных устройств - пытаемся вернуться в основной браузер
+          const env = detectWalletEnvironment()
+          if (env.isMobile && env.isInWalletBrowser) {
+            // Генерируем URL для возврата с токеном
+            const returnUrl = new URL(window.location.origin)
+            returnUrl.searchParams.set('auth_token', data.token)
+            returnUrl.searchParams.set('return_path', window.location.pathname)
+            
+            // Показываем инструкцию пользователю
+            toast.success(
+              'Авторизация успешна! Вернитесь в браузер и обновите страницу',
+              { duration: 10000, icon: '👍' }
+            )
+            
+            // Копируем URL в буфер обмена
+            if (navigator.clipboard) {
+              navigator.clipboard.writeText(returnUrl.toString())
+              toast.success('Ссылка скопирована в буфер обмена', { duration: 5000 })
+            }
+            
+            // Пытаемся открыть в основном браузере (может не работать из-за ограничений)
+            setTimeout(() => {
+              window.open(returnUrl.toString(), '_blank')
+            }, 1000)
+          }
         }
         
         // Обновляем данные пользователя
@@ -112,6 +176,15 @@ export function HybridWalletConnect() {
       authenticateWithSignature()
     }
   }, [connected, publicKey])
+
+  // Проверяем JWT из localStorage при загрузке (fallback для мобильных)
+  useEffect(() => {
+    const storedToken = localStorage.getItem('fonana-jwt')
+    if (storedToken && !isAuthenticated) {
+      // Пытаемся синхронизировать токен с сервером
+      handleTokenFromUrl(storedToken, window.location.pathname)
+    }
+  }, [])
 
   // Выход из системы
   const handleLogout = async () => {

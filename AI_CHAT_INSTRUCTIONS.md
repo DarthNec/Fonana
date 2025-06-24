@@ -723,6 +723,17 @@ node scripts/check-price-discrepancy.js
   - `useAuth` hook - Auth state management
 - **Test Page**: `/test/hybrid-auth`
 
+### Mobile Wallet Auth Fix (December 23, 2024)
+- **Problem**: Phantom mobile browser doesn't sync cookies with main browser
+- **Solution**: 
+  - JWT saved to localStorage as fallback
+  - New `/api/auth/wallet/sync` endpoint for token sync
+  - MobileAuthHelper component shows sync button
+  - URL-based token sync with `auth_token` parameter
+  - Auto-detection of mobile environment
+- **Test**: https://fonana.me/test/mobile-auth
+- **Docs**: MOBILE_WALLET_AUTH_FIX.md
+
 ### Creator Analytics Update (December 24, 2024)
 - **Fixed**: Period display bugs (days, weeks, months now show correctly)
 - **Added**: Complete subscriber list with spending breakdown
