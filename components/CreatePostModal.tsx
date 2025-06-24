@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState, useRef } from 'react'
+import React, { useState, useRef, useEffect } from 'react'
 import { useWallet } from '@solana/wallet-adapter-react'
 import { useUser } from '@/lib/hooks/useUser'
 import { toast } from 'react-hot-toast'
@@ -109,6 +109,17 @@ export default function CreatePostModal({ onPostCreated, onClose }: CreatePostMo
       color: 'from-red-500 to-rose-500'
     }
   ]
+
+  // Add effect to handle body scroll lock on mobile
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      document.body.classList.add('modal-open')
+      
+      return () => {
+        document.body.classList.remove('modal-open')
+      }
+    }
+  }, [])
 
   const handleFileUpload = (file: File) => {
     // Determine content type based on file
@@ -421,9 +432,9 @@ export default function CreatePostModal({ onPostCreated, onClose }: CreatePostMo
   return (
     <>
       {/* Main Modal */}
-      <div className={`fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-start justify-center p-4 overflow-y-auto ${showCropModal ? 'pointer-events-none' : ''}`}>
-        <div className="bg-white dark:bg-gradient-to-br dark:from-slate-800/95 dark:to-slate-900/95 backdrop-blur-xl rounded-3xl max-w-4xl w-full my-8 border border-gray-200 dark:border-slate-700/50 shadow-2xl">
-          <form onSubmit={handleSubmit} className="p-6 lg:p-8 space-y-6">
+      <div className={`fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-start justify-center p-0 sm:p-4 overflow-y-auto ${showCropModal ? 'pointer-events-none' : ''}`}>
+        <div className="modal-content bg-white dark:bg-gradient-to-br dark:from-slate-800/95 dark:to-slate-900/95 backdrop-blur-xl rounded-3xl sm:rounded-3xl max-w-4xl w-full my-0 sm:my-8 border border-gray-200 dark:border-slate-700/50 shadow-2xl">
+          <form onSubmit={handleSubmit} className="p-4 sm:p-6 lg:p-8 space-y-4 sm:space-y-6">
           {/* Header */}
           <div className="flex items-center justify-between mb-6">
             <h2 className="text-2xl font-bold bg-gradient-to-r from-purple-600 to-pink-600 dark:from-purple-400 dark:to-pink-400 bg-clip-text text-transparent">
