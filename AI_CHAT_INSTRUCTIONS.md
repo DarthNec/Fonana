@@ -513,16 +513,26 @@ const transaction = await prisma.transaction.create({
 - **Workflow**: `.github/workflows/test.yml`
 - **Status**: https://github.com/DukeDeSouth/Fonana/actions
 - **Tests**: Type checking, linting, build verification
+- **Note**: Created via GitHub web UI due to OAuth restrictions
 
 ### Monitoring & Logging
 - **Log Rotation**: Configured with logrotate (7-day retention)
 - **Status Script**: `./scripts/devops-status.sh` - comprehensive system check
 - **Log Monitor**: `/var/www/fonana/scripts/log-monitor.sh` on server
+- **No Password Required**: SSH key authentication is configured
 
 ### Security Improvements
-- **SSH Key Setup**: `./scripts/setup-ssh-key-auth.sh`
+- **SSH Keys**: ✅ CONFIGURED - No password required for SSH access
+- **SSH Key Setup**: `./scripts/setup-ssh-key-auth.sh` (already executed)
 - **Deploy User**: `./scripts/setup-deploy-user.sh` (for future implementation)
 - **Docker**: `docker-compose.dev.yml` (local development only)
+
+### Deploy Process Issues & Solutions
+- **Issue**: Deploy script sometimes exits early after killing processes
+- **Solution**: Complete deployment manually:
+  ```bash
+  ssh -p 43988 root@69.10.59.234 "cd /var/www/fonana && git pull && npm run build && pm2 start ecosystem.config.js && nginx -s reload"
+  ```
 
 ### DevOps Scripts
 ```bash
@@ -540,11 +550,14 @@ const transaction = await prisma.transaction.create({
 
 ### Status:
 ```bash
-# Quick status check
+# Quick status check (no password required!)
 ssh -p 43988 root@69.10.59.234 "pm2 status"
 
 # Comprehensive status (recommended)
 ./scripts/devops-status.sh
+
+# Check CI/CD status
+open https://github.com/DukeDeSouth/Fonana/actions
 ```
 
 ### Logs:
@@ -612,6 +625,12 @@ ssh -p 43988 root@69.10.59.234 "ls -la /var/www/fonana/public/"
 ssh -p 43988 root@69.10.59.234 "chmod -R 755 /var/www/fonana/public/"
 ```
 
+### 5. Build Warnings - Dynamic Server Usage
+**Warning**: "Page couldn't be rendered statically because it used `headers` or `searchParams`"
+- **Occurs in**: `/api/admin/users`, `/api/search`, `/api/search/autocomplete`
+- **Impact**: None - these are API routes that should be dynamic
+- **Solution**: These warnings are expected and can be ignored
+
 ### 5. Subscription Plan Mismatch
 **Problem**: System was auto-correcting subscription plans based on price, causing Premium subscriptions to save as Basic/Free.
 
@@ -662,6 +681,11 @@ node scripts/check-price-discrepancy.js
 - **Logging**: Automated log rotation with 7-day retention
 - **Security**: SSH key setup script for passwordless access
 - **Metadata Fix**: Added metadataBase to fix social media preview warnings
+- **Fixed Issues**:
+  - ✅ SSH passwordless access configured
+  - ✅ Metadata warning resolved (added metadataBase: https://fonana.me)
+  - ✅ Log rotation preventing disk overflow
+  - ✅ CI/CD pipeline testing every commit
 
 ### Search Functionality (June 24, 2025)
 - **Added**: Full-text search with autocomplete
@@ -755,7 +779,7 @@ public/           # Static assets
 
 ## Before Making Changes - ALWAYS CHECK:
 ```bash
-# 1. Current status
+# 1. Current status (no password needed!)
 ssh -p 43988 root@69.10.59.234 "pm2 status"
 
 # 2. Check last errors (без зависания!)
@@ -766,6 +790,9 @@ ssh -p 43988 root@69.10.59.234 "cd /var/www/fonana && node scripts/health-check.
 
 # 4. Recent changes
 git log --oneline -10
+
+# 5. BEST OPTION - Full system check
+./scripts/devops-status.sh
 ```
 
 ## Deploy Process
