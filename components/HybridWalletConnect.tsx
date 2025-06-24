@@ -16,6 +16,7 @@ export function HybridWalletConnect() {
   const [isAuthenticated, setIsAuthenticated] = useState(false)
   const [isAuthenticating, setIsAuthenticating] = useState(false)
   const [showUXHint, setShowUXHint] = useState(false)
+  const [isInWalletBrowser, setIsInWalletBrowser] = useState(false)
   const router = useRouter()
   const searchParams = useSearchParams()
   
@@ -38,6 +39,9 @@ export function HybridWalletConnect() {
   // Определяем окружение
   useEffect(() => {
     const env = detectWalletEnvironment()
+    
+    // Запоминаем что мы во встроенном браузере
+    setIsInWalletBrowser(env.isInWalletBrowser)
     
     // Показываем подсказку если в встроенном браузере
     if (env.isInWalletBrowser && !env.isMobile) {
@@ -137,22 +141,53 @@ export function HybridWalletConnect() {
             returnUrl.searchParams.set('auth_token', data.token)
             returnUrl.searchParams.set('return_path', window.location.pathname)
             
-            // Показываем инструкцию пользователю
-            toast.success(
-              'Авторизация успешна! Вернитесь в браузер и обновите страницу',
-              { duration: 10000, icon: '👍' }
+            // Показываем специальное уведомление с кнопкой
+            const toastId = toast(
+              (t) => (
+                <div className="flex flex-col gap-2">
+                  <p className="font-medium">✅ Авторизация успешна!</p>
+                  <p className="text-sm opacity-90">Откройте Fonana в обычном браузере для продолжения</p>
+                  <div className="flex gap-2 mt-2">
+                    <button
+                      onClick={() => {
+                        // Копируем ссылку с токеном
+                        navigator.clipboard.writeText(returnUrl.toString())
+                        toast.success('Ссылка скопирована!', { duration: 3000 })
+                      }}
+                      className="flex-1 px-3 py-1.5 bg-purple-600 hover:bg-purple-700 text-white rounded-lg text-sm font-medium transition-colors"
+                    >
+                      Копировать ссылку
+                    </button>
+                    <button
+                      onClick={() => {
+                        toast.dismiss(t.id)
+                        // Пытаемся открыть в браузере
+                        if (/iPhone|iPad|iPod/.test(navigator.userAgent)) {
+                          window.location.href = `safari-${returnUrl.toString()}`
+                        } else if (/Android/.test(navigator.userAgent)) {
+                          window.location.href = `intent://${returnUrl.toString().replace(/^https?:\/\//, '')}#Intent;scheme=https;package=com.android.chrome;end`
+                        } else {
+                          window.open(returnUrl.toString(), '_blank')
+                        }
+                      }}
+                      className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium transition-colors"
+                    >
+                      Открыть
+                    </button>
+                  </div>
+                </div>
+              ),
+              {
+                duration: 30000, // 30 секунд
+                position: 'bottom-center',
+                style: {
+                  background: '#1e293b',
+                  color: '#fff',
+                  maxWidth: '90vw',
+                  padding: '16px'
+                }
+              }
             )
-            
-            // Копируем URL в буфер обмена
-            if (navigator.clipboard) {
-              navigator.clipboard.writeText(returnUrl.toString())
-              toast.success('Ссылка скопирована в буфер обмена', { duration: 5000 })
-            }
-            
-            // Пытаемся открыть в основном браузере (может не работать из-за ограничений)
-            setTimeout(() => {
-              window.open(returnUrl.toString(), '_blank')
-            }, 1000)
           }
         }
         
@@ -233,17 +268,57 @@ export function HybridWalletConnect() {
     )
   }
 
+  const openInMainBrowser = () => {
+    const currentUrl = window.location.href
+    
+    if (/iPhone|iPad|iPod/.test(navigator.userAgent)) {
+      // iOS - пытаемся открыть в Safari
+      window.location.href = `safari-${currentUrl}`
+      toast('Нажмите "Открыть в Safari" в меню браузера', { icon: '🌐', duration: 8000 })
+    } else if (/Android/.test(navigator.userAgent)) {
+      // Android - пытаемся открыть в Chrome
+      window.location.href = `intent://${currentUrl.replace(/^https?:\/\//, '')}#Intent;scheme=https;package=com.android.chrome;end`
+      toast('Нажмите "Открыть в Chrome" в меню браузера', { icon: '🌐', duration: 8000 })
+    } else {
+      // Для десктопа просто копируем ссылку
+      navigator.clipboard.writeText(currentUrl)
+      toast.success('Ссылка скопирована! Откройте в обычном браузере')
+    }
+  }
+
   // Стандартная кнопка для неавторизованных
   return (
     <div className="relative">
-      <WalletMultiButton className="!bg-purple-600 hover:!bg-purple-700" />
+      <div className="flex items-center gap-2">
+        <WalletMultiButton className="!bg-purple-600 hover:!bg-purple-700" />
+        
+        {/* Кнопка открытия в браузере, если мы во встроенном браузере */}
+        {isInWalletBrowser && (
+          <button
+            onClick={openInMainBrowser}
+            className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-medium transition-all duration-200"
+            title="Открыть в обычном браузере"
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+            </svg>
+            <span className="hidden sm:inline">Открыть в браузере</span>
+          </button>
+        )}
+      </div>
       
       {/* UX подсказка */}
       {showUXHint && (
         <div className="absolute top-full mt-2 right-0 w-72 p-4 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-xl shadow-lg">
-          <p className="text-sm text-yellow-800 dark:text-yellow-200">
+          <p className="text-sm text-yellow-800 dark:text-yellow-200 mb-2">
             💡 Для лучшего опыта рекомендуем открыть сайт в обычном браузере
           </p>
+          <button
+            onClick={openInMainBrowser}
+            className="w-full px-3 py-1.5 bg-yellow-600 hover:bg-yellow-700 text-white rounded-lg text-sm font-medium transition-colors"
+          >
+            Открыть в браузере
+          </button>
           <button
             onClick={() => setShowUXHint(false)}
             className="absolute top-2 right-2 text-yellow-600 hover:text-yellow-800"

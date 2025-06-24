@@ -24,6 +24,21 @@ export default function MobileAuthTestPage() {
     window.location.reload()
   }
   
+  const openInBrowser = () => {
+    const currentUrl = window.location.href
+    
+    if (/iPhone|iPad|iPod/.test(navigator.userAgent)) {
+      window.location.href = `safari-${currentUrl}`
+      alert('Используйте меню "Поделиться" → "Открыть в Safari"')
+    } else if (/Android/.test(navigator.userAgent)) {
+      window.location.href = `intent://${currentUrl.replace(/^https?:\/\//, '')}#Intent;scheme=https;package=com.android.chrome;end`
+      alert('Используйте меню браузера → "Открыть в Chrome"')
+    } else {
+      navigator.clipboard.writeText(currentUrl)
+      alert('Ссылка скопирована! Откройте в обычном браузере')
+    }
+  }
+  
   return (
     <div className="container mx-auto px-4 py-8 max-w-4xl">
       <h1 className="text-3xl font-bold mb-8">Тестирование мобильной авторизации</h1>
@@ -81,7 +96,14 @@ export default function MobileAuthTestPage() {
           <HybridWalletConnect />
         </div>
         
-        <div className="flex justify-center gap-4">
+        <div className="flex justify-center gap-4 flex-wrap">
+          <button
+            onClick={openInBrowser}
+            className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg font-medium"
+          >
+            🌐 Открыть в браузере
+          </button>
+          
           <button
             onClick={() => window.location.reload()}
             className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium"
