@@ -6,7 +6,7 @@ import SearchBar from '@/components/SearchBar'
 import PostCard from '@/components/PostCard'
 import Avatar from '@/components/Avatar'
 import Link from 'next/link'
-import { UsersIcon, DocumentTextIcon, HashtagIcon, MagnifyingGlassIcon } from '@heroicons/react/24/outline'
+import { UsersIcon, DocumentTextIcon, HashtagIcon, MagnifyingGlassIcon, CheckBadgeIcon } from '@heroicons/react/24/outline'
 import { useSolRate } from '@/lib/hooks/useSolRate'
 import SubscribeModal from '@/components/SubscribeModal'
 import PurchaseModal from '@/components/PurchaseModal'
@@ -215,12 +215,15 @@ export default function SearchPage() {
                         <Avatar
                           src={creator.avatar}
                           alt={creator.nickname || creator.fullName}
-                          size="lg"
-                          verified={creator.isVerified}
+                          seed={creator.nickname || creator.id}
+                          size={48}
                         />
                         <div className="flex-1 min-w-0">
-                          <h3 className="font-semibold text-gray-900 dark:text-white group-hover:text-purple-600 dark:group-hover:text-purple-400 truncate">
+                          <h3 className="font-semibold text-gray-900 dark:text-white group-hover:text-purple-600 dark:group-hover:text-purple-400 truncate flex items-center gap-2">
                             {creator.fullName || creator.nickname}
+                            {creator.isVerified && (
+                              <CheckBadgeIcon className="w-5 h-5 text-blue-500 dark:text-blue-400 flex-shrink-0" />
+                            )}
                           </h3>
                           {creator.nickname && (
                             <p className="text-sm text-gray-500 dark:text-gray-400">
