@@ -109,8 +109,8 @@ export function Navbar() {
             </span>
           </Link>
 
-          {/* Desktop Navigation */}
-          <div className="hidden md:flex items-center gap-2 flex-1">
+          {/* Desktop Navigation - скрываем на мобильных из-за BottomNav */}
+          <div className="hidden lg:flex items-center gap-2 flex-1">
             <div className="flex items-center gap-2">
               {navigation.map((item) => (
                 <Link
@@ -133,8 +133,8 @@ export function Navbar() {
               ))}
             </div>
 
-            {/* Search Bar */}
-            <div className="ml-8 flex-1 max-w-md">
+            {/* Search Bar - делаем больше для десктопа */}
+            <div className="ml-8 flex-1 max-w-xl">
               <SearchBar 
                 className="w-full"
                 placeholder="Поиск..."
@@ -143,8 +143,8 @@ export function Navbar() {
             </div>
           </div>
 
-          {/* Desktop Actions */}
-          <div className="hidden md:flex items-center gap-4">
+          {/* Desktop Actions - адаптируем для планшетов */}
+          <div className="hidden md:flex items-center gap-2 lg:gap-4">
             {/* Solana Rate Display - теперь всегда */}
             <SolanaRateDisplay />
 

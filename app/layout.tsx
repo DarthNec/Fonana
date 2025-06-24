@@ -11,6 +11,8 @@ import { ThemeProvider } from '@/lib/contexts/ThemeContext'
 import { ErrorBoundary } from '@/components/ErrorBoundary'
 import ReferralNotification from '@/components/ReferralNotification'
 import Footer from '@/components/Footer'
+import BottomNav from '@/components/BottomNav'
+import ServiceWorkerRegistration from '@/components/ServiceWorkerRegistration'
 import { headers } from 'next/headers'
 
 const inter = Inter({ subsets: ['latin'] })
@@ -19,6 +21,22 @@ export const metadata: Metadata = {
   title: 'Fonana - Decentralized Content Platform',
   description: 'Share exclusive content and earn with cryptocurrency',
   metadataBase: new URL('https://fonana.me'),
+  viewport: {
+    width: 'device-width',
+    initialScale: 1,
+    maximumScale: 1,
+    userScalable: false,
+  },
+  manifest: '/manifest.json',
+  themeColor: [
+    { media: '(prefers-color-scheme: light)', color: '#ffffff' },
+    { media: '(prefers-color-scheme: dark)', color: '#0f172a' }
+  ],
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: 'default',
+    title: 'Fonana',
+  },
   icons: {
     icon: [
       { url: '/favicon.ico' },
@@ -59,12 +77,14 @@ export default function RootLayout({
                 <NotificationProvider>
                   <div className="min-h-screen bg-gray-50 dark:bg-slate-900 flex flex-col">
                     <Navbar />
-                    <main className="pt-0 flex-1">
+                    <main className="pt-0 flex-1 pb-16 md:pb-0">
                       {children}
                     </main>
                     <ReferralNotification />
                     <Footer />
+                    <BottomNav />
                   </div>
+                  <ServiceWorkerRegistration />
                   <Toaster
                     position="top-right"
                     toastOptions={{

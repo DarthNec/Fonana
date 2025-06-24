@@ -756,4 +756,57 @@ body::before {
 
 .animate-slide-up {
   animation: slide-up 0.3s ease-out;
+}
+
+/* Mobile Modal Adaptations */
+@media (max-width: 640px) {
+  /* Full-screen modals on mobile */
+  .modal-content {
+    width: 100vw !important;
+    height: 100vh !important;
+    max-height: 100vh !important;
+    border-radius: 0 !important;
+    margin: 0 !important;
+  }
+  
+  /* Prevent body scroll when modal is open */
+  body.modal-open {
+    overflow: hidden !important;
+    position: fixed !important;
+    width: 100% !important;
+  }
+  
+  /* Better touch targets */
+  button, a, .clickable {
+    min-height: 44px;
+    min-width: 44px;
+  }
+  
+  /* Optimize font sizes for mobile */
+  .text-hero {
+    @apply text-4xl;
+  }
+  
+  .text-display {
+    @apply text-2xl;
+  }
+  
+  .text-heading {
+    @apply text-xl;
+  }
+  
+  /* Bottom safe area for iOS */
+  .bottom-safe {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+  
+  /* Optimize card spacing on mobile */
+  .card {
+    @apply mx-2 mb-4;
+  }
+  
+  /* Mobile-friendly form inputs */
+  input, textarea, select {
+    font-size: 16px !important; /* Prevents zoom on iOS */
+  }
 } 

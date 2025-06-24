@@ -1,0 +1,39 @@
+{
+  "name": "Fonana - Decentralized Content Platform",
+  "short_name": "Fonana",
+  "description": "Share exclusive content and earn with cryptocurrency",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0f172a",
+  "theme_color": "#8b5cf6",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "/favicon-32x32.png",
+      "sizes": "32x32",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/apple-touch-icon.png",
+      "sizes": "180x180",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/fonanaLogo1.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": ["social", "entertainment", "finance"],
+  "screenshots": [
+    {
+      "src": "/fonanaLogo1.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "label": "Fonana Home"
+    }
+  ]
+} 
