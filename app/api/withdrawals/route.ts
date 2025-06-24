@@ -1,19 +1,17 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
-import { getServerSession } from 'next-auth'
-import { authOptions } from '@/lib/auth'
 
 export async function POST(request: Request) {
   try {
-    const session = await getServerSession(authOptions)
-    if (!session?.user?.id) {
+    const body = await request.json()
+    const { userId, amount, toWallet } = body
+    
+    if (!userId) {
       return NextResponse.json(
-        { error: 'Unauthorized' },
-        { status: 401 }
+        { error: 'User ID required' },
+        { status: 400 }
       )
     }
-
-    const { amount, toWallet } = await request.json()
 
     if (!amount || amount <= 0) {
       return NextResponse.json(
@@ -31,7 +29,7 @@ export async function POST(request: Request) {
 
     // Check user's available balance
     const user = await prisma.user.findUnique({
-      where: { id: session.user.id },
+      where: { id: userId },
       select: { wallet: true, solanaWallet: true }
     })
 
@@ -87,9 +85,9 @@ export async function POST(request: Request) {
         amount,
         currency: 'SOL',
         status: 'PENDING',
-        txSignature: `withdrawal_${Date.now()}_${session.user.id}`, // Temporary signature
+        txSignature: `withdrawal_${Date.now()}_${userId}`, // Temporary signature
         metadata: {
-          userId: session.user.id,
+          userId: userId,
           requestedAt: new Date().toISOString(),
           availableBalance,
           note: 'Creator withdrawal request'
@@ -100,7 +98,7 @@ export async function POST(request: Request) {
     // Send notification to user
     await prisma.notification.create({
       data: {
-        userId: session.user.id,
+        userId: userId,
         type: 'TIP_RECEIVED', // Using existing type, could add WITHDRAWAL_REQUESTED
         title: 'Запрос на вывод средств',
         message: `Ваш запрос на вывод ${amount} SOL принят и будет обработан в течение 24 часов`,
@@ -133,16 +131,18 @@ export async function POST(request: Request) {
 // GET /api/withdrawals - Get user's withdrawal history
 export async function GET(request: Request) {
   try {
-    const session = await getServerSession(authOptions)
-    if (!session?.user?.id) {
+    const { searchParams } = new URL(request.url)
+    const userId = searchParams.get('userId')
+    
+    if (!userId) {
       return NextResponse.json(
-        { error: 'Unauthorized' },
-        { status: 401 }
+        { error: 'User ID required' },
+        { status: 400 }
       )
     }
 
     const user = await prisma.user.findUnique({
-      where: { id: session.user.id },
+      where: { id: userId },
       select: { wallet: true, solanaWallet: true }
     })
 
