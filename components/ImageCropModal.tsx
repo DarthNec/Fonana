@@ -127,51 +127,46 @@ export default function ImageCropModal({ image, onCropComplete, onCancel }: Imag
   console.log('[ImageCropModal] Image URL:', image)
 
   return (
-    <div className="fixed inset-0 bg-black/90 z-[100] flex items-center justify-center p-4" style={{ zIndex: 100 }}>
-      <div className="bg-white dark:bg-gray-900 rounded-2xl max-w-5xl w-full max-h-[90vh] overflow-hidden flex flex-col">
+    <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[100] flex items-center justify-center p-0 sm:p-4" style={{ zIndex: 100 }}>
+      <div className="modal-content bg-white dark:bg-gradient-to-br dark:from-slate-800/95 dark:to-slate-900/95 backdrop-blur-xl rounded-none sm:rounded-3xl max-w-5xl w-full h-full sm:h-auto sm:max-h-[90vh] overflow-hidden flex flex-col border-0 sm:border border-gray-200 dark:border-slate-700/50 shadow-2xl">
         {/* Header */}
-        <div className="p-4 border-b border-gray-200 dark:border-gray-700">
+        <div className="p-4 sm:p-6 border-b border-gray-200 dark:border-slate-700/50">
           <div className="flex items-center justify-between">
-            <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+            <h3 className="text-xl sm:text-2xl font-bold bg-gradient-to-r from-purple-600 to-pink-600 dark:from-purple-400 dark:to-pink-400 bg-clip-text text-transparent">
               Crop Image
             </h3>
             <button
               onClick={onCancel}
-              className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
+              className="p-2 hover:bg-gray-100 dark:hover:bg-slate-700/50 rounded-xl transition-colors text-gray-600 dark:text-slate-400 hover:text-gray-900 dark:hover:text-white"
             >
-              <XMarkIcon className="w-5 h-5 text-gray-500 dark:text-gray-400" />
+              <XMarkIcon className="w-6 h-6" />
             </button>
           </div>
-          <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+          <p className="text-sm text-gray-600 dark:text-slate-400 mt-1">
             Select aspect ratio and adjust the crop area
           </p>
         </div>
 
         {/* Aspect ratio selector */}
-        <div className="p-4 border-b border-gray-200 dark:border-gray-700">
+        <div className="p-4 border-b border-gray-200 dark:border-slate-700/50">
           <div className="flex gap-3 overflow-x-auto pb-2">
             {aspectRatios.map((ratio) => (
               <button
                 key={ratio.name}
                 onClick={() => setSelectedRatio(ratio)}
-                className={`flex-shrink-0 px-4 py-2 rounded-lg border transition-all ${
+                className={`flex-shrink-0 px-4 py-3 rounded-xl border-2 transition-all transform hover:scale-105 ${
                   selectedRatio.value === ratio.value
-                    ? 'border-purple-500 bg-purple-500/10 text-purple-600 dark:text-purple-400'
-                    : 'border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 hover:border-gray-300 dark:hover:border-gray-600'
+                    ? 'bg-gradient-to-r from-purple-600 to-pink-600 text-white shadow-lg shadow-purple-500/25 border-transparent'
+                    : 'bg-gray-50 dark:bg-slate-800/50 text-gray-700 dark:text-slate-300 border-gray-200 dark:border-slate-700 hover:border-purple-500/50'
                 }`}
               >
-                <div className="flex items-center gap-2">
-                  <div className={`border-2 ${
-                    selectedRatio.value === ratio.value
-                      ? 'border-purple-500'
-                      : 'border-gray-400 dark:border-gray-600'
-                  }`} style={{
-                    width: 30,
-                    height: 30,
-                  }} />
-                  <div className="text-sm">
-                    <div className="font-medium">{ratio.icon}</div>
-                    <div className="text-xs opacity-75">{ratio.name}</div>
+                <div className="flex items-center gap-3">
+                  <div className="text-2xl">{ratio.icon}</div>
+                  <div className="text-left">
+                    <div className="font-semibold">{ratio.name}</div>
+                    <div className="text-xs opacity-75">
+                      {ratio.value === 3/4 ? '3:4' : ratio.value === 1 ? '1:1' : '16:9'}
+                    </div>
                   </div>
                 </div>
               </button>
@@ -206,9 +201,9 @@ export default function ImageCropModal({ image, onCropComplete, onCancel }: Imag
         </div>
 
         {/* Zoom control */}
-        <div className="p-4 border-t border-gray-200 dark:border-gray-700">
+        <div className="p-4 border-t border-gray-200 dark:border-slate-700/50">
           <div className="flex items-center gap-4">
-            <span className="text-sm text-gray-500 dark:text-gray-400">Zoom:</span>
+            <span className="text-sm font-medium text-gray-700 dark:text-slate-300">Zoom:</span>
             <input
               type="range"
               value={zoom}
@@ -216,28 +211,28 @@ export default function ImageCropModal({ image, onCropComplete, onCancel }: Imag
               max={3}
               step={0.1}
               onChange={(e) => setZoom(Number(e.target.value))}
-              className="flex-1"
+              className="flex-1 accent-purple-600"
             />
-            <span className="text-sm font-medium text-gray-700 dark:text-gray-300 w-12 text-right">
+            <span className="text-sm font-bold text-purple-600 dark:text-purple-400 w-12 text-right">
               {Math.round((zoom - 1) * 100)}%
             </span>
           </div>
         </div>
 
         {/* Actions */}
-        <div className="p-4 border-t border-gray-200 dark:border-gray-700 flex justify-end gap-3">
+        <div className="p-4 sm:p-6 border-t border-gray-200 dark:border-slate-700/50 flex justify-end gap-3 pb-20 sm:pb-6">
           <button
             onClick={onCancel}
-            className="px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
+            className="px-6 py-3 text-gray-700 dark:text-slate-300 hover:text-gray-900 dark:hover:text-white bg-gray-100 dark:bg-slate-700/50 hover:bg-gray-200 dark:hover:bg-slate-600/50 rounded-xl font-medium transition-all"
           >
             Cancel
           </button>
           <button
             onClick={handleCropConfirm}
             disabled={isProcessing}
-            className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg transition-colors flex items-center gap-2 disabled:opacity-50"
+            className="px-6 py-3 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white rounded-xl font-medium transition-all transform hover:scale-105 flex items-center gap-2 disabled:opacity-50 shadow-lg shadow-purple-500/25"
           >
-            <CheckIcon className="w-4 h-4" />
+            <CheckIcon className="w-5 h-5" />
             {isProcessing ? 'Processing...' : 'Apply Crop'}
           </button>
         </div>

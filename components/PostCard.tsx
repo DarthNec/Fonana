@@ -487,7 +487,7 @@ export default function PostCard({
   const tierInfo = getTierInfo()
 
   return (
-    <article className={`group relative overflow-hidden rounded-3xl bg-white dark:bg-slate-900 backdrop-blur-xl border border-gray-200 dark:border-slate-700/50 transition-all duration-500 mb-8 ${
+    <article className={`group relative overflow-hidden rounded-none sm:rounded-3xl bg-white dark:bg-slate-900 backdrop-blur-xl border-y sm:border border-gray-200 dark:border-slate-700/50 transition-all duration-500 mb-0 sm:mb-8 ${
       needsPayment 
         ? 'hover:border-yellow-500/50 dark:hover:border-yellow-500/30'
         : isTierContent && tierInfo && tierInfo.required
@@ -509,7 +509,7 @@ export default function PostCard({
         : 'hover:border-purple-500/50 dark:hover:border-purple-500/30'
     }`}>
       {/* Hover glow effect */}
-      <div className={`absolute -inset-1 rounded-3xl opacity-0 group-hover:opacity-100 blur-xl transition-opacity duration-500 ${
+      <div className={`absolute -inset-1 rounded-none sm:rounded-3xl opacity-0 group-hover:opacity-100 blur-xl transition-opacity duration-500 ${
         needsPayment 
           ? 'bg-gradient-to-r from-yellow-600/10 to-orange-600/10'
           : isTierContent && tierInfo && tierInfo.required

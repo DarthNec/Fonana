@@ -275,28 +275,28 @@ export default function FeedPage() {
 
   return (
     <div className="min-h-screen bg-white dark:bg-slate-900 pt-16"> {/* Added pt-16 for navbar offset */}
-      <div className="container mx-auto px-4 py-8">
+      <div className="container mx-auto px-0 sm:px-4 py-4 sm:py-8">
         {/* Header */}
-        <div className="flex items-center justify-between mb-8">
+        <div className="flex items-center justify-between mb-6 px-4 sm:px-0">
           <div>
-            <h1 className="text-4xl font-bold mb-2">
+            <h1 className="text-2xl sm:text-4xl font-bold mb-1 sm:mb-2">
               <span className="bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent">
                 Content Feed
               </span>
             </h1>
-            <p className="text-gray-600 dark:text-slate-400">Discover amazing content from creators</p>
+            <p className="text-sm sm:text-base text-gray-600 dark:text-slate-400">Discover amazing content from creators</p>
           </div>
           <Link
             href="/create"
-            className="px-6 py-3 bg-gradient-to-r from-purple-600 to-pink-600 text-white font-bold rounded-xl hover:from-purple-700 hover:to-pink-700 transform hover:scale-105 transition-all duration-300 hover:shadow-xl hover:shadow-purple-500/25 flex items-center gap-2"
+            className="px-4 sm:px-6 py-2.5 sm:py-3 bg-gradient-to-r from-purple-600 to-pink-600 text-white font-bold text-sm sm:text-base rounded-xl hover:from-purple-700 hover:to-pink-700 transform hover:scale-105 transition-all duration-300 hover:shadow-xl hover:shadow-purple-500/25 flex items-center gap-2"
           >
-            <PlusIcon className="w-5 h-5" />
-            Create
+            <PlusIcon className="w-4 sm:w-5 h-4 sm:h-5" />
+            <span className="hidden sm:inline">Create</span>
           </Link>
         </div>
 
         {/* Search Bar */}
-        <div className="mb-8">
+        <div className="mb-6 px-4 sm:px-0">
           <SearchBar 
             placeholder="Поиск по постам и создателям..."
             showFilters={true}
@@ -305,45 +305,49 @@ export default function FeedPage() {
         </div>
 
         {/* Filters and Sort */}
-        <div className="mb-8 space-y-4">
+        <div className="mb-6 space-y-4">
           {/* Sort Options */}
-          <div className="flex items-center gap-2 sm:gap-4 mb-6 overflow-x-auto scrollbar-hide">
-            {sortOptions.map((option) => (
-              <button
-                key={option.id}
-                onClick={() => setSortBy(option.id as any)}
-                className={`px-4 sm:px-6 py-2 sm:py-3 rounded-xl font-medium transition-all flex items-center gap-2 whitespace-nowrap ${
-                  sortBy === option.id
-                    ? 'bg-gradient-to-r from-purple-500 to-pink-500 text-white shadow-lg shadow-purple-500/25'
-                    : 'bg-gray-100 dark:bg-slate-800/50 text-gray-600 dark:text-slate-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-200 dark:hover:bg-slate-700/50'
-                }`}
-              >
-                <option.icon className="w-4 sm:w-5 h-4 sm:h-5" />
-                <span className="text-sm sm:text-base">{option.label}</span>
-              </button>
-            ))}
-          </div>
-
-          {/* Category Filter */}
-          <div className="flex flex-col items-center gap-4">
-            <div className="flex items-center gap-2 text-gray-600 dark:text-slate-400">
-              <FunnelIcon className="w-5 h-5" />
-              <span className="text-sm font-medium">Filter by categories</span>
-            </div>
-            <div className="flex flex-wrap justify-center gap-2 max-w-4xl px-2 sm:px-0">
-              {categories.map((category) => (
+          <div className="px-4 sm:px-0 overflow-x-auto">
+            <div className="flex items-center gap-2 pb-2 mb-4">
+              {sortOptions.map((option) => (
                 <button
-                  key={category}
-                  onClick={() => setSelectedCategory(category)}
-                  className={`px-3 sm:px-4 py-1.5 sm:py-2 text-sm rounded-full transition-all ${
-                    selectedCategory === category
-                      ? 'bg-purple-500/20 text-purple-700 dark:text-purple-300 border border-purple-500/50'
+                  key={option.id}
+                  onClick={() => setSortBy(option.id as any)}
+                  className={`flex-shrink-0 px-3 sm:px-4 py-2 rounded-lg font-medium transition-all flex items-center gap-1.5 text-xs sm:text-sm ${
+                    sortBy === option.id
+                      ? 'bg-gradient-to-r from-purple-500 to-pink-500 text-white shadow-lg shadow-purple-500/25'
                       : 'bg-gray-100 dark:bg-slate-800/50 text-gray-600 dark:text-slate-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-200 dark:hover:bg-slate-700/50'
                   }`}
                 >
-                  {category}
+                  <option.icon className="w-3.5 sm:w-4 h-3.5 sm:h-4" />
+                  <span className="whitespace-nowrap">{option.label}</span>
                 </button>
               ))}
+            </div>
+          </div>
+
+          {/* Category Filter */}
+          <div className="flex flex-col gap-3 px-4 sm:px-0">
+            <div className="flex items-center gap-2 text-gray-600 dark:text-slate-400 text-sm">
+              <FunnelIcon className="w-4 h-4" />
+              <span className="font-medium">Categories</span>
+            </div>
+            <div className="overflow-x-auto -mx-4 sm:mx-0 px-4 sm:px-0">
+              <div className="flex gap-2 pb-2">
+                {categories.map((category) => (
+                  <button
+                    key={category}
+                    onClick={() => setSelectedCategory(category)}
+                    className={`flex-shrink-0 px-3 py-1.5 text-xs sm:text-sm rounded-full transition-all ${
+                      selectedCategory === category
+                        ? 'bg-purple-500/20 text-purple-700 dark:text-purple-300 border border-purple-500/50'
+                        : 'bg-gray-100 dark:bg-slate-800/50 text-gray-600 dark:text-slate-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-200 dark:hover:bg-slate-700/50'
+                    }`}
+                  >
+                    {category}
+                  </button>
+                ))}
+              </div>
             </div>
           </div>
         </div>
@@ -370,7 +374,7 @@ export default function FeedPage() {
             </Link>
           </div>
         ) : (
-          <div className="max-w-2xl mx-auto">
+          <div className="max-w-2xl mx-auto -mx-4 sm:mx-auto px-0 sm:px-0">
             {sortedPosts.map((post) => (
               <PostCard
                 key={post.id}

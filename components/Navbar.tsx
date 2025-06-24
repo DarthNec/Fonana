@@ -89,8 +89,11 @@ export function Navbar() {
     ? `${user.avatar}?t=${user.updatedAt ? new Date(user.updatedAt).getTime() : Date.now()}` 
     : undefined
 
+  // Check if it's PWA mode
+  const isPWA = typeof window !== 'undefined' && window.matchMedia('(display-mode: standalone)').matches
+
   return (
-    <nav className={`fixed top-0 left-0 right-0 z-50 transition-all duration-500 ${
+    <nav className={`fixed top-0 left-0 right-0 z-50 transition-all duration-500 ${isPWA ? 'md:block hidden' : 'block'} ${
       isScrolled 
         ? 'bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl border-b border-gray-200 dark:border-slate-700/50' 
         : 'bg-transparent'

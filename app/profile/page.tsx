@@ -537,48 +537,52 @@ export default function ProfilePage() {
           </div>
 
           {/* Tabs */}
-          <div className="flex justify-center mb-8">
-            <div className="bg-white dark:bg-slate-800/50 backdrop-blur-xl border border-gray-200 dark:border-slate-700/50 rounded-2xl p-1 inline-flex shadow-lg">
-              <button
-                onClick={() => setActiveTab('profile')}
-                className={`px-6 py-3 rounded-xl font-medium transition-all duration-300 ${
-                  activeTab === 'profile'
-                    ? 'bg-gradient-to-r from-purple-500 to-pink-500 text-white shadow-lg'
-                    : 'text-gray-600 dark:text-slate-400 hover:text-gray-900 dark:hover:text-white'
-                }`}
-              >
-                Profile
-              </button>
-              <button
-                onClick={() => setActiveTab('subscriptions')}
-                className={`px-6 py-3 rounded-xl font-medium transition-all duration-300 ${
-                  activeTab === 'subscriptions'
-                    ? 'bg-gradient-to-r from-purple-500 to-pink-500 text-white shadow-lg'
-                    : 'text-gray-600 dark:text-slate-400 hover:text-gray-900 dark:hover:text-white'
-                }`}
-              >
-                Subscriptions
-              </button>
-              <button
-                onClick={() => setActiveTab('creator')}
-                className={`px-6 py-3 rounded-xl font-medium transition-all duration-300 ${
-                  activeTab === 'creator'
-                    ? 'bg-gradient-to-r from-purple-500 to-pink-500 text-white shadow-lg'
-                    : 'text-gray-600 dark:text-slate-400 hover:text-gray-900 dark:hover:text-white'
-                }`}
-              >
-                Creator Settings
-              </button>
-              <button
-                onClick={() => setActiveTab('posts')}
-                className={`px-6 py-3 rounded-xl font-medium transition-all duration-300 ${
-                  activeTab === 'posts'
-                    ? 'bg-gradient-to-r from-purple-500 to-pink-500 text-white shadow-lg'
-                    : 'text-gray-600 dark:text-slate-400 hover:text-gray-900 dark:hover:text-white'
-                }`}
-              >
-                My Posts
-              </button>
+          <div className="mb-8 px-4 sm:px-0">
+            <div className="overflow-x-auto -mx-4 sm:mx-0">
+              <div className="flex sm:justify-center min-w-max px-4 sm:px-0">
+                <div className="bg-white dark:bg-slate-800/50 backdrop-blur-xl border border-gray-200 dark:border-slate-700/50 rounded-2xl p-1 inline-flex shadow-lg">
+                  <button
+                    onClick={() => setActiveTab('profile')}
+                    className={`px-3 sm:px-6 py-2 sm:py-3 rounded-xl font-medium text-sm sm:text-base transition-all duration-300 whitespace-nowrap ${
+                      activeTab === 'profile'
+                        ? 'bg-gradient-to-r from-purple-500 to-pink-500 text-white shadow-lg'
+                        : 'text-gray-600 dark:text-slate-400 hover:text-gray-900 dark:hover:text-white'
+                    }`}
+                  >
+                    Profile
+                  </button>
+                  <button
+                    onClick={() => setActiveTab('subscriptions')}
+                    className={`px-3 sm:px-6 py-2 sm:py-3 rounded-xl font-medium text-sm sm:text-base transition-all duration-300 whitespace-nowrap ${
+                      activeTab === 'subscriptions'
+                        ? 'bg-gradient-to-r from-purple-500 to-pink-500 text-white shadow-lg'
+                        : 'text-gray-600 dark:text-slate-400 hover:text-gray-900 dark:hover:text-white'
+                    }`}
+                  >
+                    Subscriptions
+                  </button>
+                  <button
+                    onClick={() => setActiveTab('creator')}
+                    className={`px-3 sm:px-6 py-2 sm:py-3 rounded-xl font-medium text-sm sm:text-base transition-all duration-300 whitespace-nowrap ${
+                      activeTab === 'creator'
+                        ? 'bg-gradient-to-r from-purple-500 to-pink-500 text-white shadow-lg'
+                        : 'text-gray-600 dark:text-slate-400 hover:text-gray-900 dark:hover:text-white'
+                    }`}
+                  >
+                    Creator
+                  </button>
+                  <button
+                    onClick={() => setActiveTab('posts')}
+                    className={`px-3 sm:px-6 py-2 sm:py-3 rounded-xl font-medium text-sm sm:text-base transition-all duration-300 whitespace-nowrap ${
+                      activeTab === 'posts'
+                        ? 'bg-gradient-to-r from-purple-500 to-pink-500 text-white shadow-lg'
+                        : 'text-gray-600 dark:text-slate-400 hover:text-gray-900 dark:hover:text-white'
+                    }`}
+                  >
+                    My Posts
+                  </button>
+                </div>
+              </div>
             </div>
           </div>
 

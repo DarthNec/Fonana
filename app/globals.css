@@ -756,7 +756,7 @@ body::before {
 
 .animate-slide-up {
   animation: slide-up 0.3s ease-out;
-}
+} 
 
 /* Mobile Modal Adaptations */
 @media (max-width: 640px) {
@@ -802,7 +802,22 @@ body::before {
   
   /* Optimize card spacing on mobile */
   .card {
-    @apply mx-2 mb-4;
+    @apply mx-0 sm:mx-2 mb-0 sm:mb-4;
+  }
+  
+  /* Full-width cards on mobile */
+  .post-card-mobile {
+    margin-left: -1rem;
+    margin-right: -1rem;
+    border-radius: 0;
+  }
+  
+  @media (min-width: 640px) {
+    .post-card-mobile {
+      margin-left: 0;
+      margin-right: 0;
+      border-radius: 1.5rem;
+    }
   }
   
   /* Mobile-friendly form inputs */
