@@ -397,69 +397,78 @@ export default function CreatorsExplorer() {
         </div>
 
         {/* Top Tabs */}
-        <div className="flex justify-center mb-12">
-          <div className="inline-flex bg-white dark:bg-slate-800/50 backdrop-blur-sm rounded-2xl p-1 border border-gray-200 dark:border-slate-700/50">
-            {publicKey && (
-              <>
+        <div className="mb-8 px-4 sm:px-0">
+          <div className="overflow-x-auto -mx-4 sm:mx-0">
+            <div className="flex sm:justify-center min-w-max px-4 sm:px-0">
+              <div className="inline-flex bg-white dark:bg-slate-800/50 backdrop-blur-sm rounded-2xl p-1 border border-gray-200 dark:border-slate-700/50">
+                {publicKey && (
+                  <>
+                    <button
+                      onClick={() => setActiveTab('subscriptions')}
+                      className={`flex items-center gap-2 px-3 sm:px-6 py-2 sm:py-3 rounded-xl font-medium sm:font-semibold text-sm sm:text-base transition-all duration-300 whitespace-nowrap ${
+                        activeTab === 'subscriptions'
+                          ? 'bg-gradient-to-r from-purple-600 to-pink-600 text-white shadow-lg shadow-purple-500/25'
+                          : 'text-gray-600 dark:text-slate-300 hover:text-gray-900 dark:hover:text-white'
+                      }`}
+                    >
+                      <UsersIcon className="w-4 sm:w-5 h-4 sm:h-5" />
+                      <span className="hidden sm:inline">Your </span>subscriptions
+                      {subscribedCreatorIds.length > 0 && (
+                        <span className="ml-1 sm:ml-2 px-1.5 sm:px-2 py-0.5 bg-white/20 rounded-full text-xs sm:text-sm">
+                          {subscribedCreatorIds.length}
+                        </span>
+                      )}
+                    </button>
+                    <button
+                      onClick={() => setActiveTab('recommendations')}
+                      className={`flex items-center gap-2 px-3 sm:px-6 py-2 sm:py-3 rounded-xl font-medium sm:font-semibold text-sm sm:text-base transition-all duration-300 whitespace-nowrap ${
+                        activeTab === 'recommendations'
+                          ? 'bg-gradient-to-r from-purple-600 to-pink-600 text-white shadow-lg shadow-purple-500/25'
+                          : 'text-gray-600 dark:text-slate-300 hover:text-gray-900 dark:hover:text-white'
+                      }`}
+                    >
+                      <SparklesIcon className="w-4 sm:w-5 h-4 sm:h-5" />
+                      <span className="hidden sm:inline">Recommendations</span>
+                      <span className="inline sm:hidden">Recom.</span>
+                    </button>
+                  </>
+                )}
                 <button
-                  onClick={() => setActiveTab('subscriptions')}
-                  className={`flex items-center gap-2 px-6 py-3 rounded-xl font-semibold transition-all duration-300 ${
-                    activeTab === 'subscriptions'
+                  onClick={() => setActiveTab('all')}
+                  className={`flex items-center gap-2 px-3 sm:px-6 py-2 sm:py-3 rounded-xl font-medium sm:font-semibold text-sm sm:text-base transition-all duration-300 whitespace-nowrap ${
+                    activeTab === 'all'
                       ? 'bg-gradient-to-r from-purple-600 to-pink-600 text-white shadow-lg shadow-purple-500/25'
                       : 'text-gray-600 dark:text-slate-300 hover:text-gray-900 dark:hover:text-white'
                   }`}
                 >
-                  <UsersIcon className="w-5 h-5" />
-                  Your subscriptions
-                  {subscribedCreatorIds.length > 0 && (
-                    <span className="ml-2 px-2 py-0.5 bg-white/20 rounded-full text-sm">
-                      {subscribedCreatorIds.length}
-                    </span>
-                  )}
+                  <Squares2X2Icon className="w-4 sm:w-5 h-4 sm:h-5" />
+                  <span>All</span><span className="hidden sm:inline"> creators</span>
                 </button>
-                <button
-                  onClick={() => setActiveTab('recommendations')}
-                  className={`flex items-center gap-2 px-6 py-3 rounded-xl font-semibold transition-all duration-300 ${
-                    activeTab === 'recommendations'
-                      ? 'bg-gradient-to-r from-purple-600 to-pink-600 text-white shadow-lg shadow-purple-500/25'
-                      : 'text-gray-600 dark:text-slate-300 hover:text-gray-900 dark:hover:text-white'
-                  }`}
-                >
-                  <SparklesIcon className="w-5 h-5" />
-                  Recommendations
-                </button>
-              </>
-            )}
-            <button
-              onClick={() => setActiveTab('all')}
-              className={`flex items-center gap-2 px-6 py-3 rounded-xl font-semibold transition-all duration-300 ${
-                activeTab === 'all'
-                  ? 'bg-gradient-to-r from-purple-600 to-pink-600 text-white shadow-lg shadow-purple-500/25'
-                  : 'text-gray-600 dark:text-slate-300 hover:text-gray-900 dark:hover:text-white'
-              }`}
-            >
-              <Squares2X2Icon className="w-5 h-5" />
-              All creators
-            </button>
+              </div>
+            </div>
           </div>
         </div>
 
         {/* Category Filter (only for "All Authors" tab) */}
         {activeTab === 'all' && (
-          <div className="flex flex-wrap justify-center gap-3 mb-8">
-            {categories.map((category) => (
-              <button
-                key={category}
-                onClick={() => setSelectedCategory(category)}
-                className={`px-6 py-3 rounded-2xl font-semibold transition-all duration-300 transform hover:scale-105 ${
-                  selectedCategory === category
-                    ? 'bg-gradient-to-r from-purple-600 to-pink-600 text-white shadow-lg shadow-purple-500/25'
-                    : 'bg-white dark:bg-slate-800/50 text-gray-600 dark:text-slate-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-slate-700/50 border border-gray-200 dark:border-slate-600/50 hover:border-gray-300 dark:hover:border-purple-500/30'
-                }`}
-              >
-                {category}
-              </button>
-            ))}
+          <div className="px-4 sm:px-0 mb-8">
+            <div className="overflow-x-auto -mx-4 sm:mx-0">
+              <div className="flex gap-2 pb-2 px-4 sm:px-0 sm:flex-wrap sm:justify-center">
+                {categories.map((category) => (
+                  <button
+                    key={category}
+                    onClick={() => setSelectedCategory(category)}
+                    className={`flex-shrink-0 px-4 py-2 rounded-xl font-medium text-sm transition-all ${
+                      selectedCategory === category
+                        ? 'bg-gradient-to-r from-purple-600 to-pink-600 text-white shadow-lg shadow-purple-500/25'
+                        : 'bg-white dark:bg-slate-800/50 text-gray-600 dark:text-slate-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-slate-700/50 border border-gray-200 dark:border-slate-600/50'
+                    }`}
+                  >
+                    {category}
+                  </button>
+                ))}
+              </div>
+            </div>
           </div>
         )}
 
