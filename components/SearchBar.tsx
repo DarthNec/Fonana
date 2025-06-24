@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef, useCallback } from 'react'
-import { MagnifyingGlassIcon, FunnelIcon, XMarkIcon } from '@heroicons/react/24/outline'
+import { MagnifyingGlassIcon, FunnelIcon, XMarkIcon, CheckBadgeIcon } from '@heroicons/react/24/outline'
 import { useRouter } from 'next/navigation'
 import { debounce } from 'lodash'
 import Link from 'next/link'
@@ -203,12 +203,15 @@ export default function SearchBar({
                       <Avatar 
                         src={creator.avatar} 
                         alt={creator.nickname || creator.fullName}
-                        size="sm"
-                        verified={creator.isVerified}
+                        seed={creator.nickname || creator.id}
+                        size={32}
                       />
                       <div className="flex-1 min-w-0">
-                        <p className="text-gray-900 dark:text-white font-medium truncate">
+                        <p className="text-gray-900 dark:text-white font-medium truncate flex items-center gap-1">
                           {creator.fullName || creator.nickname}
+                          {creator.isVerified && (
+                            <CheckBadgeIcon className="w-4 h-4 text-blue-500 dark:text-blue-400 flex-shrink-0" />
+                          )}
                         </p>
                         {creator.nickname && (
                           <p className="text-sm text-gray-500 dark:text-gray-400 truncate">
