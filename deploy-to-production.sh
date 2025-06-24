@@ -13,7 +13,7 @@ PROCESS_COUNT=$(ssh -p 43988 root@69.10.59.234 "ps aux | grep -E 'node|next' | g
 if [ "$PROCESS_COUNT" -gt "2" ]; then
     echo "⚠️  Warning: Found $PROCESS_COUNT node processes running!"
     echo "🛑 Running cleanup..."
-    ssh -p 43988 root@69.10.59.234 "pkill -f node || true"
+    ssh -p 43988 root@69.10.59.234 "pkill -f 'next-server|pm2|node.*fonana' || true"
     sleep 2
 fi
 
@@ -31,7 +31,7 @@ ssh -p 43988 root@69.10.59.234 "pm2 stop fonana || true && pm2 delete fonana || 
 
 # Kill any remaining node processes
 echo "🔪 Force killing any remaining Node processes..."
-ssh -p 43988 root@69.10.59.234 "pkill -f node || true"
+ssh -p 43988 root@69.10.59.234 "pkill -f 'next-server|pm2|node.*fonana' || true"
 
 # Clear Next.js cache
 echo "🗑️  Clearing Next.js cache..."

@@ -13,6 +13,7 @@ import ReferralNotification from '@/components/ReferralNotification'
 import Footer from '@/components/Footer'
 import BottomNav from '@/components/BottomNav'
 import ServiceWorkerRegistration from '@/components/ServiceWorkerRegistration'
+import { MobileAuthHelper } from '@/components/MobileAuthHelper'
 import { headers } from 'next/headers'
 
 const inter = Inter({ subsets: ['latin'] })
@@ -83,6 +84,7 @@ export default function RootLayout({
                     <ReferralNotification />
                     <Footer />
                     <BottomNav />
+                    <MobileAuthHelper />
                   </div>
                   <ServiceWorkerRegistration />
                   <Toaster
