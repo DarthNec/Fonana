@@ -491,7 +491,6 @@ const transaction = await prisma.transaction.create({
 - **SolanaRateDisplay.tsx** - Отображение курса SOL/USD в navbar
 - **SearchBar.tsx** - Универсальный компонент поиска с автокомплитом и фильтрами
 - **RevenueChart.tsx** - Графики доходов создателя с экспортом в CSV
-- **WithdrawButton.tsx** - Кнопка вывода средств с проверкой баланса
 
 ## API Endpoints Structure
 - `/api/posts` - CRUD постов
@@ -506,7 +505,6 @@ const transaction = await prisma.transaction.create({
 - `/api/user` - Профиль пользователя
 - `/api/creators` - Создатели
 - `/api/creators/analytics` - Расширенная аналитика создателя (графики, топ контент)
-- `/api/withdrawals` - Вывод средств создателями
 - `/api/admin` - Админ функции
 - `/api/pricing` - Динамический курс SOL/USD
 
@@ -673,7 +671,6 @@ node scripts/test-search.js
 
 # Analytics & Revenue
 node scripts/test-creator-analytics.js
-node scripts/check-withdrawal-requests.js
 node scripts/check-creator-balance.js
 
 # Transaction debugging
@@ -714,10 +711,9 @@ node scripts/check-price-discrepancy.js
   - Top posts by revenue with purchase details
   - Top subscribers by spending amount
   - Engagement metrics (views, likes, comments)
-  - Withdrawal button with balance check
   - CSV export for all analytics data
-- **Components**: `RevenueChart.tsx`, `WithdrawButton.tsx`
-- **Endpoints**: `/api/creators/analytics`, `/api/withdrawals`
+- **Components**: `RevenueChart.tsx`
+- **Endpoints**: `/api/creators/analytics`
 - **Dependencies**: `chart.js`, `react-chartjs-2`, `date-fns`
 
 ### Subscription System Fix (June 23, 2025)
@@ -751,7 +747,6 @@ node scripts/check-price-discrepancy.js
 - Advanced filters (category, price, content type, tier)
 - Creator analytics with revenue charts
 - Top posts/subscribers analytics
-- Withdrawal system for creators
 - CSV export of analytics data
 
 🔄 **IN DEVELOPMENT:**
@@ -903,11 +898,7 @@ git log --oneline -10
 - **Fallback Rate**: 135 USD/SOL
 - **Price Sources**: CoinGecko (primary)
 
-### Withdrawal Settings
-- **Minimum Withdrawal**: 0.1 SOL
-- **Processing Time**: Up to 24 hours
-- **Platform Wallet**: `npzAZaN9fDMgLV63b3kv3FF8cLSd8dQSLxyMXASA5T4`
-- **Status**: Manual processing (automated in future)
+
 
 ### Environment Variables (Required)
 ```bash

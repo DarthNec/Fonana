@@ -45,23 +45,85 @@ export async function GET(request: Request) {
         groupByFormat = 'yyyy-MM-dd'
     }
 
+    // Get creator's wallets
+    const creator = await prisma.user.findUnique({
+      where: { id: creatorId },
+      select: { 
+        wallet: true, 
+        solanaWallet: true,
+        tierSettings: true
+      }
+    })
+
+    if (!creator) {
+      return NextResponse.json({ error: 'Creator not found' }, { status: 404 })
+    }
+
+    const creatorWallets = [creator.wallet, creator.solanaWallet].filter(Boolean) as string[]
+
     // Get all transactions for the creator
     const transactions = await prisma.transaction.findMany({
       where: {
         toWallet: {
-          in: await prisma.user.findUnique({
-            where: { id: creatorId },
-            select: { wallet: true, solanaWallet: true }
-          }).then(user => [user?.wallet, user?.solanaWallet].filter(Boolean) as string[])
+          in: creatorWallets
         },
         status: TransactionStatus.CONFIRMED,
         createdAt: {
           gte: previousStartDate
         }
       },
-        
       orderBy: {
         createdAt: 'desc'
+      }
+    })
+
+    // Get subscriptions with tier information
+    const subscriptions = await prisma.subscription.findMany({
+      where: {
+        creatorId,
+        subscribedAt: {
+          gte: previousStartDate
+        }
+      },
+      include: {
+        user: {
+          select: {
+            id: true,
+            nickname: true,
+            fullName: true,
+            avatar: true
+          }
+        }
+      }
+    })
+
+    // Get post purchases
+    const postPurchases = await prisma.postPurchase.findMany({
+      where: {
+        post: {
+          creatorId
+        },
+        purchasedAt: {
+          gte: previousStartDate
+        }
+      },
+      include: {
+        post: {
+          select: {
+            id: true,
+            title: true,
+            thumbnail: true,
+            price: true
+          }
+        },
+        user: {
+          select: {
+            id: true,
+            nickname: true,
+            fullName: true,
+            avatar: true
+          }
+        }
       }
     })
 
@@ -94,11 +156,140 @@ export async function GET(request: Request) {
 
     const growthRate = previousTotal > 0 ? ((currentTotal - previousTotal) / previousTotal) * 100 : 0
 
-    // Get top posts by revenue - simplified for now
-    const topPosts: any[] = []
+    // Revenue breakdown by source
+    const revenueBySource = {
+      subscriptions: {
+        total: 0,
+        byTier: {
+          basic: { revenue: 0, count: 0 },
+          premium: { revenue: 0, count: 0 },
+          vip: { revenue: 0, count: 0 }
+        }
+      },
+      posts: {
+        total: 0,
+        count: 0,
+        topPosts: [] as any[]
+      },
+      messages: {
+        ppv: { total: 0, count: 0 },
+        tips: { total: 0, count: 0 }
+      }
+    }
 
-    // Get top subscribers - simplified for now
-    const topSubscribers: any[] = []
+    // Process transactions by type
+    currentPeriodTransactions.forEach(tx => {
+      const creatorAmount = tx.amount - (tx.platformFee || 0) - (tx.referrerFee || 0)
+      
+      switch (tx.type) {
+        case 'SUBSCRIPTION':
+          revenueBySource.subscriptions.total += creatorAmount
+          // Find matching subscription to get tier
+          const matchingSub = subscriptions.find(sub => 
+            sub.txSignature === tx.txSignature || 
+            (sub.subscribedAt.getTime() - tx.createdAt.getTime()) < 60000 // Within 1 minute
+          )
+          if (matchingSub) {
+            const tier = matchingSub.plan.toLowerCase() as 'basic' | 'premium' | 'vip'
+            if (revenueBySource.subscriptions.byTier[tier]) {
+              revenueBySource.subscriptions.byTier[tier].revenue += creatorAmount
+              revenueBySource.subscriptions.byTier[tier].count += 1
+            }
+          }
+          break
+          
+        case 'POST_PURCHASE':
+          revenueBySource.posts.total += creatorAmount
+          revenueBySource.posts.count += 1
+          break
+          
+        case 'MESSAGE_PURCHASE':
+          revenueBySource.messages.ppv.total += creatorAmount
+          revenueBySource.messages.ppv.count += 1
+          break
+          
+        case 'TIP':
+          revenueBySource.messages.tips.total += creatorAmount
+          revenueBySource.messages.tips.count += 1
+          break
+      }
+    })
+
+    // Calculate top posts by revenue
+    const postRevenueMap: Record<string, { post: any, revenue: number, purchases: number }> = {}
+    
+    postPurchases
+      .filter(pp => pp.purchasedAt >= startDate)
+      .forEach(pp => {
+        if (!postRevenueMap[pp.postId]) {
+          postRevenueMap[pp.postId] = {
+            post: pp.post,
+            revenue: 0,
+            purchases: 0
+          }
+        }
+        const creatorAmount = pp.price - (pp.platformFee || 0) - (pp.referrerFee || 0)
+        postRevenueMap[pp.postId].revenue += creatorAmount
+        postRevenueMap[pp.postId].purchases += 1
+      })
+
+    revenueBySource.posts.topPosts = Object.values(postRevenueMap)
+      .sort((a, b) => b.revenue - a.revenue)
+      .slice(0, 5)
+
+    // Calculate tier efficiency (revenue per tier normalized by price)
+    const tierEfficiency = {
+      basic: 0,
+      premium: 0,
+      vip: 0
+    }
+
+    if (creator.tierSettings) {
+      const tierData = creator.tierSettings as any
+      
+      ['basic', 'premium', 'vip'].forEach(tier => {
+        const tierKey = `${tier}Tier`
+        const tierConfig = tierData[tierKey]
+        if (tierConfig && tierConfig.enabled && tierConfig.price > 0) {
+          const tierStats = revenueBySource.subscriptions.byTier[tier as keyof typeof revenueBySource.subscriptions.byTier]
+          // Efficiency = revenue per subscriber / price
+          tierEfficiency[tier as keyof typeof tierEfficiency] = 
+            tierStats.count > 0 ? (tierStats.revenue / tierStats.count) / tierConfig.price : 0
+        }
+      })
+    }
+
+    // Get top subscribers by spending
+    const subscriberSpending: Record<string, { user: any, totalSpent: number, transactions: number }> = {}
+    
+    currentPeriodTransactions.forEach(tx => {
+      // Try to find user from metadata or related records
+      const userId = tx.senderId || (tx.metadata as any)?.userId
+      if (userId) {
+        if (!subscriberSpending[userId]) {
+          // Find user info from subscriptions or purchases
+          const sub = subscriptions.find(s => s.userId === userId)
+          const purchase = postPurchases.find(p => p.userId === userId)
+          const user = sub?.user || purchase?.user
+          
+          if (user) {
+            subscriberSpending[userId] = {
+              user,
+              totalSpent: 0,
+              transactions: 0
+            }
+          }
+        }
+        if (subscriberSpending[userId]) {
+          subscriberSpending[userId].totalSpent += tx.amount
+          subscriberSpending[userId].transactions += 1
+        }
+      }
+    })
+
+    const topSubscribers = Object.values(subscriberSpending)
+      .sort((a, b) => b.totalSpent - a.totalSpent)
+      .slice(0, 10)
 
     // Get view statistics
     const posts = await prisma.post.findMany({
@@ -119,37 +310,6 @@ export async function GET(request: Request) {
     const totalViews = posts.reduce((sum, post) => sum + (post.viewsCount || 0), 0)
     const totalLikes = posts.reduce((sum, post) => sum + (post.likesCount || 0), 0)
     const totalComments = posts.reduce((sum, post) => sum + (post.commentsCount || 0), 0)
-
-    // Get recent posts performance
-    const recentPosts = posts
-      .filter(post => post.createdAt >= startDate)
-      .slice(0, 5)
-
-    // Get revenue breakdown by type
-    const revenueByType = {
-      subscriptions: 0,
-      posts: 0,
-      tips: 0,
-      messages: 0
-    }
-
-    currentPeriodTransactions.forEach(tx => {
-      const creatorAmount = tx.amount - (tx.platformFee || 0) - (tx.referrerFee || 0)
-      switch (tx.type) {
-        case 'SUBSCRIPTION':
-          revenueByType.subscriptions += creatorAmount
-          break
-        case 'POST_PURCHASE':
-          revenueByType.posts += creatorAmount
-          break
-        case 'TIP':
-          revenueByType.tips += creatorAmount
-          break
-        case 'MESSAGE_PURCHASE':
-          revenueByType.messages += creatorAmount
-          break
-      }
-    })
 
     // Get active subscribers count
     const activeSubscribers = await prisma.subscription.count({
@@ -176,9 +336,9 @@ export async function GET(request: Request) {
         previous: previousTotal,
         growth: growthRate,
         byPeriod: revenueByPeriod,
-        byType: revenueByType
+        bySource: revenueBySource
       },
-      topPosts,
+      tierEfficiency,
       topSubscribers,
       engagement: {
         totalViews,
@@ -187,7 +347,6 @@ export async function GET(request: Request) {
         averageViews: posts.length > 0 ? Math.round(totalViews / posts.length) : 0,
         engagementRate: totalViews > 0 ? ((totalLikes + totalComments) / totalViews) * 100 : 0
       },
-      recentPosts,
       subscribers: {
         total: activeSubscribers,
         new: newSubscribers,
