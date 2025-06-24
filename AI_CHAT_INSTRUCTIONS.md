@@ -489,6 +489,7 @@ const transaction = await prisma.transaction.create({
 - **ImageCropModal.tsx** - Кроп изображений
 - **OptimizedImage.tsx** - Оптимизация изображений  
 - **SolanaRateDisplay.tsx** - Отображение курса SOL/USD в navbar
+- **SearchBar.tsx** - Универсальный компонент поиска с автокомплитом и фильтрами
 
 ## API Endpoints Structure
 - `/api/posts` - CRUD постов
@@ -498,6 +499,8 @@ const transaction = await prisma.transaction.create({
 - `/api/tips` - Чаевые
 - `/api/flash-sales` - Flash-распродажи
 - `/api/upload` - Загрузка медиа
+- `/api/search` - Поиск по создателям и постам с фильтрами
+- `/api/search/autocomplete` - Автокомплит для поиска
 - `/api/user` - Профиль пользователя
 - `/api/creators` - Создатели
 - `/api/admin` - Админ функции
@@ -609,6 +612,7 @@ node scripts/test-dynamic-pricing.js
 node scripts/test-sellable-posts.js
 node scripts/test-tier-access.js
 node scripts/test-solana-transaction.js
+node scripts/test-search.js
 
 # Transaction debugging
 node scripts/check-failed-transactions.js
@@ -617,6 +621,17 @@ node scripts/check-price-discrepancy.js
 ```
 
 ## Recent Updates & Fixes
+
+### Search Functionality (June 24, 2025)
+- **Added**: Full-text search with autocomplete
+- **Features**: 
+  - Search creators by nickname, name, bio
+  - Search posts by title and content
+  - Advanced filters (category, price, content type, tier)
+  - Autocomplete suggestions with debounce
+  - Integrated into Navbar, Feed, and Creators pages
+- **Endpoints**: `/api/search` and `/api/search/autocomplete`
+- **Test**: `node scripts/test-search.js`
 
 ### Subscription System Fix (June 23, 2025)
 - **Issue**: Plans were auto-corrected based on price, breaking custom tier pricing
@@ -643,6 +658,10 @@ node scripts/check-price-discrepancy.js
 - Sellable posts (fixed price & auctions)
 - Referral system (5% commission)
 - Custom tier pricing per creator
+- Search system with autocomplete and filters
+- Search by creators (nickname, name, bio)
+- Search by posts (title, content)
+- Advanced filters (category, price, content type, tier)
 
 🔄 **IN DEVELOPMENT:**
 - Live streaming (waiting for user base)
@@ -659,6 +678,7 @@ app/
 ├── profile/       # User profiles
 ├── create/        # Content creation
 ├── dashboard/     # Creator dashboard
+├── search/        # Search results page
 └── test/          # Test pages
 
 components/        # React components
