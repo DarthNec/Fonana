@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
-import { format, subDays, subMonths } from 'date-fns'
+import { format, subDays, subMonths, startOfWeek } from 'date-fns'
 import { TransactionStatus } from '@prisma/client'
 
 // GET /api/creators/analytics?creatorId=xxx&period=day|week|month
@@ -32,7 +32,7 @@ export async function GET(request: Request) {
       case 'week':
         startDate = subDays(now, 28) // Last 4 weeks
         previousStartDate = subDays(now, 56)
-        groupByFormat = 'yyyy-ww'
+        groupByFormat = 'yyyy-MM-dd' // Will group by week start date
         break
       case 'month':
         startDate = subMonths(now, 12) // Last 12 months
@@ -72,6 +72,35 @@ export async function GET(request: Request) {
           gte: previousStartDate
         }
       },
+      include: {
+        // Try to get sender info through subscription or post purchase
+        subscription: {
+          include: {
+            user: {
+              select: {
+                id: true,
+                nickname: true,
+                fullName: true,
+                avatar: true,
+                wallet: true
+              }
+            }
+          }
+        },
+        postPurchase: {
+          include: {
+            user: {
+              select: {
+                id: true,
+                nickname: true,
+                fullName: true,
+                avatar: true,
+                wallet: true
+              }
+            }
+          }
+        }
+      },
       orderBy: {
         createdAt: 'desc'
       }
@@ -91,7 +120,13 @@ export async function GET(request: Request) {
             id: true,
             nickname: true,
             fullName: true,
-            avatar: true
+            avatar: true,
+            wallet: true
+          }
+        },
+        transactions: {
+          where: {
+            status: TransactionStatus.CONFIRMED
           }
         }
       }
@@ -121,11 +156,17 @@ export async function GET(request: Request) {
             id: true,
             nickname: true,
             fullName: true,
-            avatar: true
+            avatar: true,
+            wallet: true
           }
         }
       }
     })
+
+    // Get message purchases and tips through transactions
+    const messagePurchases = transactions.filter(tx => 
+      tx.type === 'MESSAGE_PURCHASE' || tx.type === 'TIP'
+    )
 
     // Calculate revenue by period
     const revenueByPeriod: Record<string, number> = {}
@@ -134,9 +175,17 @@ export async function GET(request: Request) {
       tx => tx.createdAt >= previousStartDate && tx.createdAt < startDate
     )
 
-    // Group transactions by period
+    // Group transactions by period with special handling for weeks
     currentPeriodTransactions.forEach(tx => {
-      const periodKey = format(tx.createdAt, groupByFormat)
+      let periodKey: string
+      if (period === 'week') {
+        // Group by week start date
+        const weekStart = startOfWeek(tx.createdAt, { weekStartsOn: 1 }) // Monday
+        periodKey = format(weekStart, 'yyyy-MM-dd')
+      } else {
+        periodKey = format(tx.createdAt, groupByFormat)
+      }
+      
       if (!revenueByPeriod[periodKey]) {
         revenueByPeriod[periodKey] = 0
       }
@@ -187,7 +236,7 @@ export async function GET(request: Request) {
           // Find matching subscription to get tier
           const matchingSub = subscriptions.find(sub => 
             sub.txSignature === tx.txSignature || 
-            (sub.subscribedAt.getTime() - tx.createdAt.getTime()) < 60000 // Within 1 minute
+            (Math.abs(sub.subscribedAt.getTime() - tx.createdAt.getTime()) < 60000) // Within 1 minute
           )
           if (matchingSub) {
             const tier = matchingSub.plan.toLowerCase() as 'basic' | 'premium' | 'vip'
@@ -259,37 +308,112 @@ export async function GET(request: Request) {
       })
     }
 
-    // Get top subscribers by spending
-    const subscriberSpending: Record<string, { user: any, totalSpent: number, transactions: number }> = {}
+    // Get ALL subscribers with detailed spending breakdown
+    const subscriberDetailedSpending: Record<string, { 
+      user: any, 
+      totalSpent: number, 
+      breakdown: {
+        subscriptions: number,
+        posts: number,
+        messages: number,
+        tips: number
+      },
+      transactions: number,
+      lastActivity: Date | null
+    }> = {}
     
-    currentPeriodTransactions.forEach(tx => {
-      // Try to find user from metadata or related records
-      const userId = tx.senderId || (tx.metadata as any)?.userId
-      if (userId) {
-        if (!subscriberSpending[userId]) {
-          // Find user info from subscriptions or purchases
-          const sub = subscriptions.find(s => s.userId === userId)
-          const purchase = postPurchases.find(p => p.userId === userId)
-          const user = sub?.user || purchase?.user
-          
-          if (user) {
-            subscriberSpending[userId] = {
-              user,
-              totalSpent: 0,
-              transactions: 0
-            }
+    // Process all transactions (not just current period) for complete picture
+    transactions.forEach(tx => {
+      let userId: string | null = null
+      let user: any = null
+      
+      // Try to get user from various sources
+      if (tx.subscription?.user) {
+        userId = tx.subscription.user.id
+        user = tx.subscription.user
+      } else if (tx.postPurchase?.user) {
+        userId = tx.postPurchase.user.id
+        user = tx.postPurchase.user
+      } else if (tx.senderId) {
+        userId = tx.senderId
+      } else if ((tx.metadata as any)?.userId) {
+        userId = (tx.metadata as any).userId
+      }
+      
+      // If we don't have user info yet, try to find from other sources
+      if (userId && !user) {
+        const sub = subscriptions.find(s => s.userId === userId)
+        const purchase = postPurchases.find(p => p.userId === userId)
+        user = sub?.user || purchase?.user
+      }
+      
+      if (userId && user) {
+        if (!subscriberDetailedSpending[userId]) {
+          subscriberDetailedSpending[userId] = {
+            user,
+            totalSpent: 0,
+            breakdown: {
+              subscriptions: 0,
+              posts: 0,
+              messages: 0,
+              tips: 0
+            },
+            transactions: 0,
+            lastActivity: null
           }
         }
-        if (subscriberSpending[userId]) {
-          subscriberSpending[userId].totalSpent += tx.amount
-          subscriberSpending[userId].transactions += 1
+        
+        const spending = subscriberDetailedSpending[userId]
+        const amount = tx.amount
+        spending.totalSpent += amount
+        spending.transactions += 1
+        
+        // Update last activity
+        if (!spending.lastActivity || tx.createdAt > spending.lastActivity) {
+          spending.lastActivity = tx.createdAt
+        }
+        
+        // Update breakdown by type
+        switch (tx.type) {
+          case 'SUBSCRIPTION':
+            spending.breakdown.subscriptions += amount
+            break
+          case 'POST_PURCHASE':
+            spending.breakdown.posts += amount
+            break
+          case 'MESSAGE_PURCHASE':
+            spending.breakdown.messages += amount
+            break
+          case 'TIP':
+            spending.breakdown.tips += amount
+            break
         }
       }
     })
 
-    const topSubscribers = Object.values(subscriberSpending)
+    // Also process subscriptions that might not have transactions yet
+    subscriptions.forEach(sub => {
+      if (!subscriberDetailedSpending[sub.userId] && sub.user) {
+        subscriberDetailedSpending[sub.userId] = {
+          user: sub.user,
+          totalSpent: 0,
+          breakdown: {
+            subscriptions: 0,
+            posts: 0,
+            messages: 0,
+            tips: 0
+          },
+          transactions: 0,
+          lastActivity: sub.subscribedAt
+        }
+      }
+    })
+
+    // Convert to sorted arrays
+    const allSubscribers = Object.values(subscriberDetailedSpending)
       .sort((a, b) => b.totalSpent - a.totalSpent)
-      .slice(0, 10)
+    
+    const topSubscribers = allSubscribers.slice(0, 10)
 
     // Get view statistics
     const posts = await prisma.post.findMany({
@@ -340,6 +464,7 @@ export async function GET(request: Request) {
       },
       tierEfficiency,
       topSubscribers,
+      allSubscribers,
       engagement: {
         totalViews,
         totalLikes,
