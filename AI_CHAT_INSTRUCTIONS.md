@@ -506,11 +506,45 @@ const transaction = await prisma.transaction.create({
 - `/api/admin` - Админ функции
 - `/api/pricing` - Динамический курс SOL/USD
 
+## 🚀 DevOps Infrastructure (NEW - January 2025)
+
+### CI/CD Pipeline
+- **GitHub Actions**: Automatic testing on every push
+- **Workflow**: `.github/workflows/test.yml`
+- **Status**: https://github.com/DukeDeSouth/Fonana/actions
+- **Tests**: Type checking, linting, build verification
+
+### Monitoring & Logging
+- **Log Rotation**: Configured with logrotate (7-day retention)
+- **Status Script**: `./scripts/devops-status.sh` - comprehensive system check
+- **Log Monitor**: `/var/www/fonana/scripts/log-monitor.sh` on server
+
+### Security Improvements
+- **SSH Key Setup**: `./scripts/setup-ssh-key-auth.sh`
+- **Deploy User**: `./scripts/setup-deploy-user.sh` (for future implementation)
+- **Docker**: `docker-compose.dev.yml` (local development only)
+
+### DevOps Scripts
+```bash
+# Check overall system status
+./scripts/devops-status.sh
+
+# Set up SSH keys for passwordless access
+./scripts/setup-ssh-key-auth.sh
+
+# Deploy to production
+./deploy-to-production.sh
+```
+
 ## Quick Commands
 
 ### Status:
 ```bash
+# Quick status check
 ssh -p 43988 root@69.10.59.234 "pm2 status"
+
+# Comprehensive status (recommended)
+./scripts/devops-status.sh
 ```
 
 ### Logs:
@@ -621,6 +655,13 @@ node scripts/check-price-discrepancy.js
 ```
 
 ## Recent Updates & Fixes
+
+### DevOps Infrastructure (January 2025)
+- **CI/CD**: GitHub Actions workflow for automated testing
+- **Monitoring**: Comprehensive status check script
+- **Logging**: Automated log rotation with 7-day retention
+- **Security**: SSH key setup script for passwordless access
+- **Metadata Fix**: Added metadataBase to fix social media preview warnings
 
 ### Search Functionality (June 24, 2025)
 - **Added**: Full-text search with autocomplete
