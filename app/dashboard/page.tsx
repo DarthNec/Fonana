@@ -3,456 +3,384 @@
 import React, { useState, useEffect } from 'react'
 import { 
   ChartBarIcon, 
-  UsersIcon, 
-  CurrencyDollarIcon, 
   EyeIcon, 
-  PlusIcon, 
-  CogIcon, 
+  HeartIcon, 
+  ChatBubbleBottomCenterTextIcon,
+  PhotoIcon,
+  PlusIcon,
+  UserIcon,
+  CurrencyDollarIcon,
   DocumentTextIcon,
-  ArrowTrendingUpIcon,
-  HeartIcon,
-  ChatBubbleLeftEllipsisIcon,
+  UsersIcon,
   GiftIcon,
-  StarIcon,
-  BellIcon,
-  ShoppingBagIcon,
-  Cog6ToothIcon,
-  CreditCardIcon,
-  ShieldCheckIcon,
-  BoltIcon
+  ChatBubbleLeftEllipsisIcon
 } from '@heroicons/react/24/outline'
-import Link from 'next/link'
 import { useUser } from '@/lib/hooks/useUser'
 import { useWallet } from '@solana/wallet-adapter-react'
-import toast from 'react-hot-toast'
-import SubscriptionManager from '@/components/SubscriptionManager'
-import FlashSalesList from '@/components/FlashSalesList'
+import CreatePostModal from '@/components/CreatePostModal'
+import PostCard from '@/components/PostCard'
 import RevenueChart from '@/components/RevenueChart'
-import WithdrawButton from '@/components/WithdrawButton'
+import toast from 'react-hot-toast'
+import { useSolRate } from '@/lib/hooks/useSolRate'
 
-interface Post {
-  id: string
-  title: string
-  content: string
-  likes: number
-  comments: number
-  isLocked: boolean
-  createdAt: string
+interface DashboardData {
+  posts: any[]
+  stats: {
+    totalViews: number
+    totalLikes: number
+    totalComments: number
+    totalRevenue: number
+    activeSubscribers: number
+    newSubscribers: number
+  }
+  recentActivity: any[]
+  revenue: {
+    subscriptions: number
+    posts: number
+    tips: number
+    messages: number
+  }
 }
 
-interface Stats {
-  totalRevenue: number
-  subscribers: number
-  views: number
-  postsCount: number
-}
-
-export default function Dashboard() {
+export default function DashboardPage() {
   const { user } = useUser()
   const { publicKey } = useWallet()
-  const [recentPosts, setRecentPosts] = useState<Post[]>([])
+  const { rate: solRate } = useSolRate()
   const [isLoading, setIsLoading] = useState(true)
-  const [stats, setStats] = useState<Stats>({
-    totalRevenue: 0,
-    subscribers: 0,
-    views: 0,
-    postsCount: 0
+  const [showCreateModal, setShowCreateModal] = useState(false)
+  const [dashboardData, setDashboardData] = useState<DashboardData>({
+    posts: [],
+    stats: {
+      totalViews: 0,
+      totalLikes: 0,
+      totalComments: 0,
+      totalRevenue: 0,
+      activeSubscribers: 0,
+      newSubscribers: 0
+    },
+    recentActivity: [],
+    revenue: {
+      subscriptions: 0,
+      posts: 0,
+      tips: 0,
+      messages: 0
+    }
   })
-  const [recentActivity, setRecentActivity] = useState<any[]>([])
-  const [availableBalance, setAvailableBalance] = useState(0)
-
-  // Check if user is admin
-  const isAdmin = user?.wallet === 'npzAZaN9fDMgLV63b3kv3FF8cLSd8dQSLxyMXASA5T4' || 
-                  user?.wallet === 'DUxkXhMWuo76ofUMtFRZtL8zmVqQnb8twLeB5NcaM4cG'
 
   useEffect(() => {
     if (user?.id) {
-      loadDashboardData()
+      loadDashboard()
     }
   }, [user])
 
-  const loadDashboardData = async () => {
+  const loadDashboard = async () => {
     try {
       setIsLoading(true)
       
-      // Load recent posts
-      const postsResponse = await fetch(`/api/posts?creatorId=${user?.id}&limit=5`)
-      if (postsResponse.ok) {
-        const postsData = await postsResponse.json()
-        const formattedPosts = postsData.posts.map((post: any) => ({
-          id: post.id,
-          title: post.title,
-          content: post.content,
-          likes: post._count?.likes || 0,
-          comments: post._count?.comments || 0,
-          isLocked: post.isLocked,
-          createdAt: post.createdAt
-        }))
-        setRecentPosts(formattedPosts)
-      }
-
-      // Load stats from database
-      if (user) {
-        // Get total posts count
-        const allPostsResponse = await fetch(`/api/posts?creatorId=${user.id}`)
-        const allPostsData = await allPostsResponse.json()
-        const totalPosts = allPostsData.posts?.length || 0
-        
-        // Get subscribers count
-        const subscribersResponse = await fetch(`/api/subscriptions?creatorId=${user.id}`)
-        const subscribersData = await subscribersResponse.json()
-        const activeSubscribers = subscribersData.subscriptions?.filter((sub: any) => sub.isActive).length || 0
-        
-        // Calculate total revenue from subscriptions
-        const totalRevenue = subscribersData.subscriptions?.reduce((sum: number, sub: any) => {
-          return sum + (sub.price || 0)
-        }, 0) || 0
-        
-        // Calculate total views from all posts
-        const totalViews = allPostsData.posts?.reduce((sum: number, post: any) => {
-          return sum + (post.viewsCount || 0)
-        }, 0) || 0
-
-        // Get creator's balance (completed transactions)
-        try {
-          const analyticsResponse = await fetch(`/api/creators/analytics?creatorId=${user.id}&period=month`)
-          if (analyticsResponse.ok) {
-            const analyticsData = await analyticsResponse.json()
-            setAvailableBalance(analyticsData.revenue.current || 0)
-          }
-        } catch (error) {
-          console.error('Error loading balance:', error)
+      // Load posts
+      const postsResponse = await fetch(`/api/posts?creatorId=${user?.id}`)
+      const postsData = await postsResponse.json()
+      const posts = postsData.posts || []
+      
+      // Load analytics for quick stats
+      const analyticsResponse = await fetch(`/api/creators/analytics?creatorId=${user?.id}&period=month`)
+      const analyticsData = await analyticsResponse.json()
+      
+      // Calculate quick stats
+      const totalViews = posts.reduce((sum: number, post: any) => sum + (post.viewsCount || 0), 0)
+      const totalLikes = posts.reduce((sum: number, post: any) => sum + (post._count?.likes || 0), 0)
+      const totalComments = posts.reduce((sum: number, post: any) => sum + (post._count?.comments || 0), 0)
+      
+      setDashboardData({
+        posts: posts.slice(0, 6), // Show last 6 posts
+        stats: {
+          totalViews,
+          totalLikes,
+          totalComments,
+          totalRevenue: analyticsData.revenue?.current || 0,
+          activeSubscribers: analyticsData.subscribers?.total || 0,
+          newSubscribers: analyticsData.subscribers?.new || 0
+        },
+        recentActivity: [],
+        revenue: {
+          subscriptions: analyticsData.revenue?.bySource?.subscriptions?.total || 0,
+          posts: analyticsData.revenue?.bySource?.posts?.total || 0,
+          tips: analyticsData.revenue?.bySource?.messages?.tips?.total || 0,
+          messages: analyticsData.revenue?.bySource?.messages?.ppv?.total || 0
         }
-
-        setStats({
-          totalRevenue,
-          subscribers: activeSubscribers,
-          views: totalViews,
-          postsCount: totalPosts
-        })
-      }
-
-      // Load recent activity
-      try {
-        const activityResponse = await fetch(`/api/user/activity?creatorId=${user?.id}&limit=10`)
-        if (activityResponse.ok) {
-          const activityData = await activityResponse.json()
-          
-          // Format activity data
-          const formattedActivity = activityData.activities?.map((activity: any) => {
-            let icon, color, action
-            
-            switch(activity.type) {
-              case 'subscription':
-                icon = UsersIcon
-                color = 'text-emerald-400'
-                action = 'subscribed to your channel'
-                break
-              case 'like':
-                icon = HeartIcon
-                color = 'text-red-400'
-                action = `liked your post "${activity.post?.title || 'post'}"`
-                break
-              case 'comment':
-                icon = ChatBubbleLeftEllipsisIcon
-                color = 'text-blue-400'
-                action = `commented on "${activity.post?.title || 'post'}"`
-                break
-              case 'tip':
-                icon = GiftIcon
-                color = 'text-yellow-400'
-                action = `sent you ${activity.amount || 0} SOL tip`
-                break
-              default:
-                icon = StarIcon
-                color = 'text-purple-400'
-                action = activity.action || 'interacted with your content'
-            }
-            
-            return {
-              id: activity.id,
-              user: activity.user?.fullName || activity.user?.nickname || 'Anonymous',
-              action,
-              time: formatTimeAgo(activity.createdAt),
-              icon,
-              color,
-              type: activity.type
-            }
-          }) || []
-          
-          setRecentActivity(formattedActivity)
-        }
-      } catch (error) {
-        console.error('Error loading activity:', error)
-        // Activity is optional, so we don't show an error toast
-      }
+      })
       
     } catch (error) {
-      console.error('Error loading dashboard data:', error)
-      toast.error('Error loading dashboard data')
+      console.error('Error loading dashboard:', error)
+      toast.error('Ошибка загрузки дашборда')
     } finally {
       setIsLoading(false)
     }
   }
 
-  const formatTimeAgo = (dateString: string) => {
-    const date = new Date(dateString)
-    const now = new Date()
-    const seconds = Math.floor((now.getTime() - date.getTime()) / 1000)
-    
-    if (seconds < 60) return 'just now'
-    if (seconds < 3600) return `${Math.floor(seconds / 60)} minutes ago`
-    if (seconds < 86400) return `${Math.floor(seconds / 3600)} hours ago`
-    if (seconds < 604800) return `${Math.floor(seconds / 86400)} days ago`
-    return date.toLocaleDateString()
+  const handlePostCreated = () => {
+    loadDashboard()
   }
 
-  const displayStats = [
-    {
-      id: 1,
-      name: 'Total Revenue',
-      value: `$${stats.totalRevenue.toFixed(2)}`,
-      change: '+0%',
-      changeType: 'neutral' as const,
-      icon: CurrencyDollarIcon,
-      color: 'from-emerald-500 to-teal-500',
-      description: 'Revenue from all sources'
-    },
-    {
-      id: 2,
-      name: 'Subscribers',
-      value: stats.subscribers.toLocaleString(),
-      change: '+0%',
-      changeType: 'neutral' as const,
-      icon: UsersIcon,
-      color: 'from-blue-500 to-indigo-500',
-      description: 'Active subscribers'
-    },
-    {
-      id: 3,
-      name: 'Posts',
-      value: stats.postsCount.toLocaleString(),
-      change: '+0%',
-      changeType: 'neutral' as const,
-      icon: DocumentTextIcon,
-      color: 'from-purple-500 to-pink-500',
-      description: 'Total posts created'
-    },
-    {
-      id: 4,
-      name: 'Views',
-      value: stats.views.toLocaleString(),
-      change: '+0%',
-      changeType: 'neutral' as const,
-      icon: EyeIcon,
-      color: 'from-orange-500 to-red-500',
-      description: 'Total content views'
-    }
-  ]
-
-  if (!user) {
+  if (!user?.isCreator) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <p className="text-gray-500 dark:text-slate-400">Please connect your wallet to access the dashboard.</p>
+      <div className="min-h-screen bg-gray-50 dark:bg-slate-900 pt-32 pb-8">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center">
+            <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-4">
+              Вы не являетесь создателем
+            </h1>
+            <p className="text-gray-600 dark:text-slate-400">
+              Чтобы получить доступ к дашборду, станьте создателем контента.
+            </p>
+          </div>
+        </div>
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-slate-900 pt-24 pb-8">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        {/* User Info Header */}
-        <div className="bg-gradient-to-r from-purple-600 to-pink-600 rounded-3xl p-8 mb-8 text-white">
-          <div className="flex items-center justify-between">
+    <div className="min-h-screen bg-gray-50 dark:bg-slate-900 relative overflow-hidden">
+      {/* Animated Background */}
+      <div className="absolute inset-0 overflow-hidden">
+        <div className="absolute -top-1/2 -left-1/2 w-full h-full">
+          <div className="w-96 h-96 bg-gradient-to-r from-purple-500/10 dark:from-purple-500/20 to-pink-500/10 dark:to-pink-500/20 rounded-full blur-3xl animate-pulse"></div>
+        </div>
+        <div className="absolute -bottom-1/2 -right-1/2 w-full h-full">
+          <div className="w-96 h-96 bg-gradient-to-r from-blue-500/10 dark:from-blue-500/20 to-cyan-500/10 dark:to-cyan-500/20 rounded-full blur-3xl animate-pulse delay-1000"></div>
+        </div>
+      </div>
+
+      <div className="relative z-10 pt-32 pb-8 lg:pt-40 lg:pb-12">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          {/* Header */}
+          <div className="flex items-center justify-between mb-12">
             <div>
-              <h1 className="text-3xl font-bold mb-2">Добро пожаловать, {user.fullName || user.nickname || 'Создатель'}!</h1>
-              <p className="text-purple-100">Управляйте контентом и отслеживайте доходы</p>
+              <h1 className="text-4xl lg:text-6xl font-bold bg-gradient-to-r from-purple-600 via-pink-600 to-purple-600 dark:from-purple-400 dark:via-pink-400 dark:to-purple-400 bg-clip-text text-transparent mb-4">
+                Дашборд создателя
+              </h1>
+              <p className="text-gray-600 dark:text-slate-400 text-lg">
+                Управляйте своим контентом и отслеживайте доходы
+              </p>
             </div>
-            {availableBalance > 0 && (
-              <WithdrawButton 
-                balance={availableBalance} 
-                onWithdraw={loadDashboardData}
-              />
-            )}
+            
+            <button
+              onClick={() => setShowCreateModal(true)}
+              className="px-6 py-3 bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-2xl font-medium hover:shadow-lg transition-all hover:-translate-y-0.5 flex items-center gap-2"
+            >
+              <PlusIcon className="w-5 h-5" />
+              Новый пост
+            </button>
           </div>
-        </div>
 
-        {/* Quick Stats */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-          <div className="bg-white dark:bg-slate-800 rounded-2xl p-6 border border-gray-200 dark:border-slate-700">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-gray-600 dark:text-slate-400">Доступный баланс</p>
-                <p className="text-2xl font-bold text-gray-900 dark:text-white">{availableBalance.toFixed(4)} SOL</p>
+          {isLoading ? (
+            <div className="flex items-center justify-center py-20">
+              <div className="text-center">
+                <div className="w-16 h-16 border-4 border-purple-500/30 border-t-purple-500 rounded-full animate-spin mx-auto mb-4"></div>
+                <p className="text-gray-600 dark:text-slate-400">Загрузка дашборда...</p>
               </div>
-              <CurrencyDollarIcon className="w-8 h-8 text-green-500" />
             </div>
-          </div>
-
-          <div className="bg-white dark:bg-slate-800 rounded-2xl p-6 border border-gray-200 dark:border-slate-700">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-gray-600 dark:text-slate-400">Подписчики</p>
-                <p className="text-2xl font-bold text-gray-900 dark:text-white">{stats.subscribers}</p>
-              </div>
-              <UsersIcon className="w-8 h-8 text-blue-500" />
-            </div>
-          </div>
-
-          <div className="bg-white dark:bg-slate-800 rounded-2xl p-6 border border-gray-200 dark:border-slate-700">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-gray-600 dark:text-slate-400">Всего постов</p>
-                <p className="text-2xl font-bold text-gray-900 dark:text-white">{stats.postsCount}</p>
-              </div>
-              <DocumentTextIcon className="w-8 h-8 text-purple-500" />
-            </div>
-          </div>
-
-          <div className="bg-white dark:bg-slate-800 rounded-2xl p-6 border border-gray-200 dark:border-slate-700">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-gray-600 dark:text-slate-400">Просмотры</p>
-                <p className="text-2xl font-bold text-gray-900 dark:text-white">{stats.views}</p>
-              </div>
-              <EyeIcon className="w-8 h-8 text-orange-500" />
-            </div>
-          </div>
-        </div>
-
-        {/* Revenue Analytics */}
-        {user && (
-          <RevenueChart creatorId={user.id} />
-        )}
-
-        {/* Quick Actions */}
-        <div className="mb-8">
-          <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-4">Быстрые действия</h2>
-          
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-            <Link 
-              href="/create" 
-              className="group bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 rounded-2xl p-6 transition-all duration-300 hover:scale-105 hover:shadow-xl hover:shadow-purple-500/25"
-            >
-              <div className="flex items-center gap-4">
-                <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center">
-                  <DocumentTextIcon className="w-6 h-6 text-white" />
-                </div>
-                <div>
-                  <h3 className="text-white font-bold text-lg">Создать пост</h3>
-                  <p className="text-purple-200 text-sm">Поделитесь новым контентом</p>
-                </div>
-              </div>
-            </Link>
-
-            <a 
-              href="#flash-sales" 
-              className="group bg-gradient-to-r from-orange-500 to-pink-500 hover:from-orange-600 hover:to-pink-600 rounded-2xl p-6 transition-all duration-300 hover:scale-105 hover:shadow-xl hover:shadow-orange-500/25 cursor-pointer"
-              onClick={(e) => {
-                e.preventDefault();
-                document.getElementById('flash-sales-section')?.scrollIntoView({ behavior: 'smooth' });
-              }}
-            >
-              <div className="flex items-center gap-4">
-                <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center">
-                  <BoltIcon className="w-6 h-6 text-white" />
-                </div>
-                <div>
-                  <h3 className="text-white font-bold text-lg">Flash Sales</h3>
-                  <p className="text-orange-200 text-sm">Limited time offers</p>
-                </div>
-              </div>
-            </a>
-
-            <Link 
-              href="/analytics" 
-              className="group bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600 rounded-2xl p-6 transition-all duration-300 hover:scale-105 hover:shadow-xl hover:shadow-blue-500/25"
-            >
-              <div className="flex items-center gap-4">
-                <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center">
-                  <ChartBarIcon className="w-6 h-6 text-white" />
-                </div>
-                <div>
-                  <h3 className="text-white font-bold text-lg">Analytics</h3>
-                  <p className="text-blue-200 text-sm">View insights</p>
-                </div>
-              </div>
-            </Link>
-
-            <Link 
-              href="/profile" 
-              className="group bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 rounded-2xl p-6 transition-all duration-300 hover:scale-105 hover:shadow-xl hover:shadow-green-500/25"
-            >
-              <div className="flex items-center gap-4">
-                <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center">
-                  <Cog6ToothIcon className="w-6 h-6 text-white" />
-                </div>
-                <div>
-                  <h3 className="text-white font-bold text-lg">Settings</h3>
-                  <p className="text-green-200 text-sm">Manage profile</p>
-                </div>
-              </div>
-            </Link>
-
-            <Link 
-              href="/dashboard/referrals" 
-              className="group bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 rounded-2xl p-6 transition-all duration-300 hover:scale-105 hover:shadow-xl hover:shadow-orange-500/25"
-            >
-              <div className="flex items-center gap-4">
-                <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center">
-                  <UsersIcon className="w-6 h-6 text-white" />
-                </div>
-                <div>
-                  <h3 className="text-white font-bold text-lg">Referrals</h3>
-                  <p className="text-orange-200 text-sm">Invite friends</p>
-                </div>
-              </div>
-            </Link>
-          </div>
-
-          {/* Admin Section */}
-          {isAdmin && (
+          ) : (
             <>
-              <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-4">Admin Tools</h2>
-              
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-                <Link 
-                  href="/admin/referrals" 
-                  className="group bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 rounded-2xl p-6 transition-all duration-300 hover:scale-105 hover:shadow-xl hover:shadow-indigo-500/25"
-                >
-                  <div className="flex items-center gap-4">
-                    <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center">
-                      <ShieldCheckIcon className="w-6 h-6 text-white" />
+              {/* Quick Stats */}
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-12">
+                <div className="bg-white dark:bg-slate-800/50 backdrop-blur-xl border border-gray-200 dark:border-purple-500/20 rounded-3xl p-6 shadow-lg">
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="w-12 h-12 bg-gradient-to-r from-purple-500 to-pink-500 rounded-2xl flex items-center justify-center">
+                      <CurrencyDollarIcon className="w-6 h-6 text-white" />
                     </div>
-                    <div>
-                      <h3 className="text-white font-bold text-lg">Manage Referrals</h3>
-                      <p className="text-indigo-200 text-sm">Admin panel</p>
+                    <div className="text-purple-600 dark:text-purple-400 text-sm font-medium">
+                      Доход за месяц
                     </div>
                   </div>
-                </Link>
+                  <p className="text-gray-900 dark:text-white text-3xl font-bold">
+                    {dashboardData.stats.totalRevenue.toFixed(4)} SOL
+                  </p>
+                  <p className="text-gray-500 dark:text-slate-500 text-sm mt-1">
+                    ≈ ${(dashboardData.stats.totalRevenue * solRate).toFixed(2)} USD
+                  </p>
+                </div>
+
+                <div className="bg-white dark:bg-slate-800/50 backdrop-blur-xl border border-gray-200 dark:border-blue-500/20 rounded-3xl p-6 shadow-lg">
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="w-12 h-12 bg-gradient-to-r from-blue-500 to-cyan-500 rounded-2xl flex items-center justify-center">
+                      <UsersIcon className="w-6 h-6 text-white" />
+                    </div>
+                    <div className="text-blue-600 dark:text-blue-400 text-sm font-medium">
+                      +{dashboardData.stats.newSubscribers} новых
+                    </div>
+                  </div>
+                  <p className="text-gray-900 dark:text-white text-3xl font-bold">
+                    {dashboardData.stats.activeSubscribers}
+                  </p>
+                  <p className="text-gray-500 dark:text-slate-500 text-sm mt-1">
+                    Активных подписчиков
+                  </p>
+                </div>
+
+                <div className="bg-white dark:bg-slate-800/50 backdrop-blur-xl border border-gray-200 dark:border-emerald-500/20 rounded-3xl p-6 shadow-lg">
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="w-12 h-12 bg-gradient-to-r from-emerald-500 to-teal-500 rounded-2xl flex items-center justify-center">
+                      <EyeIcon className="w-6 h-6 text-white" />
+                    </div>
+                    <div className="text-emerald-600 dark:text-emerald-400 text-sm font-medium">
+                      Просмотры
+                    </div>
+                  </div>
+                  <p className="text-gray-900 dark:text-white text-3xl font-bold">
+                    {dashboardData.stats.totalViews}
+                  </p>
+                  <p className="text-gray-500 dark:text-slate-500 text-sm mt-1">
+                    {dashboardData.stats.totalLikes} лайков
+                  </p>
+                </div>
+
+                <div className="bg-white dark:bg-slate-800/50 backdrop-blur-xl border border-gray-200 dark:border-orange-500/20 rounded-3xl p-6 shadow-lg">
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="w-12 h-12 bg-gradient-to-r from-orange-500 to-red-500 rounded-2xl flex items-center justify-center">
+                      <ChatBubbleBottomCenterTextIcon className="w-6 h-6 text-white" />
+                    </div>
+                    <div className="text-orange-600 dark:text-orange-400 text-sm font-medium">
+                      Комментарии
+                    </div>
+                  </div>
+                  <p className="text-gray-900 dark:text-white text-3xl font-bold">
+                    {dashboardData.stats.totalComments}
+                  </p>
+                  <p className="text-gray-500 dark:text-slate-500 text-sm mt-1">
+                    Всего комментариев
+                  </p>
+                </div>
+              </div>
+
+              {/* Revenue Sources Summary */}
+              <div className="mb-12">
+                <div className="bg-white dark:bg-slate-800/50 backdrop-blur-xl border border-gray-200 dark:border-slate-700/50 rounded-3xl p-6 shadow-lg">
+                  <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-6">
+                    Источники дохода за текущий месяц
+                  </h2>
+                  <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                    <div className="flex items-center gap-3 p-4 bg-gradient-to-r from-blue-50 to-blue-100 dark:from-blue-900/20 dark:to-blue-800/20 rounded-2xl">
+                      <div className="w-10 h-10 bg-blue-500 rounded-xl flex items-center justify-center">
+                        <UsersIcon className="w-5 h-5 text-white" />
+                      </div>
+                      <div>
+                        <p className="text-sm text-gray-600 dark:text-slate-400">Подписки</p>
+                        <p className="text-lg font-bold text-gray-900 dark:text-white">
+                          {dashboardData.revenue.subscriptions.toFixed(4)} SOL
+                        </p>
+                      </div>
+                    </div>
+                    
+                    <div className="flex items-center gap-3 p-4 bg-gradient-to-r from-purple-50 to-purple-100 dark:from-purple-900/20 dark:to-purple-800/20 rounded-2xl">
+                      <div className="w-10 h-10 bg-purple-500 rounded-xl flex items-center justify-center">
+                        <DocumentTextIcon className="w-5 h-5 text-white" />
+                      </div>
+                      <div>
+                        <p className="text-sm text-gray-600 dark:text-slate-400">Платные посты</p>
+                        <p className="text-lg font-bold text-gray-900 dark:text-white">
+                          {dashboardData.revenue.posts.toFixed(4)} SOL
+                        </p>
+                      </div>
+                    </div>
+                    
+                    <div className="flex items-center gap-3 p-4 bg-gradient-to-r from-yellow-50 to-yellow-100 dark:from-yellow-900/20 dark:to-yellow-800/20 rounded-2xl">
+                      <div className="w-10 h-10 bg-yellow-500 rounded-xl flex items-center justify-center">
+                        <ChatBubbleLeftEllipsisIcon className="w-5 h-5 text-white" />
+                      </div>
+                      <div>
+                        <p className="text-sm text-gray-600 dark:text-slate-400">PPV сообщения</p>
+                        <p className="text-lg font-bold text-gray-900 dark:text-white">
+                          {dashboardData.revenue.messages.toFixed(4)} SOL
+                        </p>
+                      </div>
+                    </div>
+                    
+                    <div className="flex items-center gap-3 p-4 bg-gradient-to-r from-emerald-50 to-emerald-100 dark:from-emerald-900/20 dark:to-emerald-800/20 rounded-2xl">
+                      <div className="w-10 h-10 bg-emerald-500 rounded-xl flex items-center justify-center">
+                        <GiftIcon className="w-5 h-5 text-white" />
+                      </div>
+                      <div>
+                        <p className="text-sm text-gray-600 dark:text-slate-400">Чаевые</p>
+                        <p className="text-lg font-bold text-gray-900 dark:text-white">
+                          {dashboardData.revenue.tips.toFixed(4)} SOL
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Revenue Charts */}
+              {user?.id && <RevenueChart creatorId={user.id} />}
+
+              {/* Recent Posts */}
+              <div className="mt-12">
+                <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-6">
+                  Последние посты
+                </h2>
+                {dashboardData.posts.length > 0 ? (
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {dashboardData.posts.map((post) => (
+                      <PostCard 
+                        key={post.id}
+                        id={post.id}
+                        creator={post.creator}
+                        title={post.title}
+                        content={post.content}
+                        category={post.category}
+                        image={post.mediaUrl}
+                        mediaUrl={post.mediaUrl}
+                        thumbnail={post.thumbnail}
+                        type={post.type}
+                        isLocked={post.isLocked}
+                        price={post.price}
+                        currency={post.currency}
+                        likes={post._count?.likes || 0}
+                        comments={post._count?.comments || 0}
+                        createdAt={post.createdAt}
+                        tags={post.tags?.map((t: any) => t.tag.name) || []}
+                        isPremium={post.isPremium}
+                        requiredTier={post.minSubscriptionTier}
+                        imageAspectRatio={post.imageAspectRatio}
+                        isSellable={post.isSellable}
+                        sellType={post.sellType}
+                        quantity={post.quantity}
+                        auctionStatus={post.auctionStatus}
+                        auctionStartPrice={post.auctionStartPrice}
+                        auctionEndAt={post.auctionEndAt}
+                        flashSale={post.flashSale}
+                      />
+                    ))}
+                  </div>
+                ) : (
+                  <div className="bg-white dark:bg-slate-800/50 backdrop-blur-xl border border-gray-200 dark:border-slate-700/50 rounded-3xl p-12 text-center">
+                    <PhotoIcon className="w-16 h-16 text-gray-400 dark:text-slate-600 mx-auto mb-4" />
+                    <p className="text-gray-600 dark:text-slate-400 mb-4">
+                      У вас пока нет постов
+                    </p>
+                    <button
+                      onClick={() => setShowCreateModal(true)}
+                      className="px-6 py-3 bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-2xl font-medium hover:shadow-lg transition-all hover:-translate-y-0.5 inline-flex items-center gap-2"
+                    >
+                      <PlusIcon className="w-5 h-5" />
+                      Создать первый пост
+                    </button>
+                  </div>
+                )}
               </div>
             </>
           )}
         </div>
-
-        {/* Subscription Management - Full Width */}
-        <div className="mb-8">
-          <SubscriptionManager />
-        </div>
-
-        {/* Flash Sales Management */}
-        <div id="flash-sales-section" className="mb-8">
-          <FlashSalesList creatorId={user?.id} isOwner={true} />
-        </div>
-
-        {/* Recent Activity */}
-        <div className="mt-8">
-          <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-4">Recent Activity</h2>
-          <div className="bg-white dark:bg-slate-800 rounded-2xl p-6 border border-gray-200 dark:border-slate-700">
-            <p className="text-gray-500 dark:text-slate-400 text-center py-8">No recent activity to show</p>
-          </div>
-        </div>
       </div>
+
+      {/* Modals */}
+      {showCreateModal && (
+        <CreatePostModal
+          onClose={() => setShowCreateModal(false)}
+          onPostCreated={handlePostCreated}
+        />
+      )}
     </div>
   )
 } 

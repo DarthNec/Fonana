@@ -1,7 +1,7 @@
 'use client'
 
 import React, { useEffect, useState } from 'react'
-import { Line, Bar } from 'react-chartjs-2'
+import { Line, Bar, Doughnut } from 'react-chartjs-2'
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -9,6 +9,7 @@ import {
   PointElement,
   LineElement,
   BarElement,
+  ArcElement,
   Title,
   Tooltip,
   Legend,
@@ -20,7 +21,11 @@ import {
   ArrowDownIcon, 
   CurrencyDollarIcon,
   ChartBarIcon,
-  ArrowDownTrayIcon
+  ArrowDownTrayIcon,
+  UsersIcon,
+  DocumentTextIcon,
+  ChatBubbleLeftEllipsisIcon,
+  GiftIcon
 } from '@heroicons/react/24/outline'
 import toast from 'react-hot-toast'
 import { useSolRate } from '@/lib/hooks/useSolRate'
@@ -31,6 +36,7 @@ ChartJS.register(
   PointElement,
   LineElement,
   BarElement,
+  ArcElement,
   Title,
   Tooltip,
   Legend,
@@ -48,23 +54,40 @@ interface AnalyticsData {
     previous: number
     growth: number
     byPeriod: Record<string, number>
-    byType: {
-      subscriptions: number
-      posts: number
-      tips: number
-      messages: number
+    bySource: {
+      subscriptions: {
+        total: number
+        byTier: {
+          basic: { revenue: number; count: number }
+          premium: { revenue: number; count: number }
+          vip: { revenue: number; count: number }
+        }
+      }
+      posts: {
+        total: number
+        count: number
+        topPosts: Array<{
+          post: {
+            id: string
+            title: string
+            thumbnail: string | null
+            price: number | null
+          }
+          revenue: number
+          purchases: number
+        }>
+      }
+      messages: {
+        ppv: { total: number; count: number }
+        tips: { total: number; count: number }
+      }
     }
   }
-  topPosts: Array<{
-    post: {
-      id: string
-      title: string
-      thumbnail: string | null
-      price: number | null
-    }
-    revenue: number
-    purchases: number
-  }>
+  tierEfficiency: {
+    basic: number
+    premium: number
+    vip: number
+  }
   topSubscribers: Array<{
     user: {
       id: string
@@ -96,7 +119,9 @@ export default function RevenueChart({ creatorId }: RevenueChartProps) {
   const { rate: solRate } = useSolRate()
 
   useEffect(() => {
-    fetchAnalytics()
+    if (creatorId) {
+      fetchAnalytics()
+    }
   }, [creatorId, period])
 
   const fetchAnalytics = async () => {
@@ -106,6 +131,9 @@ export default function RevenueChart({ creatorId }: RevenueChartProps) {
       if (response.ok) {
         const data = await response.json()
         setAnalytics(data)
+      } else {
+        console.error('Analytics API error:', await response.text())
+        toast.error('Ошибка загрузки аналитики')
       }
     } catch (error) {
       console.error('Error fetching analytics:', error)
@@ -129,30 +157,14 @@ export default function RevenueChart({ creatorId }: RevenueChartProps) {
     })
     
     csvData.push([])
-    csvData.push(['Доходы по типам'])
-    csvData.push(['Тип', 'Доход (SOL)', 'Доход (USD)'])
-    csvData.push(['Подписки', analytics.revenue.byType.subscriptions.toFixed(4), (analytics.revenue.byType.subscriptions * solRate).toFixed(2)])
-    csvData.push(['Посты', analytics.revenue.byType.posts.toFixed(4), (analytics.revenue.byType.posts * solRate).toFixed(2)])
-    csvData.push(['Чаевые', analytics.revenue.byType.tips.toFixed(4), (analytics.revenue.byType.tips * solRate).toFixed(2)])
-    csvData.push(['Сообщения', analytics.revenue.byType.messages.toFixed(4), (analytics.revenue.byType.messages * solRate).toFixed(2)])
-    
-    csvData.push([])
-    csvData.push(['Топ посты'])
-    csvData.push(['Название', 'Доход (SOL)', 'Покупок'])
-    analytics.topPosts.forEach(item => {
-      csvData.push([item.post.title, item.revenue.toFixed(4), item.purchases])
-    })
-    
-    csvData.push([])
-    csvData.push(['Топ подписчики'])
-    csvData.push(['Пользователь', 'Потрачено (SOL)', 'Транзакций'])
-    analytics.topSubscribers.forEach(item => {
-      csvData.push([
-        item.user.fullName || item.user.nickname || 'Anonymous',
-        item.totalSpent.toFixed(4),
-        item.transactions
-      ])
-    })
+    csvData.push(['Доходы по источникам'])
+    csvData.push(['Источник', 'Доход (SOL)', 'Доход (USD)', 'Количество'])
+    csvData.push(['Подписки - Basic', analytics.revenue.bySource.subscriptions.byTier.basic.revenue.toFixed(4), (analytics.revenue.bySource.subscriptions.byTier.basic.revenue * solRate).toFixed(2), analytics.revenue.bySource.subscriptions.byTier.basic.count])
+    csvData.push(['Подписки - Premium', analytics.revenue.bySource.subscriptions.byTier.premium.revenue.toFixed(4), (analytics.revenue.bySource.subscriptions.byTier.premium.revenue * solRate).toFixed(2), analytics.revenue.bySource.subscriptions.byTier.premium.count])
+    csvData.push(['Подписки - VIP', analytics.revenue.bySource.subscriptions.byTier.vip.revenue.toFixed(4), (analytics.revenue.bySource.subscriptions.byTier.vip.revenue * solRate).toFixed(2), analytics.revenue.bySource.subscriptions.byTier.vip.count])
+    csvData.push(['Платные посты', analytics.revenue.bySource.posts.total.toFixed(4), (analytics.revenue.bySource.posts.total * solRate).toFixed(2), analytics.revenue.bySource.posts.count])
+    csvData.push(['PPV сообщения', analytics.revenue.bySource.messages.ppv.total.toFixed(4), (analytics.revenue.bySource.messages.ppv.total * solRate).toFixed(2), analytics.revenue.bySource.messages.ppv.count])
+    csvData.push(['Чаевые', analytics.revenue.bySource.messages.tips.total.toFixed(4), (analytics.revenue.bySource.messages.tips.total * solRate).toFixed(2), analytics.revenue.bySource.messages.tips.count])
     
     // Convert to CSV string
     const csvContent = csvData.map(row => row.join(',')).join('\n')
@@ -242,16 +254,16 @@ export default function RevenueChart({ creatorId }: RevenueChartProps) {
     }
   }
 
-  const revenueByTypeData = {
-    labels: ['Подписки', 'Посты', 'Чаевые', 'Сообщения'],
+  // Revenue by source for doughnut chart
+  const sourceData = {
+    labels: ['Подписки', 'Посты', 'PPV сообщения', 'Чаевые'],
     datasets: [
       {
-        label: 'Доход по типам',
         data: [
-          analytics.revenue.byType.subscriptions,
-          analytics.revenue.byType.posts,
-          analytics.revenue.byType.tips,
-          analytics.revenue.byType.messages
+          analytics.revenue.bySource.subscriptions.total,
+          analytics.revenue.bySource.posts.total,
+          analytics.revenue.bySource.messages.ppv.total,
+          analytics.revenue.bySource.messages.tips.total
         ],
         backgroundColor: [
           'rgba(59, 130, 246, 0.8)',
@@ -259,6 +271,31 @@ export default function RevenueChart({ creatorId }: RevenueChartProps) {
           'rgba(251, 191, 36, 0.8)',
           'rgba(16, 185, 129, 0.8)'
         ]
+      }
+    ]
+  }
+
+  // Tier efficiency data
+  const tierData = {
+    labels: ['Basic', 'Premium', 'VIP'],
+    datasets: [
+      {
+        label: 'Доход',
+        data: [
+          analytics.revenue.bySource.subscriptions.byTier.basic.revenue,
+          analytics.revenue.bySource.subscriptions.byTier.premium.revenue,
+          analytics.revenue.bySource.subscriptions.byTier.vip.revenue
+        ],
+        backgroundColor: 'rgba(59, 130, 246, 0.8)'
+      },
+      {
+        label: 'Эффективность',
+        data: [
+          analytics.tierEfficiency.basic,
+          analytics.tierEfficiency.premium,
+          analytics.tierEfficiency.vip
+        ],
+        backgroundColor: 'rgba(16, 185, 129, 0.8)'
       }
     ]
   }
@@ -347,7 +384,7 @@ export default function RevenueChart({ creatorId }: RevenueChartProps) {
                 <p className="text-2xl font-bold">{analytics.subscribers.total}</p>
                 <p className="text-blue-200 text-xs">+{analytics.subscribers.new} новых</p>
               </div>
-              <ChartBarIcon className="w-8 h-8 text-blue-200" />
+              <UsersIcon className="w-8 h-8 text-blue-200" />
             </div>
           </div>
 
@@ -369,23 +406,132 @@ export default function RevenueChart({ creatorId }: RevenueChartProps) {
         </div>
       </div>
 
-      {/* Revenue by Type */}
+      {/* Revenue Sources */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        {/* Source Breakdown */}
         <div className="bg-white dark:bg-slate-800 rounded-2xl p-6 border border-gray-200 dark:border-slate-700">
-          <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-4">Доходы по типам</h3>
-          <div className="h-64">
-            <Bar data={revenueByTypeData} options={{ ...chartOptions, indexAxis: 'y' as const }} />
+          <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-4">Источники дохода</h3>
+          <div className="h-64 flex items-center justify-center">
+            <Doughnut 
+              data={sourceData} 
+              options={{
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                  legend: {
+                    position: 'bottom' as const,
+                  },
+                  tooltip: {
+                    callbacks: {
+                      label: (context: any) => {
+                        const value = context.parsed
+                        return `${context.label}: ${value.toFixed(4)} SOL`
+                      }
+                    }
+                  }
+                }
+              }} 
+            />
+          </div>
+          
+          {/* Source Details */}
+          <div className="mt-4 space-y-2">
+            <div className="flex items-center justify-between p-2 bg-gray-50 dark:bg-slate-700/50 rounded-lg">
+              <div className="flex items-center gap-2">
+                <UsersIcon className="w-4 h-4 text-blue-500" />
+                <span className="text-sm font-medium">Подписки</span>
+              </div>
+              <span className="text-sm font-bold">{analytics.revenue.bySource.subscriptions.total.toFixed(4)} SOL</span>
+            </div>
+            <div className="flex items-center justify-between p-2 bg-gray-50 dark:bg-slate-700/50 rounded-lg">
+              <div className="flex items-center gap-2">
+                <DocumentTextIcon className="w-4 h-4 text-purple-500" />
+                <span className="text-sm font-medium">Платные посты</span>
+              </div>
+              <span className="text-sm font-bold">{analytics.revenue.bySource.posts.total.toFixed(4)} SOL</span>
+            </div>
+            <div className="flex items-center justify-between p-2 bg-gray-50 dark:bg-slate-700/50 rounded-lg">
+              <div className="flex items-center gap-2">
+                <ChatBubbleLeftEllipsisIcon className="w-4 h-4 text-yellow-500" />
+                <span className="text-sm font-medium">PPV сообщения</span>
+              </div>
+              <span className="text-sm font-bold">{analytics.revenue.bySource.messages.ppv.total.toFixed(4)} SOL</span>
+            </div>
+            <div className="flex items-center justify-between p-2 bg-gray-50 dark:bg-slate-700/50 rounded-lg">
+              <div className="flex items-center gap-2">
+                <GiftIcon className="w-4 h-4 text-emerald-500" />
+                <span className="text-sm font-medium">Чаевые</span>
+              </div>
+              <span className="text-sm font-bold">{analytics.revenue.bySource.messages.tips.total.toFixed(4)} SOL</span>
+            </div>
           </div>
         </div>
 
+        {/* Tier Analysis */}
+        <div className="bg-white dark:bg-slate-800 rounded-2xl p-6 border border-gray-200 dark:border-slate-700">
+          <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-4">Анализ тиров подписок</h3>
+          <div className="h-64">
+            <Bar 
+              data={tierData} 
+              options={{
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                  legend: {
+                    display: true
+                  },
+                  tooltip: {
+                    callbacks: {
+                      label: (context: any) => {
+                        const value = context.parsed.y
+                        const label = context.dataset.label
+                        if (label === 'Доход') {
+                          return `${label}: ${value.toFixed(4)} SOL`
+                        } else {
+                          return `${label}: ${(value * 100).toFixed(1)}%`
+                        }
+                      }
+                    }
+                  }
+                },
+                scales: {
+                  y: {
+                    beginAtZero: true
+                  }
+                }
+              }} 
+            />
+          </div>
+          
+          {/* Tier Stats */}
+          <div className="mt-4 space-y-2">
+            {['basic', 'premium', 'vip'].map(tier => {
+              const tierKey = tier as keyof typeof analytics.revenue.bySource.subscriptions.byTier
+              const tierData = analytics.revenue.bySource.subscriptions.byTier[tierKey]
+              return (
+                <div key={tier} className="flex items-center justify-between p-2 bg-gray-50 dark:bg-slate-700/50 rounded-lg">
+                  <span className="text-sm font-medium capitalize">{tier}</span>
+                  <div className="flex items-center gap-4 text-xs">
+                    <span>{tierData.revenue.toFixed(4)} SOL</span>
+                    <span className="text-gray-500 dark:text-slate-500">{tierData.count} подписок</span>
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      </div>
+
+      {/* Top Content & Subscribers */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {/* Top Posts */}
         <div className="bg-white dark:bg-slate-800 rounded-2xl p-6 border border-gray-200 dark:border-slate-700">
-          <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-4">Топ посты</h3>
+          <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-4">Топ платные посты</h3>
           <div className="space-y-3">
-            {analytics.topPosts.length > 0 ? (
-              analytics.topPosts.map((item, index) => (
-                <div key={item.post.id} className="flex items-center gap-3">
-                  <span className="text-sm font-medium text-gray-500 dark:text-slate-500 w-6">#{index + 1}</span>
+            {analytics.revenue.bySource.posts.topPosts.length > 0 ? (
+              analytics.revenue.bySource.posts.topPosts.map((item, index) => (
+                <div key={item.post.id} className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-slate-700/50 rounded-lg">
+                  <span className="text-sm font-bold text-purple-600 dark:text-purple-400 w-6">#{index + 1}</span>
                   <div className="flex-1">
                     <p className="text-sm font-medium text-gray-900 dark:text-white truncate">{item.post.title}</p>
                     <p className="text-xs text-gray-500 dark:text-slate-500">
@@ -399,29 +545,29 @@ export default function RevenueChart({ creatorId }: RevenueChartProps) {
             )}
           </div>
         </div>
-      </div>
 
-      {/* Top Subscribers */}
-      <div className="bg-white dark:bg-slate-800 rounded-2xl p-6 border border-gray-200 dark:border-slate-700">
-        <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-4">Топ подписчики</h3>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {analytics.topSubscribers.length > 0 ? (
-            analytics.topSubscribers.map((item, index) => (
-              <div key={item.user.id} className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-slate-700/50 rounded-lg">
-                <span className="text-sm font-bold text-purple-600 dark:text-purple-400">#{index + 1}</span>
-                <div className="flex-1">
-                  <p className="text-sm font-medium text-gray-900 dark:text-white">
-                    {item.user.fullName || item.user.nickname || 'Anonymous'}
-                  </p>
-                  <p className="text-xs text-gray-500 dark:text-slate-500">
-                    {item.totalSpent.toFixed(4)} SOL • {item.transactions} транзакций
-                  </p>
+        {/* Top Subscribers */}
+        <div className="bg-white dark:bg-slate-800 rounded-2xl p-6 border border-gray-200 dark:border-slate-700">
+          <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-4">Топ подписчики</h3>
+          <div className="space-y-3">
+            {analytics.topSubscribers.length > 0 ? (
+              analytics.topSubscribers.slice(0, 5).map((item, index) => (
+                <div key={item.user.id} className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-slate-700/50 rounded-lg">
+                  <span className="text-sm font-bold text-purple-600 dark:text-purple-400 w-6">#{index + 1}</span>
+                  <div className="flex-1">
+                    <p className="text-sm font-medium text-gray-900 dark:text-white">
+                      {item.user.fullName || item.user.nickname || 'Anonymous'}
+                    </p>
+                    <p className="text-xs text-gray-500 dark:text-slate-500">
+                      {item.totalSpent.toFixed(4)} SOL • {item.transactions} транзакций
+                    </p>
+                  </div>
                 </div>
-              </div>
-            ))
-          ) : (
-            <p className="text-gray-500 dark:text-slate-400 text-sm col-span-3">Нет данных</p>
-          )}
+              ))
+            ) : (
+              <p className="text-gray-500 dark:text-slate-400 text-sm">Нет данных</p>
+            )}
+          </div>
         </div>
       </div>
     </div>
