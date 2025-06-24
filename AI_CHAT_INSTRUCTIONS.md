@@ -492,6 +492,8 @@ const transaction = await prisma.transaction.create({
 - **SolanaRateDisplay.tsx** - Отображение курса SOL/USD в navbar
 - **SearchBar.tsx** - Универсальный компонент поиска с автокомплитом и фильтрами
 - **RevenueChart.tsx** - Графики доходов создателя с экспортом в CSV и списком подписчиков
+- **HybridWalletConnect.tsx** - Гибридная авторизация через Solana с JWT
+- **ConnectWalletOnDemand.tsx** - Подключение кошелька по требованию для транзакций
 
 ## API Endpoints Structure
 - `/api/posts` - CRUD постов
@@ -508,6 +510,7 @@ const transaction = await prisma.transaction.create({
 - `/api/creators/analytics` - Расширенная аналитика создателя (графики, топ контент, все подписчики)
 - `/api/admin` - Админ функции
 - `/api/pricing` - Динамический курс SOL/USD
+- `/api/auth/wallet` - JWT авторизация через Solana wallet
 
 ## 🚀 DevOps Infrastructure (NEW - January 2025)
 
@@ -646,6 +649,30 @@ ssh -p 43988 root@69.10.59.234 "cd /var/www/fonana && node scripts/fix-wrong-sub
 ssh -p 43988 root@69.10.59.234 "cd /var/www/fonana && node scripts/check-custom-tier-settings.js"
 ```
 
+### 7. Prisma Version Mismatch (CRITICAL)
+**Problem**: `Failed to deserialize constructor options... missing field enableTracing`
+- **Cause**: Mismatch between @prisma/client and prisma CLI versions
+- **Common trigger**: Installing new packages may update one but not the other
+
+**Solution**:
+```bash
+# 1. Check versions in package.json
+grep -E "(prisma|@prisma/client)" package.json
+
+# 2. Ensure both are same major version (e.g., both 5.x)
+# Edit package.json, then:
+rm -rf node_modules package-lock.json
+npm install
+
+# 3. If build fails on server:
+ssh -p 43988 root@69.10.59.234 "cd /var/www/fonana && rm -rf node_modules package-lock.json && npm install && npm run build"
+```
+
+### 8. Port Conflicts (Local Development)
+**Problem**: "Port 3000 is in use, trying 3001 instead"
+- **Cause**: Another process using port 3000
+- **Note**: Development will auto-switch to 3001 if needed
+
 ## Diagnostic Scripts (Available)
 ```bash
 # General health check
@@ -681,6 +708,20 @@ node scripts/check-price-discrepancy.js
 ```
 
 ## Recent Updates & Fixes
+
+### Hybrid Wallet Authentication (December 23, 2024)
+- **Added**: JWT-based authentication via Solana wallet signature
+- **Features**:
+  - Session persistence without constant wallet connection
+  - Connect wallet only when needed for transactions  
+  - Mobile Wallet Adapter (MWA) support preparation
+  - Environment detection (mobile/desktop/embedded)
+- **Endpoints**: `/api/auth/wallet` (POST for auth, GET for status)
+- **Components**: 
+  - `HybridWalletConnect` - Main auth button
+  - `ConnectWalletOnDemand` - Transaction-time connection
+  - `useAuth` hook - Auth state management
+- **Test Page**: `/test/hybrid-auth`
 
 ### Creator Analytics Update (December 24, 2024)
 - **Fixed**: Period display bugs (days, weeks, months now show correctly)
@@ -738,8 +779,11 @@ node scripts/check-price-discrepancy.js
 - Top posts/subscribers analytics
 - Complete subscriber list with spending breakdown
 - CSV export of all analytics data
+- Hybrid wallet authentication (JWT + Solana)
+- Session persistence without constant wallet connection
 
 🔄 **IN DEVELOPMENT:**
+- Mobile Wallet Adapter (MWA) integration
 - Live streaming (waiting for user base)
 - Stories (waiting for user base)
 - Advanced search/discovery
@@ -838,6 +882,9 @@ git log --oneline -10
 - ❌ Ignore pm2 logs after deployment
 - ❌ Remove existing functionality without understanding dependencies 
 - ❌ Auto-correct subscription plans based on price (это было причиной багов!)
+- ❌ Mix Prisma versions - always keep @prisma/client and prisma CLI in sync
+- ❌ Put `prisma` package in dependencies - it belongs in devDependencies only
+- ❌ Run production in dev mode unless absolutely necessary
 
 ## Important Constants & Configuration
 
