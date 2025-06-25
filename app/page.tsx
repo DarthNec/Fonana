@@ -1,10 +1,8 @@
 'use client'
 
-import { useState } from 'react'
 import Link from 'next/link'
 import { ArrowRightIcon, SparklesIcon, UsersIcon, ShieldCheckIcon, CurrencyDollarIcon, PlayIcon, StarIcon } from '@heroicons/react/24/outline'
 import SafeCreatorsExplorer from '@/components/SafeCreatorsExplorer'
-import UserSubscriptions from '@/components/UserSubscriptions'
 
 const features = [
   {
@@ -41,88 +39,79 @@ const stats = [
 ]
 
 export default function HomePage() {
-  const [hasSubscriptions] = useState(false) // For demo show hero
-
   return (
     <div className="min-h-screen">
       {/* Hero Section */}
-      {!hasSubscriptions && (
-        <section className="relative min-h-screen flex items-center overflow-hidden">
-          {/* Background Effects */}
-          <div className="absolute inset-0 bg-gradient-to-br from-gray-50 via-purple-50/20 to-gray-50 dark:from-slate-900 dark:via-purple-900/20 dark:to-slate-900"></div>
-          <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-purple-500/10 dark:bg-purple-500/20 rounded-full blur-3xl animate-pulse"></div>
-          <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-blue-500/10 dark:bg-blue-500/20 rounded-full blur-3xl animate-pulse" style={{animationDelay: '1s'}}></div>
-          
-          <div className="container mx-auto px-4 relative z-10">
-            <div className="text-center max-w-5xl mx-auto">
-              <div className="inline-flex items-center px-6 py-3 rounded-full bg-gradient-to-r from-purple-500/10 to-blue-500/10 border border-purple-500/20 backdrop-blur-sm mb-8">
-                <StarIcon className="w-5 h-5 text-yellow-500 dark:text-yellow-400 mr-3" />
-                <span className="text-sm font-medium bg-gradient-to-r from-purple-600 to-blue-600 dark:from-purple-400 dark:to-blue-400 bg-clip-text text-transparent">
-                  Platform of the new generation
-                </span>
-              </div>
+      <section className="relative min-h-screen flex items-center overflow-hidden">
+        {/* Background Effects */}
+        <div className="absolute inset-0 bg-gradient-to-br from-gray-50 via-purple-50/20 to-gray-50 dark:from-slate-900 dark:via-purple-900/20 dark:to-slate-900"></div>
+        <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-purple-500/10 dark:bg-purple-500/20 rounded-full blur-3xl animate-pulse"></div>
+        <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-blue-500/10 dark:bg-blue-500/20 rounded-full blur-3xl animate-pulse" style={{animationDelay: '1s'}}></div>
+        
+        <div className="container mx-auto px-4 relative z-10">
+          <div className="text-center max-w-5xl mx-auto">
+            <div className="inline-flex items-center px-6 py-3 rounded-full bg-gradient-to-r from-purple-500/10 to-blue-500/10 border border-purple-500/20 backdrop-blur-sm mb-8">
+              <StarIcon className="w-5 h-5 text-yellow-500 dark:text-yellow-400 mr-3" />
+              <span className="text-sm font-medium bg-gradient-to-r from-purple-600 to-blue-600 dark:from-purple-400 dark:to-blue-400 bg-clip-text text-transparent">
+                Platform of the new generation
+              </span>
+            </div>
+            
+            <h1 className="text-6xl md:text-8xl font-black mb-8 leading-tight">
+              <span className="bg-gradient-to-r from-purple-600 to-pink-600 dark:from-purple-400 dark:to-pink-400 bg-clip-text text-transparent">
+                Web3 Creator
+              </span>
+              <br />
+              <span className="bg-gradient-to-r from-purple-600 via-pink-600 to-purple-600 dark:from-purple-400 dark:via-pink-400 dark:to-purple-400 bg-clip-text text-transparent animate-pulse">
+                Revolution
+              </span>
+            </h1>
+            
+            <p className="text-xl md:text-2xl text-gray-700 dark:text-slate-300 max-w-4xl mx-auto mb-12 leading-relaxed font-light">
+              Discover talented content creators earning cryptocurrency through exclusive materials and NFT subscriptions
+            </p>
+            
+            <div className="flex flex-col sm:flex-row gap-6 justify-center mb-20">
+              <Link href="/creators" className="group">
+                <div className="bg-gradient-to-r from-purple-600 to-blue-600 text-white px-8 py-4 rounded-2xl font-semibold flex items-center justify-center transform group-hover:scale-105 transition-all duration-300 hover:shadow-xl hover:shadow-purple-500/25">
+                  <PlayIcon className="w-6 h-6 mr-3" />
+                  Explore creators
+                  <ArrowRightIcon className="w-6 h-6 ml-3 group-hover:translate-x-1 transition-transform" />
+                </div>
+              </Link>
               
-              <h1 className="text-6xl md:text-8xl font-black mb-8 leading-tight">
-                <span className="bg-gradient-to-r from-purple-600 to-pink-600 dark:from-purple-400 dark:to-pink-400 bg-clip-text text-transparent">
-                  Web3 Creator
-                </span>
-                <br />
-                <span className="bg-gradient-to-r from-purple-600 via-pink-600 to-purple-600 dark:from-purple-400 dark:via-pink-400 dark:to-purple-400 bg-clip-text text-transparent animate-pulse">
-                  Revolution
-                </span>
-              </h1>
-              
-              <p className="text-xl md:text-2xl text-gray-700 dark:text-slate-300 max-w-4xl mx-auto mb-12 leading-relaxed font-light">
-                Discover talented content creators earning cryptocurrency through exclusive materials and NFT subscriptions
-              </p>
-              
-              <div className="flex flex-col sm:flex-row gap-6 justify-center mb-20">
-                <Link href="/creators" className="group">
-                  <div className="bg-gradient-to-r from-purple-600 to-blue-600 text-white px-8 py-4 rounded-2xl font-semibold flex items-center justify-center transform group-hover:scale-105 transition-all duration-300 hover:shadow-xl hover:shadow-purple-500/25">
-                    <PlayIcon className="w-6 h-6 mr-3" />
-                    Explore creators
-                    <ArrowRightIcon className="w-6 h-6 ml-3 group-hover:translate-x-1 transition-transform" />
-                  </div>
-                </Link>
-                
-                <Link href="/create" className="group">
-                  <div className="bg-gradient-to-r from-pink-500 to-violet-600 text-white px-8 py-4 rounded-2xl font-semibold transform group-hover:scale-105 transition-all duration-300 hover:shadow-xl hover:shadow-pink-500/25">
-                    Start creating
-                  </div>
-                </Link>
-              </div>
+              <Link href="/create" className="group">
+                <div className="bg-gradient-to-r from-pink-500 to-violet-600 text-white px-8 py-4 rounded-2xl font-semibold transform group-hover:scale-105 transition-all duration-300 hover:shadow-xl hover:shadow-pink-500/25">
+                  Start creating
+                </div>
+              </Link>
             </div>
           </div>
-        </section>
-      )}
+        </div>
+      </section>
 
       {/* Stats Section */}
-      {!hasSubscriptions && (
-        <section className="py-20 relative">
-          <div className="container mx-auto px-4">
-            <div className="relative bg-white dark:bg-slate-900 backdrop-blur-xl rounded-3xl p-8 md:p-16 border border-gray-200 dark:border-slate-700/50 shadow-lg">
-              <div className="grid grid-cols-2 gap-8 lg:grid-cols-4">
-                {stats.map((stat, index) => (
-                  <div key={stat.name} className="text-center group">
-                    <div className="text-5xl mb-6 transform group-hover:scale-110 transition-transform duration-300">
-                      {stat.icon}
-                    </div>
-                    <div className="text-4xl lg:text-5xl font-black mb-3 bg-gradient-to-r from-purple-600 to-blue-600 dark:from-purple-400 dark:to-blue-400 bg-clip-text text-transparent">
-                      {stat.value}
-                    </div>
-                    <div className="text-gray-600 dark:text-slate-400 font-medium">
-                      {stat.name}
-                    </div>
+      <section className="py-20 relative">
+        <div className="container mx-auto px-4">
+          <div className="relative bg-white dark:bg-slate-900 backdrop-blur-xl rounded-3xl p-8 md:p-16 border border-gray-200 dark:border-slate-700/50 shadow-lg">
+            <div className="grid grid-cols-2 gap-8 lg:grid-cols-4">
+              {stats.map((stat, index) => (
+                <div key={stat.name} className="text-center group">
+                  <div className="text-5xl mb-6 transform group-hover:scale-110 transition-transform duration-300">
+                    {stat.icon}
                   </div>
-                ))}
-              </div>
+                  <div className="text-4xl lg:text-5xl font-black mb-3 bg-gradient-to-r from-purple-600 to-blue-600 dark:from-purple-400 dark:to-blue-400 bg-clip-text text-transparent">
+                    {stat.value}
+                  </div>
+                  <div className="text-gray-600 dark:text-slate-400 font-medium">
+                    {stat.name}
+                  </div>
+                </div>
+              ))}
             </div>
           </div>
-        </section>
-      )}
-
-      {/* User Subscriptions Section */}
-      {hasSubscriptions && <UserSubscriptions />}
+        </div>
+      </section>
 
       {/* Creators Explorer Section */}
       <div id="creators">
