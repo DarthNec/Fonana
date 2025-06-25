@@ -382,9 +382,9 @@ export default function PostPage() {
               </span>
             </h2>
 
-            <div className="bg-slate-700/30 backdrop-blur-sm border border-slate-600/50 rounded-2xl p-6 mb-8">
-              <div className="flex gap-4">
-                <div className="w-12 h-12 rounded-2xl overflow-hidden flex-shrink-0">
+            <div className="bg-slate-700/30 backdrop-blur-sm border border-slate-600/50 rounded-2xl p-4 sm:p-6 mb-6 sm:mb-8">
+              <div className="flex gap-3 sm:gap-4 items-start">
+                <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl sm:rounded-2xl overflow-hidden flex-shrink-0">
                   {user ? (
                     <Avatar
                       src={user.avatar}
@@ -395,7 +395,7 @@ export default function PostPage() {
                     />
                   ) : (
                     <div className="w-full h-full bg-gradient-to-r from-purple-500 to-pink-500 flex items-center justify-center">
-                      <span className="text-white font-bold text-lg">?</span>
+                      <span className="text-white font-bold text-base sm:text-lg">?</span>
                     </div>
                   )}
                 </div>
@@ -405,26 +405,26 @@ export default function PostPage() {
                     onChange={(e) => setNewComment(e.target.value)}
                     placeholder={user ? "Напишите комментарий..." : "Подключите кошелек, чтобы комментировать"}
                     disabled={!user || isSubmittingComment}
-                    className="w-full px-4 py-3 bg-slate-600/50 border border-slate-500/50 rounded-xl text-white placeholder-slate-400 focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-300 resize-none disabled:opacity-50 disabled:cursor-not-allowed"
-                    rows={3}
+                    className="w-full px-3 sm:px-4 py-2.5 sm:py-3 bg-slate-600/50 border border-slate-500/50 rounded-xl text-white placeholder-slate-400 focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-300 resize-none disabled:opacity-50 disabled:cursor-not-allowed text-sm sm:text-base min-h-[40px] sm:min-h-[48px]"
+                    rows={2}
                   />
                   {commentError && (
-                    <p className="text-red-400 text-sm mt-2">{commentError}</p>
+                    <p className="text-red-400 text-xs sm:text-sm mt-2">{commentError}</p>
                   )}
-                  <div className="flex justify-end mt-4">
+                  <div className="flex justify-end mt-3 sm:mt-4">
                     <button
                       onClick={handleAddComment}
                       disabled={!user || !newComment.trim() || isSubmittingComment}
-                      className="bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 disabled:from-slate-600 disabled:to-slate-600 text-white font-semibold px-6 py-3 rounded-xl transition-all duration-300 flex items-center gap-2 hover:scale-105 disabled:hover:scale-100 disabled:cursor-not-allowed"
+                      className="bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 disabled:from-slate-600 disabled:to-slate-600 text-white font-semibold px-4 sm:px-6 py-2 sm:py-3 rounded-lg sm:rounded-xl transition-all duration-300 flex items-center gap-2 hover:scale-105 disabled:hover:scale-100 disabled:cursor-not-allowed text-sm sm:text-base"
                     >
                       {isSubmittingComment ? (
                         <>
-                          <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                          <div className="w-4 h-4 sm:w-5 sm:h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
                           Отправка...
                         </>
                       ) : (
                         <>
-                          <PaperAirplaneIcon className="w-5 h-5" />
+                          <PaperAirplaneIcon className="w-4 h-4 sm:w-5 sm:h-5" />
                           Отправить
                         </>
                       )}
