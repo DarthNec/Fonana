@@ -767,6 +767,7 @@ body::before {
     max-height: 100vh !important;
     border-radius: 0 !important;
     margin: 0 !important;
+    max-width: 100vw !important;
   }
   
   /* Prevent body scroll when modal is open */
@@ -800,28 +801,36 @@ body::before {
     padding-bottom: env(safe-area-inset-bottom);
   }
   
-  /* Optimize card spacing on mobile */
-  .card {
-    @apply mx-0 sm:mx-2 mb-0 sm:mb-4;
-  }
-  
-  /* Full-width cards on mobile */
-  .post-card-mobile {
-    margin-left: -1rem;
-    margin-right: -1rem;
-    border-radius: 0;
-  }
-  
-  @media (min-width: 640px) {
-    .post-card-mobile {
-      margin-left: 0;
-      margin-right: 0;
-      border-radius: 1.5rem;
-    }
-  }
-  
   /* Mobile-friendly form inputs */
   input, textarea, select {
     font-size: 16px !important; /* Prevents zoom on iOS */
+  }
+  
+  /* Reduce padding on mobile for immersive experience */
+  .container {
+    @apply px-0;
+  }
+  
+  /* Hide scrollbars on mobile for cleaner look */
+  ::-webkit-scrollbar {
+    width: 0px;
+    background: transparent;
+  }
+  
+  /* Full width images in posts */
+  .post-image {
+    margin-left: -1rem;
+    margin-right: -1rem;
+    width: calc(100% + 2rem);
+  }
+  
+  /* Compact headers on mobile */
+  .header-mobile {
+    @apply py-2;
+  }
+  
+  /* Floating action buttons */
+  .fab {
+    @apply fixed bottom-20 right-4 z-40;
   }
 } 

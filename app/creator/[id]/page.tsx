@@ -60,7 +60,7 @@ export default function CreatorPage() {
   const [creator, setCreator] = useState<Creator | null>(null)
   const [posts, setPosts] = useState<any[]>([])
   const [isLoading, setIsLoading] = useState(true)
-  const [activeTab, setActiveTab] = useState<'posts' | 'photos' | 'videos'>('posts')
+  const [activeTab, setActiveTab] = useState<'posts' | 'photos' | 'videos' | 'flash-sales'>('posts')
   const [showSubscribeModal, setShowSubscribeModal] = useState(false)
   const [isSubscribed, setIsSubscribed] = useState(false)
   const [currentSubscriptionTier, setCurrentSubscriptionTier] = useState<string | null>(null)
@@ -311,10 +311,10 @@ export default function CreatorPage() {
         </div>
       </div>
 
-      <div className="relative z-10 pt-32 pb-8">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div className="relative z-10 pt-20 sm:pt-32 pb-8">
+        <div className="max-w-7xl mx-auto px-0 sm:px-4 lg:px-8">
           {/* Profile Header */}
-          <div className="bg-white dark:bg-slate-800/50 backdrop-blur-xl border border-gray-200 dark:border-slate-700/50 rounded-3xl overflow-hidden mb-8">
+          <div className="bg-white dark:bg-slate-800/50 backdrop-blur-xl border-y sm:border border-gray-200 dark:border-slate-700/50 rounded-none sm:rounded-3xl overflow-hidden mb-0 sm:mb-8">
             {/* Background Image with Gradient Overlay */}
             <div className="relative">
               {creator.backgroundImage && (
@@ -329,11 +329,11 @@ export default function CreatorPage() {
                 </div>
               )}
               
-              <div className="relative z-10 p-8 md:p-12">
-                <div className="flex flex-col md:flex-row gap-8 items-start">
+              <div className="relative z-10 p-6 sm:p-8 md:p-12">
+                <div className="flex flex-col md:flex-row gap-6 sm:gap-8 items-start">
                   {/* Avatar */}
                   <div className="relative">
-                    <div className="w-32 h-32 rounded-3xl overflow-hidden border-4 border-white/50 dark:border-slate-800/50 bg-gradient-to-br from-purple-500/20 to-pink-500/20 shadow-xl">
+                    <div className="w-24 sm:w-32 h-24 sm:h-32 rounded-3xl overflow-hidden border-4 border-white/50 dark:border-slate-800/50 bg-gradient-to-br from-purple-500/20 to-pink-500/20 shadow-xl">
                       <Avatar
                         src={creator.avatar}
                         alt={creator.nickname}
@@ -343,8 +343,8 @@ export default function CreatorPage() {
                       />
                     </div>
                     {creator.isVerified && (
-                      <div className="absolute -bottom-2 -right-2 w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center shadow-lg">
-                        <CheckBadgeIcon className="w-5 h-5 text-white" />
+                      <div className="absolute -bottom-2 -right-2 w-6 sm:w-8 h-6 sm:h-8 bg-blue-500 rounded-full flex items-center justify-center shadow-lg">
+                        <CheckBadgeIcon className="w-4 sm:w-5 h-4 sm:h-5 text-white" />
                       </div>
                     )}
                   </div>
@@ -353,9 +353,9 @@ export default function CreatorPage() {
                   <div className="flex-1">
                     <div className="flex items-start justify-between gap-4">
                       <div>
-                        <h1 className="text-3xl md:text-4xl font-bold text-gray-900 dark:text-white mb-2">{creator.fullName || creator.nickname}</h1>
-                        <p className="text-gray-600 dark:text-slate-400 text-lg mb-4">@{creator.nickname}</p>
-                        <p className="text-gray-700 dark:text-slate-300 leading-relaxed max-w-2xl">{creator.bio}</p>
+                        <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold text-gray-900 dark:text-white mb-2">{creator.fullName || creator.nickname}</h1>
+                        <p className="text-gray-600 dark:text-slate-400 text-base sm:text-lg mb-3 sm:mb-4">@{creator.nickname}</p>
+                        <p className="text-gray-700 dark:text-slate-300 text-sm sm:text-base leading-relaxed max-w-2xl">{creator.bio}</p>
                       </div>
 
                       {/* Subscribe Button (Desktop) */}
@@ -665,54 +665,121 @@ export default function CreatorPage() {
             </div>
           )}
 
-          {/* Content Tabs */}
-          <div className="flex gap-2 mb-8 overflow-x-auto">
-            {[
-              { id: 'posts', label: 'Posts', icon: DocumentTextIcon },
-              { id: 'photos', label: 'Photos', icon: PhotoIcon },
-              { id: 'videos', label: 'Videos', icon: VideoCameraIcon }
-            ].map((tab) => (
+          {/* Content */}
+          <div className="px-0 sm:px-4 lg:px-8">
+            {/* Tabs */}
+            <div className="flex border-b border-gray-200 dark:border-slate-700/50 mb-0 sm:mb-8 overflow-x-auto">
               <button
-                key={tab.id}
-                onClick={() => setActiveTab(tab.id as any)}
-                className={`flex items-center gap-2 px-6 py-3 rounded-2xl font-semibold transition-all whitespace-nowrap ${
-                  activeTab === tab.id
-                    ? 'bg-gradient-to-r from-purple-600 to-pink-600 text-white shadow-lg shadow-purple-500/25'
-                    : 'bg-white dark:bg-slate-800/50 text-gray-600 dark:text-slate-400 hover:text-gray-900 dark:hover:text-white'
+                onClick={() => setActiveTab('posts')}
+                className={`px-6 py-3 font-medium text-sm sm:text-base transition-colors relative whitespace-nowrap ${
+                  activeTab === 'posts'
+                    ? 'text-purple-600 dark:text-purple-400'
+                    : 'text-gray-600 dark:text-slate-400 hover:text-gray-900 dark:hover:text-white'
                 }`}
               >
-                <tab.icon className="w-5 h-5" />
-                {tab.label}
+                Posts
+                {activeTab === 'posts' && (
+                  <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-purple-600 dark:bg-purple-400"></div>
+                )}
               </button>
-            ))}
-          </div>
+              <button
+                onClick={() => setActiveTab('photos')}
+                className={`px-6 py-3 font-medium text-sm sm:text-base transition-colors relative whitespace-nowrap ${
+                  activeTab === 'photos'
+                    ? 'text-purple-600 dark:text-purple-400'
+                    : 'text-gray-600 dark:text-slate-400 hover:text-gray-900 dark:hover:text-white'
+                }`}
+              >
+                Photos
+                {activeTab === 'photos' && (
+                  <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-purple-600 dark:bg-purple-400"></div>
+                )}
+              </button>
+              <button
+                onClick={() => setActiveTab('videos')}
+                className={`px-6 py-3 font-medium text-sm sm:text-base transition-colors relative whitespace-nowrap ${
+                  activeTab === 'videos'
+                    ? 'text-purple-600 dark:text-purple-400'
+                    : 'text-gray-600 dark:text-slate-400 hover:text-gray-900 dark:hover:text-white'
+                }`}
+              >
+                Videos
+                {activeTab === 'videos' && (
+                  <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-purple-600 dark:bg-purple-400"></div>
+                )}
+              </button>
 
-          {/* Content */}
-          {isLoadingPosts ? (
-            <div className="bg-white dark:bg-slate-800/50 backdrop-blur-xl border border-gray-200 dark:border-slate-700/50 rounded-3xl p-12 text-center">
-              <div className="w-16 h-16 border-4 border-purple-500/30 border-t-purple-500 rounded-full animate-spin mx-auto mb-4"></div>
-              <p className="text-gray-600 dark:text-slate-400">Loading content...</p>
+              {/* Flash Sales tab - only for creator */}
+              {creator.isCreator && (
+                <button
+                  onClick={() => setActiveTab('flash-sales')}
+                  className={`px-6 py-3 font-medium text-sm sm:text-base transition-colors relative whitespace-nowrap ${
+                    activeTab === 'flash-sales'
+                      ? 'text-purple-600 dark:text-purple-400'
+                      : 'text-gray-600 dark:text-slate-400 hover:text-gray-900 dark:hover:text-white'
+                  }`}
+                >
+                  Flash Sales
+                  {activeTab === 'flash-sales' && (
+                    <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-purple-600 dark:bg-purple-400"></div>
+                  )}
+                </button>
+              )}
             </div>
-          ) : filteredPosts.length === 0 ? (
-            <div className="bg-white dark:bg-slate-800/50 backdrop-blur-xl border border-gray-200 dark:border-slate-700/50 rounded-3xl p-12 text-center">
-              <DocumentTextIcon className="w-16 h-16 text-gray-400 dark:text-slate-600 mx-auto mb-4" />
-              <h3 className="text-xl font-bold text-gray-700 dark:text-slate-300 mb-2">No {activeTab} yet</h3>
-              <p className="text-gray-600 dark:text-slate-400">Check back later for new content</p>
-            </div>
-          ) : (
-            <div className="max-w-2xl mx-auto">
-              {filteredPosts.map((post) => (
-                <PostCard
-                  key={post.id}
-                  {...post}
-                  showCreator={false}
-                  flashSale={post.flashSale}
-                  onSubscribeClick={handleSubscribeClick}
-                  onPurchaseClick={handlePurchaseClick}
-                />
-              ))}
-            </div>
-          )}
+
+            {/* Flash Sales Content */}
+            {activeTab === 'flash-sales' && creator.isCreator && (
+              <div className="max-w-4xl mx-auto py-0 sm:py-8">
+                <FlashSalesList creatorId={creator.id} />
+              </div>
+            )}
+
+            {/* Posts Content */}
+            {activeTab !== 'flash-sales' && (
+              <div className="max-w-2xl mx-auto space-y-0 sm:space-y-8">
+                {isLoadingPosts ? (
+                  <div className="flex items-center justify-center py-20">
+                    <div className="text-center">
+                      <div className="w-16 h-16 border-4 border-purple-500/30 border-t-purple-500 rounded-full animate-spin mx-auto mb-4"></div>
+                      <p className="text-gray-600 dark:text-slate-400">Loading posts...</p>
+                    </div>
+                  </div>
+                ) : filteredPosts.length === 0 ? (
+                  <div className="text-center py-20 px-4">
+                    {activeTab === 'photos' ? (
+                      <>
+                        <PhotoIcon className="w-16 h-16 text-gray-400 dark:text-slate-600 mx-auto mb-4" />
+                        <h3 className="text-xl font-bold text-gray-700 dark:text-slate-300 mb-2">No photos yet</h3>
+                      </>
+                    ) : activeTab === 'videos' ? (
+                      <>
+                        <VideoCameraIcon className="w-16 h-16 text-gray-400 dark:text-slate-600 mx-auto mb-4" />
+                        <h3 className="text-xl font-bold text-gray-700 dark:text-slate-300 mb-2">No videos yet</h3>
+                      </>
+                    ) : (
+                      <>
+                        <DocumentTextIcon className="w-16 h-16 text-gray-400 dark:text-slate-600 mx-auto mb-4" />
+                        <h3 className="text-xl font-bold text-gray-700 dark:text-slate-300 mb-2">No posts yet</h3>
+                      </>
+                    )}
+                    <p className="text-gray-600 dark:text-slate-400">
+                      {creator.fullName || creator.nickname} hasn't posted any {activeTab} yet
+                    </p>
+                  </div>
+                ) : (
+                  filteredPosts.map((post) => (
+                    <PostCard
+                      key={post.id}
+                      {...post}
+                      showCreator={false}
+                      onSubscribeClick={handleSubscribeClick}
+                      onPurchaseClick={handlePurchaseClick}
+                    />
+                  ))
+                )}
+              </div>
+            )}
+          </div>
 
           {/* Related Creators */}
           <div className="mt-12">

@@ -274,10 +274,10 @@ export default function FeedPage() {
   ]
 
   return (
-    <div className="min-h-screen bg-white dark:bg-slate-900 pt-16"> {/* Added pt-16 for navbar offset */}
-      <div className="container mx-auto px-0 sm:px-4 py-4 sm:py-8">
+    <div className="min-h-screen bg-white dark:bg-slate-900 pt-16 sm:pt-20"> {/* Added pt-16 for navbar offset */}
+      <div className="max-w-2xl mx-auto px-0 sm:px-4 py-0 sm:py-8">
         {/* Header */}
-        <div className="flex items-center justify-between mb-6 px-4 sm:px-0">
+        <div className="flex items-center justify-between mb-4 sm:mb-6 px-4 sm:px-0">
           <div>
             <h1 className="text-2xl sm:text-4xl font-bold mb-1 sm:mb-2">
               <span className="bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent">
@@ -296,7 +296,7 @@ export default function FeedPage() {
         </div>
 
         {/* Search Bar */}
-        <div className="mb-6 px-4 sm:px-0">
+        <div className="mb-4 sm:mb-6 px-4 sm:px-0">
           <SearchBar 
             placeholder="Поиск по постам и создателям..."
             showFilters={true}
@@ -305,10 +305,10 @@ export default function FeedPage() {
         </div>
 
         {/* Filters and Sort */}
-        <div className="mb-6 space-y-4">
+        <div className="mb-4 sm:mb-6 space-y-4">
           {/* Sort Options */}
           <div className="px-4 sm:px-0 overflow-x-auto">
-            <div className="flex items-center gap-2 pb-2 mb-4">
+            <div className="flex items-center gap-2 pb-2 mb-2 sm:mb-4">
               {sortOptions.map((option) => (
                 <button
                   key={option.id}
@@ -361,7 +361,7 @@ export default function FeedPage() {
             </div>
           </div>
         ) : sortedPosts.length === 0 ? (
-          <div className="text-center py-20">
+          <div className="text-center py-20 px-4">
             <SparklesIcon className="w-16 h-16 text-gray-400 dark:text-slate-600 mx-auto mb-4" />
             <h3 className="text-xl font-bold text-gray-700 dark:text-slate-300 mb-2">No posts yet</h3>
             <p className="text-gray-600 dark:text-slate-400 mb-6">Be the first to create content!</p>
@@ -374,7 +374,7 @@ export default function FeedPage() {
             </Link>
           </div>
         ) : (
-          <div className="max-w-2xl mx-auto -mx-4 sm:mx-auto px-0 sm:px-0">
+          <div className="space-y-0 sm:space-y-8">
             {sortedPosts.map((post) => (
               <PostCard
                 key={post.id}
@@ -391,7 +391,7 @@ export default function FeedPage() {
 
         {/* Load More */}
         {sortedPosts.length > 0 && (
-          <div className="text-center mt-12">
+          <div className="text-center mt-8 sm:mt-12">
             <button className="px-8 py-3 bg-gray-100 dark:bg-slate-800/50 hover:bg-gray-200 dark:hover:bg-slate-700/50 text-gray-700 dark:text-slate-300 hover:text-gray-900 dark:hover:text-white rounded-xl font-medium transition-all">
               Load more
             </button>

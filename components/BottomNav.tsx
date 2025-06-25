@@ -96,8 +96,8 @@ export default function BottomNav() {
   }
 
   return (
-    <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-white dark:bg-slate-900 border-t border-gray-200 dark:border-slate-700 z-50 bottom-safe">
-      <div className="grid grid-cols-5 h-16">
+    <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl border-t border-gray-200/50 dark:border-slate-700/30 z-50 bottom-safe shadow-lg">
+      <div className="grid grid-cols-5 h-14">
         {navItems.map((item) => {
           const active = isActive(item.href)
           const Icon = active ? item.activeIcon : item.icon
@@ -106,31 +106,34 @@ export default function BottomNav() {
             <Link
               key={item.name}
               href={item.href}
-              className="relative flex flex-col items-center justify-center py-2 text-xs"
+              className="relative flex flex-col items-center justify-center py-1.5 text-xs transition-all"
             >
               <div className="relative">
                 <Icon 
-                  className={`w-6 h-6 ${
+                  className={`w-5 h-5 transition-all ${
                     active 
-                      ? 'text-purple-600 dark:text-purple-400' 
-                      : 'text-gray-600 dark:text-slate-400'
+                      ? 'text-purple-600 dark:text-purple-400 scale-110' 
+                      : 'text-gray-500 dark:text-slate-500'
                   }`}
                 />
                 {item.badge && (
-                  <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full min-w-[18px] h-[18px] flex items-center justify-center px-1 animate-pulse">
+                  <span className="absolute -top-1.5 -right-1.5 bg-red-500 text-white text-[10px] rounded-full min-w-[16px] h-[16px] flex items-center justify-center px-1 animate-pulse font-medium">
                     {item.badge > 9 ? '9+' : item.badge}
                   </span>
                 )}
               </div>
               <span 
-                className={`mt-1 ${
+                className={`mt-0.5 text-[10px] transition-all ${
                   active 
-                    ? 'text-purple-600 dark:text-purple-400' 
-                    : 'text-gray-600 dark:text-slate-400'
+                    ? 'text-purple-600 dark:text-purple-400 font-medium' 
+                    : 'text-gray-500 dark:text-slate-500'
                 }`}
               >
                 {item.name}
               </span>
+              {active && (
+                <div className="absolute bottom-0 left-1/2 transform -translate-x-1/2 w-1 h-1 bg-purple-600 dark:bg-purple-400 rounded-full"></div>
+              )}
             </Link>
           )
         })}

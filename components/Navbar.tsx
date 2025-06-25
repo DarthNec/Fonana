@@ -95,19 +95,19 @@ export function Navbar() {
   return (
     <nav className={`fixed top-0 left-0 right-0 z-50 transition-all duration-500 ${isPWA ? 'md:block hidden' : 'block'} ${
       isScrolled 
-        ? 'bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl border-b border-gray-200 dark:border-slate-700/50' 
-        : 'bg-transparent'
+        ? 'bg-white/90 dark:bg-slate-900/90 backdrop-blur-2xl border-b border-gray-200/50 dark:border-slate-700/30 shadow-sm' 
+        : 'bg-gradient-to-b from-white/50 to-transparent dark:from-slate-900/50 dark:to-transparent backdrop-blur-sm'
     }`}>
-      <div className="container mx-auto px-4">
-        <div className="flex items-center justify-between h-20">
+      <div className="px-3 sm:px-4 lg:container lg:mx-auto">
+        <div className="flex items-center justify-between h-14 sm:h-16 lg:h-20">
           {/* Logo */}
-          <Link href="/" className="flex items-center gap-3 group">
-            <div className="relative w-10 h-10 rounded-2xl bg-gradient-to-br from-purple-600 to-pink-600 p-0.5 group-hover:scale-110 transition-transform duration-300">
-              <div className="w-full h-full bg-white dark:bg-slate-900 rounded-2xl flex items-center justify-center">
-                <span className="text-gray-900 dark:text-white font-black text-lg">F</span>
+          <Link href="/" className="flex items-center gap-2 sm:gap-3 group">
+            <div className="relative w-8 sm:w-10 h-8 sm:h-10 rounded-xl sm:rounded-2xl bg-gradient-to-br from-purple-600 to-pink-600 p-0.5 group-hover:scale-110 transition-transform duration-300">
+              <div className="w-full h-full bg-white dark:bg-slate-900 rounded-xl sm:rounded-2xl flex items-center justify-center">
+                <span className="text-gray-900 dark:text-white font-black text-sm sm:text-lg">F</span>
               </div>
             </div>
-            <span className="text-2xl font-black bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent">
+            <span className="text-lg sm:text-2xl font-black bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent">
               Fonana
             </span>
           </Link>
