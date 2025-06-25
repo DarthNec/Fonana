@@ -27,6 +27,7 @@ import { useWallet } from '@solana/wallet-adapter-react'
 import { useWalletModal } from '@solana/wallet-adapter-react-ui'
 import SolanaRateDisplay from '@/components/SolanaRateDisplay'
 import Avatar from '@/components/Avatar'
+import { MobileWalletConnect } from '@/components/MobileWalletConnect'
 
 export default function BottomNav() {
   const pathname = usePathname()
@@ -108,17 +109,6 @@ export default function BottomNav() {
     return pathname === href
   }
 
-  const handleConnect = () => {
-    console.log('BottomNav: Connect wallet clicked')
-    try {
-      setVisible(true)
-      setIsMenuOpen(false)
-      console.log('BottomNav: Wallet modal should be visible now')
-    } catch (error) {
-      console.error('BottomNav: Error opening wallet modal:', error)
-    }
-  }
-
   const handleDisconnect = () => {
     disconnect()
     setIsMenuOpen(false)
@@ -129,77 +119,34 @@ export default function BottomNav() {
       <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl border-t border-gray-200/50 dark:border-slate-700/30 z-50 bottom-safe shadow-lg">
         <div className="grid grid-cols-5 h-14">
           {navItems.map((item) => {
-            const active = isActive(item.href)
-            const Icon = active ? item.activeIcon : item.icon
-            
-            if (item.onClick) {
-              return (
-                <button
-                  key={item.name}
-                  onClick={item.onClick}
-                  className="relative flex flex-col items-center justify-center py-1.5 text-xs transition-all"
-                >
-                  <div className="relative">
-                    <Icon 
-                      className={`w-5 h-5 transition-all ${
-                        isMenuOpen
-                          ? 'text-purple-600 dark:text-purple-400 scale-110' 
-                          : 'text-gray-500 dark:text-slate-500'
-                      }`}
-                    />
-                  </div>
-                  <span 
-                    className={`mt-0.5 text-[10px] transition-all ${
-                      isMenuOpen
-                        ? 'text-purple-600 dark:text-purple-400 font-medium' 
-                        : 'text-gray-500 dark:text-slate-500'
-                    }`}
-                  >
-                    {item.name}
-                  </span>
-                </button>
-              )
-            }
+            const isItemActive = isActive(item.href)
+            const Icon = isItemActive ? item.activeIcon : item.icon
             
             return (
               <Link
                 key={item.name}
                 href={item.href}
-                className="relative flex flex-col items-center justify-center py-1.5 text-xs transition-all"
+                onClick={item.onClick}
+                className={`flex flex-col items-center justify-center gap-0.5 relative ${
+                  isItemActive ? 'text-purple-600 dark:text-purple-400' : 'text-gray-600 dark:text-slate-400'
+                }`}
               >
                 <div className="relative">
-                  <Icon 
-                    className={`w-5 h-5 transition-all ${
-                      active 
-                        ? 'text-purple-600 dark:text-purple-400 scale-110' 
-                        : 'text-gray-500 dark:text-slate-500'
-                    }`}
-                  />
+                  <Icon className="w-6 h-6" />
                   {item.badge && (
-                    <span className="absolute -top-1.5 -right-1.5 bg-red-500 text-white text-[10px] rounded-full min-w-[16px] h-[16px] flex items-center justify-center px-1 animate-pulse font-medium">
+                    <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs w-4 h-4 rounded-full flex items-center justify-center">
                       {item.badge > 9 ? '9+' : item.badge}
                     </span>
                   )}
                 </div>
-                <span 
-                  className={`mt-0.5 text-[10px] transition-all ${
-                    active 
-                      ? 'text-purple-600 dark:text-purple-400 font-medium' 
-                      : 'text-gray-500 dark:text-slate-500'
-                  }`}
-                >
-                  {item.name}
-                </span>
-                {active && (
-                  <div className="absolute bottom-0 left-1/2 transform -translate-x-1/2 w-1 h-1 bg-purple-600 dark:bg-purple-400 rounded-full"></div>
-                )}
+                <span className="text-xs">{item.name}</span>
               </Link>
             )
           })}
         </div>
       </nav>
 
-      {/* Menu Modal */}
+      {/* Mobile menu modal */}
       {isMenuOpen && (
         <div className="fixed inset-0 z-[60] md:hidden">
           {/* Backdrop */}
@@ -280,13 +227,12 @@ export default function BottomNav() {
                     <span className="text-red-600 dark:text-red-400 font-medium">Disconnect Wallet</span>
                   </button>
                 ) : (
-                  <button
-                    onClick={handleConnect}
-                    className="w-full flex items-center gap-4 p-4 bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-2xl transition-all hover:scale-[1.02] hover:shadow-lg"
-                  >
-                    <WalletIcon className="w-6 h-6" />
-                    <span className="font-medium">Connect Wallet</span>
-                  </button>
+                  <div className="w-full">
+                    <MobileWalletConnect 
+                      inMenu={true}
+                      className="w-full flex items-center gap-4 p-4 bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-2xl transition-all hover:scale-[1.02] hover:shadow-lg font-medium"
+                    />
+                  </div>
                 )}
               </div>
             </div>

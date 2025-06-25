@@ -34,7 +34,12 @@ const getPhantomDeeplink = () => {
   return `https://phantom.app/ul/browse/${appUrl}?ref=${currentUrl}`
 }
 
-export function MobileWalletConnect() {
+interface MobileWalletConnectProps {
+  className?: string
+  inMenu?: boolean
+}
+
+export function MobileWalletConnect({ className, inMenu }: MobileWalletConnectProps) {
   const { connected, connect, disconnect, wallet, select } = useWallet()
   const [isMobile, setIsMobile] = useState(false)
   const [hasPhantom, setHasPhantom] = useState(false)
@@ -67,8 +72,11 @@ export function MobileWalletConnect() {
     return (
       <button
         onClick={handleMobileConnect}
-        className="wallet-adapter-button wallet-adapter-button-trigger"
-        style={{
+        className={className || (inMenu ? 
+          "w-full flex items-center justify-center gap-3 py-3 px-4 text-white rounded-xl font-medium transition-all duration-200 hover:opacity-90" :
+          "wallet-adapter-button wallet-adapter-button-trigger"
+        )}
+        style={!className && !inMenu ? {
           backgroundColor: 'rgb(78, 54, 204)',
           color: 'white',
           padding: '0 24px',
@@ -82,13 +90,7 @@ export function MobileWalletConnect() {
           cursor: 'pointer',
           fontWeight: '600',
           transition: 'all 0.2s'
-        }}
-        onMouseEnter={(e) => {
-          e.currentTarget.style.backgroundColor = 'rgb(68, 44, 184)'
-        }}
-        onMouseLeave={(e) => {
-          e.currentTarget.style.backgroundColor = 'rgb(78, 54, 204)'
-        }}
+        } : undefined}
       >
         {/* Phantom Logo */}
         <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
@@ -96,11 +98,11 @@ export function MobileWalletConnect() {
           <path d="M10.5 11.5C11.3284 11.5 12 10.8284 12 10C12 9.17157 11.3284 8.5 10.5 8.5C9.67157 8.5 9 9.17157 9 10C9 10.8284 9.67157 11.5 10.5 11.5Z" fill="rgb(78, 54, 204)"/>
           <path d="M16.5 11.5C17.3284 11.5 18 10.8284 18 10C18 9.17157 17.3284 8.5 16.5 8.5C15.6716 8.5 15 9.17157 15 10C15 10.8284 15.6716 11.5 16.5 11.5Z" fill="rgb(78, 54, 204)"/>
         </svg>
-        Connect Wallet
+        <span>Connect Wallet</span>
       </button>
     )
   }
 
   // В остальных случаях используем стандартную кнопку
-  return <WalletMultiButton />
+  return <WalletMultiButton className={className} />
 } 

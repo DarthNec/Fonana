@@ -3,6 +3,7 @@ import '@solana/wallet-adapter-react-ui/styles.css'
 import type { Metadata } from 'next'
 import { Inter } from 'next/font/google'
 import { WalletProvider } from '@/components/WalletProvider'
+import { WalletPersistenceProvider } from '@/components/WalletPersistenceProvider'
 import { UserProvider } from '@/components/UserProvider'
 import { NotificationProvider } from '@/lib/contexts/NotificationContext'
 import { Navbar } from '@/components/Navbar'
@@ -67,7 +68,7 @@ export default function RootLayout({
     <html lang="en" suppressHydrationWarning>
       <head>
         {/* Force refresh script for version management */}
-        <script src="/force-refresh.js?v=1750870249000" />
+        <script src="/force-refresh.js?v=1750870683000" />
         {referrer && (
           <meta name="x-fonana-referrer" content={referrer} />
         )}
@@ -76,36 +77,38 @@ export default function RootLayout({
         <ThemeProvider>
           <ErrorBoundary>
             <WalletProvider>
-              <UserProvider>
-                <NotificationProvider>
-                  <div className="min-h-screen bg-gray-50 dark:bg-slate-900 flex flex-col">
-                    {/* Navbar только на десктопе */}
-                    <div className="hidden md:block">
-                      <Navbar />
+              <WalletPersistenceProvider>
+                <UserProvider>
+                  <NotificationProvider>
+                    <div className="min-h-screen bg-gray-50 dark:bg-slate-900 flex flex-col">
+                      {/* Navbar только на десктопе */}
+                      <div className="hidden md:block">
+                        <Navbar />
+                      </div>
+                      <main className="pt-0 flex-1 pb-14 md:pb-0 md:pt-20">
+                        {children}
+                      </main>
+                      <ReferralNotification />
+                      <Footer />
+                      <div className="block md:hidden">
+                        <BottomNav />
+                      </div>
                     </div>
-                    <main className="pt-0 flex-1 pb-14 md:pb-0 md:pt-20">
-                      {children}
-                    </main>
-                    <ReferralNotification />
-                    <Footer />
-                    <div className="block md:hidden">
-                      <BottomNav />
-                    </div>
-                  </div>
-                  <ServiceWorkerRegistration />
-                  <Toaster
-                    position="top-right"
-                    toastOptions={{
-                      duration: 5000, // Автоматическое закрытие через 5 секунд
-                      style: {
-                        background: '#1e293b',
-                        color: '#fff',
-                        border: '1px solid #334155',
-                      },
-                    }}
-                  />
-                </NotificationProvider>
-              </UserProvider>
+                    <ServiceWorkerRegistration />
+                    <Toaster
+                      position="top-right"
+                      toastOptions={{
+                        duration: 5000, // Автоматическое закрытие через 5 секунд
+                        style: {
+                          background: '#1e293b',
+                          color: '#fff',
+                          border: '1px solid #334155',
+                        },
+                      }}
+                    />
+                  </NotificationProvider>
+                </UserProvider>
+              </WalletPersistenceProvider>
             </WalletProvider>
           </ErrorBoundary>
         </ThemeProvider>

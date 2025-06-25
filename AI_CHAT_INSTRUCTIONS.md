@@ -709,6 +709,17 @@ node scripts/check-price-discrepancy.js
 
 ## Recent Updates & Fixes
 
+### Wallet Connection Fixes (December 23, 2024)
+- **Problem 1**: Phantom wallet wasn't opening on mobile devices from burger menu
+- **Problem 2**: Wallet disconnected on page refresh on desktop
+- **Solutions**:
+  - Enabled `autoConnect={true}` in WalletProvider with localStorage persistence
+  - Fixed mobile wallet connection in burger menu using MobileWalletConnect component
+  - Created `useWalletPersistence` hook for automatic reconnection
+  - Added `WalletPersistenceProvider` to maintain wallet state across sessions
+  - Sessions are valid for 7 days
+- **Docs**: WALLET_CONNECTION_FIXES.md
+
 ### Browser Detection Fix (December 25, 2024)
 - **Problem**: Desktop browsers with Phantom extension were incorrectly detected as embedded wallet browsers
 - **Solution**: 
