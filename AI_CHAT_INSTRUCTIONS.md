@@ -709,51 +709,11 @@ node scripts/check-price-discrepancy.js
 
 ## Recent Updates & Fixes
 
-### Hybrid Wallet Authentication (December 23, 2024)
-- **Added**: JWT-based authentication via Solana wallet signature
-- **Features**:
-  - Session persistence without constant wallet connection
-  - Connect wallet only when needed for transactions  
-  - Mobile Wallet Adapter (MWA) support preparation
-  - Environment detection (mobile/desktop/embedded)
-- **Endpoints**: `/api/auth/wallet` (POST for auth, GET for status)
-- **Components**: 
-  - `HybridWalletConnect` - Main auth button
-  - `ConnectWalletOnDemand` - Transaction-time connection
-  - `useAuth` hook - Auth state management
-- **Test Page**: `/test/hybrid-auth`
-
-### Mobile Wallet Auth Fix (December 23, 2024)
-- **Problem**: Phantom mobile browser doesn't sync cookies with main browser
-- **Solution**: 
-  - JWT saved to localStorage as fallback
-  - New `/api/auth/wallet/sync` endpoint for token sync
-  - MobileAuthHelper component shows sync button
-  - URL-based token sync with `auth_token` parameter
-  - Auto-detection of mobile environment
-- **Test**: https://fonana.me/test/mobile-auth
-- **Docs**: MOBILE_WALLET_AUTH_FIX.md
-
-### Authentication Issues Fix (December 25, 2024)
-- **Problems**: 
-  - "Authentication failed" when connecting wallet
-  - White screen with "Application error" on mobile devices
-- **Causes**:
-  - Missing `JWT_SECRET` environment variable on production
-  - Missing `.next/routes-manifest.json` (incomplete build)
-- **Solutions**:
-  - Added `JWT_SECRET` to production .env file
-  - Used `fix-white-screen.sh` script to rebuild
-  - Disabled DEBUG_MODE in production files
-- **Important**: Always ensure `JWT_SECRET` or `NEXTAUTH_SECRET` is set!
-- **Docs**: AUTH_ISSUES_FIX_DECEMBER_2024.md
-
 ### Browser Detection Fix (December 25, 2024)
 - **Problem**: Desktop browsers with Phantom extension were incorrectly detected as embedded wallet browsers
 - **Solution**: 
-  - Removed problematic check `(userAgent.includes('phantom') && !isMobile && window.opener !== null)`
-  - Improved mobile app detection with more specific markers
-  - UX hint now shows only in actual embedded wallet browsers
+  - Simplified detection to check only `userAgent.includes('phantom') && isMobile`
+  - Shows hint only in actual Phantom mobile app
 - **Test Page**: `/test/browser-detection` for debugging browser environment
 - **Docs**: BROWSER_DETECTION_FIX_2024.md
 

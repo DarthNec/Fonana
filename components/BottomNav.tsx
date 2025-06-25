@@ -67,8 +67,7 @@ export default function BottomNav() {
       name: 'Search',
       href: '/search',
       icon: MagnifyingGlassIcon,
-      activeIcon: MagnifyingGlassSolidIcon,
-      showInPWA: true // Показывать в PWA для замены navbar
+      activeIcon: MagnifyingGlassSolidIcon
     },
     {
       name: 'Create',
