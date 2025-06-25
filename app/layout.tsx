@@ -66,12 +66,7 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <head>
-        {/* Force cache refresh meta tags */}
-        <meta httpEquiv="cache-control" content="no-cache, no-store, must-revalidate" />
-        <meta httpEquiv="pragma" content="no-cache" />
-        <meta httpEquiv="expires" content="0" />
-        <meta name="cache-version" content={`v-${Date.now()}`} />
-        {/* Force refresh script for cached browsers */}
+        {/* Force refresh script for version management */}
         <script src="/force-refresh.js?v=1750863851000" />
         {referrer && (
           <meta name="x-fonana-referrer" content={referrer} />
