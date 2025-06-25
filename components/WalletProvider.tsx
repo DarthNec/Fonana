@@ -12,34 +12,6 @@ import {
 import { clusterApiUrl } from '@solana/web3.js'
 import '@solana/wallet-adapter-react-ui/styles.css'
 
-// Проверка мобильного устройства
-const isMobileDevice = () => {
-  if (typeof window === 'undefined') return false
-  
-  try {
-    const userAgent = window.navigator.userAgent.toLowerCase()
-    const isMobile = /android|webos|iphone|ipad|ipod|blackberry|iemobile|opera mini/i.test(userAgent)
-    const isTablet = /ipad|tablet|playbook|silk/i.test(userAgent)
-    
-    return isMobile || isTablet
-  } catch (error) {
-    console.error('Error detecting mobile device:', error)
-    return false
-  }
-}
-
-// Проверка, установлен ли Phantom в мобильном браузере
-const isPhantomInstalled = () => {
-  if (typeof window === 'undefined') return false
-  
-  try {
-    return !!(window as any).solana?.isPhantom
-  } catch (error) {
-    console.error('Error checking Phantom installation:', error)
-    return false
-  }
-}
-
 export function WalletProvider({ children }: { children: React.ReactNode }) {
   const [mounted, setMounted] = useState(false)
   const [hasError, setHasError] = useState(false)
@@ -55,18 +27,14 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
 
   const wallets = useMemo(() => {
     try {
-      const walletsArray = []
-      
-      // Добавляем Phantom адаптер только если это не мобильное устройство 
-      // или если Phantom установлен в мобильном браузере
-      if (!isMobileDevice() || isPhantomInstalled()) {
-        walletsArray.push(new PhantomWalletAdapter())
-      }
-      
-      walletsArray.push(
+      // Phantom будет первым в списке для приоритета отображения
+      const walletsArray = [
+        new PhantomWalletAdapter(),
         new SolflareWalletAdapter(),
         new TorusWalletAdapter()
-      )
+      ]
+      
+      console.log('Initialized wallets:', walletsArray.map(w => w.name))
       
       return walletsArray
     } catch (error) {
