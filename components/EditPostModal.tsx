@@ -380,22 +380,22 @@ export default function EditPostModal({ isOpen, onClose, post, onPostUpdated }: 
       />
       
       <div className="fixed inset-0 flex items-center justify-center p-4">
-        <Dialog.Panel className="mx-auto max-w-2xl w-full bg-white dark:bg-slate-800 rounded-3xl shadow-2xl">
-          <div className="flex items-center justify-between p-6 border-b border-gray-200 dark:border-slate-700">
-            <Dialog.Title className="text-2xl font-bold text-gray-900 dark:text-white">
+        <Dialog.Panel className="mx-auto max-w-2xl w-full bg-white dark:bg-slate-800 rounded-3xl shadow-2xl max-h-[90vh] flex flex-col">
+          <div className="flex items-center justify-between p-4 sm:p-6 border-b border-gray-200 dark:border-slate-700">
+            <Dialog.Title className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white">
               Edit Post
             </Dialog.Title>
             <button
               onClick={handleClose}
-              className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+              className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 p-1"
             >
-              <XMarkIcon className="w-6 h-6" />
+              <XMarkIcon className="w-5 h-5 sm:w-6 sm:h-6" />
             </button>
           </div>
 
-          <div className="p-6 max-h-[calc(100vh-200px)] overflow-y-auto">
+          <div className="p-4 sm:p-6 flex-1 overflow-y-auto">
             {/* Title */}
-            <div className="mb-6">
+            <div className="mb-4 sm:mb-6">
               <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-2">
                 Title
               </label>
@@ -403,27 +403,27 @@ export default function EditPostModal({ isOpen, onClose, post, onPostUpdated }: 
                 type="text"
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
-                className="w-full px-4 py-3 bg-white dark:bg-slate-700/50 border border-gray-300 dark:border-slate-600/50 rounded-2xl text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-purple-400 focus:border-transparent transition-all duration-300"
+                className="w-full px-3 sm:px-4 py-2 sm:py-3 bg-white dark:bg-slate-700/50 border border-gray-300 dark:border-slate-600/50 rounded-2xl text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-purple-400 focus:border-transparent transition-all duration-300"
                 placeholder="Give your post a catchy title..."
               />
             </div>
 
             {/* Content */}
-            <div className="mb-6">
+            <div className="mb-4 sm:mb-6">
               <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-2">
                 Content
               </label>
               <textarea
                 value={content}
                 onChange={(e) => setContent(e.target.value)}
-                rows={6}
-                className="w-full px-4 py-3 bg-white dark:bg-slate-700/50 border border-gray-300 dark:border-slate-600/50 rounded-2xl text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-purple-400 focus:border-transparent transition-all duration-300 resize-none"
+                rows={4}
+                className="w-full px-3 sm:px-4 py-2 sm:py-3 bg-white dark:bg-slate-700/50 border border-gray-300 dark:border-slate-600/50 rounded-2xl text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-purple-400 focus:border-transparent transition-all duration-300 resize-none"
                 placeholder="Share your thoughts..."
               />
             </div>
 
             {/* Media Upload */}
-            <div className="mb-6">
+            <div className="mb-4 sm:mb-6">
               <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-2">
                 Media
               </label>
@@ -432,18 +432,18 @@ export default function EditPostModal({ isOpen, onClose, post, onPostUpdated }: 
                   <img
                     src={mediaPreview}
                     alt="Media preview"
-                    className="w-full h-64 object-cover rounded-2xl"
+                    className="w-full h-48 sm:h-64 object-cover rounded-2xl"
                   />
                   <button
                     onClick={handleRemoveMedia}
-                    className="absolute top-2 right-2 p-2 bg-red-500 text-white rounded-full hover:bg-red-600"
+                    className="absolute top-2 right-2 p-1.5 sm:p-2 bg-red-500 text-white rounded-full hover:bg-red-600"
                   >
-                    <XMarkIcon className="w-5 h-5" />
+                    <XMarkIcon className="w-4 h-4 sm:w-5 sm:h-5" />
                   </button>
                 </div>
               ) : (
                 <label 
-                  className="flex flex-col items-center justify-center w-full h-64 border-2 border-gray-300 dark:border-slate-600 border-dashed rounded-2xl cursor-pointer bg-gray-50 dark:bg-slate-700/30 hover:bg-gray-100 dark:hover:bg-slate-700/50"
+                  className="flex flex-col items-center justify-center w-full h-48 sm:h-64 border-2 border-gray-300 dark:border-slate-600 border-dashed rounded-2xl cursor-pointer bg-gray-50 dark:bg-slate-700/30 hover:bg-gray-100 dark:hover:bg-slate-700/50"
                   onClick={(e) => {
                     e.preventDefault()
                     e.stopPropagation()
@@ -451,7 +451,7 @@ export default function EditPostModal({ isOpen, onClose, post, onPostUpdated }: 
                   }}
                 >
                   <div className="flex flex-col items-center justify-center pt-5 pb-6 pointer-events-none">
-                    <PhotoIcon className="w-12 h-12 text-gray-400 mb-3" />
+                    <PhotoIcon className="w-10 h-10 sm:w-12 sm:h-12 text-gray-400 mb-3" />
                     <p className="mb-2 text-sm text-gray-500 dark:text-gray-400">
                       <span className="font-semibold">Click to upload</span> or drag and drop
                     </p>
@@ -473,14 +473,14 @@ export default function EditPostModal({ isOpen, onClose, post, onPostUpdated }: 
 
             {/* Crop button for images */}
             {mediaPreview && (post.type === 'image' || (mediaFile && mediaFile.type.startsWith('image/'))) && (
-              <div className="mb-6 flex justify-center">
+              <div className="mb-4 sm:mb-6 flex justify-center">
                 <button
                   type="button"
                   onClick={() => {
                     setOriginalImage(mediaPreview)
                     setShowCropModal(true)
                   }}
-                  className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-xl transition-colors flex items-center gap-2"
+                  className="px-3 sm:px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-xl transition-colors flex items-center gap-2 text-sm"
                 >
                   <ScissorsIcon className="w-4 h-4" />
                   Edit Crop & Format
@@ -489,14 +489,14 @@ export default function EditPostModal({ isOpen, onClose, post, onPostUpdated }: 
             )}
 
             {/* Category */}
-            <div className="mb-6">
+            <div className="mb-4 sm:mb-6">
               <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-2">
                 Category
               </label>
               <select
                 value={category}
                 onChange={(e) => setCategory(e.target.value)}
-                className="w-full px-4 py-3 bg-white dark:bg-slate-700/50 border border-gray-300 dark:border-slate-600/50 rounded-2xl text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-purple-400 focus:border-transparent transition-all duration-300"
+                className="w-full px-3 sm:px-4 py-2 sm:py-3 bg-white dark:bg-slate-700/50 border border-gray-300 dark:border-slate-600/50 rounded-2xl text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-purple-400 focus:border-transparent transition-all duration-300"
               >
                 <option value="">Select a category</option>
                 {categories.map((cat) => (
@@ -506,28 +506,28 @@ export default function EditPostModal({ isOpen, onClose, post, onPostUpdated }: 
             </div>
 
             {/* Access Type */}
-            <div className="mb-6">
+            <div className="mb-4 sm:mb-6">
               <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-2">
                 Access Type
               </label>
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 sm:gap-3">
                 {accessTypes.map((type) => {
                   const Icon = type.icon
                   return (
                     <button
                       key={type.value}
                       onClick={() => setAccessType(type.value)}
-                      className={`relative p-4 rounded-2xl border-2 transition-all ${
+                      className={`relative p-3 sm:p-4 rounded-2xl border-2 transition-all ${
                         accessType === type.value
                           ? 'border-purple-500 bg-purple-50 dark:bg-purple-900/20'
                           : 'border-gray-300 dark:border-slate-600 hover:border-purple-400'
                       }`}
                     >
-                      <Icon className="w-6 h-6 text-gray-700 dark:text-slate-300 mb-2" />
-                      <div className="text-sm font-medium text-gray-900 dark:text-white">
+                      <Icon className="w-5 h-5 sm:w-6 sm:h-6 text-gray-700 dark:text-slate-300 mb-1 sm:mb-2 mx-auto" />
+                      <div className="text-xs sm:text-sm font-medium text-gray-900 dark:text-white">
                         {type.label}
                       </div>
-                      <div className="text-xs text-gray-500 dark:text-slate-400 mt-1">
+                      <div className="text-[10px] sm:text-xs text-gray-500 dark:text-slate-400 mt-0.5 sm:mt-1 hidden sm:block">
                         {type.description}
                       </div>
                     </button>
@@ -538,7 +538,7 @@ export default function EditPostModal({ isOpen, onClose, post, onPostUpdated }: 
 
             {/* Price (for paid content) */}
             {accessType === 'paid' && (
-              <div className="mb-6">
+              <div className="mb-4 sm:mb-6">
                 <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-2">
                   Price (SOL)
                 </label>
@@ -547,14 +547,14 @@ export default function EditPostModal({ isOpen, onClose, post, onPostUpdated }: 
                   step="0.01"
                   value={price}
                   onChange={(e) => setPrice(e.target.value)}
-                  className="w-full px-4 py-3 bg-white dark:bg-slate-700/50 border border-gray-300 dark:border-slate-600/50 rounded-2xl text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-purple-400 focus:border-transparent transition-all duration-300"
+                  className="w-full px-3 sm:px-4 py-2 sm:py-3 bg-white dark:bg-slate-700/50 border border-gray-300 dark:border-slate-600/50 rounded-2xl text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-purple-400 focus:border-transparent transition-all duration-300"
                   placeholder="0.00"
                 />
               </div>
             )}
 
             {/* Tags */}
-            <div className="mb-6">
+            <div className="mb-4 sm:mb-6">
               <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-2">
                 Tags
               </label>
@@ -564,12 +564,12 @@ export default function EditPostModal({ isOpen, onClose, post, onPostUpdated }: 
                   value={tagInput}
                   onChange={(e) => setTagInput(e.target.value)}
                   onKeyPress={(e) => e.key === 'Enter' && (e.preventDefault(), handleAddTag())}
-                  className="flex-1 px-4 py-2 bg-white dark:bg-slate-700/50 border border-gray-300 dark:border-slate-600/50 rounded-xl text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-purple-400 focus:border-transparent transition-all duration-300"
+                  className="flex-1 px-3 sm:px-4 py-2 bg-white dark:bg-slate-700/50 border border-gray-300 dark:border-slate-600/50 rounded-xl text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-purple-400 focus:border-transparent transition-all duration-300 text-sm"
                   placeholder="Add a tag..."
                 />
                 <button
                   onClick={handleAddTag}
-                  className="px-4 py-2 bg-purple-500 text-white rounded-xl hover:bg-purple-600 transition-colors"
+                  className="px-3 sm:px-4 py-2 bg-purple-500 text-white rounded-xl hover:bg-purple-600 transition-colors text-sm"
                 >
                   Add
                 </button>
@@ -578,14 +578,14 @@ export default function EditPostModal({ isOpen, onClose, post, onPostUpdated }: 
                 {tags.map((tag) => (
                   <span
                     key={tag}
-                    className="inline-flex items-center gap-1 px-3 py-1 bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 rounded-full text-sm"
+                    className="inline-flex items-center gap-1 px-2 sm:px-3 py-1 bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 rounded-full text-xs sm:text-sm"
                   >
                     #{tag}
                     <button
                       onClick={() => handleRemoveTag(tag)}
                       className="text-purple-500 hover:text-purple-700"
                     >
-                      <XMarkIcon className="w-4 h-4" />
+                      <XMarkIcon className="w-3 h-3 sm:w-4 sm:h-4" />
                     </button>
                   </span>
                 ))}
@@ -593,19 +593,19 @@ export default function EditPostModal({ isOpen, onClose, post, onPostUpdated }: 
             </div>
           </div>
 
-          {/* Actions */}
-          <div className="flex gap-3 p-6 border-t border-gray-200 dark:border-slate-700">
+          {/* Actions - Fixed at bottom */}
+          <div className="flex gap-2 sm:gap-3 p-4 sm:p-6 border-t border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 rounded-b-3xl">
             <button
               onClick={handleClose}
               disabled={isSubmitting}
-              className="flex-1 px-6 py-3 border border-gray-300 dark:border-slate-600 text-gray-700 dark:text-slate-300 rounded-2xl font-medium hover:bg-gray-50 dark:hover:bg-slate-700/50 transition-all duration-300"
+              className="flex-1 px-4 sm:px-6 py-2.5 sm:py-3 border border-gray-300 dark:border-slate-600 text-gray-700 dark:text-slate-300 rounded-2xl font-medium hover:bg-gray-50 dark:hover:bg-slate-700/50 transition-all duration-300 text-sm sm:text-base"
             >
               Cancel
             </button>
             <button
               onClick={handleSubmit}
               disabled={isSubmitting}
-              className={`flex-1 px-6 py-3 rounded-2xl font-medium transition-all duration-300 ${
+              className={`flex-1 px-4 sm:px-6 py-2.5 sm:py-3 rounded-2xl font-medium transition-all duration-300 text-sm sm:text-base ${
                 isSubmitting
                   ? 'bg-gray-200 dark:bg-slate-700 text-gray-500 dark:text-slate-400 cursor-not-allowed'
                   : 'bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white'
