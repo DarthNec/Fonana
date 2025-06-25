@@ -276,16 +276,8 @@ export default function FeedPage() {
   return (
     <div className="min-h-screen bg-white dark:bg-slate-900 pt-16 sm:pt-20"> {/* Added pt-16 for navbar offset */}
       <div className="max-w-2xl mx-auto px-0 sm:px-4 py-0 sm:py-8">
-        {/* Header */}
-        <div className="flex items-center justify-between mb-4 sm:mb-6 px-4 sm:px-0">
-          <div>
-            <h1 className="text-2xl sm:text-4xl font-bold mb-1 sm:mb-2">
-              <span className="bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent">
-                Content Feed
-              </span>
-            </h1>
-            <p className="text-sm sm:text-base text-gray-600 dark:text-slate-400">Discover amazing content from creators</p>
-          </div>
+        {/* Header - Create button only */}
+        <div className="flex items-center justify-end mb-4 sm:mb-6 px-4 sm:px-0">
           <Link
             href="/create"
             className="px-4 sm:px-6 py-2.5 sm:py-3 bg-gradient-to-r from-purple-600 to-pink-600 text-white font-bold text-sm sm:text-base rounded-xl hover:from-purple-700 hover:to-pink-700 transform hover:scale-105 transition-all duration-300 hover:shadow-xl hover:shadow-purple-500/25 flex items-center gap-2"

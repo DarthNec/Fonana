@@ -103,17 +103,7 @@ export default function CreatePage() {
 
   return (
     <div className="max-w-7xl mx-auto px-6 py-10 pt-24"> {/* Added pt-24 for navbar offset */}
-      {/* Header */}
-      <div className="text-center mb-12">
-        <h1 className="text-5xl font-bold mb-6">
-          <span className="bg-gradient-to-r from-purple-400 via-pink-400 to-red-400 bg-clip-text text-transparent">
-            Create Content
-          </span>
-        </h1>
-        <p className="text-xl text-gray-600 dark:text-slate-400 max-w-3xl mx-auto">
-          Share your creativity and monetize content with blockchain
-        </p>
-      </div>
+
 
       {/* Quick Create Button */}
       <div className="flex justify-center mb-12">

@@ -92,15 +92,7 @@ export default function MessagesPage() {
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-slate-900 pt-24">
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
-        {/* Header */}
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">
-            Messages
-          </h1>
-          <p className="text-gray-600 dark:text-gray-400">
-            Chat with creators and fans
-          </p>
-        </div>
+
 
         {/* Search Bar */}
         <div className="mb-6">
