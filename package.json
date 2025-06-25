@@ -56,7 +56,6 @@
     "uuid": "^8.3.2",
     "viem": "^2.7.15",
     "wagmi": "^2.5.7",
-    "jsonwebtoken": "^9.0.2",
     "jose": "^5.2.0",
     "bs58": "^5.0.0",
     "tweetnacl": "^1.0.3"
@@ -78,7 +77,6 @@
     "prisma": "^5.9.1",
     "tailwindcss": "^3.3.0",
     "ts-node": "^10.9.2",
-    "typescript": "^5",
-    "@types/jsonwebtoken": "^9.0.6"
+    "typescript": "^5"
   }
 }

@@ -16,21 +16,33 @@ import '@solana/wallet-adapter-react-ui/styles.css'
 const isMobileDevice = () => {
   if (typeof window === 'undefined') return false
   
-  const userAgent = window.navigator.userAgent.toLowerCase()
-  const isMobile = /android|webos|iphone|ipad|ipod|blackberry|iemobile|opera mini/i.test(userAgent)
-  const isTablet = /ipad|tablet|playbook|silk/i.test(userAgent)
-  
-  return isMobile || isTablet
+  try {
+    const userAgent = window.navigator.userAgent.toLowerCase()
+    const isMobile = /android|webos|iphone|ipad|ipod|blackberry|iemobile|opera mini/i.test(userAgent)
+    const isTablet = /ipad|tablet|playbook|silk/i.test(userAgent)
+    
+    return isMobile || isTablet
+  } catch (error) {
+    console.error('Error detecting mobile device:', error)
+    return false
+  }
 }
 
 // Проверка, установлен ли Phantom в мобильном браузере
 const isPhantomInstalled = () => {
   if (typeof window === 'undefined') return false
-  return !!(window as any).solana?.isPhantom
+  
+  try {
+    return !!(window as any).solana?.isPhantom
+  } catch (error) {
+    console.error('Error checking Phantom installation:', error)
+    return false
+  }
 }
 
 export function WalletProvider({ children }: { children: React.ReactNode }) {
   const [mounted, setMounted] = useState(false)
+  const [hasError, setHasError] = useState(false)
   
   // Get network from environment or default to mainnet
   const network = WalletAdapterNetwork.Mainnet
@@ -42,20 +54,26 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
   )
 
   const wallets = useMemo(() => {
-    const walletsArray = []
-    
-    // Добавляем Phantom адаптер только если это не мобильное устройство 
-    // или если Phantom установлен в мобильном браузере
-    if (!isMobileDevice() || isPhantomInstalled()) {
-      walletsArray.push(new PhantomWalletAdapter())
+    try {
+      const walletsArray = []
+      
+      // Добавляем Phantom адаптер только если это не мобильное устройство 
+      // или если Phantom установлен в мобильном браузере
+      if (!isMobileDevice() || isPhantomInstalled()) {
+        walletsArray.push(new PhantomWalletAdapter())
+      }
+      
+      walletsArray.push(
+        new SolflareWalletAdapter(),
+        new TorusWalletAdapter()
+      )
+      
+      return walletsArray
+    } catch (error) {
+      console.error('Error initializing wallet adapters:', error)
+      setHasError(true)
+      return []
     }
-    
-    walletsArray.push(
-      new SolflareWalletAdapter(),
-      new TorusWalletAdapter()
-    )
-    
-    return walletsArray
   }, [])
 
   useEffect(() => {
@@ -66,9 +84,15 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
     return null
   }
 
+  // Если произошла ошибка инициализации, показываем children без wallet провайдера
+  if (hasError) {
+    console.warn('WalletProvider initialization failed, rendering without wallet support')
+    return <>{children}</>
+  }
+
   return (
     <ConnectionProvider endpoint={endpoint}>
-      <SolanaWalletProvider wallets={wallets} autoConnect>
+      <SolanaWalletProvider wallets={wallets} autoConnect={false}>
         <WalletModalProvider>
           {children}
         </WalletModalProvider>
