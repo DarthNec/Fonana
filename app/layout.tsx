@@ -3,12 +3,13 @@ import '@solana/wallet-adapter-react-ui/styles.css'
 import type { Metadata } from 'next'
 import { Inter } from 'next/font/google'
 import { WalletProvider } from '@/components/WalletProvider'
+import { SafeWalletProvider } from '@/components/SafeWalletProvider'
 import { UserProvider } from '@/components/UserProvider'
 import { NotificationProvider } from '@/lib/contexts/NotificationContext'
 import { Navbar } from '@/components/Navbar'
 import { Toaster } from 'react-hot-toast'
 import { ThemeProvider } from '@/lib/contexts/ThemeContext'
-import { ErrorBoundary } from '@/components/ErrorBoundary'
+import ErrorBoundary from '@/components/ErrorBoundary'
 import ReferralNotification from '@/components/ReferralNotification'
 import Footer from '@/components/Footer'
 import BottomNav from '@/components/BottomNav'
@@ -73,7 +74,7 @@ export default function RootLayout({
       <body className={inter.className}>
         <ThemeProvider>
           <ErrorBoundary>
-            <WalletProvider>
+            <SafeWalletProvider>
               <UserProvider>
                 <NotificationProvider>
                   <div className="min-h-screen bg-gray-50 dark:bg-slate-900 flex flex-col">
@@ -101,7 +102,7 @@ export default function RootLayout({
                   />
                 </NotificationProvider>
               </UserProvider>
-            </WalletProvider>
+            </SafeWalletProvider>
           </ErrorBoundary>
         </ThemeProvider>
       </body>
