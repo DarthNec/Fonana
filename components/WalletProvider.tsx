@@ -79,7 +79,8 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
     >
       <SolanaWalletProvider 
         wallets={wallets} 
-        autoConnect={false}
+        autoConnect={true}
+        localStorageKey="fonanaWallet"
         onError={(error) => {
           console.error('Wallet error:', error)
         }}
