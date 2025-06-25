@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { ArrowRightIcon, SparklesIcon, UsersIcon, ShieldCheckIcon, CurrencyDollarIcon, PlayIcon, StarIcon } from '@heroicons/react/24/outline'
-import SafeCreatorsExplorer from '@/components/SafeCreatorsExplorer'
+import CreatorsExplorer from '@/components/CreatorsExplorer'
 
 const features = [
   {
@@ -115,7 +115,7 @@ export default function HomePage() {
 
       {/* Creators Explorer Section */}
       <div id="creators">
-        <SafeCreatorsExplorer />
+        <CreatorsExplorer />
       </div>
 
       {/* Features Section */}
