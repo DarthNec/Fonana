@@ -44,7 +44,7 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
 
   const wallets = useMemo(() => {
     const walletsArray = []
-
+    
     // Пока отключаем MWA из-за проблем с типами
     // TODO: Добавить MWA после исправления типов в @solana-mobile/wallet-adapter-mobile
 
@@ -56,7 +56,7 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
       new TrustWalletAdapter(),
       new TorusWalletAdapter()
     )
-
+    
     return walletsArray
   }, [network])
 
