@@ -71,8 +71,8 @@ export function detectWalletEnvironment() {
   // Улучшенная проверка встроенного браузера кошелька
   // Проверяем специфичные признаки embedded браузеров, а не просто наличие расширения
   const isInWalletBrowser = 
-    // Phantom mobile app
-    (userAgent.includes('phantom') && isMobile) ||
+    // Phantom mobile app - проверяем что это именно приложение, а не просто браузер с расширением
+    (userAgent.includes('phantom-app') || (userAgent.includes('phantom') && isMobile && userAgent.includes('mobile'))) ||
     // Solflare mobile app
     (userAgent.includes('solflare') && isMobile) ||
     // Backpack mobile app
@@ -80,9 +80,8 @@ export function detectWalletEnvironment() {
     // Trust Wallet
     userAgent.includes('trustwallet') ||
     // Проверяем специфичные window свойства для embedded browsers
-    (isMobile && !!(window as any).ethereum && userAgent.includes('metamask')) ||
-    // Phantom desktop popup (имеет особый user agent)
-    (userAgent.includes('phantom') && !isMobile && window.opener !== null)
+    (isMobile && !!(window as any).ethereum && userAgent.includes('metamask'))
+    // Убираем проблемную проверку для desktop Phantom - она срабатывает в обычных браузерах
   
   return { isPhantom, isMobile, isInWalletBrowser }
 } 

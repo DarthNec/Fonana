@@ -53,8 +53,8 @@ export function HybridWalletConnect() {
     // Запоминаем что мы во встроенном браузере
     setIsInWalletBrowser(env.isInWalletBrowser)
     
-    // Показываем подсказку если в встроенном браузере
-    if (env.isInWalletBrowser && !env.isMobile) {
+    // Показываем подсказку только если мы действительно во встроенном браузере кошелька
+    if (env.isInWalletBrowser) {
       setShowUXHint(true)
       setTimeout(() => setShowUXHint(false), 10000) // Скрываем через 10 секунд
     }
