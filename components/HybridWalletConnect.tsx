@@ -11,7 +11,7 @@ import bs58 from 'bs58'
 import { useRouter, useSearchParams } from 'next/navigation'
 
 // Режим отладки - включить для логирования
-const DEBUG_MODE = true
+const DEBUG_MODE = false
 
 export function HybridWalletConnect() {
   const { connected, connect, disconnect, wallet, publicKey, signMessage } = useWallet()

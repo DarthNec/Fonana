@@ -6,7 +6,7 @@ const JWT_SECRET = new TextEncoder().encode(
 )
 
 // Режим отладки
-const DEBUG_MODE = true
+const DEBUG_MODE = false
 
 export interface AuthJWTPayload {
   wallet: string

@@ -5,7 +5,7 @@ import { verifySignature, isMessageValid, isValidSolanaAddress } from '@/lib/aut
 import { createJWT, setAuthCookie, removeAuthCookie, verifyJWT } from '@/lib/auth/jwt'
 
 // Режим отладки
-const DEBUG_MODE = true
+const DEBUG_MODE = false
 
 // POST /api/auth/wallet - Авторизация через подпись
 export async function POST(req: NextRequest) {
