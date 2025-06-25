@@ -10,9 +10,7 @@ import {
   TorusWalletAdapter,
 } from '@solana/wallet-adapter-wallets'
 import { clusterApiUrl } from '@solana/web3.js'
-
-// Default styles that can be overridden by your app
-require('@solana/wallet-adapter-react-ui/styles.css')
+import '@solana/wallet-adapter-react-ui/styles.css'
 
 // Проверка мобильного устройства
 const isMobileDevice = () => {
@@ -28,16 +26,14 @@ const isMobileDevice = () => {
 // Проверка, установлен ли Phantom в мобильном браузере
 const isPhantomInstalled = () => {
   if (typeof window === 'undefined') return false
-  return window.solana && window.solana.isPhantom
+  return !!(window as any).solana?.isPhantom
 }
 
 export function WalletProvider({ children }: { children: React.ReactNode }) {
   const [mounted, setMounted] = useState(false)
   
-  // Get network from environment or default to devnet
-  const network = process.env.NEXT_PUBLIC_SOLANA_NETWORK === 'mainnet-beta' 
-    ? WalletAdapterNetwork.Mainnet 
-    : WalletAdapterNetwork.Devnet
+  // Get network from environment or default to mainnet
+  const network = WalletAdapterNetwork.Mainnet
 
   // Use custom RPC endpoint if provided, otherwise use cluster URL
   const endpoint = useMemo(

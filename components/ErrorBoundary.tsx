@@ -1,49 +1,58 @@
 'use client'
 
 import React from 'react'
-import { ExclamationTriangleIcon } from '@heroicons/react/24/outline'
 
-interface Props {
-  children: React.ReactNode
-  fallback?: React.ReactNode
-}
-
-interface State {
+interface ErrorBoundaryState {
   hasError: boolean
   error?: Error
+  errorInfo?: React.ErrorInfo
 }
 
-export class ErrorBoundary extends React.Component<Props, State> {
-  constructor(props: Props) {
+export default class ErrorBoundary extends React.Component<
+  { children: React.ReactNode },
+  ErrorBoundaryState
+> {
+  constructor(props: { children: React.ReactNode }) {
     super(props)
     this.state = { hasError: false }
   }
 
-  static getDerivedStateFromError(error: Error): State {
+  static getDerivedStateFromError(error: Error): ErrorBoundaryState {
     return { hasError: true, error }
   }
 
   componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
-    console.error('ErrorBoundary caught:', error, errorInfo)
+    console.error('ErrorBoundary caught an error:', error, errorInfo)
+    this.setState({ errorInfo })
   }
 
   render() {
     if (this.state.hasError) {
-      return this.props.fallback || (
-        <div className="min-h-[400px] flex items-center justify-center">
-          <div className="text-center p-8">
-            <ExclamationTriangleIcon className="w-12 h-12 text-red-500 mx-auto mb-4" />
-            <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">
-              Что-то пошло не так
-            </h2>
-            <p className="text-gray-600 dark:text-gray-400 mb-4">
-              Произошла ошибка при загрузке этого компонента
-            </p>
+      return (
+        <div className="min-h-screen bg-red-50 p-4">
+          <div className="max-w-2xl mx-auto">
+            <h1 className="text-2xl font-bold text-red-900 mb-4">
+              Something went wrong
+            </h1>
+            <div className="bg-white p-4 rounded shadow">
+              <h2 className="text-lg font-semibold mb-2">Error:</h2>
+              <pre className="text-sm text-red-600 whitespace-pre-wrap">
+                {this.state.error?.toString()}
+              </pre>
+              {this.state.errorInfo && (
+                <>
+                  <h2 className="text-lg font-semibold mt-4 mb-2">Stack:</h2>
+                  <pre className="text-xs text-gray-600 whitespace-pre-wrap overflow-auto max-h-96">
+                    {this.state.errorInfo.componentStack}
+                  </pre>
+                </>
+              )}
+            </div>
             <button
-              onClick={() => this.setState({ hasError: false })}
-              className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700"
+              onClick={() => window.location.reload()}
+              className="mt-4 px-4 py-2 bg-red-600 text-white rounded"
             >
-              Попробовать снова
+              Reload Page
             </button>
           </div>
         </div>
