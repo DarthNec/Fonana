@@ -22,6 +22,9 @@ echo "🔍 Checking ports 3000 and 3001..."
 ssh -p 43988 root@69.10.59.234 "lsof -i :3000 -i :3001 | grep LISTEN || echo 'Ports are free'"
 
 # Push to GitHub
+echo "🔄 Updating cache version..."
+./scripts/update-cache-version.sh
+
 echo "📤 Pushing to GitHub..."
 git push origin main
 
