@@ -158,15 +158,15 @@ export default function UserSubscriptions() {
 
   return (
     <>
-      <div className="bg-white dark:bg-slate-800/50 backdrop-blur-xl border border-gray-200 dark:border-slate-700/50 rounded-3xl p-8 shadow-lg">
-        <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-8 flex items-center gap-3">
-          <div className="w-8 h-8 bg-gradient-to-r from-purple-400 to-pink-400 rounded-lg flex items-center justify-center">
-            <CreditCardIcon className="w-5 h-5 text-white" />
+      <div className="bg-white dark:bg-slate-800/50 backdrop-blur-xl border-y sm:border border-gray-200 dark:border-slate-700/50 rounded-none sm:rounded-3xl p-4 sm:p-8 shadow-lg">
+        <h2 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white mb-4 sm:mb-8 flex items-center gap-3">
+          <div className="w-6 h-6 sm:w-8 sm:h-8 bg-gradient-to-r from-purple-400 to-pink-400 rounded-lg flex items-center justify-center">
+            <CreditCardIcon className="w-4 h-4 sm:w-5 sm:h-5 text-white" />
           </div>
           My Subscriptions
         </h2>
 
-        <div className="space-y-4">
+        <div className="space-y-2 sm:space-y-4">
           {subscriptions.map((subscription) => {
             const daysLeft = getDaysLeft(subscription.validUntil)
             const isExpiringSoon = daysLeft <= 7
@@ -174,9 +174,9 @@ export default function UserSubscriptions() {
             return (
               <div
                 key={subscription.id}
-                className="bg-gray-50 dark:bg-slate-700/30 rounded-2xl p-6 hover:bg-gray-100 dark:hover:bg-slate-700/50 transition-all duration-300"
+                className="bg-gray-50 dark:bg-slate-700/30 rounded-xl sm:rounded-2xl p-4 sm:p-6 hover:bg-gray-100 dark:hover:bg-slate-700/50 transition-all duration-300"
               >
-                <div className="flex items-start gap-4">
+                <div className="flex items-start gap-3 sm:gap-4">
                   {/* Avatar */}
                   <Link 
                     href={getProfileLink({ id: subscription.creator.id, nickname: subscription.creator.nickname })}
@@ -186,49 +186,49 @@ export default function UserSubscriptions() {
                       src={subscription.creator.avatar}
                       alt={subscription.creator.fullName}
                       seed={subscription.creator.nickname}
-                      size={64}
+                      size={48}
                       rounded="xl"
                     />
                   </Link>
 
                   {/* Info */}
-                  <div className="flex-1">
+                  <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-1">
                       <Link 
                         href={getProfileLink({ id: subscription.creator.id, nickname: subscription.creator.nickname })}
-                        className="font-bold text-gray-900 dark:text-white text-lg hover:text-purple-600 dark:hover:text-purple-400 transition-colors"
+                        className="font-bold text-gray-900 dark:text-white text-base sm:text-lg hover:text-purple-600 dark:hover:text-purple-400 transition-colors truncate"
                       >
                         {subscription.creator.fullName || subscription.creator.nickname}
                       </Link>
                       {subscription.creator.isVerified && (
-                        <CheckBadgeIcon className="w-5 h-5 text-blue-500 dark:text-blue-400" />
+                        <CheckBadgeIcon className="w-4 h-4 sm:w-5 sm:h-5 text-blue-500 dark:text-blue-400 flex-shrink-0" />
                       )}
                     </div>
                     <Link 
                       href={getProfileLink({ id: subscription.creator.id, nickname: subscription.creator.nickname })}
-                      className="text-gray-600 dark:text-slate-400 text-sm mb-3 hover:text-gray-700 dark:hover:text-slate-300 transition-colors inline-block"
+                      className="text-gray-600 dark:text-slate-400 text-xs sm:text-sm mb-2 sm:mb-3 hover:text-gray-700 dark:hover:text-slate-300 transition-colors inline-block"
                     >
                       @{subscription.creator.nickname}
                     </Link>
 
                     {/* Subscription Details */}
-                    <div className="flex flex-wrap items-center gap-4 mb-4">
+                    <div className="flex flex-wrap items-center gap-2 sm:gap-4 mb-3 sm:mb-4">
                       {/* Tier Badge */}
-                      <div className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-sm font-medium text-white bg-gradient-to-r ${getTierColor(subscription.plan)}`}>
+                      <div className={`inline-flex items-center gap-1 px-2 sm:px-3 py-0.5 sm:py-1 rounded-full text-xs sm:text-sm font-medium text-white bg-gradient-to-r ${getTierColor(subscription.plan)}`}>
                         <span>{getTierIcon(subscription.plan)}</span>
                         <span>{subscription.plan}</span>
                       </div>
 
                       {/* Price */}
-                      <div className="flex items-center gap-1 text-gray-700 dark:text-slate-300">
+                      <div className="flex items-center gap-1 text-gray-700 dark:text-slate-300 text-sm">
                         <span className="font-semibold">{subscription.price}</span>
-                        <span className="text-sm">{subscription.currency}/mo</span>
+                        <span className="text-xs">{subscription.currency}/mo</span>
                       </div>
 
                       {/* Days Left */}
-                      <div className={`flex items-center gap-2 ${isExpiringSoon ? 'text-orange-600 dark:text-orange-400' : 'text-gray-600 dark:text-slate-400'}`}>
-                        <CalendarIcon className="w-4 h-4" />
-                        <span className="text-sm">
+                      <div className={`flex items-center gap-1 sm:gap-2 ${isExpiringSoon ? 'text-orange-600 dark:text-orange-400' : 'text-gray-600 dark:text-slate-400'}`}>
+                        <CalendarIcon className="w-3 h-3 sm:w-4 sm:h-4" />
+                        <span className="text-xs sm:text-sm">
                           {daysLeft > 0 ? `${daysLeft} days left` : 'Expired'}
                         </span>
                       </div>
@@ -239,20 +239,22 @@ export default function UserSubscriptions() {
                       {/* View Profile */}
                       <Link
                         href={getProfileLink({ id: subscription.creator.id, nickname: subscription.creator.nickname })}
-                        className="inline-flex items-center gap-2 px-4 py-2 bg-blue-500/20 hover:bg-blue-500/30 text-blue-700 dark:text-blue-300 rounded-xl text-sm font-medium transition-all"
+                        className="inline-flex items-center gap-1 sm:gap-2 px-3 sm:px-4 py-1.5 sm:py-2 bg-blue-500/20 hover:bg-blue-500/30 text-blue-700 dark:text-blue-300 rounded-lg sm:rounded-xl text-xs sm:text-sm font-medium transition-all"
                       >
-                        <UserIcon className="w-4 h-4" />
-                        View Profile
+                        <UserIcon className="w-3 h-3 sm:w-4 sm:h-4" />
+                        <span className="hidden sm:inline">View Profile</span>
+                        <span className="sm:hidden">Profile</span>
                       </Link>
 
                       {/* Change Tier - безопасная версия, перенаправляет на страницу создателя */}
                       {subscription.plan.toLowerCase() !== 'vip' && (
                         <Link
                           href={`${getProfileLink({ id: subscription.creator.id, nickname: subscription.creator.nickname })}#subscription-tiers`}
-                          className="inline-flex items-center gap-2 px-4 py-2 bg-purple-500/20 hover:bg-purple-500/30 text-purple-700 dark:text-purple-300 rounded-xl text-sm font-medium transition-all"
+                          className="inline-flex items-center gap-1 sm:gap-2 px-3 sm:px-4 py-1.5 sm:py-2 bg-purple-500/20 hover:bg-purple-500/30 text-purple-700 dark:text-purple-300 rounded-lg sm:rounded-xl text-xs sm:text-sm font-medium transition-all"
                         >
-                          <ArrowUpIcon className="w-4 h-4" />
-                          Upgrade Tier
+                          <ArrowUpIcon className="w-3 h-3 sm:w-4 sm:h-4" />
+                          <span className="hidden sm:inline">Upgrade Tier</span>
+                          <span className="sm:hidden">Upgrade</span>
                         </Link>
                       )}
 
@@ -263,9 +265,9 @@ export default function UserSubscriptions() {
                             handleUnsubscribe(subscription.id)
                           }
                         }}
-                        className="inline-flex items-center gap-2 px-4 py-2 bg-red-500/20 hover:bg-red-500/30 text-red-600 dark:text-red-300 rounded-xl text-sm font-medium transition-all"
+                        className="inline-flex items-center gap-1 sm:gap-2 px-3 sm:px-4 py-1.5 sm:py-2 bg-red-500/20 hover:bg-red-500/30 text-red-600 dark:text-red-300 rounded-lg sm:rounded-xl text-xs sm:text-sm font-medium transition-all"
                       >
-                        <TrashIcon className="w-4 h-4" />
+                        <TrashIcon className="w-3 h-3 sm:w-4 sm:h-4" />
                         Cancel
                       </button>
                     </div>

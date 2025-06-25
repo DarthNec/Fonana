@@ -290,19 +290,38 @@ export default function CreatorsExplorer() {
 
             {/* Tags */}
             <div className="flex flex-wrap gap-2 mb-6">
-              {creator.tags.slice(0, 2).map((tag) => (
-                <span
-                  key={tag}
-                  className="px-3 py-1 bg-gradient-to-r from-purple-500/20 to-pink-500/20 text-purple-700 dark:text-purple-300 text-xs font-medium rounded-full border border-purple-500/30"
-                >
-                  {tag}
-                </span>
-              ))}
-              {creator.tags.length > 2 && (
-                <span className="px-3 py-1 bg-gray-100 dark:bg-slate-700/50 text-gray-600 dark:text-slate-400 text-xs font-medium rounded-full">
-                  +{creator.tags.length - 2}
-                </span>
-              )}
+              {(() => {
+                // Обрабатываем случай, когда все теги в одной строке
+                let processedTags = creator.tags;
+                if (creator.tags.length === 1 && creator.tags[0].includes(' ')) {
+                  // Разбиваем по пробелам, запятым, точкам с запятой и хэштегам
+                  processedTags = creator.tags[0]
+                    .split(/[\s,;]+/)
+                    .map(tag => tag.replace('#', '').trim())
+                    .filter(tag => tag.length > 0);
+                }
+                
+                const displayTags = processedTags.slice(0, 3);
+                const remainingCount = processedTags.length - 3;
+                
+                return (
+                  <>
+                    {displayTags.map((tag, index) => (
+                      <span
+                        key={`${tag}-${index}`}
+                        className="px-3 py-1 bg-gradient-to-r from-purple-500/20 to-pink-500/20 text-purple-700 dark:text-purple-300 text-xs font-medium rounded-full border border-purple-500/30"
+                      >
+                        {tag}
+                      </span>
+                    ))}
+                    {remainingCount > 0 && (
+                      <span className="px-3 py-1 bg-gray-100 dark:bg-slate-700/50 text-gray-600 dark:text-slate-400 text-xs font-medium rounded-full">
+                        +{remainingCount}
+                      </span>
+                    )}
+                  </>
+                );
+              })()}
             </div>
 
             {/* Monthly Earnings - push to bottom with mt-auto */}

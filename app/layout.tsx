@@ -67,7 +67,7 @@ export default function RootLayout({
     <html lang="en" suppressHydrationWarning>
       <head>
         {/* Force refresh script for version management */}
-        <script src="/force-refresh.js?v=1750865340000" />
+        <script src="/force-refresh.js?v=1750866748000" />
         {referrer && (
           <meta name="x-fonana-referrer" content={referrer} />
         )}
@@ -79,8 +79,11 @@ export default function RootLayout({
               <UserProvider>
                 <NotificationProvider>
                   <div className="min-h-screen bg-gray-50 dark:bg-slate-900 flex flex-col">
-                    <Navbar />
-                    <main className="pt-0 flex-1 pb-16 md:pb-0">
+                    {/* Navbar только на десктопе */}
+                    <div className="hidden md:block">
+                      <Navbar />
+                    </div>
+                    <main className="pt-0 flex-1 pb-14 md:pb-0 md:pt-20">
                       {children}
                     </main>
                     <ReferralNotification />
