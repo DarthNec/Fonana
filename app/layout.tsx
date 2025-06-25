@@ -67,7 +67,7 @@ export default function RootLayout({
     <html lang="en" suppressHydrationWarning>
       <head>
         {/* Force refresh script for version management */}
-        <script src="/force-refresh.js?v=1750866748000" />
+        <script src="/force-refresh.js?v=1750868122000" />
         {referrer && (
           <meta name="x-fonana-referrer" content={referrer} />
         )}

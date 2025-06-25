@@ -396,15 +396,7 @@ export default function CreatorsExplorer() {
   return (
     <section className="py-20 bg-gray-50 dark:bg-gradient-to-b dark:from-slate-900 dark:to-slate-800">
       <div className="container mx-auto px-4">
-        {/* Header */}
-        <div className="text-center mb-12">
-          <h2 className="text-5xl md:text-6xl font-black mb-6">
-            <span className="text-gray-900 dark:text-white">Explore </span>
-            <span className="bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent">
-              creators
-            </span>
-          </h2>
-        </div>
+
 
         {/* Search Bar */}
         <div className="mb-8">

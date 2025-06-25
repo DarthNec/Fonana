@@ -92,10 +92,6 @@ export default function SearchPage() {
       <div className="container mx-auto px-4">
         {/* Search Header */}
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-6">
-            Результаты поиска
-          </h1>
-          
           {/* Search Bar */}
           <SearchBar 
             onSearch={handleSearch}
