@@ -527,11 +527,11 @@ export default function ProfilePage() {
       <div className="relative z-10 pt-32 pb-8 lg:pt-40 lg:pb-12">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           {/* Header */}
-          <div className="text-center mb-12">
-            <h1 className="text-4xl lg:text-6xl font-bold bg-gradient-to-r from-purple-600 via-pink-600 to-purple-600 dark:from-purple-400 dark:via-pink-400 dark:to-purple-400 bg-clip-text text-transparent mb-4">
+          <div className="text-center mb-8 sm:mb-12">
+            <h1 className="text-3xl sm:text-4xl lg:text-6xl font-bold bg-gradient-to-r from-purple-600 via-pink-600 to-purple-600 dark:from-purple-400 dark:via-pink-400 dark:to-purple-400 bg-clip-text text-transparent mb-2 sm:mb-4">
               Profile Settings
             </h1>
-            <p className="text-gray-600 dark:text-slate-400 text-lg max-w-2xl mx-auto">
+            <p className="text-gray-600 dark:text-slate-400 text-base sm:text-lg max-w-2xl mx-auto px-4">
               Manage your account settings and personalize your profile
             </p>
           </div>
@@ -597,14 +597,14 @@ export default function ProfilePage() {
           )}
 
           {activeTab === 'profile' ? (
-            <div className="grid grid-cols-1 xl:grid-cols-4 gap-8">
+            <div className="grid grid-cols-1 xl:grid-cols-4 gap-6 lg:gap-8">
               {/* Main Content */}
-              <div className="xl:col-span-3 space-y-8">
+              <div className="xl:col-span-3 space-y-6 lg:space-y-8 order-2 xl:order-1">
               {/* Profile Information */}
-              <div className="bg-white dark:bg-slate-800/50 backdrop-blur-xl border border-gray-200 dark:border-slate-700/50 rounded-3xl p-8 shadow-lg">
-                <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-8 flex items-center gap-3">
-                  <div className="w-8 h-8 bg-gradient-to-r from-purple-400 to-pink-400 rounded-lg flex items-center justify-center">
-                    <UserIcon className="w-5 h-5 text-white" />
+              <div className="bg-white dark:bg-slate-800/50 backdrop-blur-xl border border-gray-200 dark:border-slate-700/50 rounded-3xl p-6 sm:p-8 shadow-lg">
+                <h2 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white mb-6 sm:mb-8 flex items-center gap-3">
+                  <div className="w-6 h-6 sm:w-8 sm:h-8 bg-gradient-to-r from-purple-400 to-pink-400 rounded-lg flex items-center justify-center">
+                    <UserIcon className="w-4 h-4 sm:w-5 sm:h-5 text-white" />
                   </div>
                   Basic Information
                 </h2>
@@ -812,27 +812,27 @@ export default function ProfilePage() {
               </div>
 
               {/* Notification Settings */}
-              <div className="bg-white dark:bg-slate-800/50 backdrop-blur-xl border border-gray-200 dark:border-slate-700/50 rounded-3xl p-8 shadow-lg">
-                <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-8 flex items-center gap-3">
-                  <div className="w-8 h-8 bg-gradient-to-r from-blue-400 to-purple-400 rounded-lg flex items-center justify-center">
-                    <BellIcon className="w-5 h-5 text-white" />
+              <div className="bg-white dark:bg-slate-800/50 backdrop-blur-xl border border-gray-200 dark:border-slate-700/50 rounded-3xl p-6 sm:p-8 shadow-lg">
+                <h2 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white mb-6 sm:mb-8 flex items-center gap-3">
+                  <div className="w-6 h-6 sm:w-8 sm:h-8 bg-gradient-to-r from-blue-400 to-purple-400 rounded-lg flex items-center justify-center">
+                    <BellIcon className="w-4 h-4 sm:w-5 sm:h-5 text-white" />
                   </div>
                   Notifications
                 </h2>
 
-                <div className="space-y-6">
+                <div className="space-y-4 sm:space-y-6">
                   {[
                     { key: 'comments', label: 'Comments on my posts', icon: ChatBubbleLeftIcon },
                     { key: 'likes', label: 'Likes on my content', icon: HeartIcon },
                     { key: 'newPosts', label: 'New posts from subscriptions', icon: StarIcon },
                     { key: 'subscriptions', label: 'New subscribers', icon: BellIcon },
                   ].map((setting) => (
-                    <div key={setting.key} className="flex items-center justify-between p-4 bg-gray-50 dark:bg-slate-700/30 rounded-2xl">
-                      <div className="flex items-center gap-4">
-                        <div className="w-10 h-10 bg-gradient-to-r from-purple-400/20 to-pink-400/20 rounded-xl flex items-center justify-center">
-                          <setting.icon className="w-5 h-5 text-purple-600 dark:text-purple-400" />
+                    <div key={setting.key} className="flex items-center justify-between p-3 sm:p-4 bg-gray-50 dark:bg-slate-700/30 rounded-2xl">
+                      <div className="flex items-center gap-3 sm:gap-4">
+                        <div className="w-8 h-8 sm:w-10 sm:h-10 bg-gradient-to-r from-purple-400/20 to-pink-400/20 rounded-xl flex items-center justify-center">
+                          <setting.icon className="w-4 h-4 sm:w-5 sm:h-5 text-purple-600 dark:text-purple-400" />
                         </div>
-                        <span className="text-gray-900 dark:text-white font-medium">{setting.label}</span>
+                        <span className="text-gray-900 dark:text-white font-medium text-sm sm:text-base">{setting.label}</span>
                       </div>
                       <button
                         onClick={() => handleNestedChange('notifications', setting.key, !formData.notifications[setting.key as keyof typeof formData.notifications])}
@@ -852,26 +852,26 @@ export default function ProfilePage() {
               </div>
 
               {/* Privacy Settings */}
-              <div className="bg-white dark:bg-slate-800/50 backdrop-blur-xl border border-gray-200 dark:border-slate-700/50 rounded-3xl p-8 shadow-lg">
-                <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-8 flex items-center gap-3">
-                  <div className="w-8 h-8 bg-gradient-to-r from-emerald-400 to-cyan-400 rounded-lg flex items-center justify-center">
-                    <EyeIcon className="w-5 h-5 text-white" />
+              <div className="bg-white dark:bg-slate-800/50 backdrop-blur-xl border border-gray-200 dark:border-slate-700/50 rounded-3xl p-6 sm:p-8 shadow-lg">
+                <h2 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white mb-6 sm:mb-8 flex items-center gap-3">
+                  <div className="w-6 h-6 sm:w-8 sm:h-8 bg-gradient-to-r from-emerald-400 to-cyan-400 rounded-lg flex items-center justify-center">
+                    <EyeIcon className="w-4 h-4 sm:w-5 sm:h-5 text-white" />
                   </div>
                   Privacy & Security
                 </h2>
 
-                <div className="space-y-6">
+                <div className="space-y-4 sm:space-y-6">
                   {[
                     { key: 'showActivity', label: 'Show my activity publicly', icon: EyeIcon },
                     { key: 'allowMessages', label: 'Allow private messages', icon: ChatBubbleLeftIcon },
                     { key: 'showOnline', label: 'Show online status', icon: UserIcon },
                   ].map((setting) => (
-                    <div key={setting.key} className="flex items-center justify-between p-4 bg-gray-50 dark:bg-slate-700/30 rounded-2xl">
-                      <div className="flex items-center gap-4">
-                        <div className="w-10 h-10 bg-gradient-to-r from-emerald-400/20 to-cyan-400/20 rounded-xl flex items-center justify-center">
-                          <setting.icon className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
+                    <div key={setting.key} className="flex items-center justify-between p-3 sm:p-4 bg-gray-50 dark:bg-slate-700/30 rounded-2xl">
+                      <div className="flex items-center gap-3 sm:gap-4">
+                        <div className="w-8 h-8 sm:w-10 sm:h-10 bg-gradient-to-r from-emerald-400/20 to-cyan-400/20 rounded-xl flex items-center justify-center">
+                          <setting.icon className="w-4 h-4 sm:w-5 sm:h-5 text-emerald-600 dark:text-emerald-400" />
                         </div>
-                        <span className="text-gray-900 dark:text-white font-medium">{setting.label}</span>
+                        <span className="text-gray-900 dark:text-white font-medium text-sm sm:text-base">{setting.label}</span>
                       </div>
                       <button
                         onClick={() => handleNestedChange('privacy', setting.key, !formData.privacy[setting.key as keyof typeof formData.privacy])}
@@ -891,18 +891,42 @@ export default function ProfilePage() {
               </div>
             </div>
 
-            {/* Sidebar */}
-            <div className="xl:col-span-1 space-y-8">
+            {/* Sidebar - Mobile First */}
+            <div className="xl:col-span-1 space-y-6 lg:space-y-8 order-1 xl:order-2">
+              {/* Account Stats - First on mobile */}
+              <div className="bg-white dark:bg-slate-800/50 backdrop-blur-xl border border-gray-200 dark:border-slate-700/50 rounded-3xl p-5 sm:p-6 shadow-lg">
+                <h3 className="text-lg sm:text-xl font-bold text-gray-900 dark:text-white mb-4 sm:mb-6">Statistics</h3>
+                
+                <div className="space-y-3 sm:space-y-4">
+                  <div className="flex items-center justify-between p-2.5 sm:p-3 bg-gray-50 dark:bg-slate-700/30 rounded-2xl">
+                    <span className="text-gray-600 dark:text-slate-400 text-sm">Posts created</span>
+                    <span className="font-bold text-gray-900 dark:text-white">{userStats.postsCount}</span>
+                  </div>
+                  <div className="flex items-center justify-between p-2.5 sm:p-3 bg-gray-50 dark:bg-slate-700/30 rounded-2xl">
+                    <span className="text-gray-600 dark:text-slate-400 text-sm">Subscribers</span>
+                    <span className="font-bold text-gray-900 dark:text-white">{userStats.subscribersCount}</span>
+                  </div>
+                  <div className="flex items-center justify-between p-2.5 sm:p-3 bg-gray-50 dark:bg-slate-700/30 rounded-2xl">
+                    <span className="text-gray-600 dark:text-slate-400 text-sm">Earned</span>
+                    <span className="font-bold text-emerald-600 dark:text-emerald-400">${userStats.totalEarned.toFixed(2)}</span>
+                  </div>
+                  <div className="flex items-center justify-between p-2.5 sm:p-3 bg-gray-50 dark:bg-slate-700/30 rounded-2xl">
+                    <span className="text-gray-600 dark:text-slate-400 text-sm">Member since</span>
+                    <span className="font-bold text-gray-900 dark:text-white text-sm">{userStats.memberSince.toLocaleDateString()}</span>
+                  </div>
+                </div>
+              </div>
+
               {/* Theme Settings */}
-              <div className="bg-white dark:bg-slate-800/50 backdrop-blur-xl border border-gray-200 dark:border-slate-700/50 rounded-3xl p-6 shadow-lg">
-                <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-6 flex items-center gap-3">
-                  <div className="w-6 h-6 bg-gradient-to-r from-yellow-400 to-orange-400 rounded-lg flex items-center justify-center">
-                    <SunIcon className="w-4 h-4 text-white" />
+              <div className="bg-white dark:bg-slate-800/50 backdrop-blur-xl border border-gray-200 dark:border-slate-700/50 rounded-3xl p-5 sm:p-6 shadow-lg">
+                <h3 className="text-lg sm:text-xl font-bold text-gray-900 dark:text-white mb-4 sm:mb-6 flex items-center gap-3">
+                  <div className="w-5 h-5 sm:w-6 sm:h-6 bg-gradient-to-r from-yellow-400 to-orange-400 rounded-lg flex items-center justify-center">
+                    <SunIcon className="w-3 h-3 sm:w-4 sm:h-4 text-white" />
                   </div>
                   Theme
                 </h3>
                 
-                <div className="space-y-3">
+                <div className="space-y-2 sm:space-y-3">
                   {[
                     { value: 'light', label: 'Light', icon: SunIcon },
                     { value: 'dark', label: 'Dark', icon: MoonIcon },
@@ -911,69 +935,45 @@ export default function ProfilePage() {
                     <button
                       key={theme.value}
                       onClick={() => handleInputChange('theme', theme.value)}
-                      className={`w-full flex items-center gap-3 p-3 rounded-2xl transition-all duration-300 hover:scale-[1.02] ${
+                      className={`w-full flex items-center gap-3 p-2.5 sm:p-3 rounded-2xl transition-all duration-300 hover:scale-[1.02] ${
                         formData.theme === theme.value 
                           ? 'bg-gradient-to-r from-purple-500/20 to-pink-500/20 border border-purple-400/30 text-purple-700 dark:text-purple-300' 
                           : 'bg-gray-50 dark:bg-slate-700/30 text-gray-600 dark:text-slate-400 hover:bg-gray-100 dark:hover:bg-slate-700/50 hover:text-gray-900 dark:hover:text-white'
                       }`}
                     >
-                      <theme.icon className="w-5 h-5" />
-                      <span className="font-medium">{theme.label}</span>
+                      <theme.icon className="w-4 h-4 sm:w-5 sm:h-5" />
+                      <span className="font-medium text-sm sm:text-base">{theme.label}</span>
                     </button>
                   ))}
                 </div>
               </div>
 
-              {/* Account Stats */}
-              <div className="bg-white dark:bg-slate-800/50 backdrop-blur-xl border border-gray-200 dark:border-slate-700/50 rounded-3xl p-6 shadow-lg">
-                <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-6">Statistics</h3>
-                
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between p-3 bg-gray-50 dark:bg-slate-700/30 rounded-2xl">
-                    <span className="text-gray-600 dark:text-slate-400">Posts created</span>
-                    <span className="font-bold text-gray-900 dark:text-white">{userStats.postsCount}</span>
-                  </div>
-                  <div className="flex items-center justify-between p-3 bg-gray-50 dark:bg-slate-700/30 rounded-2xl">
-                    <span className="text-gray-600 dark:text-slate-400">Subscribers</span>
-                    <span className="font-bold text-gray-900 dark:text-white">{userStats.subscribersCount}</span>
-                  </div>
-                  <div className="flex items-center justify-between p-3 bg-gray-50 dark:bg-slate-700/30 rounded-2xl">
-                    <span className="text-gray-600 dark:text-slate-400">Earned</span>
-                    <span className="font-bold text-emerald-600 dark:text-emerald-400">${userStats.totalEarned.toFixed(2)}</span>
-                  </div>
-                  <div className="flex items-center justify-between p-3 bg-gray-50 dark:bg-slate-700/30 rounded-2xl">
-                    <span className="text-gray-600 dark:text-slate-400">Member since</span>
-                    <span className="font-bold text-gray-900 dark:text-white">{userStats.memberSince.toLocaleDateString()}</span>
-                  </div>
-                </div>
-              </div>
-
-              {/* Save Button */}
+              {/* Save Button - Mobile First */}
               <button
                 onClick={handleSave}
                 disabled={isSaving}
-                className="w-full px-6 py-4 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white font-bold rounded-2xl transition-all duration-300 hover:scale-105 hover:shadow-xl hover:shadow-purple-500/25 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="w-full px-4 sm:px-6 py-3 sm:py-4 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white font-bold rounded-2xl transition-all duration-300 hover:scale-105 hover:shadow-xl hover:shadow-purple-500/25 disabled:opacity-50 disabled:cursor-not-allowed text-sm sm:text-base"
               >
                 {isSaving ? 'Saving...' : 'Save changes'}
               </button>
 
               {/* Danger Zone */}
-              <div className="bg-red-500/10 backdrop-blur-xl border border-red-500/20 rounded-3xl p-6">
-                <h3 className="text-xl font-bold text-red-400 mb-4 flex items-center gap-3">
-                  <div className="w-6 h-6 bg-gradient-to-r from-red-400 to-rose-400 rounded-lg flex items-center justify-center">
-                    <ExclamationTriangleIcon className="w-4 h-4 text-white" />
+              <div className="bg-red-500/10 backdrop-blur-xl border border-red-500/20 rounded-3xl p-5 sm:p-6">
+                <h3 className="text-lg sm:text-xl font-bold text-red-400 mb-3 sm:mb-4 flex items-center gap-3">
+                  <div className="w-5 h-5 sm:w-6 sm:h-6 bg-gradient-to-r from-red-400 to-rose-400 rounded-lg flex items-center justify-center">
+                    <ExclamationTriangleIcon className="w-3 h-3 sm:w-4 sm:h-4 text-white" />
                   </div>
                   Danger Zone
                 </h3>
-                <p className="text-red-300 text-sm mb-6">
+                <p className="text-red-300 text-xs sm:text-sm mb-4 sm:mb-6">
                   Actions in this section are irreversible. Please be careful.
                 </p>
                 
                 <button
                   onClick={() => setShowDeleteConfirm(true)}
-                  className="w-full px-6 py-4 bg-gradient-to-r from-red-500 to-rose-500 hover:from-red-600 hover:to-rose-600 text-white font-bold rounded-2xl transition-all duration-300 hover:scale-105 hover:shadow-xl hover:shadow-red-500/25 flex items-center justify-center gap-3"
+                  className="w-full px-4 sm:px-6 py-3 sm:py-4 bg-gradient-to-r from-red-500 to-rose-500 hover:from-red-600 hover:to-rose-600 text-white font-bold rounded-2xl transition-all duration-300 hover:scale-105 hover:shadow-xl hover:shadow-red-500/25 flex items-center justify-center gap-3 text-sm sm:text-base"
                 >
-                  <TrashIcon className="w-5 h-5" />
+                  <TrashIcon className="w-4 h-4 sm:w-5 sm:h-5" />
                   Delete account permanently
                 </button>
               </div>
@@ -1009,28 +1009,28 @@ export default function ProfilePage() {
              />
              
              {/* Modal */}
-             <div className="relative w-full max-w-md bg-white dark:bg-slate-800 rounded-3xl p-8 shadow-2xl border border-gray-200 dark:border-slate-700/50">
+             <div className="relative w-full max-w-md bg-white dark:bg-slate-800 rounded-3xl p-6 sm:p-8 shadow-2xl border border-gray-200 dark:border-slate-700/50">
                {/* Warning Icon */}
-               <div className="w-16 h-16 bg-gradient-to-r from-red-500/20 to-rose-500/20 rounded-full flex items-center justify-center mx-auto mb-6">
-                 <ExclamationTriangleIcon className="w-8 h-8 text-red-500 dark:text-red-400" />
+               <div className="w-14 h-14 sm:w-16 sm:h-16 bg-gradient-to-r from-red-500/20 to-rose-500/20 rounded-full flex items-center justify-center mx-auto mb-4 sm:mb-6">
+                 <ExclamationTriangleIcon className="w-7 h-7 sm:w-8 sm:h-8 text-red-500 dark:text-red-400" />
                </div>
                
                {/* Header */}
-               <div className="text-center mb-8">
-                 <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
+               <div className="text-center mb-6 sm:mb-8">
+                 <h2 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white mb-2">
                    <span className="bg-gradient-to-r from-red-600 to-rose-600 dark:from-red-400 dark:to-rose-400 bg-clip-text text-transparent">
                      Delete account?
                    </span>
                  </h2>
-                 <p className="text-gray-600 dark:text-slate-400">
+                 <p className="text-gray-600 dark:text-slate-400 text-sm sm:text-base">
                    This action is irreversible. All your data, posts, and subscriptions will be deleted permanently.
                  </p>
                </div>
 
                {/* Warning List */}
-               <div className="bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/20 rounded-2xl p-4 mb-8">
-                 <p className="text-red-700 dark:text-red-300 text-sm font-medium mb-3">What will be deleted:</p>
-                 <ul className="text-red-600 dark:text-red-200 text-sm space-y-1">
+               <div className="bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/20 rounded-2xl p-3 sm:p-4 mb-6 sm:mb-8">
+                 <p className="text-red-700 dark:text-red-300 text-xs sm:text-sm font-medium mb-2 sm:mb-3">What will be deleted:</p>
+                 <ul className="text-red-600 dark:text-red-200 text-xs sm:text-sm space-y-1">
                    <li>• All your posts and content</li>
                    <li>• Subscriptions and subscribers</li>
                    <li>• Comments and likes</li>
@@ -1039,18 +1039,18 @@ export default function ProfilePage() {
                </div>
 
                {/* Buttons */}
-               <div className="flex gap-4">
+               <div className="flex gap-3 sm:gap-4">
                  <button
                    onClick={() => setShowDeleteConfirm(false)}
                    disabled={isDeleting}
-                   className="flex-1 px-6 py-3 bg-gray-100 dark:bg-slate-700/50 border border-gray-200 dark:border-slate-600/50 text-gray-700 dark:text-slate-300 hover:text-gray-900 dark:hover:text-white rounded-2xl font-medium transition-all duration-300 hover:bg-gray-200 dark:hover:bg-slate-600/50 disabled:opacity-50"
+                   className="flex-1 px-4 sm:px-6 py-2.5 sm:py-3 bg-gray-100 dark:bg-slate-700/50 border border-gray-200 dark:border-slate-600/50 text-gray-700 dark:text-slate-300 hover:text-gray-900 dark:hover:text-white rounded-2xl font-medium transition-all duration-300 hover:bg-gray-200 dark:hover:bg-slate-600/50 disabled:opacity-50 text-sm sm:text-base"
                  >
                    Cancel
                  </button>
                  <button
                    onClick={handleDeleteAccount}
                    disabled={isDeleting}
-                   className="flex-1 px-6 py-3 bg-gradient-to-r from-red-500 to-rose-500 hover:from-red-600 hover:to-rose-600 text-white rounded-2xl font-medium transition-all duration-300 hover:scale-105 disabled:opacity-50 disabled:hover:scale-100 flex items-center justify-center gap-2"
+                   className="flex-1 px-4 sm:px-6 py-2.5 sm:py-3 bg-gradient-to-r from-red-500 to-rose-500 hover:from-red-600 hover:to-rose-600 text-white rounded-2xl font-medium transition-all duration-300 hover:scale-105 disabled:opacity-50 disabled:hover:scale-100 flex items-center justify-center gap-2 text-sm sm:text-base"
                  >
                    {isDeleting ? (
                      <>

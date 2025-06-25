@@ -154,21 +154,21 @@ export default function DashboardPage() {
       <div className="relative z-10 pt-32 pb-8 lg:pt-40 lg:pb-12">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           {/* Header */}
-          <div className="flex items-center justify-between mb-12">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8 sm:mb-12">
             <div>
-              <h1 className="text-4xl lg:text-6xl font-bold bg-gradient-to-r from-purple-600 via-pink-600 to-purple-600 dark:from-purple-400 dark:via-pink-400 dark:to-purple-400 bg-clip-text text-transparent mb-4">
+              <h1 className="text-3xl sm:text-4xl lg:text-6xl font-bold bg-gradient-to-r from-purple-600 via-pink-600 to-purple-600 dark:from-purple-400 dark:via-pink-400 dark:to-purple-400 bg-clip-text text-transparent mb-2 sm:mb-4">
                 Дашборд создателя
               </h1>
-              <p className="text-gray-600 dark:text-slate-400 text-lg">
+              <p className="text-gray-600 dark:text-slate-400 text-base sm:text-lg">
                 Управляйте своим контентом и отслеживайте доходы
               </p>
             </div>
             
             <button
               onClick={() => setShowCreateModal(true)}
-              className="px-6 py-3 bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-2xl font-medium hover:shadow-lg transition-all hover:-translate-y-0.5 flex items-center gap-2"
+              className="px-4 sm:px-6 py-2.5 sm:py-3 bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-2xl font-medium hover:shadow-lg transition-all hover:-translate-y-0.5 flex items-center gap-2 text-sm sm:text-base w-full sm:w-auto justify-center"
             >
-              <PlusIcon className="w-5 h-5" />
+              <PlusIcon className="w-4 h-4 sm:w-5 sm:h-5" />
               Новый пост
             </button>
           </div>
@@ -183,126 +183,126 @@ export default function DashboardPage() {
           ) : (
             <>
               {/* Quick Stats */}
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-12">
-                <div className="bg-white dark:bg-slate-800/50 backdrop-blur-xl border border-gray-200 dark:border-purple-500/20 rounded-3xl p-6 shadow-lg">
-                  <div className="flex items-center justify-between mb-4">
-                    <div className="w-12 h-12 bg-gradient-to-r from-purple-500 to-pink-500 rounded-2xl flex items-center justify-center">
-                      <CurrencyDollarIcon className="w-6 h-6 text-white" />
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 mb-8 sm:mb-12">
+                <div className="bg-white dark:bg-slate-800/50 backdrop-blur-xl border border-gray-200 dark:border-purple-500/20 rounded-3xl p-4 sm:p-6 shadow-lg">
+                  <div className="flex items-center justify-between mb-3 sm:mb-4">
+                    <div className="w-10 h-10 sm:w-12 sm:h-12 bg-gradient-to-r from-purple-500 to-pink-500 rounded-2xl flex items-center justify-center">
+                      <CurrencyDollarIcon className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
                     </div>
-                    <div className="text-purple-600 dark:text-purple-400 text-sm font-medium">
+                    <div className="text-purple-600 dark:text-purple-400 text-xs sm:text-sm font-medium">
                       Доход за месяц
                     </div>
                   </div>
-                  <p className="text-gray-900 dark:text-white text-3xl font-bold">
+                  <p className="text-gray-900 dark:text-white text-2xl sm:text-3xl font-bold">
                     {dashboardData.stats.totalRevenue.toFixed(4)} SOL
                   </p>
-                  <p className="text-gray-500 dark:text-slate-500 text-sm mt-1">
+                  <p className="text-gray-500 dark:text-slate-500 text-xs sm:text-sm mt-1">
                     ≈ ${(dashboardData.stats.totalRevenue * solRate).toFixed(2)} USD
                   </p>
                 </div>
 
-                <div className="bg-white dark:bg-slate-800/50 backdrop-blur-xl border border-gray-200 dark:border-blue-500/20 rounded-3xl p-6 shadow-lg">
-                  <div className="flex items-center justify-between mb-4">
-                    <div className="w-12 h-12 bg-gradient-to-r from-blue-500 to-cyan-500 rounded-2xl flex items-center justify-center">
-                      <UsersIcon className="w-6 h-6 text-white" />
+                <div className="bg-white dark:bg-slate-800/50 backdrop-blur-xl border border-gray-200 dark:border-blue-500/20 rounded-3xl p-4 sm:p-6 shadow-lg">
+                  <div className="flex items-center justify-between mb-3 sm:mb-4">
+                    <div className="w-10 h-10 sm:w-12 sm:h-12 bg-gradient-to-r from-blue-500 to-cyan-500 rounded-2xl flex items-center justify-center">
+                      <UsersIcon className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
                     </div>
-                    <div className="text-blue-600 dark:text-blue-400 text-sm font-medium">
+                    <div className="text-blue-600 dark:text-blue-400 text-xs sm:text-sm font-medium">
                       +{dashboardData.stats.newSubscribers} новых
                     </div>
                   </div>
-                  <p className="text-gray-900 dark:text-white text-3xl font-bold">
+                  <p className="text-gray-900 dark:text-white text-2xl sm:text-3xl font-bold">
                     {dashboardData.stats.activeSubscribers}
                   </p>
-                  <p className="text-gray-500 dark:text-slate-500 text-sm mt-1">
+                  <p className="text-gray-500 dark:text-slate-500 text-xs sm:text-sm mt-1">
                     Активных подписчиков
                   </p>
                 </div>
 
-                <div className="bg-white dark:bg-slate-800/50 backdrop-blur-xl border border-gray-200 dark:border-emerald-500/20 rounded-3xl p-6 shadow-lg">
-                  <div className="flex items-center justify-between mb-4">
-                    <div className="w-12 h-12 bg-gradient-to-r from-emerald-500 to-teal-500 rounded-2xl flex items-center justify-center">
-                      <EyeIcon className="w-6 h-6 text-white" />
+                <div className="bg-white dark:bg-slate-800/50 backdrop-blur-xl border border-gray-200 dark:border-emerald-500/20 rounded-3xl p-4 sm:p-6 shadow-lg">
+                  <div className="flex items-center justify-between mb-3 sm:mb-4">
+                    <div className="w-10 h-10 sm:w-12 sm:h-12 bg-gradient-to-r from-emerald-500 to-teal-500 rounded-2xl flex items-center justify-center">
+                      <EyeIcon className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
                     </div>
-                    <div className="text-emerald-600 dark:text-emerald-400 text-sm font-medium">
+                    <div className="text-emerald-600 dark:text-emerald-400 text-xs sm:text-sm font-medium">
                       Просмотры
                     </div>
                   </div>
-                  <p className="text-gray-900 dark:text-white text-3xl font-bold">
+                  <p className="text-gray-900 dark:text-white text-2xl sm:text-3xl font-bold">
                     {dashboardData.stats.totalViews}
                   </p>
-                  <p className="text-gray-500 dark:text-slate-500 text-sm mt-1">
+                  <p className="text-gray-500 dark:text-slate-500 text-xs sm:text-sm mt-1">
                     {dashboardData.stats.totalLikes} лайков
                   </p>
                 </div>
 
-                <div className="bg-white dark:bg-slate-800/50 backdrop-blur-xl border border-gray-200 dark:border-orange-500/20 rounded-3xl p-6 shadow-lg">
-                  <div className="flex items-center justify-between mb-4">
-                    <div className="w-12 h-12 bg-gradient-to-r from-orange-500 to-red-500 rounded-2xl flex items-center justify-center">
-                      <ChatBubbleBottomCenterTextIcon className="w-6 h-6 text-white" />
+                <div className="bg-white dark:bg-slate-800/50 backdrop-blur-xl border border-gray-200 dark:border-orange-500/20 rounded-3xl p-4 sm:p-6 shadow-lg">
+                  <div className="flex items-center justify-between mb-3 sm:mb-4">
+                    <div className="w-10 h-10 sm:w-12 sm:h-12 bg-gradient-to-r from-orange-500 to-red-500 rounded-2xl flex items-center justify-center">
+                      <ChatBubbleBottomCenterTextIcon className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
                     </div>
-                    <div className="text-orange-600 dark:text-orange-400 text-sm font-medium">
+                    <div className="text-orange-600 dark:text-orange-400 text-xs sm:text-sm font-medium">
                       Комментарии
                     </div>
                   </div>
-                  <p className="text-gray-900 dark:text-white text-3xl font-bold">
+                  <p className="text-gray-900 dark:text-white text-2xl sm:text-3xl font-bold">
                     {dashboardData.stats.totalComments}
                   </p>
-                  <p className="text-gray-500 dark:text-slate-500 text-sm mt-1">
+                  <p className="text-gray-500 dark:text-slate-500 text-xs sm:text-sm mt-1">
                     Всего комментариев
                   </p>
                 </div>
               </div>
 
               {/* Revenue Sources Summary */}
-              <div className="mb-12">
-                <div className="bg-white dark:bg-slate-800/50 backdrop-blur-xl border border-gray-200 dark:border-slate-700/50 rounded-3xl p-6 shadow-lg">
-                  <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-6">
+              <div className="mb-8 sm:mb-12">
+                <div className="bg-white dark:bg-slate-800/50 backdrop-blur-xl border border-gray-200 dark:border-slate-700/50 rounded-3xl p-4 sm:p-6 shadow-lg">
+                  <h2 className="text-lg sm:text-xl font-bold text-gray-900 dark:text-white mb-4 sm:mb-6">
                     Источники дохода за текущий месяц
                   </h2>
-                  <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                    <div className="flex items-center gap-3 p-4 bg-gradient-to-r from-blue-50 to-blue-100 dark:from-blue-900/20 dark:to-blue-800/20 rounded-2xl">
-                      <div className="w-10 h-10 bg-blue-500 rounded-xl flex items-center justify-center">
-                        <UsersIcon className="w-5 h-5 text-white" />
+                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
+                    <div className="flex items-center gap-3 p-3 sm:p-4 bg-gradient-to-r from-blue-50 to-blue-100 dark:from-blue-900/20 dark:to-blue-800/20 rounded-2xl">
+                      <div className="w-8 h-8 sm:w-10 sm:h-10 bg-blue-500 rounded-xl flex items-center justify-center">
+                        <UsersIcon className="w-4 h-4 sm:w-5 sm:h-5 text-white" />
                       </div>
                       <div>
-                        <p className="text-sm text-gray-600 dark:text-slate-400">Подписки</p>
-                        <p className="text-lg font-bold text-gray-900 dark:text-white">
+                        <p className="text-xs sm:text-sm text-gray-600 dark:text-slate-400">Подписки</p>
+                        <p className="text-base sm:text-lg font-bold text-gray-900 dark:text-white">
                           {dashboardData.revenue.subscriptions.toFixed(4)} SOL
                         </p>
                       </div>
                     </div>
                     
-                    <div className="flex items-center gap-3 p-4 bg-gradient-to-r from-purple-50 to-purple-100 dark:from-purple-900/20 dark:to-purple-800/20 rounded-2xl">
-                      <div className="w-10 h-10 bg-purple-500 rounded-xl flex items-center justify-center">
-                        <DocumentTextIcon className="w-5 h-5 text-white" />
+                    <div className="flex items-center gap-3 p-3 sm:p-4 bg-gradient-to-r from-purple-50 to-purple-100 dark:from-purple-900/20 dark:to-purple-800/20 rounded-2xl">
+                      <div className="w-8 h-8 sm:w-10 sm:h-10 bg-purple-500 rounded-xl flex items-center justify-center">
+                        <DocumentTextIcon className="w-4 h-4 sm:w-5 sm:h-5 text-white" />
                       </div>
                       <div>
-                        <p className="text-sm text-gray-600 dark:text-slate-400">Платные посты</p>
-                        <p className="text-lg font-bold text-gray-900 dark:text-white">
+                        <p className="text-xs sm:text-sm text-gray-600 dark:text-slate-400">Платные посты</p>
+                        <p className="text-base sm:text-lg font-bold text-gray-900 dark:text-white">
                           {dashboardData.revenue.posts.toFixed(4)} SOL
                         </p>
                       </div>
                     </div>
                     
-                    <div className="flex items-center gap-3 p-4 bg-gradient-to-r from-yellow-50 to-yellow-100 dark:from-yellow-900/20 dark:to-yellow-800/20 rounded-2xl">
-                      <div className="w-10 h-10 bg-yellow-500 rounded-xl flex items-center justify-center">
-                        <ChatBubbleLeftEllipsisIcon className="w-5 h-5 text-white" />
+                    <div className="flex items-center gap-3 p-3 sm:p-4 bg-gradient-to-r from-yellow-50 to-yellow-100 dark:from-yellow-900/20 dark:to-yellow-800/20 rounded-2xl">
+                      <div className="w-8 h-8 sm:w-10 sm:h-10 bg-yellow-500 rounded-xl flex items-center justify-center">
+                        <ChatBubbleLeftEllipsisIcon className="w-4 h-4 sm:w-5 sm:h-5 text-white" />
                       </div>
                       <div>
-                        <p className="text-sm text-gray-600 dark:text-slate-400">PPV сообщения</p>
-                        <p className="text-lg font-bold text-gray-900 dark:text-white">
+                        <p className="text-xs sm:text-sm text-gray-600 dark:text-slate-400">PPV сообщения</p>
+                        <p className="text-base sm:text-lg font-bold text-gray-900 dark:text-white">
                           {dashboardData.revenue.messages.toFixed(4)} SOL
                         </p>
                       </div>
                     </div>
                     
-                    <div className="flex items-center gap-3 p-4 bg-gradient-to-r from-emerald-50 to-emerald-100 dark:from-emerald-900/20 dark:to-emerald-800/20 rounded-2xl">
-                      <div className="w-10 h-10 bg-emerald-500 rounded-xl flex items-center justify-center">
-                        <GiftIcon className="w-5 h-5 text-white" />
+                    <div className="flex items-center gap-3 p-3 sm:p-4 bg-gradient-to-r from-emerald-50 to-emerald-100 dark:from-emerald-900/20 dark:to-emerald-800/20 rounded-2xl">
+                      <div className="w-8 h-8 sm:w-10 sm:h-10 bg-emerald-500 rounded-xl flex items-center justify-center">
+                        <GiftIcon className="w-4 h-4 sm:w-5 sm:h-5 text-white" />
                       </div>
                       <div>
-                        <p className="text-sm text-gray-600 dark:text-slate-400">Чаевые</p>
-                        <p className="text-lg font-bold text-gray-900 dark:text-white">
+                        <p className="text-xs sm:text-sm text-gray-600 dark:text-slate-400">Чаевые</p>
+                        <p className="text-base sm:text-lg font-bold text-gray-900 dark:text-white">
                           {dashboardData.revenue.tips.toFixed(4)} SOL
                         </p>
                       </div>
@@ -315,12 +315,12 @@ export default function DashboardPage() {
               {user?.id && <RevenueChart creatorId={user.id} />}
 
               {/* Recent Posts */}
-              <div className="mt-12">
-                <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-6">
+              <div className="mt-8 sm:mt-12">
+                <h2 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white mb-4 sm:mb-6">
                   Последние посты
                 </h2>
                 {dashboardData.posts.length > 0 ? (
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
                     {dashboardData.posts.map((post) => (
                       <PostCard 
                         key={post.id}
@@ -354,16 +354,16 @@ export default function DashboardPage() {
                     ))}
                   </div>
                 ) : (
-                  <div className="bg-white dark:bg-slate-800/50 backdrop-blur-xl border border-gray-200 dark:border-slate-700/50 rounded-3xl p-12 text-center">
-                    <PhotoIcon className="w-16 h-16 text-gray-400 dark:text-slate-600 mx-auto mb-4" />
+                  <div className="bg-white dark:bg-slate-800/50 backdrop-blur-xl border border-gray-200 dark:border-slate-700/50 rounded-3xl p-8 sm:p-12 text-center">
+                    <PhotoIcon className="w-12 h-12 sm:w-16 sm:h-16 text-gray-400 dark:text-slate-600 mx-auto mb-4" />
                     <p className="text-gray-600 dark:text-slate-400 mb-4">
                       У вас пока нет постов
                     </p>
                     <button
                       onClick={() => setShowCreateModal(true)}
-                      className="px-6 py-3 bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-2xl font-medium hover:shadow-lg transition-all hover:-translate-y-0.5 inline-flex items-center gap-2"
+                      className="px-4 sm:px-6 py-2.5 sm:py-3 bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-2xl font-medium hover:shadow-lg transition-all hover:-translate-y-0.5 inline-flex items-center gap-2 text-sm sm:text-base"
                     >
-                      <PlusIcon className="w-5 h-5" />
+                      <PlusIcon className="w-4 h-4 sm:w-5 sm:h-5" />
                       Создать первый пост
                     </button>
                   </div>
