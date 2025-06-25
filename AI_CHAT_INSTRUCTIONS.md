@@ -734,6 +734,20 @@ node scripts/check-price-discrepancy.js
 - **Test**: https://fonana.me/test/mobile-auth
 - **Docs**: MOBILE_WALLET_AUTH_FIX.md
 
+### Authentication Issues Fix (December 25, 2024)
+- **Problems**: 
+  - "Authentication failed" when connecting wallet
+  - White screen with "Application error" on mobile devices
+- **Causes**:
+  - Missing `JWT_SECRET` environment variable on production
+  - Missing `.next/routes-manifest.json` (incomplete build)
+- **Solutions**:
+  - Added `JWT_SECRET` to production .env file
+  - Used `fix-white-screen.sh` script to rebuild
+  - Disabled DEBUG_MODE in production files
+- **Important**: Always ensure `JWT_SECRET` or `NEXTAUTH_SECRET` is set!
+- **Docs**: AUTH_ISSUES_FIX_DECEMBER_2024.md
+
 ### Browser Detection Fix (December 25, 2024)
 - **Problem**: Desktop browsers with Phantom extension were incorrectly detected as embedded wallet browsers
 - **Solution**: 
