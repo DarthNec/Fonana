@@ -534,9 +534,9 @@ export default function PostCard({
       <div className="relative z-10">
         {/* Creator Info Header */}
         {showCreator && (
-          <div className="flex items-center gap-3 p-6 pb-4">
+          <div className="flex items-center gap-3 p-4 sm:p-6 pb-3 sm:pb-4">
             <Link href={getProfileLink({ id: creator.id, nickname: creator.nickname || creator.username })} className="flex items-center gap-3 group/creator">
-              <div className="relative w-12 h-12 rounded-2xl overflow-hidden border border-purple-500/30 bg-gradient-to-br from-purple-500/20 to-pink-500/20">
+              <div className="relative w-10 sm:w-12 h-10 sm:h-12 rounded-2xl overflow-hidden border border-purple-500/30 bg-gradient-to-br from-purple-500/20 to-pink-500/20">
                 <Avatar
                   src={creator.avatar}
                   alt={creator.name}
@@ -547,19 +547,19 @@ export default function PostCard({
               </div>
               <div>
                 <div className="flex items-center gap-2">
-                  <h3 className="font-semibold text-gray-900 dark:text-white group-hover/creator:text-purple-600 dark:group-hover/creator:text-purple-300 transition-colors">
+                  <h3 className="font-semibold text-gray-900 dark:text-white group-hover/creator:text-purple-600 dark:group-hover/creator:text-purple-300 transition-colors text-sm sm:text-base">
                     {creator.name}
                   </h3>
                   {creator.isVerified && (
-                    <CheckBadgeIcon className="w-4 h-4 text-blue-500 dark:text-blue-400" />
+                    <CheckBadgeIcon className="w-3.5 sm:w-4 h-3.5 sm:h-4 text-blue-500 dark:text-blue-400" />
                   )}
                 </div>
-                <p className="text-gray-600 dark:text-slate-400 text-sm">@{creator.username}</p>
+                <p className="text-gray-600 dark:text-slate-400 text-xs sm:text-sm">@{creator.username}</p>
               </div>
             </Link>
             
             <div className="ml-auto flex items-center gap-2">
-              <span className="text-gray-600 dark:text-slate-400 text-sm">
+              <span className="text-gray-600 dark:text-slate-400 text-xs sm:text-sm">
                 {formatDate(createdAt)}
               </span>
               
@@ -599,17 +599,17 @@ export default function PostCard({
         )}
 
         {/* Content */}
-        <div className={`px-6 ${!showCreator ? 'pt-6' : ''}`}>
+        <div className={`px-4 sm:px-6 ${!showCreator ? 'pt-4 sm:pt-6' : ''}`}>
           {/* Category Badge */}
           {category && (
-            <div className="inline-flex items-center gap-2 px-3 py-1 bg-gradient-to-r from-blue-500/20 to-cyan-500/20 text-blue-700 dark:text-blue-300 text-xs font-medium rounded-full border border-blue-500/30 mb-3">
+            <div className="inline-flex items-center gap-2 px-2.5 sm:px-3 py-1 bg-gradient-to-r from-blue-500/20 to-cyan-500/20 text-blue-700 dark:text-blue-300 text-xs font-medium rounded-full border border-blue-500/30 mb-3">
               {category}
             </div>
           )}
           
           {/* Sellable Post Badge */}
           {isSellable && (
-            <div className={`inline-flex items-center gap-2 px-3 py-1 text-sm font-medium rounded-full mb-3 ml-2 ${
+            <div className={`inline-flex items-center gap-2 px-2.5 sm:px-3 py-1 text-xs sm:text-sm font-medium rounded-full mb-3 ml-2 ${
               auctionStatus === 'SOLD' || soldAt
                 ? 'bg-gradient-to-r from-gray-500/20 to-slate-500/20 text-gray-700 dark:text-gray-300 border border-gray-500/30'
                 : sellType === 'AUCTION' && auctionStatus === 'ACTIVE'
@@ -661,7 +661,7 @@ export default function PostCard({
           )}
           
           {/* Title */}
-          <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-3 leading-tight">
+          <h2 className="text-lg sm:text-xl font-bold text-gray-900 dark:text-white mb-3 leading-tight">
             {title}
           </h2>
 
@@ -670,7 +670,7 @@ export default function PostCard({
             <>
               {/* Content Preview */}
               <div className="mb-4">
-                <p className={`text-gray-700 dark:text-slate-300 leading-relaxed ${!isExpanded && content.length > 200 ? 'line-clamp-3' : ''}`}>
+                <p className={`text-sm sm:text-base text-gray-700 dark:text-slate-300 leading-relaxed ${!isExpanded && content.length > 200 ? 'line-clamp-3' : ''}`}>
                   {content}
                 </p>
                 {content.length > 200 && (
@@ -683,9 +683,9 @@ export default function PostCard({
                 )}
               </div>
 
-              {/* Media Content */}
+              {/* Media Content - Full width on mobile */}
               {(mediaUrl || thumbnail || image) && (
-                <div className="relative -mx-6 mb-4 overflow-hidden bg-gradient-to-br from-purple-900/10 to-pink-900/10">
+                <div className="relative -mx-4 sm:-mx-6 mb-4 overflow-hidden bg-gradient-to-br from-purple-900/10 to-pink-900/10">
                   <OptimizedImage
                     src={mediaUrl || image || null}
                     thumbnail={thumbnail || null}
@@ -706,17 +706,17 @@ export default function PostCard({
             </>
           ) : (
             /* Locked Content */
-            <div className="relative -mx-6 mb-4 bg-gradient-to-br from-gray-100 dark:from-slate-800/50 to-gray-50 dark:to-slate-900/70 backdrop-blur-sm border-y border-gray-200 dark:border-slate-700/50">
-              <div className="py-16 px-6 text-center">
-                <LockClosedIcon className="w-16 h-16 text-gray-400 dark:text-slate-500 mx-auto mb-4" />
-                <div className="text-gray-900 dark:text-slate-300 font-semibold text-lg mb-2">
+            <div className="relative -mx-4 sm:-mx-6 mb-4 bg-gradient-to-br from-gray-100 dark:from-slate-800/50 to-gray-50 dark:to-slate-900/70 backdrop-blur-sm border-y border-gray-200 dark:border-slate-700/50">
+              <div className="py-12 sm:py-16 px-6 text-center">
+                <LockClosedIcon className="w-12 sm:w-16 h-12 sm:h-16 text-gray-400 dark:text-slate-500 mx-auto mb-4" />
+                <div className="text-gray-900 dark:text-slate-300 font-semibold text-base sm:text-lg mb-2">
                   {needsPayment ? 'Paid Content' : 
                    isTierContent && tierInfo ? `${tierInfo.required.icon} ${tierInfo.required.name} Content` :
                    isLegacyVipContent ? 'VIP Content' : 
                    isSubscriberContent ? 'Subscribers Only' : 
                    'Locked Content'}
                 </div>
-                <p className="text-gray-600 dark:text-slate-400 text-sm mb-4 max-w-sm mx-auto">
+                <p className="text-gray-600 dark:text-slate-400 text-xs sm:text-sm mb-4 max-w-sm mx-auto">
                   {needsPayment 
                     ? 'Purchase access to this content' 
                     : isTierContent && tierInfo
@@ -746,10 +746,10 @@ export default function PostCard({
                         className="mb-4 max-w-sm mx-auto"
                       />
                     ) : (
-                      <div className="text-purple-600 dark:text-purple-400 font-bold text-2xl mb-4">
+                      <div className="text-purple-600 dark:text-purple-400 font-bold text-xl sm:text-2xl mb-4">
                         {price} {currency}
                         {currency === 'SOL' && price && (
-                          <div className="text-sm font-normal text-gray-600 dark:text-gray-400">
+                          <div className="text-xs sm:text-sm font-normal text-gray-600 dark:text-gray-400">
                             ≈ ${(price * solRate).toFixed(2)} USD
                           </div>
                         )}
@@ -785,7 +785,7 @@ export default function PostCard({
                       }, preferredTier as 'basic' | 'premium' | 'vip')
                     }
                   }}
-                  className="px-6 py-3 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white rounded-xl font-medium transition-all transform hover:scale-105"
+                  className="px-5 sm:px-6 py-2.5 sm:py-3 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white rounded-xl font-medium transition-all transform hover:scale-105 text-sm sm:text-base"
                 >
                   {needsPayment 
                     ? flashSale 
@@ -953,45 +953,45 @@ export default function PostCard({
         </div>
 
         {/* Actions */}
-        <div className="flex items-center justify-between p-6 pt-4 border-t border-gray-200 dark:border-slate-700/50">
-          <div className="flex items-center gap-6">
+        <div className="flex items-center justify-between p-4 sm:p-6 pt-3 sm:pt-4 border-t border-gray-200 dark:border-slate-700/50">
+          <div className="flex items-center gap-4 sm:gap-6">
             {/* Like */}
             <button
               onClick={handleLike}
-              className="flex items-center gap-2 text-gray-600 dark:text-slate-400 hover:text-red-500 dark:hover:text-red-400 transition-colors group/like"
+              className="flex items-center gap-1.5 sm:gap-2 text-gray-600 dark:text-slate-400 hover:text-red-500 dark:hover:text-red-400 transition-colors group/like"
             >
               {isLiked ? (
-                <HeartSolidIcon className="w-5 h-5 text-red-500" />
+                <HeartSolidIcon className="w-4 sm:w-5 h-4 sm:h-5 text-red-500" />
               ) : (
-                <HeartIcon className="w-5 h-5 group-hover/like:scale-110 transition-transform" />
+                <HeartIcon className="w-4 sm:w-5 h-4 sm:h-5 group-hover/like:scale-110 transition-transform" />
               )}
-              <span className="font-medium">{likesCount}</span>
+              <span className="font-medium text-sm sm:text-base">{likesCount}</span>
             </button>
 
             {/* Comments */}
             <button
               onClick={() => setShowComments(!showComments)}
-              className="flex items-center gap-2 text-gray-600 dark:text-slate-400 hover:text-blue-500 dark:hover:text-blue-400 transition-colors group/comment"
+              className="flex items-center gap-1.5 sm:gap-2 text-gray-600 dark:text-slate-400 hover:text-blue-500 dark:hover:text-blue-400 transition-colors group/comment"
             >
-              <ChatBubbleLeftIcon className="w-5 h-5 group-hover/comment:scale-110 transition-transform" />
-              <span className="font-medium">{comments}</span>
+              <ChatBubbleLeftIcon className="w-4 sm:w-5 h-4 sm:h-5 group-hover/comment:scale-110 transition-transform" />
+              <span className="font-medium text-sm sm:text-base">{comments}</span>
               {showComments ? (
-                <ChevronUpIcon className="w-4 h-4" />
+                <ChevronUpIcon className="w-3 sm:w-4 h-3 sm:h-4" />
               ) : (
-                <ChevronDownIcon className="w-4 h-4" />
+                <ChevronDownIcon className="w-3 sm:w-4 h-3 sm:h-4" />
               )}
             </button>
 
             {/* Views */}
-            <div className="flex items-center gap-2 text-gray-600 dark:text-slate-400">
-              <EyeIcon className="w-5 h-5" />
-              <span className="font-medium">{Math.floor(likes * 4.2)}</span>
+            <div className="flex items-center gap-1.5 sm:gap-2 text-gray-600 dark:text-slate-400">
+              <EyeIcon className="w-4 sm:w-5 h-4 sm:h-5" />
+              <span className="font-medium text-sm sm:text-base">{Math.floor(likes * 4.2)}</span>
             </div>
           </div>
 
           {/* Share */}
-          <button className="flex items-center gap-2 text-gray-600 dark:text-slate-400 hover:text-purple-600 dark:hover:text-purple-400 transition-colors group/share">
-            <ShareIcon className="w-5 h-5 group-hover/share:scale-110 transition-transform" />
+          <button className="flex items-center gap-1.5 sm:gap-2 text-gray-600 dark:text-slate-400 hover:text-purple-600 dark:hover:text-purple-400 transition-colors group/share">
+            <ShareIcon className="w-4 sm:w-5 h-4 sm:h-5 group-hover/share:scale-110 transition-transform" />
           </button>
         </div>
 

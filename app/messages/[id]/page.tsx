@@ -11,7 +11,9 @@ import {
   LockClosedIcon,
   SparklesIcon,
   CurrencyDollarIcon,
-  XMarkIcon
+  XMarkIcon,
+  ChatBubbleLeftEllipsisIcon,
+  VideoCameraIcon
 } from '@heroicons/react/24/outline'
 import Link from 'next/link'
 import OptimizedImage from '@/components/OptimizedImage'
@@ -604,322 +606,340 @@ export default function ConversationPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-slate-900 flex flex-col">
+    <div className="min-h-screen bg-white dark:bg-slate-900 flex flex-col">
       {/* Header */}
-      <div className="fixed top-16 left-0 right-0 bg-white dark:bg-slate-800 border-b border-gray-200 dark:border-slate-700 z-10">
-        <div className="flex items-center gap-4 p-4">
-          <Link
-            href="/messages"
-            className="p-2 hover:bg-gray-100 dark:hover:bg-slate-700 rounded-lg transition-colors"
+      <div className="sticky top-0 z-40 bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl border-b border-gray-200 dark:border-slate-700/50">
+        <div className="flex items-center gap-3 p-3 sm:p-4">
+          <Link 
+            href="/messages" 
+            className="p-2 hover:bg-gray-100 dark:hover:bg-slate-800 rounded-xl transition-colors"
           >
-            <ArrowLeftIcon className="w-5 h-5 text-gray-600 dark:text-gray-400" />
+            <ArrowLeftIcon className="w-5 h-5 text-gray-600 dark:text-slate-400" />
           </Link>
           
           {participant && (
-            <Link
+            <Link 
               href={`/creator/${participant.id}`}
-              className="flex items-center gap-3 flex-1"
+              className="flex items-center gap-3 flex-1 hover:bg-gray-50 dark:hover:bg-slate-800/50 p-2 -m-2 rounded-xl transition-colors"
             >
-              <OptimizedImage
-                src={participant.avatar || null}
-                alt={participant.nickname}
-                className="w-10 h-10 rounded-full"
-              />
-              <div>
-                <h2 className="font-semibold text-gray-900 dark:text-white">
+              <div className="relative w-10 h-10 rounded-xl overflow-hidden bg-gradient-to-br from-purple-500/20 to-pink-500/20">
+                <img
+                  src={participant.avatar || `/api/avatar/${participant.nickname}`}
+                  alt={participant.nickname}
+                  className="w-full h-full object-cover"
+                />
+              </div>
+              <div className="flex-1">
+                <h2 className="font-semibold text-gray-900 dark:text-white text-sm sm:text-base">
                   {participant.fullName || participant.nickname}
                 </h2>
-                <p className="text-sm text-gray-500 dark:text-gray-400">@{participant.nickname}</p>
+                <p className="text-xs sm:text-sm text-gray-600 dark:text-slate-400">
+                  @{participant.nickname}
+                </p>
               </div>
             </Link>
           )}
+
+          {/* Tip Button */}
+          <button
+            onClick={() => setShowTipModal(true)}
+            className="p-2.5 bg-gradient-to-r from-yellow-500 to-orange-500 hover:from-yellow-600 hover:to-orange-600 text-white rounded-xl transition-all transform hover:scale-105 flex items-center gap-1.5"
+          >
+            <SparklesIcon className="w-4 h-4" />
+            <span className="text-sm font-medium hidden sm:inline">Tip</span>
+          </button>
         </div>
       </div>
 
       {/* Messages */}
-      <div className="flex-1 overflow-y-auto pt-44 pb-32 px-4 mt-20">
-        <div className="max-w-3xl mx-auto space-y-4">
-          {messages.map((message) => (
-            <div
-              key={message.id}
-              className={`flex ${message.isOwn ? 'justify-end' : 'justify-start'}`}
-            >
-              <div className={`max-w-[70%] ${message.isOwn ? 'order-2' : 'order-1'}`}>
-                {!message.isOwn && (
-                  <div className="flex items-center gap-2 mb-1">
-                    <OptimizedImage
-                      src={message.sender.avatar || null}
-                      alt={message.sender.nickname}
-                      className="w-6 h-6 rounded-full"
-                    />
-                    <span className="text-xs text-gray-500 dark:text-gray-400">
-                      {message.sender.nickname}
-                    </span>
+      <div className="flex-1 overflow-y-auto p-4 space-y-4">
+        {isLoading ? (
+          <div className="flex items-center justify-center py-20">
+            <div className="text-center">
+              <div className="w-12 h-12 border-3 border-purple-500/30 border-t-purple-500 rounded-full animate-spin mx-auto mb-3"></div>
+              <p className="text-gray-600 dark:text-slate-400 text-sm">Loading messages...</p>
+            </div>
+          </div>
+        ) : messages.length === 0 ? (
+          <div className="text-center py-20">
+            <ChatBubbleLeftEllipsisIcon className="w-16 h-16 text-gray-400 dark:text-slate-600 mx-auto mb-4" />
+            <h3 className="text-lg font-semibold text-gray-700 dark:text-slate-300 mb-2">No messages yet</h3>
+            <p className="text-gray-600 dark:text-slate-400">Send a message to start the conversation</p>
+          </div>
+        ) : (
+          <>
+            {hasMore && (
+              <button
+                onClick={() => loadMessages(messages[0]?.id)}
+                className="w-full py-2 text-purple-600 dark:text-purple-400 hover:text-purple-700 dark:hover:text-purple-300 font-medium text-sm"
+              >
+                Load earlier messages
+              </button>
+            )}
+            
+            {messages.map((message) => (
+              <div
+                key={message.id}
+                className={`flex ${message.isOwn ? 'justify-end' : 'justify-start'}`}
+              >
+                {/* Tip Message */}
+                {message.metadata?.type === 'tip' && (
+                  <div className="max-w-xs">
+                    <div className={`p-4 rounded-2xl ${
+                      message.isOwn 
+                        ? 'bg-gradient-to-r from-yellow-500 to-orange-500 text-white' 
+                        : 'bg-yellow-100 dark:bg-yellow-900/20 text-yellow-800 dark:text-yellow-200'
+                    }`}>
+                      <div className="flex items-center gap-2 mb-2">
+                        <SparklesIcon className="w-5 h-5" />
+                        <span className="font-bold">Tip Sent!</span>
+                      </div>
+                      <p className="text-sm">
+                        {message.isOwn ? 'You' : message.metadata.senderName} sent {formatSolAmount(message.metadata.amount || 0)} SOL
+                      </p>
+                      {message.metadata.tipLevel && (
+                        <div className="mt-2 text-xs font-medium">
+                          {message.metadata.tipLevel === 'legendary' && '🔥 Legendary Tip!'}
+                          {message.metadata.tipLevel === 'large' && '💎 Large Tip!'}
+                          {message.metadata.tipLevel === 'medium' && '⭐ Nice Tip!'}
+                          {message.metadata.tipLevel === 'small' && '✨ Tip!'}
+                        </div>
+                      )}
+                    </div>
+                    <div className="text-xs text-gray-500 dark:text-slate-500 mt-1 px-2">
+                      {new Date(message.createdAt).toLocaleTimeString('en-US', {
+                        hour: '2-digit',
+                        minute: '2-digit'
+                      })}
+                    </div>
                   </div>
                 )}
-                
-                {/* Специальное отображение для донатов */}
-                {message.metadata?.type === 'tip' ? (
-                  <div className="w-full flex justify-center my-6">
-                    <div className={`
-                      relative p-6 rounded-2xl text-center max-w-sm
-                      ${message.metadata.tipLevel === 'legendary' 
-                        ? 'bg-gradient-to-r from-yellow-400 via-red-500 to-pink-500 animate-pulse shadow-2xl' 
-                        : message.metadata.tipLevel === 'large'
-                        ? 'bg-gradient-to-r from-yellow-400 to-yellow-600 shadow-xl'
-                        : message.metadata.tipLevel === 'medium'
-                        ? 'bg-gradient-to-r from-purple-500 to-pink-500 shadow-lg'
-                        : 'bg-gradient-to-r from-blue-500 to-cyan-500 shadow-md'
-                      }
-                    `}>
-                      {/* Иконка в зависимости от уровня */}
-                      <div className="text-white mb-3">
-                        {message.metadata.tipLevel === 'legendary' ? (
-                          <div className="text-6xl animate-bounce">💎</div>
-                        ) : message.metadata.tipLevel === 'large' ? (
-                          <div className="text-5xl">👑</div>
-                        ) : message.metadata.tipLevel === 'medium' ? (
-                          <div className="text-4xl">💜</div>
-                        ) : (
-                          <div className="text-3xl">💙</div>
-                        )}
-                      </div>
-                      
-                      {/* Текст доната */}
-                      <div className="text-white">
-                        <div className="font-bold text-lg mb-1">
-                          {message.isOwn 
-                            ? `You sent a ${message.metadata.tipLevel === 'legendary' ? 'LEGENDARY' : message.metadata.tipLevel === 'large' ? 'ROYAL' : message.metadata.tipLevel === 'medium' ? 'GENEROUS' : ''} tip!`
-                            : `${message.metadata.senderName} sent a ${message.metadata.tipLevel === 'legendary' ? 'LEGENDARY' : message.metadata.tipLevel === 'large' ? 'ROYAL' : message.metadata.tipLevel === 'medium' ? 'GENEROUS' : ''} tip!`
-                          }
+
+                {/* Regular Message */}
+                {!message.metadata?.type && (
+                  <div className={`max-w-[70%] ${message.isOwn ? 'items-end' : 'items-start'}`}>
+                    <div className={`rounded-2xl p-3 ${
+                      message.isOwn 
+                        ? 'bg-gradient-to-r from-purple-600 to-pink-600 text-white' 
+                        : 'bg-gray-100 dark:bg-slate-800'
+                    }`}>
+                      {/* PPV Content */}
+                      {message.isPaid && !message.isPurchased && !message.isOwn && (
+                        <div className="space-y-3">
+                          {message.mediaUrl && (
+                            <div className="relative rounded-xl overflow-hidden">
+                              {message.mediaType === 'image' ? (
+                                <div className="relative">
+                                  <img
+                                    src={message.mediaUrl}
+                                    alt="Premium content"
+                                    className="w-full max-w-xs blur-xl opacity-50"
+                                  />
+                                  <div className="absolute inset-0 flex items-center justify-center">
+                                    <LockClosedIcon className="w-8 h-8 text-white drop-shadow-lg" />
+                                  </div>
+                                </div>
+                              ) : (
+                                <div className="bg-gray-900/50 p-8 rounded-xl">
+                                  <LockClosedIcon className="w-8 h-8 text-white mx-auto" />
+                                </div>
+                              )}
+                            </div>
+                          )}
+                          
+                          <div className="text-center">
+                            <p className="font-medium mb-2">💰 Premium Message</p>
+                            <p className="text-sm opacity-90 mb-3">
+                              Unlock this message for {message.price} SOL
+                            </p>
+                            <button
+                              onClick={() => purchaseMessage(message)}
+                              disabled={isPurchasing === message.id}
+                              className="w-full px-4 py-2 bg-white/20 hover:bg-white/30 backdrop-blur-sm rounded-xl font-medium transition-all disabled:opacity-50"
+                            >
+                              {isPurchasing === message.id ? (
+                                <span className="flex items-center justify-center gap-2">
+                                  <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                                  Processing...
+                                </span>
+                              ) : (
+                                `Unlock for ${message.price} SOL`
+                              )}
+                            </button>
+                          </div>
                         </div>
-                        <div className="text-2xl font-bold">
-                          {formatSolAmount(message.metadata.amount || 0)}
-                        </div>
-                        <div className="text-sm opacity-90 mt-1">
-                          ≈ ${((message.metadata.amount || 0) * solRate).toFixed(2)} USD
-                        </div>
-                        
-                        {/* Мотивационное сообщение */}
-                        <div className="text-sm mt-3 opacity-90">
-                          {message.metadata.tipLevel === 'legendary' 
-                            ? '🌟 Absolutely incredible! You are a true legend! 🌟'
-                            : message.metadata.tipLevel === 'large'
-                            ? '👑 Royal support! You\'re amazing! 👑'
-                            : message.metadata.tipLevel === 'medium'
-                            ? '💜 Your generosity is appreciated! 💜'
-                            : '💙 Thank you for your support! 💙'
-                          }
-                        </div>
-                      </div>
-                      
-                      {/* Анимация для легендарного доната */}
-                      {message.metadata.tipLevel === 'legendary' && (
+                      )}
+
+                      {/* Normal or Purchased Content */}
+                      {(!message.isPaid || message.isPurchased || message.isOwn) && (
                         <>
-                          <div className="absolute -inset-0.5 bg-gradient-to-r from-yellow-400 via-red-500 to-pink-500 rounded-2xl blur opacity-75 animate-pulse"></div>
-                          <div className="absolute inset-0 bg-gradient-to-r from-yellow-400 via-red-500 to-pink-500 rounded-2xl opacity-20"></div>
+                          {message.mediaUrl && (
+                            <div className="mb-2">
+                              {message.mediaType === 'image' ? (
+                                <img
+                                  src={message.mediaUrl}
+                                  alt="Message media"
+                                  className="rounded-xl max-w-xs"
+                                />
+                              ) : (
+                                <video
+                                  src={message.mediaUrl}
+                                  controls
+                                  className="rounded-xl max-w-xs"
+                                />
+                              )}
+                            </div>
+                          )}
+                          
+                          {message.content && (
+                            <p className={`${message.isOwn ? 'text-white' : 'text-gray-900 dark:text-white'} text-sm sm:text-base`}>
+                              {message.content}
+                            </p>
+                          )}
                         </>
                       )}
                     </div>
-                  </div>
-                ) : (
-                  <div
-                    className={`rounded-2xl p-4 ${
-                      message.isOwn
-                        ? 'bg-gradient-to-r from-purple-600 to-pink-600 text-white'
-                        : 'bg-white dark:bg-slate-800 text-gray-900 dark:text-white'
-                    }`}
-                  >
-                  {message.isPaid && !message.isPurchased && !message.isOwn ? (
-                    <div className="-m-4 p-6 bg-gradient-to-br from-purple-600/20 via-pink-600/20 to-purple-600/20 rounded-2xl backdrop-blur-sm border border-purple-500/30">
-                      <div className="text-center">
-                        <div className="w-14 h-14 mx-auto bg-gradient-to-br from-purple-500 to-pink-500 rounded-full flex items-center justify-center mb-3 shadow-lg shadow-purple-500/30">
-                          <SparklesIcon className="w-7 h-7 text-white" />
-                        </div>
-                        <h3 className="text-lg font-bold text-white mb-1">
-                          Exclusive Content
-                        </h3>
-                        <p className="text-purple-200 text-sm mb-3">
-                          Unlock this special message
-                        </p>
-                        <div className="flex flex-col items-center gap-1 mb-4">
-                          <span className="text-2xl font-bold text-white">
-                            {formatSolAmount(message.price || 0)}
-                          </span>
-                          <span className="text-xs text-purple-300">
-                            ≈ ${((message.price || 0) * solRate).toFixed(2)} USD
-                          </span>
-                        </div>
-                        <button
-                          onClick={() => purchaseMessage(message)}
-                          disabled={isPurchasing === message.id}
-                          className="px-5 py-2.5 bg-white/20 hover:bg-white/30 backdrop-blur-sm text-white font-medium rounded-lg transition-all transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed border border-white/30"
-                        >
-                          {isPurchasing === message.id ? (
-                            <div className="flex items-center justify-center gap-2">
-                              <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                              <span className="text-sm">Unlocking...</span>
-                            </div>
-                          ) : (
-                            <div className="flex items-center justify-center gap-2">
-                              <LockClosedIcon className="w-4 h-4" />
-                              <span className="text-sm">Unlock Now</span>
-                            </div>
-                          )}
-                        </button>
-                      </div>
+                    
+                    <div className="flex items-center gap-2 mt-1 px-2">
+                      <span className="text-xs text-gray-500 dark:text-slate-500">
+                        {new Date(message.createdAt).toLocaleTimeString('en-US', {
+                          hour: '2-digit',
+                          minute: '2-digit'
+                        })}
+                      </span>
+                      {message.isOwn && message.isRead && (
+                        <span className="text-xs text-blue-500">Read</span>
+                      )}
                     </div>
-                  ) : (
-                    <>
-                      {message.mediaUrl && (
-                        <OptimizedImage
-                          src={message.mediaUrl}
-                          alt="Message media"
-                          className="rounded-lg mb-2 max-w-full"
-                          type={message.mediaType as 'image' | 'video' || 'image'}
-                        />
-                      )}
-                      {message.content && (
-                        <p className="whitespace-pre-wrap break-words">{message.content}</p>
-                      )}
-                    </>
-                  )}
                   </div>
                 )}
-                
-                <div className="flex items-center gap-2 mt-1">
-                  <span className="text-xs text-gray-500 dark:text-gray-400">
-                    {new Date(message.createdAt).toLocaleTimeString([], { 
-                      hour: '2-digit', 
-                      minute: '2-digit' 
-                    })}
-                  </span>
-                  {message.isPaid && (
-                    <SparklesIcon className="w-3 h-3 text-yellow-500" />
-                  )}
-                  {message.isPaid && message.isOwn && message.purchases && message.purchases.length > 0 && (
-                    <span className="text-xs text-green-600 dark:text-green-400 font-medium">
-                      ✓ Purchased
-                    </span>
-                  )}
-                </div>
               </div>
-            </div>
-          ))}
-          <div ref={messagesEndRef} />
-        </div>
+            ))}
+            <div ref={messagesEndRef} />
+          </>
+        )}
       </div>
 
       {/* Input */}
-      <div className="fixed bottom-0 left-0 right-0 bg-white dark:bg-slate-800 border-t border-gray-200 dark:border-slate-700 p-4">
-        <div className="max-w-3xl mx-auto">
-          {/* Media Preview */}
-          {mediaPreview && (
-            <div className="mb-3 relative inline-block">
-              {selectedMedia?.type.startsWith('image/') ? (
-                <img src={mediaPreview} alt="Preview" className="h-20 rounded-lg" />
+      <div className="sticky bottom-0 bg-white dark:bg-slate-900 border-t border-gray-200 dark:border-slate-700/50 p-3 sm:p-4">
+        {selectedMedia && (
+          <div className="mb-3 relative inline-block">
+            <div className="relative">
+              {selectedMedia.type.startsWith('image/') ? (
+                <img
+                  src={mediaPreview!}
+                  alt="Selected media"
+                  className="h-20 rounded-lg"
+                />
               ) : (
-                <video src={mediaPreview} className="h-20 rounded-lg" />
+                <div className="h-20 w-32 bg-gray-100 dark:bg-slate-800 rounded-lg flex items-center justify-center">
+                  <VideoCameraIcon className="w-8 h-8 text-gray-400" />
+                </div>
               )}
               <button
                 onClick={() => {
                   setSelectedMedia(null)
                   setMediaPreview(null)
                 }}
-                className="absolute -top-2 -right-2 w-6 h-6 bg-red-500 hover:bg-red-600 text-white rounded-full flex items-center justify-center text-xs"
+                className="absolute -top-2 -right-2 w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center hover:bg-red-600"
               >
-                ✕
+                <XMarkIcon className="w-4 h-4" />
               </button>
             </div>
-          )}
+          </div>
+        )}
 
-          {isPaidMessage && (
-            <div className="mb-3 flex items-center gap-3 p-3 bg-yellow-50 dark:bg-yellow-900/20 rounded-lg">
-              <SparklesIcon className="w-5 h-5 text-yellow-600 dark:text-yellow-400" />
-              <input
-                type="number"
-                placeholder="Price in SOL"
-                value={messagePrice}
-                onChange={(e) => setMessagePrice(e.target.value)}
-                className="flex-1 px-3 py-2 bg-white dark:bg-slate-800 border border-yellow-300 dark:border-yellow-700 rounded-lg text-sm"
-                step="0.01"
-                min="0.01"
-              />
-              <button
-                onClick={() => {
-                  setIsPaidMessage(false)
-                  setMessagePrice('')
-                }}
-                className="text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white"
-              >
-                Cancel
-              </button>
+        {isPaidMessage && (
+          <div className="mb-3 p-3 bg-purple-100 dark:bg-purple-900/20 rounded-xl">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <CurrencyDollarIcon className="w-5 h-5 text-purple-600 dark:text-purple-400" />
+                <span className="text-sm font-medium text-purple-700 dark:text-purple-300">
+                  PPV Message
+                </span>
+              </div>
+              <div className="flex items-center gap-2">
+                <input
+                  type="number"
+                  step="0.01"
+                  min="0.01"
+                  value={messagePrice}
+                  onChange={(e) => setMessagePrice(e.target.value)}
+                  placeholder="0.00"
+                  className="w-20 px-2 py-1 text-sm bg-white dark:bg-slate-800 border border-purple-300 dark:border-purple-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+                />
+                <span className="text-sm text-purple-700 dark:text-purple-300">SOL</span>
+                <button
+                  onClick={() => {
+                    setIsPaidMessage(false)
+                    setMessagePrice('')
+                  }}
+                  className="p-1 text-purple-600 dark:text-purple-400 hover:text-purple-700 dark:hover:text-purple-300"
+                >
+                  <XMarkIcon className="w-4 h-4" />
+                </button>
+              </div>
             </div>
-          )}
-          
-          <div className="flex items-end gap-3">
-            <div className="flex gap-2">
-              {/* Hidden file input */}
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept="image/*,video/*"
-                onChange={handleMediaSelect}
-                className="hidden"
-              />
-              
-              <button 
-                onClick={() => fileInputRef.current?.click()}
-                disabled={isUploadingMedia}
-                className="p-2 hover:bg-gray-100 dark:hover:bg-slate-700 rounded-lg transition-colors disabled:opacity-50"
-              >
-                <PhotoIcon className="w-5 h-5 text-gray-600 dark:text-gray-400" />
-              </button>
-              
-              <button
-                onClick={() => setShowTipModal(true)}
-                className="p-2 hover:bg-gray-100 dark:hover:bg-slate-700 rounded-lg transition-colors"
-              >
-                <svg className="w-5 h-5 text-gray-600 dark:text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-              </button>
-              
-              <button
-                onClick={() => setIsPaidMessage(!isPaidMessage)}
-                className={`p-2 rounded-lg transition-colors ${
-                  isPaidMessage 
-                    ? 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-600 dark:text-yellow-400' 
-                    : 'hover:bg-gray-100 dark:hover:bg-slate-700 text-gray-600 dark:text-gray-400'
-                }`}
-              >
-                <SparklesIcon className="w-5 h-5" />
-              </button>
-            </div>
-            
-            <input
-              type="text"
-              placeholder={isUploadingMedia ? "Uploading..." : "Type a message..."}
+          </div>
+        )}
+
+        <div className="flex items-end gap-2">
+          <div className="flex-1">
+            <textarea
               value={messageText}
               onChange={(e) => setMessageText(e.target.value)}
-              onKeyPress={(e) => e.key === 'Enter' && !e.shiftKey && !isUploadingMedia && sendMessage()}
-              disabled={isUploadingMedia}
-              className="flex-1 px-4 py-3 bg-gray-100 dark:bg-slate-700 rounded-full text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500 disabled:opacity-50"
+              onKeyPress={(e) => {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                  e.preventDefault()
+                  sendMessage()
+                }
+              }}
+              placeholder="Type a message..."
+              className="w-full px-4 py-2.5 bg-gray-100 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-2xl resize-none focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent text-sm sm:text-base"
+              rows={1}
             />
+          </div>
+
+          <div className="flex items-center gap-1">
+            <button
+              onClick={() => fileInputRef.current?.click()}
+              className="p-2.5 text-gray-600 dark:text-slate-400 hover:text-gray-900 dark:hover:text-white rounded-xl hover:bg-gray-100 dark:hover:bg-slate-800 transition-colors"
+            >
+              <PhotoIcon className="w-5 h-5" />
+            </button>
             
             <button
+              onClick={() => setIsPaidMessage(!isPaidMessage)}
+              className={`p-2.5 rounded-xl transition-colors ${
+                isPaidMessage 
+                  ? 'bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400' 
+                  : 'text-gray-600 dark:text-slate-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-slate-800'
+              }`}
+            >
+              <CurrencyDollarIcon className="w-5 h-5" />
+            </button>
+
+            <button
               onClick={sendMessage}
-              disabled={(!messageText.trim() && !selectedMedia) || isSending || isUploadingMedia || (isPaidMessage && !messagePrice)}
-              className="p-3 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-full hover:from-purple-700 hover:to-pink-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+              disabled={(!messageText.trim() && !selectedMedia) || isSending || isUploadingMedia}
+              className="p-2.5 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 disabled:from-gray-400 disabled:to-gray-400 text-white rounded-xl transition-all disabled:cursor-not-allowed"
             >
               {isSending || isUploadingMedia ? (
-                <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
               ) : (
                 <PaperAirplaneIcon className="w-5 h-5" />
               )}
             </button>
           </div>
         </div>
+
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="image/*,video/*"
+          onChange={handleMediaSelect}
+          className="hidden"
+        />
       </div>
 
       {/* Tip Modal */}
