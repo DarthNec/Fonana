@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import { ArrowRightIcon, SparklesIcon, UsersIcon, ShieldCheckIcon, CurrencyDollarIcon, PlayIcon, StarIcon } from '@heroicons/react/24/outline'
-import CreatorsExplorer from '@/components/CreatorsExplorer'
+import SafeCreatorsExplorer from '@/components/SafeCreatorsExplorer'
 import UserSubscriptions from '@/components/UserSubscriptions'
 
 const features = [
@@ -126,7 +126,7 @@ export default function HomePage() {
 
       {/* Creators Explorer Section */}
       <div id="creators">
-        <CreatorsExplorer />
+        <SafeCreatorsExplorer />
       </div>
 
       {/* Features Section */}
