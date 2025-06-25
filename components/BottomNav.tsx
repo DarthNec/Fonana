@@ -109,8 +109,14 @@ export default function BottomNav() {
   }
 
   const handleConnect = () => {
-    setVisible(true)
-    setIsMenuOpen(false)
+    console.log('BottomNav: Connect wallet clicked')
+    try {
+      setVisible(true)
+      setIsMenuOpen(false)
+      console.log('BottomNav: Wallet modal should be visible now')
+    } catch (error) {
+      console.error('BottomNav: Error opening wallet modal:', error)
+    }
   }
 
   const handleDisconnect = () => {

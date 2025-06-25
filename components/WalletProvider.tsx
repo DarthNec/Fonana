@@ -46,7 +46,18 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     setMounted(true)
-  }, [])
+    
+    // Логируем информацию о среде
+    if (typeof window !== 'undefined') {
+      console.log('Wallet Provider Environment:', {
+        userAgent: window.navigator.userAgent,
+        isMobile: /android|webos|iphone|ipad|ipod|blackberry|iemobile|opera mini/i.test(window.navigator.userAgent.toLowerCase()),
+        hasPhantom: !!(window as any).solana?.isPhantom,
+        hasSolana: !!(window as any).solana,
+        endpoint
+      })
+    }
+  }, [endpoint])
 
   if (!mounted) {
     return null
@@ -59,8 +70,20 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
   }
 
   return (
-    <ConnectionProvider endpoint={endpoint}>
-      <SolanaWalletProvider wallets={wallets} autoConnect={false}>
+    <ConnectionProvider 
+      endpoint={endpoint}
+      config={{
+        commitment: 'confirmed',
+        wsEndpoint: process.env.NEXT_PUBLIC_SOLANA_WS_URL
+      }}
+    >
+      <SolanaWalletProvider 
+        wallets={wallets} 
+        autoConnect={false}
+        onError={(error) => {
+          console.error('Wallet error:', error)
+        }}
+      >
         <WalletModalProvider>
           {children}
         </WalletModalProvider>
