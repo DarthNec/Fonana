@@ -10,6 +10,9 @@ import { WalletIcon, CheckCircleIcon, XCircleIcon } from '@heroicons/react/24/ou
 import bs58 from 'bs58'
 import { useRouter, useSearchParams } from 'next/navigation'
 
+// Режим отладки - включить для логирования
+const DEBUG_MODE = true
+
 export function HybridWalletConnect() {
   const { connected, connect, disconnect, wallet, publicKey, signMessage } = useWallet()
   const { user, refreshUser } = useUser()
@@ -40,6 +43,13 @@ export function HybridWalletConnect() {
   useEffect(() => {
     const env = detectWalletEnvironment()
     
+    if (DEBUG_MODE) {
+      console.log('🔍 Wallet Environment:', {
+        userAgent: navigator.userAgent,
+        ...env
+      })
+    }
+    
     // Запоминаем что мы во встроенном браузере
     setIsInWalletBrowser(env.isInWalletBrowser)
     
@@ -52,6 +62,8 @@ export function HybridWalletConnect() {
 
   const handleTokenFromUrl = async (token: string, returnPath: string) => {
     try {
+      if (DEBUG_MODE) console.log('🔐 Syncing token from URL...')
+      
       // Отправляем токен на сервер для установки cookie
       const response = await fetch('/api/auth/wallet/sync', {
         method: 'POST',
@@ -68,6 +80,9 @@ export function HybridWalletConnect() {
         
         // Обновляем данные пользователя
         await refreshUser()
+      } else {
+        const error = await response.json()
+        if (DEBUG_MODE) console.error('❌ Token sync failed:', error)
       }
     } catch (error) {
       console.error('Token sync error:', error)
@@ -76,8 +91,12 @@ export function HybridWalletConnect() {
 
   const checkAuthStatus = async () => {
     try {
+      if (DEBUG_MODE) console.log('🔍 Checking auth status...')
+      
       const response = await fetch('/api/auth/wallet')
       const data = await response.json()
+      
+      if (DEBUG_MODE) console.log('📋 Auth status:', data)
       
       if (data.authenticated) {
         setIsAuthenticated(true)
@@ -86,10 +105,14 @@ export function HybridWalletConnect() {
         if (!connected && publicKey?.toString() !== data.user.wallet) {
           // Пользователь авторизован, но кошелек не подключен
           // Это нормально - подключим когда понадобится
+          if (DEBUG_MODE) console.log('✅ Authenticated but wallet not connected')
         }
+      } else {
+        if (DEBUG_MODE) console.log('❌ Not authenticated')
       }
     } catch (error) {
       console.error('Auth check failed:', error)
+      if (DEBUG_MODE) console.error('❌ Auth check error:', error)
     }
   }
 
@@ -104,6 +127,8 @@ export function HybridWalletConnect() {
     const loadingToast = toast.loading('Запрашиваем подпись...')
 
     try {
+      if (DEBUG_MODE) console.log('🖊️ Requesting signature...')
+      
       // Генерируем сообщение для подписи
       const message = generateSignMessage()
       const messageBytes = new TextEncoder().encode(message)
@@ -111,6 +136,11 @@ export function HybridWalletConnect() {
       // Запрашиваем подпись
       const signature = await signMessage(messageBytes)
       const signatureBase58 = bs58.encode(signature)
+      
+      if (DEBUG_MODE) {
+        console.log('📝 Message:', message)
+        console.log('✍️ Signature:', signatureBase58.substring(0, 20) + '...')
+      }
       
       // Отправляем на сервер для проверки
       const response = await fetch('/api/auth/wallet', {
@@ -128,6 +158,8 @@ export function HybridWalletConnect() {
       if (response.ok && data.success) {
         setIsAuthenticated(true)
         toast.success('Авторизация успешна!', { id: loadingToast })
+        
+        if (DEBUG_MODE) console.log('✅ Authentication successful:', data)
         
         // Сохраняем токен в localStorage как fallback
         if (data.token) {
@@ -194,11 +226,34 @@ export function HybridWalletConnect() {
         // Обновляем данные пользователя
         await refreshUser()
       } else {
-        toast.error(data.error || 'Ошибка авторизации', { id: loadingToast })
+        const errorMessage = data.error || 'Ошибка авторизации'
+        toast.error(errorMessage, { id: loadingToast })
+        
+        if (DEBUG_MODE) {
+          console.error('❌ Authentication failed:', {
+            status: response.status,
+            error: data.error,
+            details: data
+          })
+        }
+        
+        // Если ошибка связана с истекшим сообщением, пробуем еще раз
+        if (data.error === 'Message expired or invalid') {
+          toast.error('Сообщение устарело. Попробуйте еще раз.', { duration: 5000 })
+        }
       }
     } catch (error: any) {
       console.error('Authentication error:', error)
-      toast.error('Не удалось подписать сообщение', { id: loadingToast })
+      const errorMessage = error.message || 'Не удалось подписать сообщение'
+      toast.error(errorMessage, { id: loadingToast })
+      
+      if (DEBUG_MODE) {
+        console.error('❌ Authentication error details:', {
+          error,
+          wallet: wallet?.adapter.name,
+          publicKey: publicKey?.toString()
+        })
+      }
     } finally {
       setIsAuthenticating(false)
     }
@@ -207,6 +262,7 @@ export function HybridWalletConnect() {
   // Обработчик подключения кошелька
   useEffect(() => {
     if (connected && publicKey && !isAuthenticated && !isAuthenticating) {
+      if (DEBUG_MODE) console.log('🔗 Wallet connected, starting authentication...')
       // Автоматически запрашиваем подпись после подключения
       authenticateWithSignature()
     }
@@ -216,6 +272,7 @@ export function HybridWalletConnect() {
   useEffect(() => {
     const storedToken = localStorage.getItem('fonana-jwt')
     if (storedToken && !isAuthenticated) {
+      if (DEBUG_MODE) console.log('🔑 Found stored token, syncing...')
       // Пытаемся синхронизировать токен с сервером
       handleTokenFromUrl(storedToken, window.location.pathname)
     }
@@ -234,6 +291,8 @@ export function HybridWalletConnect() {
       setIsAuthenticated(false)
       disconnect()
       toast.success('Вы вышли из системы')
+      
+      if (DEBUG_MODE) console.log('👋 Logged out successfully')
     } catch (error) {
       console.error('Logout error:', error)
     }
