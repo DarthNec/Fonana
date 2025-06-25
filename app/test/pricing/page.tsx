@@ -6,11 +6,12 @@ import { useWallet } from '@solana/wallet-adapter-react'
 import { WalletMultiButton } from '@solana/wallet-adapter-react-ui'
 import { Connection, PublicKey, Transaction, SystemProgram, LAMPORTS_PER_SOL } from '@solana/web3.js'
 import { SOLANA_CONFIG } from '@/lib/solana/config'
-import { WalletProvider } from '@/components/WalletProvider'
+import WalletProvider from '@/components/WalletProvider'
 import { toast } from 'react-hot-toast'
 import { createPostPurchaseTransaction, calculatePaymentDistribution, formatSolAmount } from '@/lib/solana/payments'
 import { isValidSolanaAddress } from '@/lib/solana/config'
 import { connection } from '@/lib/solana/connection'
+import { useSolRate } from '@/lib/hooks/useSolRate'
 
 interface User {
   id: string
