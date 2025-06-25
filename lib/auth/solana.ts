@@ -58,7 +58,7 @@ export function isValidSolanaAddress(address: string): boolean {
   }
 }
 
-// Определение окружения кошелька
+// Простое определение окружения кошелька
 export function detectWalletEnvironment() {
   if (typeof window === 'undefined') {
     return { isPhantom: false, isMobile: false, isInWalletBrowser: false }
@@ -68,20 +68,8 @@ export function detectWalletEnvironment() {
   const isMobile = /android|webos|iphone|ipad|ipod|blackberry|iemobile|opera mini/i.test(userAgent)
   const isPhantom = !!(window as any).phantom?.solana?.isPhantom
   
-  // Улучшенная проверка встроенного браузера кошелька
-  // Проверяем специфичные признаки embedded браузеров, а не просто наличие расширения
-  const isInWalletBrowser = 
-    // Phantom mobile app - проверяем что это именно приложение, а не просто браузер с расширением
-    (userAgent.includes('phantom-app') || (userAgent.includes('phantom') && isMobile && userAgent.includes('mobile'))) ||
-    // Solflare mobile app
-    (userAgent.includes('solflare') && isMobile) ||
-    // Backpack mobile app
-    (userAgent.includes('backpack') && isMobile) ||
-    // Trust Wallet
-    userAgent.includes('trustwallet') ||
-    // Проверяем специфичные window свойства для embedded browsers
-    (isMobile && !!(window as any).ethereum && userAgent.includes('metamask'))
-    // Убираем проблемную проверку для desktop Phantom - она срабатывает в обычных браузерах
+  // Проверяем встроенный браузер кошелька ТОЛЬКО для Phantom mobile app
+  const isInWalletBrowser = userAgent.includes('phantom') && isMobile
   
   return { isPhantom, isMobile, isInWalletBrowser }
 } 

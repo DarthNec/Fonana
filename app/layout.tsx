@@ -13,8 +13,8 @@ import ReferralNotification from '@/components/ReferralNotification'
 import Footer from '@/components/Footer'
 import BottomNav from '@/components/BottomNav'
 import ServiceWorkerRegistration from '@/components/ServiceWorkerRegistration'
-import { MobileAuthHelper } from '@/components/MobileAuthHelper'
 import { headers } from 'next/headers'
+import SolanaRateDisplay from '@/components/SolanaRateDisplay'
 
 const inter = Inter({ subsets: ['latin'] })
 
@@ -83,8 +83,9 @@ export default function RootLayout({
                     </main>
                     <ReferralNotification />
                     <Footer />
-                    <BottomNav />
-                    <MobileAuthHelper />
+                    <div className="block md:hidden">
+                      <BottomNav />
+                    </div>
                   </div>
                   <ServiceWorkerRegistration />
                   <Toaster
