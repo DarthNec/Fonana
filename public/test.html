@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Fonana Server Test</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+            background: #f0f0f0;
+        }
+        .status {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        .ok { color: green; }
+        .error { color: red; }
+    </style>
+</head>
+<body>
+    <h1>Fonana Server Test</h1>
+    
+    <div class="status">
+        <h2>Static File Test</h2>
+        <p class="ok">✅ If you see this, static files are working!</p>
+    </div>
+    
+    <div class="status">
+        <h2>JavaScript Test</h2>
+        <p id="js-test" class="error">❌ JavaScript not working</p>
+    </div>
+    
+    <div class="status">
+        <h2>API Test</h2>
+        <p id="api-test">Testing API...</p>
+    </div>
+    
+    <div class="status">
+        <h2>Browser Info</h2>
+        <pre id="browser-info"></pre>
+    </div>
+    
+    <script>
+        // Test JavaScript
+        document.getElementById('js-test').innerHTML = '✅ JavaScript is working!';
+        document.getElementById('js-test').className = 'ok';
+        
+        // Browser info
+        document.getElementById('browser-info').textContent = 
+            'User Agent: ' + navigator.userAgent + '\n' +
+            'Screen: ' + screen.width + 'x' + screen.height + '\n' +
+            'Window: ' + window.innerWidth + 'x' + window.innerHeight;
+        
+        // Test API
+        fetch('/api/pricing')
+            .then(res => res.json())
+            .then(data => {
+                document.getElementById('api-test').innerHTML = 
+                    '✅ API working! SOL/USD: $' + data.rate;
+                document.getElementById('api-test').className = 'ok';
+            })
+            .catch(err => {
+                document.getElementById('api-test').innerHTML = 
+                    '❌ API error: ' + err.message;
+                document.getElementById('api-test').className = 'error';
+            });
+    </script>
+</body>
+</html> 
