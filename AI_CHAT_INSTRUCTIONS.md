@@ -734,6 +734,15 @@ node scripts/check-price-discrepancy.js
 - **Test**: https://fonana.me/test/mobile-auth
 - **Docs**: MOBILE_WALLET_AUTH_FIX.md
 
+### Browser Detection Fix (December 25, 2024)
+- **Problem**: Desktop browsers with Phantom extension were incorrectly detected as embedded wallet browsers
+- **Solution**: 
+  - Removed problematic check `(userAgent.includes('phantom') && !isMobile && window.opener !== null)`
+  - Improved mobile app detection with more specific markers
+  - UX hint now shows only in actual embedded wallet browsers
+- **Test Page**: `/test/browser-detection` for debugging browser environment
+- **Docs**: BROWSER_DETECTION_FIX_2024.md
+
 ### Creator Analytics Update (December 24, 2024)
 - **Fixed**: Period display bugs (days, weeks, months now show correctly)
 - **Added**: Complete subscriber list with spending breakdown
