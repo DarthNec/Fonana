@@ -555,6 +555,7 @@ export async function getUserSubscriptions(userWallet: string) {
       userId: user.id,
       isActive: true,
       validUntil: { gte: new Date() },
+      paymentStatus: 'COMPLETED' // Только оплаченные подписки
     },
     include: {
       user: false,
@@ -577,6 +578,7 @@ export async function hasActiveSubscription(userWallet: string, creatorWallet: s
       creatorId: creator.id,
       isActive: true,
       validUntil: { gte: new Date() },
+      paymentStatus: 'COMPLETED' // Только оплаченные подписки
     },
   })
 

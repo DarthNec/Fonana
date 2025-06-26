@@ -20,7 +20,8 @@ export async function GET(request: NextRequest) {
           isActive: true,
           validUntil: {
             gt: new Date()
-          }
+          },
+          paymentStatus: 'COMPLETED' // Только оплаченные подписки
         },
         include: {
           user: {
@@ -64,7 +65,8 @@ export async function GET(request: NextRequest) {
           isActive: true,
           validUntil: {
             gt: new Date()
-          }
+          },
+          paymentStatus: 'COMPLETED' // Только оплаченные подписки
         },
         orderBy: {
           subscribedAt: 'desc'
