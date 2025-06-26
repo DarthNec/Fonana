@@ -117,7 +117,7 @@ export async function GET(request: NextRequest) {
   }
 }
 
-// POST /api/subscriptions
+// POST /api/subscriptions - DEPRECATED: Use /api/subscriptions/process-payment instead
 export async function POST(request: NextRequest) {
   try {
     console.log('[Subscriptions API] POST request received')
@@ -131,6 +131,16 @@ export async function POST(request: NextRequest) {
       console.log('[Subscriptions API] Missing required fields')
       return NextResponse.json(
         { error: 'Missing required fields' },
+        { status: 400 }
+      )
+    }
+    
+    // ВАЖНО: Разрешаем создание только БЕСПЛАТНЫХ подписок через этот endpoint
+    // Все платные подписки должны идти через /api/subscriptions/process-payment
+    if (price > 0) {
+      console.log('[Subscriptions API] Paid subscription attempted through unsafe endpoint')
+      return NextResponse.json(
+        { error: 'Paid subscriptions must use /api/subscriptions/process-payment endpoint' },
         { status: 400 }
       )
     }
@@ -174,7 +184,8 @@ export async function POST(request: NextRequest) {
           isActive: true,
           subscribedAt: new Date(),
           validUntil: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 дней
-          currency: 'SOL'
+          currency: 'SOL',
+          paymentStatus: 'COMPLETED' // Для бесплатных подписок сразу ставим COMPLETED
         }
       })
       
@@ -191,7 +202,8 @@ export async function POST(request: NextRequest) {
           price: price,
           currency: 'SOL',
           isActive: true,
-          validUntil: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000) // 30 дней
+          validUntil: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 дней
+          paymentStatus: 'COMPLETED' // Для бесплатных подписок сразу ставим COMPLETED
         }
       })
       
