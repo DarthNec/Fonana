@@ -51,12 +51,23 @@ export default function FeedPage() {
 
   useEffect(() => {
     loadPosts()
+    
+    // Очищаем сохраненный wallet при отключении
+    if (!user?.wallet) {
+      localStorage.removeItem('fonana_user_wallet')
+    }
   }, [user?.wallet]) // Перезагружаем при изменении wallet
 
   // Перезагрузка постов при фокусе окна (для обновления после редактирования)
   useEffect(() => {
     const handleFocus = () => {
-      loadPosts()
+      // Добавляем небольшую задержку, чтобы дать контексту восстановиться
+      setTimeout(() => {
+        // Проверяем, что user загружен перед вызовом loadPosts
+        if (!user || user.wallet) {
+          loadPosts()
+        }
+      }, 100)
     }
     
     const handlePostsUpdated = () => {
@@ -70,7 +81,7 @@ export default function FeedPage() {
       window.removeEventListener('focus', handleFocus)
       window.removeEventListener('postsUpdated', handlePostsUpdated)
     }
-  }, [])
+  }, [user]) // Добавляем user в зависимости
 
   // Функция для точечного обновления поста после покупки
   const updatePostPurchaseStatus = (postId: string, purchased: boolean) => {
@@ -134,9 +145,18 @@ export default function FeedPage() {
       
       // Add current user's wallet to request
       const params = new URLSearchParams()
-      if (user?.wallet) {
-        params.append('userWallet', user.wallet)
-        console.log('[Feed] Sending userWallet:', user.wallet)
+      
+      // Используем wallet из user или из localStorage как fallback
+      const userWallet = user?.wallet || localStorage.getItem('fonana_user_wallet')
+      
+      if (userWallet) {
+        params.append('userWallet', userWallet)
+        console.log('[Feed] Sending userWallet:', userWallet)
+        
+        // Сохраняем wallet в localStorage для будущего использования
+        if (user?.wallet) {
+          localStorage.setItem('fonana_user_wallet', user.wallet)
+        }
       } else {
         console.log('[Feed] No user wallet available')
       }

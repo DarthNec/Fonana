@@ -54,7 +54,7 @@ interface Creator {
 export default function CreatorPage() {
   const params = useParams()
   const router = useRouter()
-  const { user } = useUser()
+  const { user, isLoading: isAuthLoading } = useUser()
   const { connected, publicKey } = useWallet()
   const { rate: solRate } = useSolRate()
   const [creator, setCreator] = useState<Creator | null>(null)
@@ -68,15 +68,25 @@ export default function CreatorPage() {
   const [showPurchaseModal, setShowPurchaseModal] = useState(false)
   const [selectedPurchaseData, setSelectedPurchaseData] = useState<any>(null)
   const [selectedCreatorData, setSelectedCreatorData] = useState<any>(null)
-  const [selectedTier, setSelectedTier] = useState<'basic' | 'premium' | 'vip' | undefined>(undefined)
-  const [isLoadingPosts, setIsLoadingPosts] = useState(false)
+  const [selectedTier, setSelectedTier] = useState<'basic' | 'premium' | 'vip'>('basic')
+  const [isLoadingPosts, setIsLoadingPosts] = useState(true)
   const [creatorTiers, setCreatorTiers] = useState<any>(null)
 
   useEffect(() => {
     if (params.id) {
       loadCreatorData()
+      
+      // Очищаем сохраненный wallet при отключении
+      if (!user?.wallet) {
+        localStorage.removeItem('fonana_user_wallet')
+      }
     }
-  }, [params.id, user])
+  }, [params.id, user?.wallet])
+
+  const formatPlanName = (plan: string | null | undefined): string => {
+    if (!plan) return ''
+    return plan.charAt(0).toUpperCase() + plan.slice(1).toLowerCase()
+  }
 
   const loadCreatorData = async () => {
     try {
@@ -102,8 +112,17 @@ export default function CreatorPage() {
       const postsParams = new URLSearchParams({
         creatorId: params.id as string
       })
-      if (user?.wallet) {
-        postsParams.append('userWallet', user.wallet)
+      
+      // Используем wallet из user или из localStorage как fallback
+      const userWallet = user?.wallet || localStorage.getItem('fonana_user_wallet')
+      
+      if (userWallet) {
+        postsParams.append('userWallet', userWallet)
+        
+        // Сохраняем wallet в localStorage для будущего использования
+        if (user?.wallet) {
+          localStorage.setItem('fonana_user_wallet', user.wallet)
+        }
       }
       
       const postsResponse = await fetch(`/api/posts?${postsParams.toString()}`)
@@ -152,7 +171,7 @@ export default function CreatorPage() {
           const subData = await subResponse.json()
           setIsSubscribed(subData.isSubscribed)
           if (subData.subscription && subData.isSubscribed) {
-            setCurrentSubscriptionTier(subData.subscription.plan)
+            setCurrentSubscriptionTier(subData.subscription.plan?.toLowerCase() || null)
           }
         }
       }
@@ -383,18 +402,18 @@ export default function CreatorPage() {
                             {currentSubscriptionTier && (
                               <div className="flex justify-center">
                                 <div className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-sm font-medium text-white bg-gradient-to-r ${
-                                  currentSubscriptionTier.toLowerCase() === 'basic' ? 'from-gray-400 to-gray-600' :
-                                  currentSubscriptionTier.toLowerCase() === 'premium' ? 'from-purple-500 to-pink-500' :
-                                  currentSubscriptionTier.toLowerCase() === 'vip' ? 'from-yellow-400 to-orange-500' :
+                                  currentSubscriptionTier === 'basic' ? 'from-gray-400 to-gray-600' :
+                                  currentSubscriptionTier === 'premium' ? 'from-purple-500 to-pink-500' :
+                                  currentSubscriptionTier === 'vip' ? 'from-yellow-400 to-orange-500' :
                                   'from-blue-400 to-cyan-400'
                                 }`}>
                                   <span>{
-                                    currentSubscriptionTier.toLowerCase() === 'basic' ? '⭐' :
-                                    currentSubscriptionTier.toLowerCase() === 'premium' ? '💎' :
-                                    currentSubscriptionTier.toLowerCase() === 'vip' ? '👑' :
+                                    currentSubscriptionTier === 'basic' ? '⭐' :
+                                    currentSubscriptionTier === 'premium' ? '💎' :
+                                    currentSubscriptionTier === 'vip' ? '👑' :
                                     '✨'
                                   }</span>
-                                  <span>{currentSubscriptionTier} tier</span>
+                                  <span>{formatPlanName(currentSubscriptionTier)} tier</span>
                                 </div>
                               </div>
                             )}
@@ -494,18 +513,18 @@ export default function CreatorPage() {
                       {currentSubscriptionTier && (
                         <div className="flex justify-center">
                           <div className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-sm font-medium text-white bg-gradient-to-r ${
-                            currentSubscriptionTier.toLowerCase() === 'basic' ? 'from-gray-400 to-gray-600' :
-                            currentSubscriptionTier.toLowerCase() === 'premium' ? 'from-purple-500 to-pink-500' :
-                            currentSubscriptionTier.toLowerCase() === 'vip' ? 'from-yellow-400 to-orange-500' :
+                            currentSubscriptionTier === 'basic' ? 'from-gray-400 to-gray-600' :
+                            currentSubscriptionTier === 'premium' ? 'from-purple-500 to-pink-500' :
+                            currentSubscriptionTier === 'vip' ? 'from-yellow-400 to-orange-500' :
                             'from-blue-400 to-cyan-400'
                           }`}>
                             <span>{
-                              currentSubscriptionTier.toLowerCase() === 'basic' ? '⭐' :
-                              currentSubscriptionTier.toLowerCase() === 'premium' ? '💎' :
-                              currentSubscriptionTier.toLowerCase() === 'vip' ? '👑' :
+                              currentSubscriptionTier === 'basic' ? '⭐' :
+                              currentSubscriptionTier === 'premium' ? '💎' :
+                              currentSubscriptionTier === 'vip' ? '👑' :
                               '✨'
                             }</span>
-                            <span>{currentSubscriptionTier} tier</span>
+                            <span>{formatPlanName(currentSubscriptionTier)} tier</span>
                           </div>
                         </div>
                       )}
@@ -549,7 +568,7 @@ export default function CreatorPage() {
                       <p className="text-sm text-gray-600 dark:text-slate-400 mb-3">
                         {creatorTiers.basicTier.description || 'Access to basic content'}
                       </p>
-                      {currentSubscriptionTier?.toLowerCase() !== 'basic' && (
+                      {currentSubscriptionTier !== 'basic' && (
                         <button
                           onClick={() => handleSubscribeClick({
                             id: creator.id,
@@ -563,7 +582,7 @@ export default function CreatorPage() {
                           {isSubscribed ? 'Switch to Basic' : 'Subscribe'}
                         </button>
                       )}
-                      {currentSubscriptionTier?.toLowerCase() === 'basic' && (
+                      {currentSubscriptionTier === 'basic' && (
                         <div className="w-full px-3 py-2 bg-green-500/20 text-green-700 dark:text-green-300 rounded-lg text-sm font-medium text-center">
                           Current Plan
                         </div>
@@ -592,7 +611,7 @@ export default function CreatorPage() {
                       <p className="text-sm text-gray-600 dark:text-slate-400 mb-3">
                         {creatorTiers.premiumTier.description || 'Extended access'}
                       </p>
-                      {currentSubscriptionTier?.toLowerCase() !== 'premium' && (
+                      {currentSubscriptionTier !== 'premium' && (
                         <button
                           onClick={() => handleSubscribeClick({
                             id: creator.id,
@@ -606,7 +625,7 @@ export default function CreatorPage() {
                           {isSubscribed ? 'Upgrade to Premium' : 'Subscribe'}
                         </button>
                       )}
-                      {currentSubscriptionTier?.toLowerCase() === 'premium' && (
+                      {currentSubscriptionTier === 'premium' && (
                         <div className="w-full px-3 py-2 bg-purple-500/20 text-purple-700 dark:text-purple-300 rounded-lg text-sm font-medium text-center">
                           Current Plan
                         </div>
@@ -632,7 +651,7 @@ export default function CreatorPage() {
                       <p className="text-sm text-gray-600 dark:text-slate-400 mb-3">
                         {creatorTiers.vipTier.description || 'Maximum access'}
                       </p>
-                      {currentSubscriptionTier?.toLowerCase() !== 'vip' && (
+                      {currentSubscriptionTier !== 'vip' && (
                         <button
                           onClick={() => handleSubscribeClick({
                             id: creator.id,
@@ -646,7 +665,7 @@ export default function CreatorPage() {
                           {isSubscribed ? 'Upgrade to VIP' : 'Subscribe'}
                         </button>
                       )}
-                      {currentSubscriptionTier?.toLowerCase() === 'vip' && (
+                      {currentSubscriptionTier === 'vip' && (
                         <div className="w-full px-3 py-2 bg-yellow-500/20 text-yellow-700 dark:text-yellow-300 rounded-lg text-sm font-medium text-center">
                           Current Plan
                         </div>
@@ -823,7 +842,8 @@ export default function CreatorPage() {
               
               const newTier = data.subscription.tier || data.subscription.plan
               setIsSubscribed(true)
-              setCurrentSubscriptionTier(newTier)
+              // Нормализуем план к нижнему регистру для согласованности
+              setCurrentSubscriptionTier(newTier?.toLowerCase() || null)
               updatePostsAfterSubscription(newTier)
               
               // Прокручиваем к доступному контенту
