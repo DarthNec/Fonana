@@ -135,11 +135,13 @@ export async function GET(req: Request) {
         where: {
           userId: currentUser.id,
           isActive: true,
-          validUntil: { gte: new Date() }
+          validUntil: { gte: new Date() },
+          paymentStatus: 'COMPLETED' // ВАЖНО: проверяем оплату!
         },
         select: { 
           creatorId: true,
-          plan: true 
+          plan: true,
+          paymentStatus: true
         }
       })
       subscriptions.forEach((sub: { creatorId: string; plan: string }) => {

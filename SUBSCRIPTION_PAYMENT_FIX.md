@@ -29,6 +29,9 @@
 # Проверить проблемные подписки
 node scripts/check-pending-subscriptions.js
 
+# Проверить подписки без paymentStatus
+node scripts/check-subscriptions-without-status.js
+
 # Вариант 1: Деактивировать неоплаченные Premium подписки
 node scripts/fix-pending-premium-subscriptions.js --deactivate
 
@@ -45,15 +48,17 @@ node scripts/fix-free-subscriptions-status.js
 - Платные подписки обязаны идти через `/api/subscriptions/process-payment`
 - Добавлена проверка `price > 0`
 
-### 3. Долгосрочные улучшения
+### 3. Исправлена проверка доступа к контенту
 
-#### A. Обновить проверку доступа к контенту
-```typescript
-// В app/api/posts/route.ts добавить проверку
-if (subscription.paymentStatus !== 'COMPLETED') {
-  shouldHideContent = true;
-}
-```
+Добавлена проверка `paymentStatus: 'COMPLETED'` во всех местах:
+- `/api/posts/route.ts` - при получении подписок пользователя
+- `/api/subscriptions/route.ts` - при выдаче списка подписок
+- `/api/subscriptions/check/route.ts` - при проверке подписки
+- `lib/db.ts` - функции `getUserSubscriptions` и `hasActiveSubscription`
+
+### 4. Долгосрочные улучшения
+
+#### A. ~~Обновить проверку доступа к контенту~~ ✅ УЖЕ СДЕЛАНО
 
 #### B. Добавить мониторинг
 ```typescript
@@ -92,7 +97,14 @@ const problematicSubs = await prisma.subscription.findMany({
    ```bash
    # На сервере
    cd /var/www/fonana
+   
+   # СНАЧАЛА исправить подписки без paymentStatus
+   node scripts/fix-subscriptions-without-status.js
+   
+   # Затем деактивировать неоплаченные Premium подписки
    node scripts/fix-pending-premium-subscriptions.js --deactivate
+   
+   # И исправить статус Free подписок
    node scripts/fix-free-subscriptions-status.js
    ```
 
@@ -107,6 +119,7 @@ const problematicSubs = await prisma.subscription.findMany({
 2. **Уведомите пользователей** о проблеме и предложите переподписаться
 3. **Мониторьте** новые подписки первые дни после деплоя
 4. **Проверяйте логи** на наличие ошибок оплаты
+5. **Проверьте старые подписки** - у них может не быть поля paymentStatus
 
 ## 🔒 Безопасность
 

@@ -30,21 +30,24 @@ export async function GET(request: NextRequest) {
       })
 
       return NextResponse.json({
-        isSubscribed: subscription?.isActive && subscription.validUntil > new Date(),
+        isSubscribed: subscription?.isActive && 
+                     subscription.validUntil > new Date() && 
+                     subscription.paymentStatus === 'COMPLETED', // Проверяем оплату
         subscription
       })
     }
 
     // Иначе возвращаем все активные подписки пользователя
-    const subscriptions = await prisma.subscription.findMany({
-      where: {
-        userId,
-        isActive: true,
-        validUntil: {
-          gt: new Date()
+          const subscriptions = await prisma.subscription.findMany({
+        where: {
+          userId,
+          isActive: true,
+          validUntil: {
+            gt: new Date()
+          },
+          paymentStatus: 'COMPLETED' // Только оплаченные подписки
         }
-      }
-    })
+      })
 
     const subscribedCreatorIds = subscriptions.map(sub => sub.creatorId)
 
