@@ -13,8 +13,11 @@ import {
   CurrencyDollarIcon,
   XMarkIcon,
   ChatBubbleLeftEllipsisIcon,
-  VideoCameraIcon
+  VideoCameraIcon,
+  CheckCircleIcon,
+  GiftIcon
 } from '@heroicons/react/24/outline'
+import { HeartIcon, EyeIcon } from '@heroicons/react/24/solid'
 import Link from 'next/link'
 import OptimizedImage from '@/components/OptimizedImage'
 import { useConnection } from '@solana/wallet-adapter-react'
@@ -87,6 +90,7 @@ export default function ConversationPage() {
   const [showTipModal, setShowTipModal] = useState(false)
   const [tipAmount, setTipAmount] = useState('')
   const [isSendingTip, setIsSendingTip] = useState(false)
+  const [showQuickTips, setShowQuickTips] = useState(false)
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [hasMore, setHasMore] = useState(false)
@@ -263,6 +267,12 @@ export default function ConversationPage() {
   const sendMessage = async () => {
     if ((!messageText.trim() && !selectedMedia) || isSending) return
 
+    // Validate paid message
+    if (isPaidMessage && (!messagePrice || parseFloat(messagePrice) <= 0)) {
+      toast.error('Please set a valid price for paid message')
+      return
+    }
+
     setIsSending(true)
     try {
       let mediaUrl = null
@@ -285,7 +295,7 @@ export default function ConversationPage() {
           'x-user-wallet': publicKey?.toString() || ''
         },
         body: JSON.stringify({
-          content: messageText,
+          content: messageText || null,
           mediaUrl,
           mediaType,
           isPaid: isPaidMessage,
@@ -295,19 +305,29 @@ export default function ConversationPage() {
 
       if (response.ok) {
         const data = await response.json()
-        // Ensure the sender always sees their own message content
+        // Add animation flag for new message
         const newMessage = {
           ...data.message,
           content: data.message.content || messageText,
           mediaUrl: data.message.mediaUrl || mediaUrl,
-          isOwn: true
+          isOwn: true,
+          isNew: true
         }
         setMessages(prev => [...prev, newMessage])
+        
+        // Reset form
         setMessageText('')
         setIsPaidMessage(false)
         setMessagePrice('')
         setSelectedMedia(null)
         setMediaPreview(null)
+        
+        // Remove animation flag after a delay
+        setTimeout(() => {
+          setMessages(prev => prev.map(msg => 
+            msg.id === newMessage.id ? { ...msg, isNew: false } : msg
+          ))
+        }, 500)
       } else {
         const error = await response.json()
         toast.error(error.error || 'Failed to send message')
@@ -590,6 +610,12 @@ export default function ConversationPage() {
     }
   }
 
+  const sendQuickTip = async (amount: number) => {
+    setTipAmount(amount.toString())
+    setShowQuickTips(false)
+    await sendTip()
+  }
+
   if (!publicKey) {
     return (
       <div className="min-h-screen bg-gray-50 dark:bg-slate-900 pt-24 flex items-center justify-center">
@@ -639,15 +665,6 @@ export default function ConversationPage() {
               </div>
             </Link>
           )}
-
-          {/* Tip Button */}
-          <button
-            onClick={() => setShowTipModal(true)}
-            className="p-2.5 bg-gradient-to-r from-yellow-500 to-orange-500 hover:from-yellow-600 hover:to-orange-600 text-white rounded-xl transition-all transform hover:scale-105 flex items-center gap-1.5"
-          >
-            <SparklesIcon className="w-4 h-4" />
-            <span className="text-sm font-medium hidden sm:inline">Tip</span>
-          </button>
         </div>
       </div>
 
@@ -680,15 +697,17 @@ export default function ConversationPage() {
             {messages.map((message) => (
               <div
                 key={message.id}
-                className={`flex ${message.isOwn ? 'justify-end' : 'justify-start'}`}
+                className={`flex ${message.isOwn ? 'justify-end' : 'justify-start'} ${
+                  (message as any).isNew ? 'animate-slideInUp' : ''
+                }`}
               >
                 {/* Tip Message */}
                 {message.metadata?.type === 'tip' && (
                   <div className="max-w-xs">
                     <div className={`p-4 rounded-2xl ${
                       message.isOwn 
-                        ? 'bg-gradient-to-r from-yellow-500 to-orange-500 text-white' 
-                        : 'bg-yellow-100 dark:bg-yellow-900/20 text-yellow-800 dark:text-yellow-200'
+                        ? 'bg-gradient-to-r from-yellow-500 to-orange-500 text-white shadow-lg' 
+                        : 'bg-gradient-to-r from-yellow-100 to-orange-100 dark:from-yellow-900/20 dark:to-orange-900/20 text-yellow-800 dark:text-yellow-200'
                     }`}>
                       <div className="flex items-center gap-2 mb-2">
                         <SparklesIcon className="w-5 h-5" />
@@ -696,6 +715,11 @@ export default function ConversationPage() {
                       </div>
                       <p className="text-sm">
                         {message.isOwn ? 'You' : message.metadata.senderName} sent {formatSolAmount(message.metadata.amount || 0)} SOL
+                        {solRate && (
+                          <span className="block text-xs opacity-80 mt-1">
+                            ≈ ${(message.metadata.amount! * solRate).toFixed(2)} USD
+                          </span>
+                        )}
                       </p>
                       {message.metadata.tipLevel && (
                         <div className="mt-2 text-xs font-medium">
@@ -718,61 +742,112 @@ export default function ConversationPage() {
                 {/* Regular Message */}
                 {!message.metadata?.type && (
                   <div className={`max-w-[70%] ${message.isOwn ? 'items-end' : 'items-start'}`}>
-                    <div className={`rounded-2xl p-3 ${
+                    <div className={`rounded-2xl ${
                       message.isOwn 
-                        ? 'bg-gradient-to-r from-purple-600 to-pink-600 text-white' 
+                        ? 'bg-gradient-to-r from-purple-600 to-pink-600 text-white shadow-md' 
                         : 'bg-gray-100 dark:bg-slate-800'
-                    }`}>
-                      {/* PPV Content */}
+                    } ${message.isPaid && !message.isPurchased && !message.isOwn ? 'p-1' : 'p-3'}`}>
+                      
+                      {/* PPV Content - Enhanced Design */}
                       {message.isPaid && !message.isPurchased && !message.isOwn && (
-                        <div className="space-y-3">
+                        <div className="bg-gradient-to-br from-purple-900/90 to-pink-900/90 backdrop-blur-sm rounded-xl p-4 space-y-3">
+                          <div className="flex items-center justify-between mb-2">
+                            <div className="flex items-center gap-2">
+                              <div className="p-2 bg-white/10 rounded-lg">
+                                <LockClosedIcon className="w-5 h-5 text-white" />
+                              </div>
+                              <div>
+                                <p className="font-semibold text-white">Premium Message</p>
+                                <p className="text-xs text-white/80">Exclusive content</p>
+                              </div>
+                            </div>
+                            <div className="text-right">
+                              <p className="text-lg font-bold text-white">{message.price} SOL</p>
+                              {solRate && (
+                                <p className="text-xs text-white/80">≈ ${(message.price! * solRate).toFixed(2)}</p>
+                              )}
+                            </div>
+                          </div>
+                          
                           {message.mediaUrl && (
-                            <div className="relative rounded-xl overflow-hidden">
+                            <div className="relative rounded-lg overflow-hidden">
                               {message.mediaType === 'image' ? (
                                 <div className="relative">
                                   <img
                                     src={message.mediaUrl}
                                     alt="Premium content"
-                                    className="w-full max-w-xs blur-xl opacity-50"
+                                    className="w-full max-w-xs blur-2xl opacity-30 transform scale-110"
                                   />
+                                  <div className="absolute inset-0 bg-gradient-to-t from-purple-900/60 to-transparent" />
                                   <div className="absolute inset-0 flex items-center justify-center">
-                                    <LockClosedIcon className="w-8 h-8 text-white drop-shadow-lg" />
+                                    <div className="text-center">
+                                      <PhotoIcon className="w-12 h-12 text-white mb-2 mx-auto" />
+                                      <p className="text-sm text-white/90">Premium Photo</p>
+                                    </div>
                                   </div>
                                 </div>
                               ) : (
-                                <div className="bg-gray-900/50 p-8 rounded-xl">
-                                  <LockClosedIcon className="w-8 h-8 text-white mx-auto" />
+                                <div className="bg-gradient-to-br from-purple-800/50 to-pink-800/50 p-12 rounded-lg">
+                                  <VideoCameraIcon className="w-12 h-12 text-white mx-auto mb-2" />
+                                  <p className="text-sm text-white/90 text-center">Premium Video</p>
                                 </div>
                               )}
                             </div>
                           )}
                           
-                          <div className="text-center">
-                            <p className="font-medium mb-2">💰 Premium Message</p>
-                            <p className="text-sm opacity-90 mb-3">
-                              Unlock this message for {message.price} SOL
-                            </p>
-                            <button
-                              onClick={() => purchaseMessage(message)}
-                              disabled={isPurchasing === message.id}
-                              className="w-full px-4 py-2 bg-white/20 hover:bg-white/30 backdrop-blur-sm rounded-xl font-medium transition-all disabled:opacity-50"
-                            >
-                              {isPurchasing === message.id ? (
-                                <span className="flex items-center justify-center gap-2">
-                                  <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
-                                  Processing...
-                                </span>
-                              ) : (
-                                `Unlock for ${message.price} SOL`
-                              )}
-                            </button>
-                          </div>
+                          <button
+                            onClick={() => purchaseMessage(message)}
+                            disabled={isPurchasing === message.id}
+                            className="w-full px-4 py-3 bg-white text-purple-600 font-semibold rounded-xl hover:bg-gray-100 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                          >
+                            {isPurchasing === message.id ? (
+                              <>
+                                <div className="w-4 h-4 border-2 border-purple-600/30 border-t-purple-600 rounded-full animate-spin" />
+                                Processing...
+                              </>
+                            ) : (
+                              <>
+                                <LockClosedIcon className="w-4 h-4" />
+                                Unlock Message
+                              </>
+                            )}
+                          </button>
+                          
+                          {message.purchases && message.purchases.length > 0 && (
+                            <div className="flex items-center gap-1 text-xs text-white/60 justify-center">
+                              <EyeIcon className="w-3 h-3" />
+                              {message.purchases.length} {message.purchases.length === 1 ? 'view' : 'views'}
+                            </div>
+                          )}
                         </div>
                       )}
 
                       {/* Normal or Purchased Content */}
                       {(!message.isPaid || message.isPurchased || message.isOwn) && (
                         <>
+                          {message.isPaid && message.isOwn && (
+                            <div className="flex items-center gap-2 mb-2 pb-2 border-b border-white/20">
+                              <CurrencyDollarIcon className="w-4 h-4" />
+                              <span className="text-xs font-medium">
+                                PPV Message • {message.price} SOL
+                                {message.purchases && message.purchases.length > 0 && (
+                                  <span className="ml-1">
+                                    • {message.purchases.length} sold
+                                  </span>
+                                )}
+                              </span>
+                            </div>
+                          )}
+                          
+                          {message.isPaid && message.isPurchased && !message.isOwn && (
+                            <div className="flex items-center gap-1 mb-2 pb-2 border-b border-gray-200 dark:border-slate-700">
+                              <CheckCircleIcon className="w-4 h-4 text-green-600 dark:text-green-400" />
+                              <span className="text-xs font-medium text-green-600 dark:text-green-400">
+                                Purchased
+                              </span>
+                            </div>
+                          )}
+                          
                           {message.mediaUrl && (
                             <div className="mb-2">
                               {message.mediaType === 'image' ? (
@@ -792,7 +867,7 @@ export default function ConversationPage() {
                           )}
                           
                           {message.content && (
-                            <p className={`${message.isOwn ? 'text-white' : 'text-gray-900 dark:text-white'} text-sm sm:text-base`}>
+                            <p className={`${message.isOwn ? 'text-white' : 'text-gray-900 dark:text-white'} text-sm sm:text-base whitespace-pre-wrap`}>
                               {message.content}
                             </p>
                           )}
@@ -820,126 +895,187 @@ export default function ConversationPage() {
         )}
       </div>
 
-      {/* Input */}
-      <div className="sticky bottom-0 bg-white dark:bg-slate-900 border-t border-gray-200 dark:border-slate-700/50 p-3 sm:p-4">
-        {selectedMedia && (
-          <div className="mb-3 relative inline-block">
-            <div className="relative">
-              {selectedMedia.type.startsWith('image/') ? (
-                <img
-                  src={mediaPreview!}
-                  alt="Selected media"
-                  className="h-20 rounded-lg"
-                />
-              ) : (
-                <div className="h-20 w-32 bg-gray-100 dark:bg-slate-800 rounded-lg flex items-center justify-center">
-                  <VideoCameraIcon className="w-8 h-8 text-gray-400" />
-                </div>
-              )}
+      {/* Input - Enhanced with Quick Tips */}
+      <div className="sticky bottom-0 bg-white dark:bg-slate-900 border-t border-gray-200 dark:border-slate-700/50">
+        {/* Quick Tips Bar */}
+        {showQuickTips && (
+          <div className="p-3 border-b border-gray-200 dark:border-slate-700/50 bg-gray-50 dark:bg-slate-800/50">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-sm font-medium text-gray-700 dark:text-slate-300">Quick Tip</span>
               <button
-                onClick={() => {
-                  setSelectedMedia(null)
-                  setMediaPreview(null)
-                }}
-                className="absolute -top-2 -right-2 w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center hover:bg-red-600"
+                onClick={() => setShowQuickTips(false)}
+                className="p-1 hover:bg-gray-200 dark:hover:bg-slate-700 rounded-lg"
               >
-                <XMarkIcon className="w-4 h-4" />
+                <XMarkIcon className="w-4 h-4 text-gray-500" />
               </button>
+            </div>
+            <div className="grid grid-cols-4 gap-2">
+              {[0.01, 0.1, 1, 5].map(amount => (
+                <button
+                  key={amount}
+                  onClick={() => sendQuickTip(amount)}
+                  disabled={isSendingTip}
+                  className="px-3 py-2 bg-white dark:bg-slate-700 hover:bg-gray-100 dark:hover:bg-slate-600 border border-gray-200 dark:border-slate-600 rounded-lg text-sm font-medium text-gray-700 dark:text-slate-300 transition-all hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {amount} SOL
+                </button>
+              ))}
             </div>
           </div>
         )}
-
-        {isPaidMessage && (
-          <div className="mb-3 p-3 bg-purple-100 dark:bg-purple-900/20 rounded-xl">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <CurrencyDollarIcon className="w-5 h-5 text-purple-600 dark:text-purple-400" />
-                <span className="text-sm font-medium text-purple-700 dark:text-purple-300">
-                  PPV Message
-                </span>
-              </div>
-              <div className="flex items-center gap-2">
-                <input
-                  type="number"
-                  step="0.01"
-                  min="0.01"
-                  value={messagePrice}
-                  onChange={(e) => setMessagePrice(e.target.value)}
-                  placeholder="0.00"
-                  className="w-20 px-2 py-1 text-sm bg-white dark:bg-slate-800 border border-purple-300 dark:border-purple-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
-                />
-                <span className="text-sm text-purple-700 dark:text-purple-300">SOL</span>
+        
+        <div className="p-3 sm:p-4">
+          {selectedMedia && (
+            <div className="mb-3 relative inline-block">
+              <div className="relative">
+                {selectedMedia.type.startsWith('image/') ? (
+                  <img
+                    src={mediaPreview!}
+                    alt="Selected media"
+                    className="h-20 rounded-lg"
+                  />
+                ) : (
+                  <div className="h-20 w-32 bg-gray-100 dark:bg-slate-800 rounded-lg flex items-center justify-center">
+                    <VideoCameraIcon className="w-8 h-8 text-gray-400" />
+                  </div>
+                )}
                 <button
                   onClick={() => {
-                    setIsPaidMessage(false)
-                    setMessagePrice('')
+                    setSelectedMedia(null)
+                    setMediaPreview(null)
                   }}
-                  className="p-1 text-purple-600 dark:text-purple-400 hover:text-purple-700 dark:hover:text-purple-300"
+                  className="absolute -top-2 -right-2 w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center hover:bg-red-600 shadow-lg"
                 >
                   <XMarkIcon className="w-4 h-4" />
                 </button>
               </div>
             </div>
-          </div>
-        )}
+          )}
 
-        <div className="flex items-end gap-2">
-          <div className="flex-1">
-            <textarea
-              value={messageText}
-              onChange={(e) => setMessageText(e.target.value)}
-              onKeyPress={(e) => {
-                if (e.key === 'Enter' && !e.shiftKey) {
-                  e.preventDefault()
-                  sendMessage()
-                }
-              }}
-              placeholder="Type a message..."
-              className="w-full px-4 py-2.5 bg-gray-100 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-2xl resize-none focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent text-sm sm:text-base"
-              rows={1}
-            />
+          {isPaidMessage && (
+            <div className="mb-3 p-3 bg-gradient-to-r from-purple-100 to-pink-100 dark:from-purple-900/20 dark:to-pink-900/20 rounded-xl border border-purple-200 dark:border-purple-800">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <CurrencyDollarIcon className="w-5 h-5 text-purple-600 dark:text-purple-400" />
+                  <span className="text-sm font-medium text-purple-700 dark:text-purple-300">
+                    PPV Message
+                  </span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="0.01"
+                    value={messagePrice}
+                    onChange={(e) => setMessagePrice(e.target.value)}
+                    placeholder="0.00"
+                    className="w-24 px-3 py-1 text-sm bg-white dark:bg-slate-800 border border-purple-300 dark:border-purple-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 text-right"
+                  />
+                  <span className="text-sm text-purple-700 dark:text-purple-300">SOL</span>
+                  {messagePrice && solRate && (
+                    <span className="text-xs text-purple-600 dark:text-purple-400">
+                      ≈ ${(parseFloat(messagePrice) * solRate).toFixed(2)}
+                    </span>
+                  )}
+                  <button
+                    onClick={() => {
+                      setIsPaidMessage(false)
+                      setMessagePrice('')
+                    }}
+                    className="p-1 text-purple-600 dark:text-purple-400 hover:text-purple-700 dark:hover:text-purple-300"
+                  >
+                    <XMarkIcon className="w-4 h-4" />
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          <div className="flex items-end gap-2">
+            <div className="flex-1">
+              <textarea
+                value={messageText}
+                onChange={(e) => setMessageText(e.target.value)}
+                onKeyPress={(e) => {
+                  if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault()
+                    sendMessage()
+                  }
+                }}
+                placeholder="Type a message..."
+                className="w-full px-4 py-2.5 bg-gray-100 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-2xl resize-none focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent text-sm sm:text-base"
+                rows={1}
+              />
+            </div>
+
+            <div className="flex items-center gap-1">
+              {/* Media Upload */}
+              <button
+                onClick={() => fileInputRef.current?.click()}
+                className="p-2.5 text-gray-600 dark:text-slate-400 hover:text-gray-900 dark:hover:text-white rounded-xl hover:bg-gray-100 dark:hover:bg-slate-800 transition-all"
+                title="Add photo or video"
+              >
+                <PhotoIcon className="w-5 h-5" />
+              </button>
+              
+              {/* PPV Toggle */}
+              <button
+                onClick={() => setIsPaidMessage(!isPaidMessage)}
+                className={`p-2.5 rounded-xl transition-all ${
+                  isPaidMessage 
+                    ? 'bg-gradient-to-r from-purple-100 to-pink-100 dark:from-purple-900/30 dark:to-pink-900/30 text-purple-600 dark:text-purple-400' 
+                    : 'text-gray-600 dark:text-slate-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-slate-800'
+                }`}
+                title="Send paid message"
+              >
+                <CurrencyDollarIcon className="w-5 h-5" />
+              </button>
+              
+              {/* Quick Tips */}
+              <button
+                onClick={() => setShowQuickTips(!showQuickTips)}
+                className={`p-2.5 rounded-xl transition-all ${
+                  showQuickTips
+                    ? 'bg-gradient-to-r from-yellow-100 to-orange-100 dark:from-yellow-900/30 dark:to-orange-900/30 text-yellow-600 dark:text-yellow-400'
+                    : 'text-gray-600 dark:text-slate-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-slate-800'
+                }`}
+                title="Send tip"
+              >
+                <SparklesIcon className="w-5 h-5" />
+              </button>
+              
+              {/* Custom Tip */}
+              <button
+                onClick={() => setShowTipModal(true)}
+                className="p-2.5 text-gray-600 dark:text-slate-400 hover:text-gray-900 dark:hover:text-white rounded-xl hover:bg-gray-100 dark:hover:bg-slate-800 transition-all"
+                title="Send custom tip"
+              >
+                <GiftIcon className="w-5 h-5" />
+              </button>
+
+              {/* Send Button */}
+              <button
+                onClick={sendMessage}
+                disabled={(!messageText.trim() && !selectedMedia) || isSending || isUploadingMedia}
+                className="p-2.5 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 disabled:from-gray-400 disabled:to-gray-400 text-white rounded-xl transition-all disabled:cursor-not-allowed transform hover:scale-105 disabled:hover:scale-100 shadow-lg"
+              >
+                {isSending || isUploadingMedia ? (
+                  <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                ) : (
+                  <PaperAirplaneIcon className="w-5 h-5" />
+                )}
+              </button>
+            </div>
           </div>
 
-          <div className="flex items-center gap-1">
-            <button
-              onClick={() => fileInputRef.current?.click()}
-              className="p-2.5 text-gray-600 dark:text-slate-400 hover:text-gray-900 dark:hover:text-white rounded-xl hover:bg-gray-100 dark:hover:bg-slate-800 transition-colors"
-            >
-              <PhotoIcon className="w-5 h-5" />
-            </button>
-            
-            <button
-              onClick={() => setIsPaidMessage(!isPaidMessage)}
-              className={`p-2.5 rounded-xl transition-colors ${
-                isPaidMessage 
-                  ? 'bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400' 
-                  : 'text-gray-600 dark:text-slate-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-slate-800'
-              }`}
-            >
-              <CurrencyDollarIcon className="w-5 h-5" />
-            </button>
-
-            <button
-              onClick={sendMessage}
-              disabled={(!messageText.trim() && !selectedMedia) || isSending || isUploadingMedia}
-              className="p-2.5 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 disabled:from-gray-400 disabled:to-gray-400 text-white rounded-xl transition-all disabled:cursor-not-allowed"
-            >
-              {isSending || isUploadingMedia ? (
-                <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
-              ) : (
-                <PaperAirplaneIcon className="w-5 h-5" />
-              )}
-            </button>
-          </div>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*,video/*"
+            onChange={handleMediaSelect}
+            className="hidden"
+          />
         </div>
-
-        <input
-          ref={fileInputRef}
-          type="file"
-          accept="image/*,video/*"
-          onChange={handleMediaSelect}
-          className="hidden"
-        />
       </div>
 
       {/* Tip Modal */}
