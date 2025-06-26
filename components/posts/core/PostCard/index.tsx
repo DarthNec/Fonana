@@ -1,12 +1,14 @@
 'use client'
 
-import React from 'react'
+import React, { useState } from 'react'
 import { UnifiedPost, PostAction, PostCardVariant } from '@/types/posts'
 import { PostHeader } from '../PostHeader'
 import { PostContent } from '../PostContent'
 import { PostActions } from '../PostActions'
 import { PostTierBadge } from '../PostTierBadge'
 import { PostFlashSale } from '../PostFlashSale'
+import { CommentsSection } from '../CommentsSection'
+import { cn } from '@/lib/utils'
 import { 
   getPostCardBorderStyle, 
   getPostCardGlowStyle,
@@ -16,7 +18,6 @@ import {
   isActiveAuction,
   isPostSold
 } from '@/components/posts/utils/postHelpers'
-import { cn } from '@/lib/utils'
 
 export interface PostCardProps {
   /** Данные поста */
@@ -32,8 +33,8 @@ export interface PostCardProps {
 }
 
 /**
- * Основной компонент карточки поста
- * Адаптируется под разные варианты отображения
+ * Главный компонент карточки поста
+ * Адаптивный компонент, который может отображаться в разных вариантах
  */
 export function PostCard({
   post,
@@ -42,6 +43,18 @@ export function PostCard({
   onAction,
   className
 }: PostCardProps) {
+  const [showComments, setShowComments] = useState(false)
+
+  // Обработка действий с добавлением поддержки комментариев
+  const handleAction = (action: PostAction) => {
+    if (action.type === 'comment') {
+      // Переключаем видимость комментариев
+      setShowComments(!showComments)
+    } else if (onAction) {
+      onAction(action)
+    }
+  }
+
   // Определяем, нужно ли показывать различные элементы
   const showFlashSale = !!post.commerce?.flashSale && !isPostSold(post.commerce)
   const showTierBadge = !!post.access.tier && (needsSubscription(post) || needsTierUpgrade(post))
@@ -145,11 +158,20 @@ export function PostCard({
         {variant !== 'minimal' && (
           <PostActions
             post={post}
-            onAction={onAction}
+            onAction={handleAction}
             variant={variant}
           />
         )}
       </div>
+
+      {/* Секция комментариев */}
+      {showComments && (
+        <CommentsSection
+          postId={post.id}
+          onClose={() => setShowComments(false)}
+          className="animate-fade-in"
+        />
+      )}
     </article>
   )
 } 

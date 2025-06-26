@@ -30,12 +30,36 @@ export function useUnifiedPosts(options: UseUnifiedPostsOptions = {}): UseUnifie
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<Error | null>(null)
   const { publicKey } = useWallet()
-  const { user } = useUser()
+  const { user, isLoading: isUserLoading } = useUser()
+
+  // Получаем userId из user или через wallet lookup
+  const getUserId = useCallback(async (): Promise<string | null> => {
+    // Если user уже загружен
+    if (user?.id) return user.id
+    
+    // Если кошелек подключен, но user еще загружается
+    if (publicKey && !user) {
+      try {
+        const response = await fetch(`/api/user?wallet=${publicKey.toBase58()}`)
+        if (response.ok) {
+          const data = await response.json()
+          return data.user?.id || null
+        }
+      } catch (error) {
+        console.error('Error fetching user by wallet:', error)
+      }
+    }
+    
+    return null
+  }, [user, publicKey])
 
   const fetchPosts = useCallback(async () => {
     try {
       setIsLoading(true)
       setError(null)
+
+      // Получаем userId для проверки лайков
+      const userId = await getUserId()
 
       // Построение URL с параметрами
       const params = new URLSearchParams()
@@ -43,6 +67,7 @@ export function useUnifiedPosts(options: UseUnifiedPostsOptions = {}): UseUnifie
       if (options.category) params.append('category', options.category)
       if (options.limit) params.append('limit', options.limit.toString())
       if (publicKey) params.append('userWallet', publicKey.toBase58())
+      if (userId) params.append('userId', userId)
 
       const response = await fetch(`/api/posts?${params}`)
       if (!response.ok) throw new Error('Failed to fetch posts')
@@ -61,7 +86,7 @@ export function useUnifiedPosts(options: UseUnifiedPostsOptions = {}): UseUnifie
     } finally {
       setIsLoading(false)
     }
-  }, [options.creatorId, options.category, options.limit, publicKey])
+  }, [options.creatorId, options.category, options.limit, publicKey, getUserId])
 
   // Загрузка постов при монтировании и изменении параметров
   useEffect(() => {
@@ -111,8 +136,15 @@ export function useUnifiedPosts(options: UseUnifiedPostsOptions = {}): UseUnifie
 
   // Лайк поста
   const handleLike = async (postId: string) => {
-    if (!user?.id) {
+    if (!publicKey) {
       toast.error('Подключите кошелек')
+      return
+    }
+
+    // Получаем userId
+    const userId = await getUserId()
+    if (!userId) {
+      toast.error('Пользователь не найден')
       return
     }
 
@@ -123,7 +155,7 @@ export function useUnifiedPosts(options: UseUnifiedPostsOptions = {}): UseUnifie
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          userId: user.id
+          userId
         }),
       })
 
@@ -154,8 +186,15 @@ export function useUnifiedPosts(options: UseUnifiedPostsOptions = {}): UseUnifie
 
   // Убрать лайк
   const handleUnlike = async (postId: string) => {
-    if (!user?.id) {
+    if (!publicKey) {
       toast.error('Подключите кошелек')
+      return
+    }
+
+    // Получаем userId
+    const userId = await getUserId()
+    if (!userId) {
+      toast.error('Пользователь не найден')
       return
     }
 
@@ -166,7 +205,7 @@ export function useUnifiedPosts(options: UseUnifiedPostsOptions = {}): UseUnifie
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          userId: user.id
+          userId
         }),
       })
 

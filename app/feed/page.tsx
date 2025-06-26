@@ -113,11 +113,6 @@ export default function FeedPage() {
         }
         break
         
-      case 'comment':
-        // Открываем страницу поста с комментариями
-        window.location.href = `/post/${action.postId}#comments`
-        break
-        
       default:
         // Остальные действия обрабатываются хуком
         await handleAction(action)
