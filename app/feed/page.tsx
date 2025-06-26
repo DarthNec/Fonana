@@ -1,9 +1,11 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useMemo } from 'react'
 import Link from 'next/link'
 import { useUser } from '@/lib/hooks/useUser'
-import PostCard from '@/components/PostCard'
+import { useUnifiedPosts } from '@/lib/hooks/useUnifiedPosts'
+import { PostsContainer } from '@/components/posts/layouts/PostsContainer'
+import { UnifiedPost, PostAction } from '@/types/posts'
 import SubscribeModal from '@/components/SubscribeModal'
 import PurchaseModal from '@/components/PurchaseModal'
 import EditPostModal from '@/components/EditPostModal'
@@ -30,11 +32,14 @@ const categories = [
 
 export default function FeedPage() {
   const { user } = useUser()
-  const [posts, setPosts] = useState<any[]>([])
-  const [isLoading, setIsLoading] = useState(true)
   const [selectedCategory, setSelectedCategory] = useState('All')
   const [sortBy, setSortBy] = useState<'latest' | 'popular' | 'trending' | 'most-liked' | 'most-commented' | 'following' | 'my-posts'>('latest')
   const scrollPositionRef = useRef(0)
+  
+  // Используем унифицированный хук для загрузки постов
+  const { posts, isLoading, refresh, handleAction } = useUnifiedPosts({
+    variant: 'feed'
+  })
   
   // Состояние для модалок
   const [showSubscribeModal, setShowSubscribeModal] = useState(false)
@@ -45,33 +50,29 @@ export default function FeedPage() {
   const [selectedSellablePost, setSelectedSellablePost] = useState<any>(null)
   const [preferredTier, setPreferredTier] = useState<'basic' | 'premium' | 'vip'>('basic')
   
-  // Добавляем состояние для редактирования на уровне Feed
+  // Состояние для редактирования
   const [showEditModal, setShowEditModal] = useState(false)
   const [editingPost, setEditingPost] = useState<any>(null)
 
   useEffect(() => {
-    loadPosts()
-    
     // Очищаем сохраненный wallet при отключении
     if (!user?.wallet) {
       localStorage.removeItem('fonana_user_wallet')
     }
-  }, [user?.wallet]) // Перезагружаем при изменении wallet
+  }, [user?.wallet])
 
-  // Перезагрузка постов при фокусе окна (для обновления после редактирования)
+  // Перезагрузка постов при фокусе окна
   useEffect(() => {
     const handleFocus = () => {
-      // Добавляем небольшую задержку, чтобы дать контексту восстановиться
       setTimeout(() => {
-        // Проверяем, что user загружен перед вызовом loadPosts
         if (!user || user.wallet) {
-          loadPosts()
+          refresh()
         }
       }, 100)
     }
     
     const handlePostsUpdated = () => {
-      loadPosts()
+      refresh()
     }
     
     window.addEventListener('focus', handleFocus)
@@ -81,152 +82,40 @@ export default function FeedPage() {
       window.removeEventListener('focus', handleFocus)
       window.removeEventListener('postsUpdated', handlePostsUpdated)
     }
-  }, [user]) // Добавляем user в зависимости
+  }, [user, refresh])
 
-  // Функция для точечного обновления поста после покупки
-  const updatePostPurchaseStatus = (postId: string, purchased: boolean) => {
-    setPosts(prevPosts => prevPosts.map(post => 
-      post.id === postId 
-        ? { 
-            ...post, 
-            hasPurchased: purchased, 
-            shouldHideContent: false,
-            isSubscribed: post.isSubscribed || purchased
-          }
-        : post
-    ))
-  }
-
-  // Функция для обновления постов после подписки
-  const updatePostsAfterSubscription = (creatorId: string, tier: string) => {
-    setPosts(prevPosts => prevPosts.map(post => {
-      if (post.creator.id === creatorId) {
-        const hasAccess = checkTierAccess(post.requiredTier, tier)
-        return {
-          ...post,
-          isSubscribed: true,
-          userTier: tier,
-          shouldHideContent: post.isLocked && !hasAccess && !post.price
+  // Обработка действий с постами
+  const handlePostAction = async (action: PostAction) => {
+    switch (action.type) {
+      case 'subscribe':
+        const post = posts.find(p => p.id === action.postId)
+        if (post) {
+          const tier = post.access.tier || 'basic'
+          handleSubscribeClick(post.creator, tier as 'basic' | 'premium' | 'vip')
         }
-      }
-      return post
-    }))
-  }
-
-  // Проверка доступа к тиру
-  const checkTierAccess = (requiredTier: string | null, userTier: string): boolean => {
-    if (!requiredTier) return true
-    
-    const tierHierarchy: { [key: string]: number } = {
-      'free': 0,
-      'basic': 1,
-      'premium': 2,
-      'vip': 3
-    }
-    
-    const userLevel = tierHierarchy[userTier.toLowerCase()] || 0
-    const requiredLevel = tierHierarchy[requiredTier.toLowerCase()] || 0
-    
-    return userLevel >= requiredLevel
-  }
-
-  const loadPosts = async () => {
-    try {
-      // Сохраняем позицию скролла
-      scrollPositionRef.current = window.scrollY
-      
-      // Не устанавливаем isLoading в true, если посты уже загружены
-      // Это предотвратит unmount компонентов
-      if (posts.length === 0) {
-        setIsLoading(true)
-      }
-      
-      console.log('[Feed] Loading posts, user:', user?.id, user?.wallet)
-      
-      // Add current user's wallet to request
-      const params = new URLSearchParams()
-      
-      // Используем wallet из user или из localStorage как fallback
-      const userWallet = user?.wallet || localStorage.getItem('fonana_user_wallet')
-      
-      if (userWallet) {
-        params.append('userWallet', userWallet)
-        console.log('[Feed] Sending userWallet:', userWallet)
+        break
         
-        // Сохраняем wallet в localStorage для будущего использования
-        if (user?.wallet) {
-          localStorage.setItem('fonana_user_wallet', user.wallet)
+      case 'purchase':
+        const purchasePost = posts.find(p => p.id === action.postId)
+        if (purchasePost) {
+          if (purchasePost.commerce?.isSellable) {
+            handleSellableClick(purchasePost)
+          } else {
+            handlePurchaseClick(purchasePost)
+          }
         }
-      } else {
-        console.log('[Feed] No user wallet available')
-      }
-      
-      const response = await fetch(`/api/posts?${params.toString()}`)
-      
-      if (!response.ok) {
-        throw new Error('Failed to load posts')
-      }
-
-      const data = await response.json()
-      console.log('Loaded posts:', data.posts)
-      
-      // Format data for display
-      const formattedPosts = data.posts.map((post: any) => ({
-        id: post.id,
-        creator: {
-          id: post.creator.id,
-          name: post.creator.nickname || post.creator.wallet.slice(0, 6) + '...',
-          username: post.creator.wallet.slice(0, 6) + '...' + post.creator.wallet.slice(-4),
-          nickname: post.creator.nickname,
-          avatar: post.creator.avatar || '/default-avatar.png',
-          isVerified: false
-        },
-        title: post.title,
-        content: post.content,
-        category: post.category,
-        image: post.mediaUrl || post.thumbnail,
-        mediaUrl: post.mediaUrl,  // Передаём оригинальные значения
-        thumbnail: post.thumbnail,  // Передаём оригинальные значения
-        preview: post.preview,     // Добавляем preview
-        type: post.type as 'text' | 'image' | 'video' | 'audio',
-        isLocked: post.isLocked,
-        isPremium: post.isPremium || false,
-        price: post.price,
-        currency: post.currency,
-        likes: post._count?.likes || 0,
-        comments: post._count?.comments || 0,
-        createdAt: post.createdAt,
-        tags: post.tags || [],
-        isSubscribed: post.isSubscribed || false,
-        shouldHideContent: post.shouldHideContent || false,
-        requiredTier: post.requiredTier || null,
-        userTier: post.userTier || null,
-        imageAspectRatio: post.imageAspectRatio,
-        // Новые поля для продаваемых постов
-        isSellable: post.isSellable || false,
-        sellType: post.sellType,
-        quantity: post.quantity,
-        auctionStatus: post.auctionStatus,
-        auctionStartPrice: post.auctionStartPrice,
-        auctionCurrentBid: post.auctionCurrentBid,
-        auctionEndAt: post.auctionEndAt,
-        soldAt: post.soldAt,
-        soldTo: post.soldTo,
-        soldPrice: post.soldPrice,
-        flashSale: post.flashSale || null
-      }))
-
-      setPosts(formattedPosts)
-      
-      // Восстанавливаем позицию скролла после загрузки
-      requestAnimationFrame(() => {
-        window.scrollTo(0, scrollPositionRef.current)
-      })
-    } catch (error) {
-      console.error('Error loading posts:', error)
-      toast.error('Error loading posts')
-    } finally {
-      setIsLoading(false)
+        break
+        
+      case 'edit':
+        const editPost = posts.find(p => p.id === action.postId)
+        if (editPost) {
+          handleEditClick(editPost)
+        }
+        break
+        
+      default:
+        // Остальные действия обрабатываются хуком
+        await handleAction(action)
     }
   }
 
@@ -236,52 +125,102 @@ export default function FeedPage() {
     setShowSubscribeModal(true)
   }
 
-  const handlePurchaseClick = (postData: any) => {
-    setSelectedPost(postData)
+  const handlePurchaseClick = (postData: UnifiedPost) => {
+    setSelectedPost({
+      id: postData.id,
+      title: postData.content.title,
+      content: postData.content.text,
+      price: postData.access.price,
+      currency: postData.access.currency,
+      flashSale: postData.commerce?.flashSale
+    })
     setShowPurchaseModal(true)
   }
   
-  const handleSellableClick = (postData: any) => {
-    setSelectedSellablePost(postData)
+  const handleSellableClick = (postData: UnifiedPost) => {
+    setSelectedSellablePost({
+      id: postData.id,
+      title: postData.content.title,
+      content: postData.content.text,
+      type: postData.media.type,
+      mediaUrl: postData.media.url,
+      thumbnail: postData.media.thumbnail,
+      price: postData.access.price,
+      currency: postData.access.currency,
+      sellType: postData.commerce?.sellType,
+      quantity: postData.commerce?.quantity,
+      auctionStatus: postData.commerce?.auctionData?.status,
+      auctionStartPrice: postData.commerce?.auctionData?.startPrice,
+      auctionCurrentBid: postData.commerce?.auctionData?.currentBid,
+      auctionEndAt: postData.commerce?.auctionData?.endAt,
+      soldAt: postData.commerce?.soldAt,
+      soldTo: postData.commerce?.soldTo,
+      soldPrice: postData.commerce?.soldPrice
+    })
     setShowSellableModal(true)
   }
   
-  const handleEditClick = (postData: any) => {
+  const handleEditClick = (postData: UnifiedPost) => {
     console.log('[Feed] handleEditClick called with post:', postData.id)
-    setEditingPost(postData)
+    setEditingPost({
+      id: postData.id,
+      title: postData.content.title,
+      content: postData.content.text,
+      category: postData.content.category,
+      type: postData.media.type,
+      mediaUrl: postData.media.url,
+      thumbnail: postData.media.thumbnail,
+      isLocked: postData.access.isLocked,
+      price: postData.access.price,
+      currency: postData.access.currency,
+      minSubscriptionTier: postData.access.tier,
+      tags: postData.content.tags,
+      imageAspectRatio: postData.media.aspectRatio
+    })
     setShowEditModal(true)
   }
 
-  const filteredPosts = posts.filter(post => {
-    // Фильтр по категории
-    const categoryMatch = selectedCategory === 'All' || post.category === selectedCategory
-    
-    // Фильтр "Мои посты"
-    const myPostsMatch = sortBy !== 'my-posts' || (user && post.creator.id === user.id)
-    
-    return categoryMatch && myPostsMatch
-  })
+  // Фильтрация и сортировка постов
+  const filteredAndSortedPosts = useMemo(() => {
+    let filtered = posts.filter(post => {
+      // Фильтр по категории
+      const categoryMatch = selectedCategory === 'All' || post.content.category === selectedCategory
+      
+      // Фильтр "Мои посты"
+      const myPostsMatch = sortBy !== 'my-posts' || (user && post.creator.id === user.id)
+      
+      return categoryMatch && myPostsMatch
+    })
 
-  const sortedPosts = [...filteredPosts].sort((a, b) => {
-    if (sortBy === 'latest') {
-      return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-    } else if (sortBy === 'popular') {
-      // Популярность на основе общей активности (лайки + комментарии)
-      return (b.likes + b.comments) - (a.likes + a.comments)
-    } else if (sortBy === 'trending') {
-      // Трендовые - новые посты с высокой активностью
-      const ageA = Date.now() - new Date(a.createdAt).getTime()
-      const ageB = Date.now() - new Date(b.createdAt).getTime()
-      const scoreA = (a.likes + a.comments) / Math.max(ageA / (1000 * 60 * 60), 1) // активность в час
-      const scoreB = (b.likes + b.comments) / Math.max(ageB / (1000 * 60 * 60), 1)
-      return scoreB - scoreA
-    } else if (sortBy === 'most-liked') {
-      return b.likes - a.likes
-    } else if (sortBy === 'most-commented') {
-      return b.comments - a.comments
-    }
-    return 0
-  })
+    // Сортировка
+    const sorted = [...filtered].sort((a, b) => {
+      switch (sortBy) {
+        case 'latest':
+          return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+          
+        case 'popular':
+          return (b.engagement.likes + b.engagement.comments) - (a.engagement.likes + a.engagement.comments)
+          
+        case 'trending':
+          const ageA = Date.now() - new Date(a.createdAt).getTime()
+          const ageB = Date.now() - new Date(b.createdAt).getTime()
+          const scoreA = (a.engagement.likes + a.engagement.comments) / Math.max(ageA / (1000 * 60 * 60), 1)
+          const scoreB = (b.engagement.likes + b.engagement.comments) / Math.max(ageB / (1000 * 60 * 60), 1)
+          return scoreB - scoreA
+          
+        case 'most-liked':
+          return b.engagement.likes - a.engagement.likes
+          
+        case 'most-commented':
+          return b.engagement.comments - a.engagement.comments
+          
+        default:
+          return 0
+      }
+    })
+
+    return sorted
+  }, [posts, selectedCategory, sortBy, user])
 
   const sortOptions = [
     { id: 'latest', label: 'Latest', icon: ClockIcon },
@@ -294,7 +233,7 @@ export default function FeedPage() {
   ]
 
   return (
-    <div className="min-h-screen bg-white dark:bg-slate-900 pt-16 sm:pt-20"> {/* Added pt-16 for navbar offset */}
+    <div className="min-h-screen bg-white dark:bg-slate-900 pt-16 sm:pt-20">
       <div className="max-w-2xl mx-auto px-0 sm:px-4 py-0 sm:py-8">
         {/* Header - Create button only */}
         <div className="flex items-center justify-end mb-4 sm:mb-6 px-4 sm:px-0">
@@ -364,45 +303,32 @@ export default function FeedPage() {
           </div>
         </div>
 
-        {/* Posts Grid */}
-        {isLoading ? (
-          <div className="flex items-center justify-center py-20">
-            <div className="text-center">
-              <div className="w-16 h-16 border-4 border-purple-500/30 border-t-purple-500 rounded-full animate-spin mx-auto mb-4"></div>
-              <p className="text-gray-600 dark:text-slate-400">Loading posts...</p>
+        {/* Posts Container - используем унифицированную систему */}
+        <PostsContainer
+          posts={filteredAndSortedPosts}
+          layout="list"
+          variant="feed"
+          showCreator={true}
+          onAction={handlePostAction}
+          isLoading={isLoading}
+          emptyComponent={
+            <div className="text-center py-20 px-4">
+              <SparklesIcon className="w-16 h-16 text-gray-400 dark:text-slate-600 mx-auto mb-4" />
+              <h3 className="text-xl font-bold text-gray-700 dark:text-slate-300 mb-2">No posts yet</h3>
+              <p className="text-gray-600 dark:text-slate-400 mb-6">Be the first to create content!</p>
+              <Link
+                href="/create"
+                className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-purple-600 to-pink-600 text-white font-bold rounded-xl hover:from-purple-700 hover:to-pink-700 transform hover:scale-105 transition-all duration-300"
+              >
+                <PlusIcon className="w-5 h-5" />
+                Create first post
+              </Link>
             </div>
-          </div>
-        ) : sortedPosts.length === 0 ? (
-          <div className="text-center py-20 px-4">
-            <SparklesIcon className="w-16 h-16 text-gray-400 dark:text-slate-600 mx-auto mb-4" />
-            <h3 className="text-xl font-bold text-gray-700 dark:text-slate-300 mb-2">No posts yet</h3>
-            <p className="text-gray-600 dark:text-slate-400 mb-6">Be the first to create content!</p>
-            <Link
-              href="/create"
-              className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-purple-600 to-pink-600 text-white font-bold rounded-xl hover:from-purple-700 hover:to-pink-700 transform hover:scale-105 transition-all duration-300"
-            >
-              <PlusIcon className="w-5 h-5" />
-              Create first post
-            </Link>
-          </div>
-        ) : (
-          <div className="space-y-0 sm:space-y-8">
-            {sortedPosts.map((post) => (
-              <PostCard
-                key={post.id}
-                {...post}
-                showCreator={true}
-                onSubscribeClick={handleSubscribeClick}
-                onPurchaseClick={handlePurchaseClick}
-                onSellableClick={handleSellableClick}
-                onEditClick={handleEditClick}
-              />
-            ))}
-          </div>
-        )}
+          }
+        />
 
         {/* Load More */}
-        {sortedPosts.length > 0 && (
+        {filteredAndSortedPosts.length > 0 && (
           <div className="text-center mt-8 sm:mt-12">
             <button className="px-8 py-3 bg-gray-100 dark:bg-slate-800/50 hover:bg-gray-200 dark:hover:bg-slate-700/50 text-gray-700 dark:text-slate-300 hover:text-gray-900 dark:hover:text-white rounded-xl font-medium transition-all">
               Load more
@@ -420,15 +346,10 @@ export default function FeedPage() {
           onSuccess={(data) => {
             setShowSubscribeModal(false)
             
-            // Оптимистичное обновление UI
-            if (data?.subscription) {
-              updatePostsAfterSubscription(selectedCreator.id, data.subscription.tier || data.subscription.plan)
-            }
-            
             // Проверяем с сервера через небольшую задержку
             setTimeout(() => {
               console.log('[Feed] Checking posts after subscription')
-              loadPosts()
+              refresh()
             }, 2000)
           }}
         />
@@ -436,33 +357,14 @@ export default function FeedPage() {
 
       {showPurchaseModal && selectedPost && (
         <PurchaseModal
-          post={{
-            ...selectedPost,
-            flashSale: selectedPost.flashSale
-          }}
+          post={selectedPost}
           onClose={() => setShowPurchaseModal(false)}
           onSuccess={(data) => {
             setShowPurchaseModal(false)
             
-            // Оптимистичное обновление
-            if (data?.postId) {
-              updatePostPurchaseStatus(data.postId, true)
-            }
-            
-            // Затем проверяем с сервера (без полной перезагрузки)
+            // Затем проверяем с сервера
             setTimeout(() => {
-              if (data?.postId && user?.wallet) {
-                fetch(`/api/posts/${data.postId}?userWallet=${user.wallet}`)
-                  .then(res => res.json())
-                  .then(postData => {
-                    if (postData.post) {
-                      setPosts(prevPosts => prevPosts.map(post => 
-                        post.id === data.postId ? { ...postData.post } : post
-                      ))
-                    }
-                  })
-                  .catch(err => console.error('Error fetching updated post:', err))
-              }
+              refresh()
             }, 1000)
           }}
         />
@@ -476,7 +378,7 @@ export default function FeedPage() {
         />
       )}
 
-      {/* Edit Modal - теперь на уровне Feed */}
+      {/* Edit Modal */}
       {showEditModal && editingPost && (
         <EditPostModal
           isOpen={showEditModal}
@@ -492,7 +394,7 @@ export default function FeedPage() {
             setEditingPost(null)
             // Обновляем посты с задержкой
             setTimeout(() => {
-              loadPosts()
+              refresh()
             }, 500)
           }}
         />

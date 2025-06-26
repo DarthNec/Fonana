@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import Avatar from '@/components/Avatar'
-import PostCard from '@/components/PostCard'
+import { PostsContainer } from '@/components/posts/layouts/PostsContainer'
 import SubscribeModal from '@/components/SubscribeModal'
 import PurchaseModal from '@/components/PurchaseModal'
 import FlashSalesList from '@/components/FlashSalesList'
@@ -785,17 +785,28 @@ export default function CreatorPage() {
                       {creator.fullName || creator.nickname} hasn't posted any {activeTab} yet
                     </p>
                   </div>
-                ) : (
-                  filteredPosts.map((post) => (
-                    <PostCard
-                      key={post.id}
-                      {...post}
+                                  ) : (
+                    <PostsContainer 
+                      posts={filteredPosts}
+                      layout="list"
+                      variant="creator"
                       showCreator={false}
-                      onSubscribeClick={handleSubscribeClick}
-                      onPurchaseClick={handlePurchaseClick}
+                      onAction={(action) => {
+                        if (action.type === 'subscribe') {
+                          handleSubscribeClick({
+                            id: creator.id,
+                            name: creator.fullName || creator.nickname,
+                            username: creator.nickname,
+                            avatar: creator.avatar || '',
+                            isVerified: creator.isVerified
+                          })
+                        } else if (action.type === 'purchase') {
+                          const post = filteredPosts.find(p => p.id === action.postId)
+                          if (post) handlePurchaseClick(post)
+                        }
+                      }}
                     />
-                  ))
-                )}
+                  )}
               </div>
             )}
           </div>

@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useSearchParams } from 'next/navigation'
 import SearchBar from '@/components/SearchBar'
-import PostCard from '@/components/PostCard'
+import { PostsContainer } from '@/components/posts/layouts/PostsContainer'
 import Avatar from '@/components/Avatar'
 import Link from 'next/link'
 import { UsersIcon, DocumentTextIcon, HashtagIcon, MagnifyingGlassIcon, CheckBadgeIcon } from '@heroicons/react/24/outline'
@@ -250,42 +250,32 @@ export default function SearchPage() {
                   <DocumentTextIcon className="w-6 h-6" />
                   Посты
                 </h2>
-                <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-                  {filteredResults.posts.map((post) => (
-                    <PostCard
-                      key={post.id}
-                      id={post.id}
-                      creator={{
-                        id: post.creator.id,
-                        name: post.creator.fullName || post.creator.nickname,
-                        username: post.creator.nickname,
-                        nickname: post.creator.nickname,
-                        avatar: post.creator.avatar,
-                        isVerified: post.creator.isVerified
-                      }}
-                      content={post.content}
-                      title={post.title}
-                      createdAt={post.createdAt}
-                      likes={post.likes || 0}
-                      comments={post.comments || 0}
-                      type={post.type as 'text' | 'image' | 'video' | 'audio'}
-                      isLocked={post.isLocked}
-                      image={post.mediaUrl}
-                      mediaUrl={post.mediaUrl}
-                      thumbnail={post.thumbnail}
-                      price={post.price}
-                      currency="SOL"
-                      isPremium={post.isPremium}
-                      requiredTier={post.minSubscriptionTier}
-                      category={post.category}
-                      imageAspectRatio={post.imageAspectRatio}
-                      tags={[]}
-                      onSubscribeClick={(creatorData: any) => setSubscribeModalData(creatorData)}
-                      onPurchaseClick={(postData: any) => setPurchaseModalData(postData)}
-                      onEditClick={(postData: any) => setEditModalData(postData)}
-                    />
-                  ))}
-                </div>
+                <PostsContainer
+                  posts={filteredResults.posts}
+                  layout="grid"
+                  variant="search"
+                  showCreator={true}
+                  onAction={(action) => {
+                    if (action.type === 'subscribe') {
+                      const post = filteredResults.posts.find(p => p.id === action.postId)
+                      if (post?.creator) {
+                        setSubscribeModalData({
+                          id: post.creator.id,
+                          name: post.creator.fullName || post.creator.nickname,
+                          username: post.creator.nickname,
+                          avatar: post.creator.avatar,
+                          isVerified: post.creator.isVerified
+                        })
+                      }
+                    } else if (action.type === 'purchase') {
+                      const post = filteredResults.posts.find(p => p.id === action.postId)
+                      if (post) setPurchaseModalData(post)
+                    } else if (action.type === 'edit') {
+                      const post = filteredResults.posts.find(p => p.id === action.postId)
+                      if (post) setEditModalData(post)
+                    }
+                  }}
+                />
               </div>
             )}
           </>

@@ -17,109 +17,118 @@ import {
 } from '@heroicons/react/24/outline'
 import { useUser } from '@/lib/hooks/useUser'
 import { useWallet } from '@solana/wallet-adapter-react'
+import { useUnifiedPosts } from '@/lib/hooks/useUnifiedPosts'
+import { PostsContainer } from '@/components/posts/layouts/PostsContainer'
+import { PostAction } from '@/types/posts'
 import CreatePostModal from '@/components/CreatePostModal'
-import PostCard from '@/components/PostCard'
 import RevenueChart from '@/components/RevenueChart'
 import toast from 'react-hot-toast'
 import { useSolRate } from '@/lib/hooks/useSolRate'
 
-interface DashboardData {
-  posts: any[]
-  stats: {
-    totalViews: number
-    totalLikes: number
-    totalComments: number
-    totalRevenue: number
-    activeSubscribers: number
-    newSubscribers: number
-  }
-  recentActivity: any[]
-  revenue: {
-    subscriptions: number
-    posts: number
-    tips: number
-    messages: number
-  }
+interface DashboardStats {
+  totalViews: number
+  totalLikes: number
+  totalComments: number
+  totalRevenue: number
+  activeSubscribers: number
+  newSubscribers: number
+}
+
+interface DashboardRevenue {
+  subscriptions: number
+  posts: number
+  tips: number
+  messages: number
 }
 
 export default function DashboardPage() {
   const { user } = useUser()
   const { publicKey } = useWallet()
   const { rate: solRate } = useSolRate()
-  const [isLoading, setIsLoading] = useState(true)
   const [showCreateModal, setShowCreateModal] = useState(false)
-  const [dashboardData, setDashboardData] = useState<DashboardData>({
-    posts: [],
-    stats: {
-      totalViews: 0,
-      totalLikes: 0,
-      totalComments: 0,
-      totalRevenue: 0,
-      activeSubscribers: 0,
-      newSubscribers: 0
-    },
-    recentActivity: [],
-    revenue: {
-      subscriptions: 0,
-      posts: 0,
-      tips: 0,
-      messages: 0
-    }
+  const [isLoadingStats, setIsLoadingStats] = useState(true)
+  const [stats, setStats] = useState<DashboardStats>({
+    totalViews: 0,
+    totalLikes: 0,
+    totalComments: 0,
+    totalRevenue: 0,
+    activeSubscribers: 0,
+    newSubscribers: 0
+  })
+  const [revenue, setRevenue] = useState<DashboardRevenue>({
+    subscriptions: 0,
+    posts: 0,
+    tips: 0,
+    messages: 0
+  })
+
+  // Используем унифицированный хук для загрузки постов создателя
+  const { posts, isLoading: isLoadingPosts, refresh, handleAction } = useUnifiedPosts({
+    creatorId: user?.id,
+    limit: 6,
+    variant: 'dashboard'
   })
 
   useEffect(() => {
     if (user?.id) {
-      loadDashboard()
+      loadDashboardStats()
     }
   }, [user])
 
-  const loadDashboard = async () => {
+  const loadDashboardStats = async () => {
     try {
-      setIsLoading(true)
-      
-      // Load posts
-      const postsResponse = await fetch(`/api/posts?creatorId=${user?.id}`)
-      const postsData = await postsResponse.json()
-      const posts = postsData.posts || []
+      setIsLoadingStats(true)
       
       // Load analytics for quick stats
       const analyticsResponse = await fetch(`/api/creators/analytics?creatorId=${user?.id}&period=month`)
       const analyticsData = await analyticsResponse.json()
       
-      // Calculate quick stats
-      const totalViews = posts.reduce((sum: number, post: any) => sum + (post.viewsCount || 0), 0)
-      const totalLikes = posts.reduce((sum: number, post: any) => sum + (post._count?.likes || 0), 0)
-      const totalComments = posts.reduce((sum: number, post: any) => sum + (post._count?.comments || 0), 0)
+      // Calculate quick stats from posts
+      const totalViews = posts.reduce((sum, post) => sum + post.engagement.views, 0)
+      const totalLikes = posts.reduce((sum, post) => sum + post.engagement.likes, 0)
+      const totalComments = posts.reduce((sum, post) => sum + post.engagement.comments, 0)
       
-      setDashboardData({
-        posts: posts.slice(0, 6), // Show last 6 posts
-        stats: {
-          totalViews,
-          totalLikes,
-          totalComments,
-          totalRevenue: analyticsData.revenue?.current || 0,
-          activeSubscribers: analyticsData.subscribers?.total || 0,
-          newSubscribers: analyticsData.subscribers?.new || 0
-        },
-        recentActivity: [],
-        revenue: {
-          subscriptions: analyticsData.revenue?.bySource?.subscriptions?.total || 0,
-          posts: analyticsData.revenue?.bySource?.posts?.total || 0,
-          tips: analyticsData.revenue?.bySource?.messages?.tips?.total || 0,
-          messages: analyticsData.revenue?.bySource?.messages?.ppv?.total || 0
-        }
+      setStats({
+        totalViews,
+        totalLikes,
+        totalComments,
+        totalRevenue: analyticsData.revenue?.current || 0,
+        activeSubscribers: analyticsData.subscribers?.total || 0,
+        newSubscribers: analyticsData.subscribers?.new || 0
+      })
+      
+      setRevenue({
+        subscriptions: analyticsData.revenue?.bySource?.subscriptions?.total || 0,
+        posts: analyticsData.revenue?.bySource?.posts?.total || 0,
+        tips: analyticsData.revenue?.bySource?.messages?.tips?.total || 0,
+        messages: analyticsData.revenue?.bySource?.messages?.ppv?.total || 0
       })
       
     } catch (error) {
-      console.error('Error loading dashboard:', error)
-      toast.error('Ошибка загрузки дашборда')
+      console.error('Error loading dashboard stats:', error)
+      toast.error('Ошибка загрузки статистики')
     } finally {
-      setIsLoading(false)
+      setIsLoadingStats(false)
     }
   }
 
   const handlePostCreated = () => {
-    loadDashboard()
+    refresh()
+    loadDashboardStats()
+  }
+
+  // Обработка действий с постами
+  const handlePostAction = async (action: PostAction) => {
+    // В дашборде мы можем обрабатывать специфичные действия
+    switch (action.type) {
+      case 'edit':
+        // Перенаправляем на страницу редактирования или открываем модалку
+        window.location.href = `/post/${action.postId}/edit`
+        break
+      default:
+        // Остальные действия обрабатываются хуком
+        await handleAction(action)
+    }
   }
 
   if (!user?.isCreator) {
@@ -138,6 +147,8 @@ export default function DashboardPage() {
       </div>
     )
   }
+
+  const isLoading = isLoadingStats || isLoadingPosts
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-slate-900 relative overflow-hidden">
@@ -173,7 +184,7 @@ export default function DashboardPage() {
             </button>
           </div>
 
-          {isLoading ? (
+          {isLoadingStats ? (
             <div className="flex items-center justify-center py-20">
               <div className="text-center">
                 <div className="w-16 h-16 border-4 border-purple-500/30 border-t-purple-500 rounded-full animate-spin mx-auto mb-4"></div>
@@ -194,10 +205,10 @@ export default function DashboardPage() {
                     </div>
                   </div>
                   <p className="text-gray-900 dark:text-white text-lg sm:text-3xl font-bold truncate">
-                    {dashboardData.stats.totalRevenue.toFixed(2)}
+                    {stats.totalRevenue.toFixed(2)}
                   </p>
                   <p className="text-gray-500 dark:text-slate-500 text-[10px] sm:text-sm mt-0.5 sm:mt-1">
-                    ≈ ${(dashboardData.stats.totalRevenue * solRate).toFixed(0)} USD
+                    ≈ ${(stats.totalRevenue * solRate).toFixed(0)} USD
                   </p>
                 </div>
 
@@ -207,11 +218,11 @@ export default function DashboardPage() {
                       <UsersIcon className="w-4 h-4 sm:w-6 sm:h-6 text-white" />
                     </div>
                     <div className="text-blue-600 dark:text-blue-400 text-[10px] sm:text-sm font-medium">
-                      +{dashboardData.stats.newSubscribers}
+                      +{stats.newSubscribers}
                     </div>
                   </div>
                   <p className="text-gray-900 dark:text-white text-lg sm:text-3xl font-bold">
-                    {dashboardData.stats.activeSubscribers}
+                    {stats.activeSubscribers}
                   </p>
                   <p className="text-gray-500 dark:text-slate-500 text-[10px] sm:text-sm mt-0.5 sm:mt-1">
                     Подписчиков
@@ -228,10 +239,10 @@ export default function DashboardPage() {
                     </div>
                   </div>
                   <p className="text-gray-900 dark:text-white text-lg sm:text-3xl font-bold">
-                    {dashboardData.stats.totalViews}
+                    {stats.totalViews}
                   </p>
                   <p className="text-gray-500 dark:text-slate-500 text-[10px] sm:text-sm mt-0.5 sm:mt-1">
-                    {dashboardData.stats.totalLikes} лайков
+                    {stats.totalLikes} лайков
                   </p>
                 </div>
 
@@ -245,7 +256,7 @@ export default function DashboardPage() {
                     </div>
                   </div>
                   <p className="text-gray-900 dark:text-white text-lg sm:text-3xl font-bold">
-                    {dashboardData.stats.totalComments}
+                    {stats.totalComments}
                   </p>
                   <p className="text-gray-500 dark:text-slate-500 text-[10px] sm:text-sm mt-0.5 sm:mt-1">
                     Комментариев
@@ -267,7 +278,7 @@ export default function DashboardPage() {
                       <div>
                         <p className="text-[10px] sm:text-sm text-gray-600 dark:text-slate-400">Подписки</p>
                         <p className="text-sm sm:text-lg font-bold text-gray-900 dark:text-white truncate">
-                          {dashboardData.revenue.subscriptions.toFixed(2)}
+                          {revenue.subscriptions.toFixed(2)}
                         </p>
                       </div>
                     </div>
@@ -279,7 +290,7 @@ export default function DashboardPage() {
                       <div>
                         <p className="text-[10px] sm:text-sm text-gray-600 dark:text-slate-400">Посты</p>
                         <p className="text-sm sm:text-lg font-bold text-gray-900 dark:text-white truncate">
-                          {dashboardData.revenue.posts.toFixed(2)}
+                          {revenue.posts.toFixed(2)}
                         </p>
                       </div>
                     </div>
@@ -291,7 +302,7 @@ export default function DashboardPage() {
                       <div>
                         <p className="text-[10px] sm:text-sm text-gray-600 dark:text-slate-400">PPV</p>
                         <p className="text-sm sm:text-lg font-bold text-gray-900 dark:text-white truncate">
-                          {dashboardData.revenue.messages.toFixed(2)}
+                          {revenue.messages.toFixed(2)}
                         </p>
                       </div>
                     </div>
@@ -303,7 +314,7 @@ export default function DashboardPage() {
                       <div>
                         <p className="text-[10px] sm:text-sm text-gray-600 dark:text-slate-400">Чаевые</p>
                         <p className="text-sm sm:text-lg font-bold text-gray-900 dark:text-white truncate">
-                          {dashboardData.revenue.tips.toFixed(2)}
+                          {revenue.tips.toFixed(2)}
                         </p>
                       </div>
                     </div>
@@ -329,55 +340,31 @@ export default function DashboardPage() {
                     Новый
                   </button>
                 </h2>
-                {dashboardData.posts.length > 0 ? (
-                  <div className="space-y-0 sm:space-y-6 sm:grid sm:grid-cols-2 lg:grid-cols-3 sm:gap-6">
-                    {dashboardData.posts.map((post) => (
-                      <PostCard 
-                        key={post.id}
-                        id={post.id}
-                        creator={post.creator}
-                        title={post.title}
-                        content={post.content}
-                        category={post.category}
-                        image={post.mediaUrl}
-                        mediaUrl={post.mediaUrl}
-                        thumbnail={post.thumbnail}
-                        type={post.type}
-                        isLocked={post.isLocked}
-                        price={post.price}
-                        currency={post.currency}
-                        likes={post._count?.likes || 0}
-                        comments={post._count?.comments || 0}
-                        createdAt={post.createdAt}
-                        tags={post.tags?.map((t: any) => t.tag.name) || []}
-                        isPremium={post.isPremium}
-                        requiredTier={post.minSubscriptionTier}
-                        imageAspectRatio={post.imageAspectRatio}
-                        isSellable={post.isSellable}
-                        sellType={post.sellType}
-                        quantity={post.quantity}
-                        auctionStatus={post.auctionStatus}
-                        auctionStartPrice={post.auctionStartPrice}
-                        auctionEndAt={post.auctionEndAt}
-                        flashSale={post.flashSale}
-                      />
-                    ))}
-                  </div>
-                ) : (
-                  <div className="bg-white dark:bg-slate-800/50 backdrop-blur-xl border-y sm:border border-gray-200 dark:border-slate-700/50 rounded-none sm:rounded-3xl p-6 sm:p-12 text-center mx-0 sm:mx-0">
-                    <PhotoIcon className="w-12 h-12 sm:w-16 sm:h-16 text-gray-400 dark:text-slate-600 mx-auto mb-4" />
-                    <p className="text-gray-600 dark:text-slate-400 mb-4">
-                      У вас пока нет постов
-                    </p>
-                    <button
-                      onClick={() => setShowCreateModal(true)}
-                      className="px-4 sm:px-6 py-2.5 sm:py-3 bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-2xl font-medium hover:shadow-lg transition-all hover:-translate-y-0.5 inline-flex items-center gap-2 text-sm sm:text-base"
-                    >
-                      <PlusIcon className="w-4 h-4 sm:w-5 sm:h-5" />
-                      Создать первый пост
-                    </button>
-                  </div>
-                )}
+                
+                {/* Posts Container - используем унифицированную систему */}
+                <PostsContainer
+                  posts={posts}
+                  layout="grid"
+                  variant="dashboard"
+                  showCreator={false}
+                  onAction={handlePostAction}
+                  isLoading={isLoadingPosts}
+                  emptyComponent={
+                    <div className="bg-white dark:bg-slate-800/50 backdrop-blur-xl border-y sm:border border-gray-200 dark:border-slate-700/50 rounded-none sm:rounded-3xl p-6 sm:p-12 text-center mx-0 sm:mx-0">
+                      <PhotoIcon className="w-12 h-12 sm:w-16 sm:h-16 text-gray-400 dark:text-slate-600 mx-auto mb-4" />
+                      <p className="text-gray-600 dark:text-slate-400 mb-4">
+                        У вас пока нет постов
+                      </p>
+                      <button
+                        onClick={() => setShowCreateModal(true)}
+                        className="px-4 sm:px-6 py-2.5 sm:py-3 bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-2xl font-medium hover:shadow-lg transition-all hover:-translate-y-0.5 inline-flex items-center gap-2 text-sm sm:text-base"
+                      >
+                        <PlusIcon className="w-4 h-4 sm:w-5 sm:h-5" />
+                        Создать первый пост
+                      </button>
+                    </div>
+                  }
+                />
               </div>
             </>
           )}
