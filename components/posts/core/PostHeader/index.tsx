@@ -63,10 +63,25 @@ export function PostHeader({
 
   const formattedDate = formatRelativeTime(createdAt)
 
+  // Проверяем валидность creator.id для навигации
+  const isValidCreatorId = creator.id && creator.id !== 'unknown'
+  const creatorUrl = isValidCreatorId ? `/creator/${creator.id}` : '#'
+
+  const handleCreatorClick = (e: React.MouseEvent) => {
+    if (!isValidCreatorId) {
+      e.preventDefault()
+      console.warn('PostHeader: Invalid creator ID, navigation prevented')
+    }
+  }
+
   return (
     <div className={cn('flex items-center gap-3 mb-4', className)}>
       {/* Avatar */}
-      <Link href={`/creator/${creator.id}`} className="flex-shrink-0">
+      <Link 
+        href={creatorUrl} 
+        onClick={handleCreatorClick}
+        className="flex-shrink-0"
+      >
         <div className={cn(
           'relative rounded-full overflow-hidden bg-gradient-to-br from-purple-500 to-pink-500',
           getAvatarSize()
@@ -97,10 +112,12 @@ export function PostHeader({
       {/* Creator Info */}
       <div className="flex-1 min-w-0">
         <Link 
-          href={`/creator/${creator.id}`}
+          href={creatorUrl}
+          onClick={handleCreatorClick}
           className={cn(
             'font-semibold text-gray-900 dark:text-white hover:text-purple-600 dark:hover:text-purple-400 transition-colors block truncate',
-            getTextSize()
+            getTextSize(),
+            !isValidCreatorId && 'cursor-default hover:text-gray-900 dark:hover:text-white'
           )}
         >
           {creator.name}
