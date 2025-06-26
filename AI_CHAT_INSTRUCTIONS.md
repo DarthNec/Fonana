@@ -770,6 +770,22 @@ node scripts/check-price-discrepancy.js
 
 ## Recent Updates & Fixes
 
+### Direct Messages Fix (January 23, 2025) 🔥 NEW
+- **Problem**: PPV messages weren't working - sent as regular messages without payment
+- **Solution**: 
+  - Fixed price validation for PPV messages
+  - Added Quick Tips bar in chat input for easy tipping
+  - Enhanced PPV message design with gradients and animations
+  - Added view counters and purchase indicators
+  - All monetary features now working correctly
+- **Features Added**:
+  - Quick Tips buttons (0.01, 0.1, 1, 5 SOL)
+  - Custom tip button (gift icon)
+  - Improved PPV visual design
+  - USD price display everywhere
+  - Message animations
+- **Docs**: DIRECT_MESSAGES_FIX_2025.md
+
 ### Wallet Connection Fixes (December 23, 2024)
 - **Problem 1**: Phantom wallet wasn't opening on mobile devices from burger menu
 - **Problem 2**: Wallet disconnected on page refresh on desktop
@@ -852,8 +868,8 @@ node scripts/check-price-discrepancy.js
 ## Current Features Status
 
 ✅ **COMPLETED & WORKING:**
-- Personal Messages + PPV (Pay-per-view)
-- Tips система
+- Personal Messages + PPV (Pay-per-view) - Полностью исправлено 23.01.2025
+- Tips система с Quick Tips в чате - Улучшено 23.01.2025
 - Flash Sales with countdown timers
 - Subscription tiers (3 levels) - настраиваемые создателями
 - Post creation/editing with image crop
