@@ -555,23 +555,17 @@ const transaction = await prisma.transaction.create({
 - **Deploy User**: `./scripts/setup-deploy-user.sh` (for future implementation)
 - **Docker**: `docker-compose.dev.yml` (local development only)
 
-### Deploy Process Issues & Solutions
+### Deploy Process Issues & Solutions ✅ FIXED (June 26, 2025)
 - **Issue**: Deploy script sometimes exits early after killing processes
-- **Solution**: Complete deployment manually:
-  ```bash
-  ssh -p 43988 root@69.10.59.234 "cd /var/www/fonana && git pull && npm run build && pm2 start ecosystem.config.js && nginx -s reload"
-  ```
-- **Alternative**: If manual completion needed:
-  ```bash
-  # 1. Check if build completed
-  ssh -p 43988 root@69.10.59.234 "ls -la /var/www/fonana/.next/"
-  
-  # 2. If not, complete manually
-  ssh -p 43988 root@69.10.59.234 "cd /var/www/fonana && npm run build"
-  
-  # 3. Restart PM2
-  ssh -p 43988 root@69.10.59.234 "cd /var/www/fonana && pm2 restart fonana"
-  ```
+- **Root Cause**: Multiple SSH connections and aggressive `pkill -f node` breaking SSH session
+- **Solution**: Script rewritten to use single SSH connection with safe process termination
+- **Changes**:
+  - All commands run in one SSH session using heredoc
+  - Graceful shutdown: `pm2 stop all` → `kill -TERM` → wait → `kill -9`
+  - Only kills processes from `/var/www/fonana` directory
+  - Added `set -e` for error handling inside SSH session
+- **Documentation**: See `DEPLOY_SCRIPT_SAFE_UPDATE.md`
+- **Backup**: Old script saved as `deploy-to-production.sh.backup-20250626-*`
 
 ### DevOps Scripts
 ```bash
