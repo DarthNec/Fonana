@@ -752,6 +752,9 @@ node scripts/check-creator-earnings.js
 node scripts/check-transaction.js
 node scripts/test-dynamic-pricing.js
 
+# Referral system
+node scripts/diagnose-referral-system.js
+
 # Test specific functionality  
 node scripts/test-sellable-posts.js
 node scripts/test-tier-access.js
@@ -770,7 +773,18 @@ node scripts/check-price-discrepancy.js
 
 ## Recent Updates & Fixes
 
-### Direct Messages Fix (January 23, 2025) 🔥 NEW
+### Referral System Fix (January 27, 2025) 🔥 NEW
+- **Problem**: Welcome popup appeared randomly with wrong values (feed, 404, etc)
+- **Root Cause**: Middleware was passing referrer header on EVERY request, causing notification loop
+- **Solution**:
+  - Header only sent on NEW referral cookie setup
+  - Added system paths list to prevent treating `/feed`, `/404` as usernames
+  - Enhanced username validation (min 3 chars, must start with letter)
+  - Welcome notification shows only once per referrer
+- **Diagnostic**: `node scripts/diagnose-referral-system.js`
+- **Docs**: REFERRAL_COOKIE_FIX.md
+
+### Direct Messages Fix (January 23, 2025)
 - **Problem**: PPV messages weren't working - sent as regular messages without payment
 - **Solution**: 
   - Fixed price validation for PPV messages
