@@ -14,6 +14,7 @@ Private repo: DukeDeSouth/Fonana
 Server has Deploy Key, use ./deploy-to-production.sh
 Production DB has real users and posts
 PM2 manages the app with ecosystem.config.js
+Unified Post System completed with modular architecture
 ```
 
 ## ⚠️ CRITICAL: Preventing Duplicate Processes
@@ -479,22 +480,23 @@ const transaction = await prisma.transaction.create({
 
 ## Key Components
 
-### Unified Post System (NEW - January 2025)
+### Unified Post System (NEW - January 2025, Fixed - February 2025)
 - **components/posts/layouts/**
   - `PostsContainer.tsx` - Главный контейнер с поддержкой list/grid/masonry
   - `PostGrid.tsx` - Grid layout для Dashboard/Search
   - `PostList.tsx` - List layout для Feed/Profile/Creator
 - **components/posts/core/**
   - `PostCard/` - Адаптивная карточка (full/compact/minimal варианты)
-  - `PostHeader/` - Информация о создателе
-  - `PostContent/` - Отображение медиа контента
-  - `PostActions/` - Кнопки действий (лайки, комментарии)
+  - `PostHeader/` - Информация о создателе с валидацией creator.id
+  - `PostContent/` - Отображение медиа контента с проверкой isCreatorPost
+  - `PostActions/` - Кнопки действий (лайки, комментарии) с callback обработкой
   - `PostLocked/` - Заблокированный контент с градиентами
   - `PostTierBadge/` - Индикаторы тиров
   - `PostFlashSale/` - Flash Sale компонент
-- **services/posts/normalizer.ts** - Нормализация данных постов
+  - `CommentsSection/` - Inline комментарии с анимацией fade-in
+- **services/posts/normalizer.ts** - Нормализация данных с защитой от ошибок
 - **types/posts/index.ts** - Унифицированные типы (UnifiedPost, PostCreator, etc.)
-- **lib/hooks/useUnifiedPosts.ts** - Хук для работы с постами
+- **lib/hooks/useUnifiedPosts.ts** - Хук с getUserId и API fallback
 
 ### Modal Components
 - **CreatePostModal.tsx** - Создание постов с ценами и тирами
@@ -819,7 +821,46 @@ node scripts/check-price-discrepancy.js
 
 ## Recent Updates & Fixes
 
-### Unified Post System Implementation (January 30, 2025) 🔥 NEW
+### Unified Post System - Fixes Part 3 (February 27, 2025) 🔥 NEW
+- **Problems**: Like button required wallet connection despite being connected; Comments opened in new window
+- **Solutions**:
+  - Added `getUserId` function with API fallback for async user loading
+  - Created `CommentsSection` component for inline comments
+  - Added fade-in animation for smooth comment appearance
+- **Components**: 
+  - `components/posts/core/CommentsSection/index.tsx` - full comment system
+  - Updated `useUnifiedPosts` hook for better wallet handling
+- **Result**: Seamless UX with instant likes and inline comments
+- **Docs**: UNIFIED_POSTCARD_FIX_V3.md
+
+### Unified Post System - Fixes Part 2 (February 27, 2025) 🔥 NEW
+- **Problems**: Navigation errors, My Posts errors, like errors, comment navigation
+- **Root Causes**:
+  - Missing creator.id validation in PostNormalizer
+  - PostsContainer failed on invalid data
+  - API expected userId but received wallet
+  - Comments used direct navigation instead of callbacks
+- **Solutions**:
+  - Added creator.id validation with fallback values
+  - Safe normalization with try-catch error handling
+  - Updated to use userId from user context
+  - Added comment action handling in PostCard
+- **Files Modified**: 7 files including normalizer, PostHeader, useUnifiedPosts
+- **Docs**: UNIFIED_POSTCARD_FIX_V2.md
+
+### Unified Post System - Fixes Part 1 (February 26, 2025) 🔥 NEW
+- **Problems**: Authors couldn't see own posts, subscription prompts for own content, infinite loading
+- **Solutions**:
+  - Added userWallet parameter passing in Profile page
+  - Added isCreatorPost flag in API response
+  - Fixed loading state management in Creator page
+- **Key Changes**:
+  - `app/profile/page.tsx` - pass userWallet to PostsContainer
+  - `app/api/posts/route.ts` - add isCreatorPost logic
+  - `components/posts/core/PostContent/index.tsx` - check isCreatorPost
+- **Docs**: UNIFIED_POSTCARD_FIX.md
+
+### Unified Post System Implementation (January 30, 2025)
 - **Problem**: Posts displayed inconsistently across pages with 1210-line PostCard component
 - **Solution**: Complete post system unification with modular architecture
 - **Changes**:
@@ -855,7 +896,7 @@ node scripts/check-price-discrepancy.js
 - **Files**: `app/feed/page.tsx`, `app/creator/[id]/page.tsx`
 - **Docs**: FEED_DISPLAY_OPTIMIZATION.md
 
-### Referral System Fix (January 27, 2025) 🔥 NEW
+### Referral System Fix (January 27, 2025)
 - **Problem**: Welcome popup appeared randomly with wrong values (feed, 404, etc)
 - **Root Cause**: Middleware was passing referrer header on EVERY request, causing notification loop
 - **Solution**:
@@ -971,7 +1012,7 @@ node scripts/check-price-discrepancy.js
 - Post creation/editing with image crop
 - Solana wallet integration
 - Notification system with sounds
-- Comment system with replies
+- Comment system with inline display - Добавлено 27.02.2025
 - Creator earnings dashboard with full analytics
 - Dynamic SOL/USD exchange rate
 - Sellable posts (fixed price & auctions)
@@ -987,6 +1028,8 @@ node scripts/check-price-discrepancy.js
 - CSV export of all analytics data
 - Hybrid wallet authentication (JWT + Solana)
 - Session persistence without constant wallet connection
+- Unified Post System with modular architecture - Завершено 27.02.2025
+- Async user loading with API fallback for actions - Добавлено 27.02.2025
 
 🔄 **IN DEVELOPMENT:**
 - Mobile Wallet Adapter (MWA) integration
@@ -1164,20 +1207,6 @@ GITHUB_SECRET=...
 ### Исходный запрос
 Пользователь попросил проанализировать архитектуру постов в приложении Fonana, где посты отображаются по-разному в разных местах (feed, profile, creator pages), и предложить единую унифицированную конструкцию PostCard для оптимизации.
 
-### Анализ текущей ситуации
-Выявлены проблемы:
-- Разные компоненты PostCard в разных местах
-- Дублирование кода
-- Несогласованные стили и поведение
-- Сложность поддержки
-
-Места отображения постов:
-- Feed page - вертикальный список
-- Profile page - вертикальный список без информации о создателе
-- Creator page - вертикальный список с табами
-- Dashboard - grid/list гибрид
-- Search - grid layout
-
 ### Реализованное решение
 
 #### Phase 1: Типы и интерфейсы
@@ -1204,6 +1233,7 @@ GITHUB_SECRET=...
 - `PostActions` - кнопки действий (лайки, комментарии, поделиться)
 - `PostTierBadge` - визуальные индикаторы тиров
 - `PostFlashSale` - баннер Flash Sale с таймером
+- `CommentsSection` - inline комментарии с анимацией
 
 #### Phase 4: Migration ✅ ЗАВЕРШЕНО
 Успешно мигрированы все 5 страниц:
@@ -1213,6 +1243,12 @@ GITHUB_SECRET=...
 - **Creator страница** - использует PostsContainer с layout="list" variant="creator"
 - **Search страница** - использует PostsContainer с layout="grid" variant="search"
 
+#### Phase 5: Исправления и оптимизация ✅ ЗАВЕРШЕНО
+В ходе трех волн исправлений решены все проблемы:
+- **Часть 1**: Автор видит свои посты, исправлен My Posts, навигация работает
+- **Часть 2**: Валидация creator.id, безопасная нормализация, корректные API вызовы
+- **Часть 3**: Async user loading, inline комментарии, плавные анимации
+
 ### Ключевые особенности системы
 - Полная поддержка всех тиров подписок с иерархией
 - Обработка всех типов контента (платные, аукционы, Flash Sales)
@@ -1220,9 +1256,17 @@ GITHUB_SECRET=...
 - Централизованная нормализация данных через PostNormalizer
 - Type-safe архитектура с TypeScript
 - Обратная совместимость с существующим API
+- Inline комментарии без перезагрузки страницы
+- Асинхронная загрузка user с API fallback
 
 ### Текущий статус
-- ✅ Унификация системы постов ЗАВЕРШЕНА
-- Создана тестовая страница `/test/unified-posts` для проверки всех вариантов
-- Все основные страницы мигрированы на новую архитектуру
-- Система готова к production использованию 
+- ✅ Унификация системы постов ЗАВЕРШЕНА (27 февраля 2025)
+- ✅ Все проблемы исправлены в трех итерациях
+- ✅ Создана тестовая страница `/test/unified-posts` для проверки всех вариантов
+- ✅ Все основные страницы работают с новой архитектурой
+- ✅ Система полностью готова к production использованию
+
+### Документация
+- UNIFIED_POSTCARD_FIX.md - первая волна исправлений
+- UNIFIED_POSTCARD_FIX_V2.md - вторая волна исправлений
+- UNIFIED_POSTCARD_FIX_V3.md - третья волна исправлений 

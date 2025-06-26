@@ -32,6 +32,27 @@ export function useUser() {
   const [isLoading, setIsLoading] = useState(false)
   const [showProfileForm, setShowProfileForm] = useState(false)
 
+  // Загружаем сохраненные данные пользователя при монтировании
+  useEffect(() => {
+    if (!user && publicKey && connected) {
+      // Проверяем сохраненные данные пользователя
+      const savedUser = localStorage.getItem('fonana_user_data')
+      const savedWallet = localStorage.getItem('fonana_user_wallet')
+      
+      if (savedUser && savedWallet === publicKey.toString()) {
+        try {
+          const userData = JSON.parse(savedUser)
+          setUser(userData)
+          console.log('Restored user data from localStorage')
+        } catch (e) {
+          console.error('Failed to restore user data', e)
+          localStorage.removeItem('fonana_user_data')
+          localStorage.removeItem('fonana_user_wallet')
+        }
+      }
+    }
+  }, [publicKey, connected, user])
+
   // Автоматическое создание/получение пользователя при подключении кошелька
   useEffect(() => {
     if (connected && publicKey) {
@@ -40,6 +61,9 @@ export function useUser() {
       setUser(null)
       setIsNewUser(false)
       setShowProfileForm(false)
+      // Очищаем сохраненные данные при отключении кошелька
+      localStorage.removeItem('fonana_user_data')
+      localStorage.removeItem('fonana_user_wallet')
     }
   }, [connected, publicKey])
 
@@ -75,6 +99,10 @@ export function useUser() {
         const data = await response.json()
         setUser(data.user)
         setIsNewUser(data.isNewUser)
+        
+        // Сохраняем данные пользователя
+        localStorage.setItem('fonana_user_data', JSON.stringify(data.user))
+        localStorage.setItem('fonana_user_wallet', wallet)
         
         // Показываем форму профиля для новых пользователей
         if (data.isNewUser) {
@@ -127,6 +155,10 @@ export function useUser() {
         setUser(data.user)
         setIsNewUser(false)
         setShowProfileForm(false)
+        
+        // Обновляем сохраненные данные
+        localStorage.setItem('fonana_user_data', JSON.stringify(data.user))
+        
         return data.user
       }
     } catch (error) {
@@ -150,10 +182,12 @@ export function useUser() {
       })
 
       if (response.ok) {
-        // Сбрасываем состояние пользователя
+        // Сбрасываем состояние пользователя и очищаем localStorage
         setUser(null)
         setIsNewUser(false)
         setShowProfileForm(false)
+        localStorage.removeItem('fonana_user_data')
+        localStorage.removeItem('fonana_user_wallet')
         return true
       }
       return false
