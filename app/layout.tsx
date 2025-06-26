@@ -63,14 +63,18 @@ export default function RootLayout({
 }) {
   const headersList = headers()
   const referrer = headersList.get('x-fonana-referrer')
+  const isNewReferral = headersList.get('x-is-new-referral')
   
   return (
     <html lang="en" suppressHydrationWarning>
       <head>
         {/* Force refresh script for version management */}
-        <script src="/force-refresh.js?v=1750960227000" />
+        <script src="/force-refresh.js?v=1750963478000" />
         {referrer && (
           <meta name="x-fonana-referrer" content={referrer} />
+        )}
+        {isNewReferral && (
+          <meta name="x-is-new-referral" content={isNewReferral} />
         )}
       </head>
       <body className={inter.className}>

@@ -9,43 +9,51 @@ export default function ReferralNotification() {
   const [showNotification, setShowNotification] = useState(false)
 
   useEffect(() => {
-    // Check for referrer in response headers (set by middleware)
+    // Проверяем meta tag ТОЛЬКО если это новая установка реферера
     const referrerFromHeader = document.querySelector('meta[name="x-fonana-referrer"]')?.getAttribute('content')
+    const isNewReferral = document.querySelector('meta[name="x-is-new-referral"]')?.getAttribute('content') === 'true'
     
-    if (referrerFromHeader) {
-      // Save to localStorage as fallback
-      localStorage.setItem('fonana_referrer', referrerFromHeader)
-      localStorage.setItem('fonana_referrer_timestamp', Date.now().toString())
-      
-      // Show notification if user is not logged in
+    // Показываем уведомление ТОЛЬКО если:
+    // 1. Есть новый реферер из header (впервые установлен)
+    // 2. Пользователь не залогинен
+    // 3. Мы еще не показывали уведомление для этого реферера
+    if (referrerFromHeader && isNewReferral) {
       const userWallet = localStorage.getItem('userWallet')
-      if (!userWallet) {
+      const shownReferrals = JSON.parse(localStorage.getItem('fonana_shown_referral_notifications') || '[]')
+      
+      if (!userWallet && !shownReferrals.includes(referrerFromHeader)) {
         setReferrer(referrerFromHeader)
         setShowNotification(true)
-      }
-    } else {
-      // Check localStorage for existing referrer (within 7 days)
-      const storedReferrer = localStorage.getItem('fonana_referrer')
-      const storedTimestamp = localStorage.getItem('fonana_referrer_timestamp')
-      
-      if (storedReferrer && storedTimestamp) {
-        const sevenDays = 7 * 24 * 60 * 60 * 1000
-        const isExpired = Date.now() - parseInt(storedTimestamp) > sevenDays
         
-        if (!isExpired) {
-          const userWallet = localStorage.getItem('userWallet')
-          if (!userWallet) {
-            setReferrer(storedReferrer)
-            // Don't show notification for stored referrers to avoid spam
-          }
-        } else {
-          // Clean up expired referrer
-          localStorage.removeItem('fonana_referrer')
-          localStorage.removeItem('fonana_referrer_timestamp')
-        }
+        // Запоминаем что показали уведомление для этого реферера
+        shownReferrals.push(referrerFromHeader)
+        localStorage.setItem('fonana_shown_referral_notifications', JSON.stringify(shownReferrals))
+        
+        // Также сохраняем в localStorage для других компонентов
+        localStorage.setItem('fonana_referrer', referrerFromHeader)
+        localStorage.setItem('fonana_referrer_timestamp', Date.now().toString())
+      }
+    }
+    
+    // Очищаем старые записи о показанных уведомлениях (старше 7 дней)
+    const storedTimestamp = localStorage.getItem('fonana_referrer_timestamp')
+    if (storedTimestamp) {
+      const sevenDays = 7 * 24 * 60 * 60 * 1000
+      const isExpired = Date.now() - parseInt(storedTimestamp) > sevenDays
+      
+      if (isExpired) {
+        localStorage.removeItem('fonana_referrer')
+        localStorage.removeItem('fonana_referrer_timestamp')
+        localStorage.removeItem('fonana_shown_referral_notifications')
       }
     }
   }, [])
+
+  const handleClose = () => {
+    setShowNotification(false)
+    // Опционально: можно добавить в localStorage флаг, что пользователь закрыл уведомление
+    localStorage.setItem('fonana_referral_notification_closed', 'true')
+  }
 
   if (!showNotification || !referrer) return null
 
@@ -68,7 +76,7 @@ export default function ReferralNotification() {
           </p>
         </div>
         <button
-          onClick={() => setShowNotification(false)}
+          onClick={handleClose}
           className="ml-3 text-gray-400 hover:text-gray-500 dark:text-slate-500 dark:hover:text-slate-400"
         >
           <XMarkIcon className="h-5 w-5" />
