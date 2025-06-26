@@ -4,14 +4,11 @@ const prisma = new PrismaClient();
 async function fixFreeSubscriptionsStatus() {
   console.log('=== FIXING FREE SUBSCRIPTIONS STATUS ===\n');
   
-  // Получаем все Free подписки со статусом PENDING или без статуса
+  // Получаем все Free подписки со статусом PENDING
   const freeSubscriptions = await prisma.subscription.findMany({
     where: {
       plan: 'Free',
-      OR: [
-        { paymentStatus: 'PENDING' },
-        { paymentStatus: null }
-      ]
+      paymentStatus: 'PENDING'
     }
   });
   
@@ -26,10 +23,7 @@ async function fixFreeSubscriptionsStatus() {
   const result = await prisma.subscription.updateMany({
     where: {
       plan: 'Free',
-      OR: [
-        { paymentStatus: 'PENDING' },
-        { paymentStatus: null }
-      ]
+      paymentStatus: 'PENDING'
     },
     data: {
       paymentStatus: 'COMPLETED'
