@@ -97,7 +97,8 @@ export class PostNormalizer {
       isPurchased: rawPost.hasPurchased || rawPost.isPurchased || false,
       isSubscribed: rawPost.isSubscribed || false,
       userTier: rawPost.userTier?.toLowerCase(),
-      shouldHideContent: rawPost.shouldHideContent || false
+      shouldHideContent: rawPost.shouldHideContent || false,
+      isCreatorPost: rawPost.isCreatorPost || false
     }
   }
 

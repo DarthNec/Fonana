@@ -61,8 +61,13 @@ interface UserProfile {
   theme: 'light' | 'dark' | 'auto'
 }
 
-// Component for displaying user's posts
-function MyPostsSection({ userId }: { userId?: string }) {
+// Component for displaying user's posts - вынесен из ProfilePage
+interface MyPostsSectionProps {
+  userId?: string
+  userWallet?: string | null
+}
+
+function MyPostsSection({ userId, userWallet }: MyPostsSectionProps) {
   const [posts, setPosts] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [selectedPost, setSelectedPost] = useState<any>(null)
@@ -72,11 +77,22 @@ function MyPostsSection({ userId }: { userId?: string }) {
     if (userId) {
       fetchUserPosts()
     }
-  }, [userId])
+  }, [userId, userWallet]) // Перезагружаем при изменении wallet
 
   const fetchUserPosts = async () => {
     try {
-      const response = await fetch(`/api/posts?creatorId=${userId}`)
+      // Добавляем userWallet в запрос, чтобы API мог определить что это автор
+      const params = new URLSearchParams()
+      
+      if (userId) {
+        params.append('creatorId', userId)
+      }
+      
+      if (userWallet) {
+        params.append('userWallet', userWallet)
+      }
+      
+      const response = await fetch(`/api/posts?${params.toString()}`)
       const data = await response.json()
       setPosts(data.posts || [])
     } catch (error) {
@@ -1012,7 +1028,7 @@ export default function ProfilePage() {
         ) : (
           /* My Posts Tab */
           <div className="max-w-5xl mx-auto">
-            <MyPostsSection userId={user?.id} />
+            <MyPostsSection userId={user?.id} userWallet={user?.wallet} />
           </div>
         )}
       </div>

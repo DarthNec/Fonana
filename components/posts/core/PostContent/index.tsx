@@ -32,10 +32,15 @@ export function PostContent({
   const [imageError, setImageError] = useState(false)
 
   // Проверяем, нужно ли скрывать контент
-  const shouldHideContent = post.access.shouldHideContent || 
+  // Автор всегда видит свой контент
+  const shouldHideContent = post.access.isCreatorPost ? false : (
+    post.access.shouldHideContent || 
     (post.access.isLocked && !post.access.isPurchased && !post.access.isSubscribed)
+  )
   
-  const isLocked = needsPayment(post) || needsSubscription(post) || needsTierUpgrade(post)
+  const isLocked = post.access.isCreatorPost ? false : (
+    needsPayment(post) || needsSubscription(post) || needsTierUpgrade(post)
+  )
   const isSold = isPostSold(post.commerce)
 
   // Размеры текста для разных вариантов
