@@ -250,13 +250,14 @@ export async function GET(req: Request) {
         tags: post.tags?.map((t: any) => typeof t === 'string' ? t : t.tag?.name || '') || [],
         isSubscribed,
         hasPurchased,
+        isCreatorPost,
         // Скрываем контент для заблокированных постов, но не для автора
         content: (shouldHideContent && !isCreatorPost) ? '' : post.content,
         // Всегда возвращаем оригинальные пути для редактирования
         mediaUrl: post.mediaUrl,
         thumbnail: optimizedImages?.thumb || post.thumbnail,
         preview: optimizedImages?.preview,
-        shouldHideContent,
+        shouldHideContent: shouldHideContent && !isCreatorPost, // Автор всегда видит свой контент
         // Добавляем информацию о тирах
         requiredTier: post.minSubscriptionTier || (post.isPremium ? 'vip' : null),
         userTier: userSubscriptionPlan,

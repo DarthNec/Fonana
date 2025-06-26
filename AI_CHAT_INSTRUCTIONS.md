@@ -478,16 +478,36 @@ const transaction = await prisma.transaction.create({
 ```
 
 ## Key Components
-- **PostCard.tsx** - Главная карточка поста (с поддержкой Flash Sales и USD)
+
+### Unified Post System (NEW - January 2025)
+- **components/posts/layouts/**
+  - `PostsContainer.tsx` - Главный контейнер с поддержкой list/grid/masonry
+  - `PostGrid.tsx` - Grid layout для Dashboard/Search
+  - `PostList.tsx` - List layout для Feed/Profile/Creator
+- **components/posts/core/**
+  - `PostCard/` - Адаптивная карточка (full/compact/minimal варианты)
+  - `PostHeader/` - Информация о создателе
+  - `PostContent/` - Отображение медиа контента
+  - `PostActions/` - Кнопки действий (лайки, комментарии)
+  - `PostLocked/` - Заблокированный контент с градиентами
+  - `PostTierBadge/` - Индикаторы тиров
+  - `PostFlashSale/` - Flash Sale компонент
+- **services/posts/normalizer.ts** - Нормализация данных постов
+- **types/posts/index.ts** - Унифицированные типы (UnifiedPost, PostCreator, etc.)
+- **lib/hooks/useUnifiedPosts.ts** - Хук для работы с постами
+
+### Modal Components
 - **CreatePostModal.tsx** - Создание постов с ценами и тирами
 - **SubscribeModal.tsx** - Подписки с динамическими ценами
 - **EditPostModal.tsx** - Редактирование постов
-- **CreatorsExplorer.tsx** - Обзор создателей
 - **PurchaseModal.tsx** - Покупка контента с USD отображением
 - **SellablePostModal.tsx** - Создание продаваемых постов/аукционов
+- **ImageCropModal.tsx** - Кроп изображений
+
+### Other Key Components
+- **CreatorsExplorer.tsx** - Обзор создателей
 - **FlashSalesList.tsx** - Управление Flash Sales
 - **FlashSale.tsx** - Компонент Flash Sale с таймером
-- **ImageCropModal.tsx** - Кроп изображений
 - **OptimizedImage.tsx** - Оптимизация изображений  
 - **SolanaRateDisplay.tsx** - Отображение курса SOL/USD в navbar
 - **SearchBar.tsx** - Универсальный компонент поиска с автокомплитом и фильтрами
@@ -799,7 +819,20 @@ node scripts/check-price-discrepancy.js
 
 ## Recent Updates & Fixes
 
-### Subscription Display Fix (January 29, 2025) 🔥 NEW
+### Unified Post System Implementation (January 30, 2025) 🔥 NEW
+- **Problem**: Posts displayed inconsistently across pages with 1210-line PostCard component
+- **Solution**: Complete post system unification with modular architecture
+- **Changes**:
+  - Created unified types: `types/posts/index.ts` (UnifiedPost, PostCreator, etc.)
+  - Split PostCard into focused components: PostHeader, PostContent, PostActions, PostLocked, PostTierBadge, PostFlashSale
+  - Implemented adaptive layouts: PostsContainer, PostGrid, PostList
+  - Added PostNormalizer service for backward compatibility
+  - Created useUnifiedPosts hook for data management
+- **Migration**: All 5 pages migrated (Feed, Dashboard, Profile, Creator, Search)
+- **Test Page**: `/test/unified-posts` - interactive testing of all variants
+- **Benefits**: Consistent UI, reduced code duplication, better performance, easier maintenance
+
+### Subscription Display Fix (January 29, 2025)
 - **Problem**: Premium subscriptions showed as "basic" in UI after successful payment
 - **Root Cause**: Case mismatch - DB stores "Premium" with capital letter, code checked lowercase
 - **Solution**:

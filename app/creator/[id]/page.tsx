@@ -159,10 +159,12 @@ export default function CreatorPage() {
           requiredTier: post.requiredTier || null,
           userTier: post.userTier || null,
           imageAspectRatio: post.imageAspectRatio,
-          flashSale: post.flashSale || null
+          flashSale: post.flashSale || null,
+          isCreatorPost: post.isCreatorPost || false
         }))
         setPosts(formattedPosts)
       }
+      setIsLoadingPosts(false) // Устанавливаем флаг загрузки в false
 
       // Check subscription if user is authenticated
       if (user) {

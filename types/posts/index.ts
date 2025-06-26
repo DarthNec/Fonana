@@ -38,14 +38,24 @@ export interface PostMedia {
  * Информация о доступе к посту
  */
 export interface PostAccess {
+  /** Заблокирован ли пост */
   isLocked: boolean
+  /** Требуемый тир подписки для доступа */
   tier?: 'basic' | 'premium' | 'vip'
+  /** Цена для платного поста */
   price?: number
-  currency?: string
-  isPurchased?: boolean
-  isSubscribed?: boolean
+  /** Валюта цены */
+  currency: string
+  /** Куплен ли пост пользователем */
+  isPurchased: boolean
+  /** Подписан ли пользователь на автора */
+  isSubscribed: boolean
+  /** Текущий тир подписки пользователя */
   userTier?: string
+  /** Нужно ли скрывать контент */
   shouldHideContent: boolean
+  /** Является ли пользователь автором поста */
+  isCreatorPost?: boolean
 }
 
 /**
