@@ -49,28 +49,34 @@ export async function GET(
     // Форматируем комментарии для клиента
     const formattedComments = comments.map(comment => ({
       id: comment.id,
+      userId: comment.userId,
       user: {
         id: comment.user.id,
-        name: comment.user.fullName || comment.user.nickname,
-        username: comment.user.nickname || comment.user.id,
+        nickname: comment.user.nickname,
+        fullName: comment.user.fullName,
         avatar: comment.user.avatar,
         isVerified: comment.user.isVerified
       },
       content: comment.content,
       createdAt: comment.createdAt.toISOString(),
-      likes: comment._count.likes,
+      likesCount: comment._count.likes,
+      isAnonymous: comment.isAnonymous,
+      parentId: comment.parentId,
       replies: comment.replies.map(reply => ({
         id: reply.id,
+        userId: reply.userId,
         user: {
           id: reply.user.id,
-          name: reply.user.fullName || reply.user.nickname,
-          username: reply.user.nickname || reply.user.id,
+          nickname: reply.user.nickname,
+          fullName: reply.user.fullName,
           avatar: reply.user.avatar,
           isVerified: reply.user.isVerified
         },
         content: reply.content,
         createdAt: reply.createdAt.toISOString(),
-        likes: reply._count.likes
+        likesCount: reply._count.likes,
+        isAnonymous: reply.isAnonymous,
+        parentId: reply.parentId
       }))
     }))
 
@@ -89,7 +95,7 @@ export async function POST(
   { params }: { params: { id: string } }
 ) {
   try {
-    const { userId, content, parentId } = await request.json()
+    const { userId, content, parentId, isAnonymous = false } = await request.json()
 
     if (!userId || !content) {
       return NextResponse.json(
@@ -126,7 +132,8 @@ export async function POST(
         postId: params.id,
         userId,
         content,
-        parentId
+        parentId,
+        isAnonymous
       },
       include: {
         user: {
@@ -191,16 +198,19 @@ export async function POST(
     // Форматируем комментарий для клиента
     const formattedComment = {
       id: comment.id,
+      userId: comment.userId,
       user: {
         id: comment.user.id,
-        name: comment.user.fullName || comment.user.nickname,
-        username: comment.user.nickname || comment.user.id,
+        nickname: comment.user.nickname,
+        fullName: comment.user.fullName,
         avatar: comment.user.avatar,
         isVerified: comment.user.isVerified
       },
       content: comment.content,
       createdAt: comment.createdAt.toISOString(),
-      likes: 0,
+      likesCount: 0,
+      isAnonymous: comment.isAnonymous,
+      parentId: comment.parentId,
       replies: []
     }
 
