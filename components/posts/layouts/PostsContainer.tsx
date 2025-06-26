@@ -4,11 +4,12 @@ import React from 'react'
 import { UnifiedPost, PostAction, PostLayoutType, PostPageVariant } from '@/types/posts'
 import { PostGrid } from './PostGrid'
 import { PostList } from './PostList'
+import { PostNormalizer } from '@/services/posts/normalizer'
 // import { PostMasonry } from './PostMasonry' // Будет добавлен позже
 
 export interface PostsContainerProps {
   /** Массив постов для отображения */
-  posts: UnifiedPost[]
+  posts: any[] // Принимаем любые посты для нормализации
   /** Тип layout (list, grid, masonry) */
   layout?: PostLayoutType
   /** Вариант страницы для стилизации */
@@ -42,6 +43,25 @@ export function PostsContainer({
   emptyMessage = 'No posts yet',
   emptyComponent
 }: PostsContainerProps) {
+  // Нормализуем посты если они еще не нормализованы
+  let normalizedPosts: UnifiedPost[] = []
+  
+  try {
+    // Проверяем, являются ли посты уже нормализованными
+    const isNormalized = posts.length > 0 && posts[0].creator && posts[0].content && posts[0].access
+    
+    if (isNormalized) {
+      normalizedPosts = posts as UnifiedPost[]
+    } else {
+      // Нормализуем посты
+      normalizedPosts = PostNormalizer.normalizeMany(posts)
+    }
+  } catch (error) {
+    console.error('PostsContainer: Error normalizing posts:', error)
+    // В случае ошибки показываем пустое состояние
+    normalizedPosts = []
+  }
+
   // Загрузка
   if (isLoading) {
     return (
@@ -55,7 +75,7 @@ export function PostsContainer({
   }
 
   // Нет постов
-  if (posts.length === 0) {
+  if (normalizedPosts.length === 0) {
     if (emptyComponent) {
       return <>{emptyComponent}</>
     }
@@ -76,15 +96,11 @@ export function PostsContainer({
 
   return (
     <LayoutComponent
-      posts={posts}
+      posts={normalizedPosts}
       variant={variant}
       showCreator={showCreator}
       onAction={onAction}
       className={className}
     />
   )
-}
-
-// Re-export layouts для удобства
-export { PostGrid } from './PostGrid'
-export { PostList } from './PostList' 
+} 

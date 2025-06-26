@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { UnifiedPost, PostAction } from '@/types/posts'
 import { PostNormalizer } from '@/services/posts/normalizer'
 import { useWallet } from '@solana/wallet-adapter-react'
+import { useUser } from '@/lib/hooks/useUser'
 import toast from 'react-hot-toast'
 
 interface UseUnifiedPostsOptions {
@@ -29,6 +30,7 @@ export function useUnifiedPosts(options: UseUnifiedPostsOptions = {}): UseUnifie
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<Error | null>(null)
   const { publicKey } = useWallet()
+  const { user } = useUser()
 
   const fetchPosts = useCallback(async () => {
     try {
@@ -109,7 +111,7 @@ export function useUnifiedPosts(options: UseUnifiedPostsOptions = {}): UseUnifie
 
   // Лайк поста
   const handleLike = async (postId: string) => {
-    if (!publicKey) {
+    if (!user?.id) {
       toast.error('Подключите кошелек')
       return
     }
@@ -121,7 +123,7 @@ export function useUnifiedPosts(options: UseUnifiedPostsOptions = {}): UseUnifie
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          wallet: publicKey.toBase58()
+          userId: user.id
         }),
       })
 
@@ -152,7 +154,7 @@ export function useUnifiedPosts(options: UseUnifiedPostsOptions = {}): UseUnifie
 
   // Убрать лайк
   const handleUnlike = async (postId: string) => {
-    if (!publicKey) {
+    if (!user?.id) {
       toast.error('Подключите кошелек')
       return
     }
@@ -164,7 +166,7 @@ export function useUnifiedPosts(options: UseUnifiedPostsOptions = {}): UseUnifie
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          wallet: publicKey.toBase58()
+          userId: user.id
         }),
       })
 

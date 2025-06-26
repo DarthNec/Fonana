@@ -30,8 +30,12 @@ export function PostActions({
   }
 
   const handleComment = () => {
-    // Открываем пост для комментирования
-    window.location.href = `/post/${post.id}#comments`
+    if (onAction) {
+      onAction({ type: 'comment', postId: post.id })
+    } else {
+      // Fallback - если нет обработчика, переходим на страницу поста
+      window.location.href = `/post/${post.id}#comments`
+    }
   }
 
   const handleShare = () => {

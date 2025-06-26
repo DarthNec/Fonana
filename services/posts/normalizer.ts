@@ -38,11 +38,25 @@ export class PostNormalizer {
    * Нормализует данные создателя
    */
   private static normalizeCreator(rawCreator: any): PostCreator {
+    // Проверяем что у нас есть валидные данные создателя
+    if (!rawCreator || (!rawCreator.id && !rawCreator.creatorId)) {
+      console.error('PostNormalizer: Invalid creator data', rawCreator)
+      // Возвращаем заглушку чтобы не ломалась навигация
+      return {
+        id: 'unknown',
+        name: 'Unknown Creator',
+        username: 'unknown',
+        nickname: 'unknown',
+        avatar: null,
+        isVerified: false
+      }
+    }
+    
     return {
-      id: rawCreator.id,
+      id: rawCreator.id || rawCreator.creatorId || 'unknown',
       name: rawCreator.fullName || rawCreator.name || rawCreator.nickname || 'Unknown',
-      username: rawCreator.nickname || rawCreator.username || rawCreator.wallet?.slice(0, 6) + '...',
-      nickname: rawCreator.nickname,
+      username: rawCreator.nickname || rawCreator.username || rawCreator.wallet?.slice(0, 6) + '...' || 'unknown',
+      nickname: rawCreator.nickname || 'unknown',
       avatar: rawCreator.avatar,
       isVerified: rawCreator.isVerified || false
     }
