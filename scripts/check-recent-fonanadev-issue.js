@@ -18,12 +18,13 @@ async function checkRecentFonanadevIssue() {
   
   // Проверяем последние подписки на fonanadev
   const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
+  const sixHoursAgo = new Date(Date.now() - 6 * 60 * 60 * 1000);
   
-  console.log('=== RECENT SUBSCRIPTIONS (last hour) ===');
+  console.log('=== RECENT SUBSCRIPTIONS (last 6 hours) ===');
   const recentSubs = await prisma.subscription.findMany({
     where: {
       creatorId: fonanadev.id,
-      subscribedAt: { gte: oneHourAgo }
+      subscribedAt: { gte: sixHoursAgo }
     },
     include: {
       user: { select: { nickname: true, wallet: true } },
@@ -50,11 +51,11 @@ async function checkRecentFonanadevIssue() {
   });
   
   // Проверяем последние транзакции для fonanadev
-  console.log('\n=== RECENT TRANSACTIONS (last hour) ===');
+  console.log('\n=== RECENT TRANSACTIONS (last 6 hours) ===');
   const recentTxs = await prisma.transaction.findMany({
     where: {
       toWallet: fonanadev.solanaWallet || fonanadev.wallet || '',
-      createdAt: { gte: oneHourAgo },
+      createdAt: { gte: sixHoursAgo },
       type: 'SUBSCRIPTION'
     },
     include: {
