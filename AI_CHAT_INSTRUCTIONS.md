@@ -724,6 +724,28 @@ ssh -p 43988 root@69.10.59.234 "cd /var/www/fonana && node scripts/test-all-subs
 - Always use `/api/subscriptions/process-payment` for paid subscriptions
 - Check both `isActive` AND `paymentStatus === 'COMPLETED'` for access
 
+### 10. Subscription Display Issue (January 2025)
+**Problem**: Premium subscriptions displayed as "basic" in UI after successful payment
+- **Symptoms**:
+  - User pays for Premium, gets charged, but UI shows "basic" tier
+  - Posts remain locked despite having Premium access
+  - Profile shows wrong subscription tier
+- **Cause**: Case mismatch - DB stores "Premium", code checked for "premium"
+
+**Solution**:
+```bash
+# Check specific user's subscription
+ssh -p 43988 root@69.10.59.234 "cd /var/www/fonana && node scripts/diagnose-subscription-display-issue.js username creatorname"
+
+# Fix display issues
+ssh -p 43988 root@69.10.59.234 "cd /var/www/fonana && node scripts/fix-subscription-display-issue.js"
+```
+
+**Code Fix**:
+- Normalize plans to lowercase when loading: `plan?.toLowerCase()`
+- Use `formatPlanName()` function for display
+- File: `app/creator/[id]/page.tsx`
+
 ## Diagnostic Scripts (Available)
 ```bash
 # General health check
@@ -744,6 +766,10 @@ node scripts/fix-subscriptions-without-status.js
 node scripts/check-recent-payment-issues.js
 node scripts/check-fonanadev-24h.js
 node scripts/check-fonanadev-all-subscribers.js
+node scripts/diagnose-subscription-display-issue.js
+node scripts/check-premium-subscription-issues.js
+node scripts/test-subscription-display-flow.js
+node scripts/fix-subscription-display-issue.js
 
 # Feature checks
 node scripts/check-flash-sales.js
@@ -772,6 +798,29 @@ node scripts/check-price-discrepancy.js
 ```
 
 ## Recent Updates & Fixes
+
+### Subscription Display Fix (January 29, 2025) 🔥 NEW
+- **Problem**: Premium subscriptions showed as "basic" in UI after successful payment
+- **Root Cause**: Case mismatch - DB stores "Premium" with capital letter, code checked lowercase
+- **Solution**:
+  - Added plan normalization: `plan?.toLowerCase()` when loading subscription
+  - Created `formatPlanName()` function for consistent display
+  - Fixed all tier comparison checks to use normalized values
+- **Files**: `app/creator/[id]/page.tsx`
+- **Scripts**: 
+  - `diagnose-subscription-display-issue.js` - analyze subscription formats
+  - `fix-subscription-display-issue.js` - fix display issues
+- **Docs**: SUBSCRIPTION_DISPLAY_FIX_2025.md
+
+### Feed Display Fix (January 27, 2025)
+- **Problem**: Authors couldn't see their own posts unlocked, posts locked when switching windows
+- **Root Cause**: `userWallet` wasn't passed to API when user context lost (window focus events)
+- **Solution**:
+  - Added localStorage fallback for userWallet: `localStorage.getItem('fonana_user_wallet')`
+  - Added 100ms delay on window focus to allow context restoration
+  - Clear localStorage on wallet disconnect
+- **Files**: `app/feed/page.tsx`, `app/creator/[id]/page.tsx`
+- **Docs**: FEED_DISPLAY_OPTIMIZATION.md
 
 ### Referral System Fix (January 27, 2025) 🔥 NEW
 - **Problem**: Welcome popup appeared randomly with wrong values (feed, 404, etc)
@@ -1011,6 +1060,7 @@ git log --oneline -10
 - ❌ Run production in dev mode unless absolutely necessary
 - ❌ Create paid subscriptions via `/api/subscriptions` POST - always use `/api/subscriptions/process-payment`
 - ❌ Check only `isActive` for subscription access - must also check `paymentStatus === 'COMPLETED'`
+- ❌ Compare subscription plans without normalization - DB stores "Premium", always use `.toLowerCase()` for comparisons
 
 ## Important Constants & Configuration
 
@@ -1068,4 +1118,78 @@ NEXTAUTH_URL=https://fonana.me
 NEXTAUTH_SECRET=...
 GITHUB_ID=...
 GITHUB_SECRET=...
-``` 
+```
+
+## PWA Optimizations
+- **Service Worker for offline**:
+- **Push notifications**:
+- **App-like experience**:
+- **Install prompts**: 
+
+## Анализ и унификация системы постов в Fonana
+
+### Исходный запрос
+Пользователь попросил проанализировать архитектуру постов в приложении Fonana, где посты отображаются по-разному в разных местах (feed, profile, creator pages), и предложить единую унифицированную конструкцию PostCard для оптимизации.
+
+### Анализ текущей ситуации
+Выявлены проблемы:
+- Разные компоненты PostCard в разных местах
+- Дублирование кода
+- Несогласованные стили и поведение
+- Сложность поддержки
+
+Места отображения постов:
+- Feed page - вертикальный список
+- Profile page - вертикальный список без информации о создателе
+- Creator page - вертикальный список с табами
+- Dashboard - grid/list гибрид
+- Search - grid layout
+
+### Реализованное решение
+
+#### Phase 1: Типы и интерфейсы
+Созданы файлы:
+- `types/posts/index.ts` - унифицированные типы (UnifiedPost, PostCreator, PostContent, PostMedia, PostAccess, PostCommerce, PostEngagement)
+- Поддержка всех тиров (free, basic, premium, vip), платных постов, аукционов, Flash Sales
+
+#### Phase 2: Container & Layouts
+Созданы:
+- `components/posts/layouts/PostsContainer.tsx` - главный контейнер
+- `components/posts/layouts/PostGrid.tsx` - grid layout
+- `components/posts/layouts/PostList.tsx` - list layout
+- `services/posts/normalizer.ts` - нормализация данных
+- `components/posts/utils/postHelpers.ts` - утилиты
+- `lib/hooks/useUnifiedPosts.ts` - хук для работы с постами
+- `lib/utils.ts` - общие утилиты
+
+#### Phase 3: Core Components
+Созданы компоненты:
+- `PostCard` - адаптивный компонент с вариантами full/compact/minimal
+- `PostHeader` - информация о создателе с аватаром и верификацией
+- `PostContent` - отображение медиа контента с поддержкой всех типов
+- `PostLocked` - заблокированный контент с градиентами по тирам
+- `PostActions` - кнопки действий (лайки, комментарии, поделиться)
+- `PostTierBadge` - визуальные индикаторы тиров
+- `PostFlashSale` - баннер Flash Sale с таймером
+
+#### Phase 4: Migration ✅ ЗАВЕРШЕНО
+Успешно мигрированы все 5 страниц:
+- **Feed страница** - использует PostsContainer с layout="list", сохранены все фильтры и модалки
+- **Dashboard страница** - использует PostsContainer с layout="grid", сохранена статистика и графики
+- **Profile страница** - использует PostsContainer с layout="list" variant="profile"
+- **Creator страница** - использует PostsContainer с layout="list" variant="creator"
+- **Search страница** - использует PostsContainer с layout="grid" variant="search"
+
+### Ключевые особенности системы
+- Полная поддержка всех тиров подписок с иерархией
+- Обработка всех типов контента (платные, аукционы, Flash Sales)
+- Адаптивный дизайн с mobile-first подходом
+- Централизованная нормализация данных через PostNormalizer
+- Type-safe архитектура с TypeScript
+- Обратная совместимость с существующим API
+
+### Текущий статус
+- ✅ Унификация системы постов ЗАВЕРШЕНА
+- Создана тестовая страница `/test/unified-posts` для проверки всех вариантов
+- Все основные страницы мигрированы на новую архитектуру
+- Система готова к production использованию 

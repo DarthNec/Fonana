@@ -29,7 +29,7 @@ import { CheckIcon } from '@heroicons/react/24/solid'
 import SubscriptionTiersSettings from '@/components/SubscriptionTiersSettings'
 import UserSubscriptions from '@/components/UserSubscriptions'
 import Avatar from '@/components/Avatar'
-import PostCard from '@/components/PostCard'
+import { PostsContainer } from '@/components/posts/layouts/PostsContainer'
 import EditPostModal from '@/components/EditPostModal'
 import toast from 'react-hot-toast'
 import { useTheme } from '@/lib/contexts/ThemeContext'
@@ -171,19 +171,18 @@ function MyPostsSection({ userId }: { userId?: string }) {
           </div>
         </div>
 
-        {/* Posts List - на всю ширину */}
-        <div className="px-0 sm:px-4">
-          <div className="space-y-0 sm:space-y-6">
-            {posts.map((post) => (
-              <PostCard
-                key={post.id}
-                {...post}
-                showCreator={false}
-                onEditClick={handleEditPost}
-              />
-            ))}
-          </div>
-        </div>
+        {/* Posts Container - унифицированный компонент */}
+        <PostsContainer
+          posts={posts}
+          layout="list"
+          variant="profile"
+          showCreator={false}
+          onAction={(action) => {
+            if (action.type === 'edit') {
+              handleEditPost(posts.find(p => p.id === action.postId))
+            }
+          }}
+        />
       </div>
 
       {/* Edit Post Modal */}
