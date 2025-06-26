@@ -11,7 +11,7 @@ async function checkRecentPremiumSubscriptions() {
   const recentPremiumSubs = await prisma.subscription.findMany({
     where: {
       plan: 'Premium',
-      createdAt: { gte: twoDaysAgo }
+      subscribedAt: { gte: twoDaysAgo }
     },
     include: {
       user: {
@@ -21,7 +21,7 @@ async function checkRecentPremiumSubscriptions() {
         select: { nickname: true, wallet: true }
       }
     },
-    orderBy: { createdAt: 'desc' }
+    orderBy: { subscribedAt: 'desc' }
   });
   
   console.log(`Found ${recentPremiumSubs.length} Premium subscriptions in last 2 days:\n`);
@@ -30,7 +30,7 @@ async function checkRecentPremiumSubscriptions() {
     console.log(`User: ${sub.user.nickname || sub.user.wallet?.slice(0, 8)} → Creator: ${sub.creator.nickname}`);
     console.log(`  Status: ${sub.paymentStatus}, Active: ${sub.isActive}`);
     console.log(`  Price: ${sub.price} SOL`);
-    console.log(`  Created: ${sub.createdAt.toLocaleString()}`);
+    console.log(`  Subscribed: ${sub.subscribedAt.toLocaleString()}`);
     console.log(`  Valid Until: ${sub.validUntil.toLocaleString()}`);
     console.log(`  TX: ${sub.txSignature?.slice(0, 20)}...`);
     
