@@ -539,6 +539,17 @@ const transaction = await prisma.transaction.create({
   ```bash
   ssh -p 43988 root@69.10.59.234 "cd /var/www/fonana && git pull && npm run build && pm2 start ecosystem.config.js && nginx -s reload"
   ```
+- **Alternative**: If manual completion needed:
+  ```bash
+  # 1. Check if build completed
+  ssh -p 43988 root@69.10.59.234 "ls -la /var/www/fonana/.next/"
+  
+  # 2. If not, complete manually
+  ssh -p 43988 root@69.10.59.234 "cd /var/www/fonana && npm run build"
+  
+  # 3. Restart PM2
+  ssh -p 43988 root@69.10.59.234 "cd /var/www/fonana && pm2 restart fonana"
+  ```
 
 ### DevOps Scripts
 ```bash
@@ -586,6 +597,18 @@ ssh -p 43988 root@69.10.59.234 "pm2 restart fonana"
 ### Database Stats:
 ```bash
 ssh -p 43988 root@69.10.59.234 "cd /var/www/fonana && node scripts/health-check.js"
+```
+
+### Subscription Issues Check:
+```bash
+# Quick check for payment issues
+ssh -p 43988 root@69.10.59.234 "cd /var/www/fonana && node scripts/check-pending-subscriptions.js"
+
+# Check specific creator's subscriptions
+ssh -p 43988 root@69.10.59.234 "cd /var/www/fonana && node scripts/check-fonanadev-all-subscribers.js"
+
+# Check recent payment problems (last 24h)
+ssh -p 43988 root@69.10.59.234 "cd /var/www/fonana && node scripts/check-recent-payment-issues.js"
 ```
 
 ## White Screen Fix
@@ -673,6 +696,34 @@ ssh -p 43988 root@69.10.59.234 "cd /var/www/fonana && rm -rf node_modules packag
 - **Cause**: Another process using port 3000
 - **Note**: Development will auto-switch to 3001 if needed
 
+### 9. Subscription Payment Status Issue (CRITICAL)
+**Problem**: Users purchase subscriptions but don't get access despite payment
+- **Symptoms**: 
+  - Subscription shows as active but user can't access content
+  - PaymentStatus is PENDING despite successful transaction
+  - No txSignature in subscription record
+- **Cause**: Subscription created without payment validation
+
+**Solution**:
+```bash
+# 1. Check affected subscriptions
+ssh -p 43988 root@69.10.59.234 "cd /var/www/fonana && node scripts/check-pending-subscriptions.js"
+
+# 2. Fix pending premium subscriptions
+ssh -p 43988 root@69.10.59.234 "cd /var/www/fonana && node scripts/fix-pending-premium-subscriptions.js"
+
+# 3. Fix free subscriptions status
+ssh -p 43988 root@69.10.59.234 "cd /var/www/fonana && node scripts/fix-free-subscriptions-status.js"
+
+# 4. Verify all subscriptions have proper status
+ssh -p 43988 root@69.10.59.234 "cd /var/www/fonana && node scripts/test-all-subscription-types.js"
+```
+
+**Prevention**:
+- Never create paid subscriptions via `/api/subscriptions` POST
+- Always use `/api/subscriptions/process-payment` for paid subscriptions
+- Check both `isActive` AND `paymentStatus === 'COMPLETED'` for access
+
 ## Diagnostic Scripts (Available)
 ```bash
 # General health check
@@ -683,6 +734,16 @@ node scripts/check-custom-tier-settings.js
 node scripts/analyze-subscription-bugs.js
 node scripts/fix-wrong-subscription-plans.js
 node scripts/check-dogwater-premium-issue.js
+node scripts/check-pending-subscriptions.js
+node scripts/check-subscriptions-without-status.js
+node scripts/test-all-subscription-types.js
+node scripts/test-subscription-flow.js
+node scripts/fix-pending-premium-subscriptions.js
+node scripts/fix-free-subscriptions-status.js
+node scripts/fix-subscriptions-without-status.js
+node scripts/check-recent-payment-issues.js
+node scripts/check-fonanadev-24h.js
+node scripts/check-fonanadev-all-subscribers.js
 
 # Feature checks
 node scripts/check-flash-sales.js
@@ -759,6 +820,34 @@ node scripts/check-price-discrepancy.js
   - `fix-wrong-subscription-plans.js` - Fix existing wrong plans
   - `check-custom-tier-settings.js` - Verify creator settings
   - `analyze-subscription-display-issue.js` - Debug display issues
+
+### Subscription Payment Issue Resolution (January 22, 2025) 🔴 CRITICAL
+- **Problem**: Users were purchasing premium subscriptions, being charged, but not receiving access to content
+- **Root Cause**: Found 3 sources creating subscriptions without payment validation:
+  1. Unsafe API endpoint `/api/subscriptions` (POST) - created subscriptions without payment verification
+  2. Test script `scripts/create-subscriptions.js` - created test subscriptions without payment
+  3. Missing validation - system only checked `isActive` flag, not `paymentStatus`
+- **Solution**:
+  1. **API Protection**: Modified `/api/subscriptions` to only accept free subscriptions
+  2. **Access Control**: Added `paymentStatus: 'COMPLETED'` validation to all subscription checks
+  3. **Data Cleanup**: Fixed 44 Free and deactivated 18 unpaid Premium subscriptions
+- **Prevention**: All paid subscriptions must now use `/api/subscriptions/process-payment`
+- **Validation**: Added paymentStatus checks to:
+  - `/api/posts/route.ts` - subscription fetching
+  - `/api/subscriptions/route.ts` - subscription listing
+  - `/api/subscriptions/check/route.ts` - subscription verification
+  - `lib/db.ts` - `getUserSubscriptions` and `hasActiveSubscription` functions
+- **Scripts Created**:
+  - `fix-pending-premium-subscriptions.js` - deactivate/convert unpaid subscriptions
+  - `fix-free-subscriptions-status.js` - set COMPLETED status for free subscriptions
+  - `fix-subscriptions-without-status.js` - handle old subscriptions missing paymentStatus
+  - `check-pending-subscriptions.js` - diagnostic tool
+  - `check-subscriptions-without-status.js` - find subscriptions without status
+  - `test-all-subscription-types.js` - validate all subscription types
+  - `test-subscription-flow.js` - test complete subscription flow
+  - `check-recent-payment-issues.js` - check recent payment problems
+  - `check-fonanadev-24h.js` - check specific creator's issues
+  - `check-fonanadev-all-subscribers.js` - analyze all subscriptions for a creator
 
 ## Current Features Status
 
@@ -890,6 +979,8 @@ git log --oneline -10
 - ❌ Mix Prisma versions - always keep @prisma/client and prisma CLI in sync
 - ❌ Put `prisma` package in dependencies - it belongs in devDependencies only
 - ❌ Run production in dev mode unless absolutely necessary
+- ❌ Create paid subscriptions via `/api/subscriptions` POST - always use `/api/subscriptions/process-payment`
+- ❌ Check only `isActive` for subscription access - must also check `paymentStatus === 'COMPLETED'`
 
 ## Important Constants & Configuration
 
