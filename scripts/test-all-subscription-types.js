@@ -56,10 +56,9 @@ async function testAllSubscriptionTypes() {
         plan,
         isActive: true,
         validUntil: { gte: new Date() },
-        OR: [
-          { paymentStatus: { not: 'COMPLETED' } },
-          { paymentStatus: null }
-        ]
+        NOT: {
+          paymentStatus: 'COMPLETED'
+        }
       }
     });
     
@@ -74,10 +73,9 @@ async function testAllSubscriptionTypes() {
           plan,
           isActive: true,
           validUntil: { gte: new Date() },
-          OR: [
-            { paymentStatus: { not: 'COMPLETED' } },
-            { paymentStatus: null }
-          ]
+          NOT: {
+            paymentStatus: 'COMPLETED'
+          }
         },
         include: {
           user: { select: { nickname: true } },
