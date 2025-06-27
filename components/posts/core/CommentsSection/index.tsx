@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react'
 import { cn } from '@/lib/utils'
-import { useUser } from '@/lib/hooks/useUser'
+import { useUserContext } from '@/lib/contexts/UserContext'
 import toast from 'react-hot-toast'
 
 export interface Comment {
@@ -32,7 +32,7 @@ export interface CommentsSectionProps {
  * Компонент для отображения и добавления комментариев
  */
 export function CommentsSection({ postId, className, onClose }: CommentsSectionProps) {
-  const { user } = useUser()
+  const { user } = useUserContext()
   const [comments, setComments] = useState<Comment[]>([])
   const [loading, setLoading] = useState(true)
   const [newComment, setNewComment] = useState('')
