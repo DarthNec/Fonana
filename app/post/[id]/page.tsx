@@ -5,7 +5,7 @@ import { useParams, useRouter } from 'next/navigation'
 import Image from 'next/image'
 import Link from 'next/link'
 import Avatar from '@/components/Avatar'
-import { useUser } from '@/lib/hooks/useUser'
+import { useUserContext } from '@/lib/contexts/UserContext'
 import { 
   HeartIcon, 
   ChatBubbleLeftIcon, 
@@ -58,7 +58,7 @@ interface Comment {
 export default function PostPage() {
   const params = useParams()
   const router = useRouter()
-  const { user } = useUser()
+  const { user } = useUserContext()
   const [post, setPost] = useState<Post | null>(null)
   const [comments, setComments] = useState<Comment[]>([])
   const [isLiked, setIsLiked] = useState(false)
