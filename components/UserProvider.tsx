@@ -1,22 +1,20 @@
 'use client'
 
-import { useUser } from '@/lib/hooks/useUser'
-import { useWallet } from '@solana/wallet-adapter-react'
+import { UserContextProvider, useUserContext } from '@/lib/contexts/UserContext'
 import ProfileSetupModal from './ProfileSetupModal'
 
 interface UserProviderProps {
   children: React.ReactNode
 }
 
-export function UserProvider({ children }: UserProviderProps) {
-  const { publicKey } = useWallet()
+// Внутренний компонент для модалки профиля
+function ProfileModalHandler() {
   const { 
     user, 
-    isNewUser, 
     showProfileForm, 
     setShowProfileForm, 
     updateProfile 
-  } = useUser()
+  } = useUserContext()
 
   const handleProfileComplete = async (profileData: {
     nickname: string
@@ -31,18 +29,25 @@ export function UserProvider({ children }: UserProviderProps) {
     await updateProfile(profileData)
   }
 
+  if (!user || !showProfileForm) return null
+
   return (
-    <>
+    <ProfileSetupModal
+      isOpen={showProfileForm}
+      onClose={() => setShowProfileForm(false)}
+      onComplete={handleProfileComplete}
+      userWallet={user.wallet}
+    />
+  )
+}
+
+// Основной провайдер - обертка над UserContextProvider
+export function UserProvider({ children }: UserProviderProps) {
+  return (
+    <UserContextProvider>
       {children}
-      {user && showProfileForm && (
-        <ProfileSetupModal
-          isOpen={showProfileForm}
-          onClose={() => setShowProfileForm(false)}
-          onComplete={handleProfileComplete}
-          userWallet={user.wallet}
-        />
-      )}
-    </>
+      <ProfileModalHandler />
+    </UserContextProvider>
   )
 }
 

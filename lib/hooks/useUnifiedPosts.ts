@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { UnifiedPost, PostAction } from '@/types/posts'
 import { PostNormalizer } from '@/services/posts/normalizer'
 import { useWallet } from '@solana/wallet-adapter-react'
-import { useUser } from '@/lib/hooks/useUser'
+import { useUserContext } from '@/lib/contexts/UserContext'
 import toast from 'react-hot-toast'
 
 interface UseUnifiedPostsOptions {
@@ -30,7 +30,7 @@ export function useUnifiedPosts(options: UseUnifiedPostsOptions = {}): UseUnifie
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<Error | null>(null)
   const { publicKey } = useWallet()
-  const { user, isLoading: isUserLoading } = useUser()
+  const { user, isLoading: isUserLoading, error: userError } = useUserContext()
 
   const fetchPosts = useCallback(async () => {
     try {
@@ -68,6 +68,29 @@ export function useUnifiedPosts(options: UseUnifiedPostsOptions = {}): UseUnifie
   useEffect(() => {
     fetchPosts()
   }, [fetchPosts])
+
+  // Быстрое получение userId из контекста или localStorage
+  const getUserIdQuick = useCallback((): string | null => {
+    // Сначала проверяем user из контекста
+    if (user?.id) return user.id
+    
+    // Если user загружается и есть кошелек, проверяем localStorage
+    if (isUserLoading && publicKey) {
+      try {
+        const savedData = localStorage.getItem('fonana_user_data')
+        const savedWallet = localStorage.getItem('fonana_user_wallet')
+        
+        if (savedData && savedWallet === publicKey.toBase58()) {
+          const userData = JSON.parse(savedData)
+          if (userData.id) return userData.id
+        }
+      } catch (e) {
+        console.error('[getUserIdQuick] Failed to parse saved user data', e)
+      }
+    }
+    
+    return null
+  }, [user, isUserLoading, publicKey])
 
   // Обработка действий с постами
   const handleAction = useCallback(async (action: PostAction) => {
@@ -112,27 +135,47 @@ export function useUnifiedPosts(options: UseUnifiedPostsOptions = {}): UseUnifie
 
   // Лайк поста
   const handleLike = async (postId: string) => {
-    // Проверяем сначала user из контекста
-    if (!user?.id) {
-      if (isUserLoading) {
-        toast.error('Загружаем данные пользователя...')
+    // Используем быстрое получение userId
+    const userId = getUserIdQuick()
+    
+    if (!userId) {
+      if (userError) {
+        toast.error('Ошибка загрузки профиля. Попробуйте еще раз')
+      } else if (isUserLoading) {
+        toast('Загружаем данные пользователя...', { icon: '⏳' })
       } else if (!publicKey) {
         toast.error('Подключите кошелек')
       } else {
-        toast.error('Пожалуйста, подождите инициализацию профиля')
+        // Попытаемся получить userId через API
+        try {
+          const response = await fetch(`/api/user?wallet=${publicKey.toBase58()}`)
+          if (response.ok) {
+            const data = await response.json()
+            if (data.user?.id) {
+              await performLike(postId, data.user.id)
+              return
+            }
+          }
+        } catch (error) {
+          console.error('Failed to fetch user for like', error)
+        }
+        toast.error('Не удалось загрузить профиль. Обновите страницу')
       }
       return
     }
 
+    await performLike(postId, userId)
+  }
+
+  // Выполнение лайка
+  const performLike = async (postId: string, userId: string) => {
     try {
       const response = await fetch(`/api/posts/${postId}/like`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          userId: user.id
-        }),
+        body: JSON.stringify({ userId }),
       })
 
       if (!response.ok) throw new Error('Failed to like post')
@@ -162,27 +205,47 @@ export function useUnifiedPosts(options: UseUnifiedPostsOptions = {}): UseUnifie
 
   // Убрать лайк
   const handleUnlike = async (postId: string) => {
-    // Проверяем сначала user из контекста
-    if (!user?.id) {
-      if (isUserLoading) {
-        toast.error('Загружаем данные пользователя...')
+    // Используем быстрое получение userId
+    const userId = getUserIdQuick()
+    
+    if (!userId) {
+      if (userError) {
+        toast.error('Ошибка загрузки профиля. Попробуйте еще раз')
+      } else if (isUserLoading) {
+        toast('Загружаем данные пользователя...', { icon: '⏳' })
       } else if (!publicKey) {
         toast.error('Подключите кошелек')
       } else {
-        toast.error('Пожалуйста, подождите инициализацию профиля')
+        // Попытаемся получить userId через API
+        try {
+          const response = await fetch(`/api/user?wallet=${publicKey.toBase58()}`)
+          if (response.ok) {
+            const data = await response.json()
+            if (data.user?.id) {
+              await performUnlike(postId, data.user.id)
+              return
+            }
+          }
+        } catch (error) {
+          console.error('Failed to fetch user for unlike', error)
+        }
+        toast.error('Не удалось загрузить профиль. Обновите страницу')
       }
       return
     }
 
+    await performUnlike(postId, userId)
+  }
+
+  // Выполнение отмены лайка
+  const performUnlike = async (postId: string, userId: string) => {
     try {
       const response = await fetch(`/api/posts/${postId}/like`, {
         method: 'DELETE',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          userId: user.id
-        }),
+        body: JSON.stringify({ userId }),
       })
 
       if (!response.ok) throw new Error('Failed to unlike post')
