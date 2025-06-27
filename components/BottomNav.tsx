@@ -21,7 +21,7 @@ import {
   ChatBubbleLeftEllipsisIcon as ChatBubbleLeftEllipsisSolidIcon,
   UserIcon as UserSolidIcon
 } from '@heroicons/react/24/solid'
-import { useUser } from '@/lib/hooks/useUser'
+import { useUserContext } from '@/lib/contexts/UserContext'
 import { useState, useEffect } from 'react'
 import { useWallet } from '@solana/wallet-adapter-react'
 import { useWalletModal } from '@solana/wallet-adapter-react-ui'
@@ -31,7 +31,7 @@ import { MobileWalletConnect } from '@/components/MobileWalletConnect'
 
 export default function BottomNav() {
   const pathname = usePathname()
-  const { user } = useUser()
+  const { user } = useUserContext()
   const { publicKey, disconnect } = useWallet()
   const { setVisible } = useWalletModal()
   const [unreadMessages, setUnreadMessages] = useState(0)

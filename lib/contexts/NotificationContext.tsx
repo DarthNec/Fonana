@@ -1,7 +1,7 @@
 'use client'
 
 import React, { createContext, useContext, useState, useEffect, useRef, useCallback } from 'react'
-import { useUser } from '@/lib/hooks/useUser'
+import { useUserContext } from '@/lib/contexts/UserContext'
 import { toast } from 'react-hot-toast'
 
 interface Notification {
@@ -47,7 +47,7 @@ const createAudioElements = () => {
 }
 
 export function NotificationProvider({ children }: { children: React.ReactNode }) {
-  const { user } = useUser()
+  const { user } = useUserContext()
   const [notifications, setNotifications] = useState<Notification[]>([])
   const [unreadCount, setUnreadCount] = useState(0)
   const [loading, setLoading] = useState(false)

@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef, useMemo } from 'react'
 import Link from 'next/link'
-import { useUser } from '@/lib/hooks/useUser'
+import { useUserContext } from '@/lib/contexts/UserContext'
 import { useUnifiedPosts } from '@/lib/hooks/useUnifiedPosts'
 import { PostsContainer } from '@/components/posts/layouts/PostsContainer'
 import { UnifiedPost, PostAction } from '@/types/posts'
@@ -31,7 +31,7 @@ const categories = [
 ]
 
 export default function FeedPage() {
-  const { user } = useUser()
+  const { user } = useUserContext()
   const [selectedCategory, setSelectedCategory] = useState('All')
   const [sortBy, setSortBy] = useState<'latest' | 'popular' | 'trending' | 'most-liked' | 'most-commented' | 'following' | 'my-posts'>('latest')
   const scrollPositionRef = useRef(0)
