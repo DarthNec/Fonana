@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react'
 import { EyeIcon, EyeSlashIcon, UserIcon } from '@heroicons/react/24/outline'
 import Image from 'next/image'
 import Avatar from './Avatar'
-import { useUser } from '@/lib/hooks/useUser'
+import { useUserContext } from '@/lib/contexts/UserContext'
 import toast from 'react-hot-toast'
 
 interface Subscription {
@@ -27,7 +27,7 @@ interface Subscription {
 }
 
 export default function SubscriptionManager() {
-  const { user } = useUser()
+  const { user } = useUserContext()
   const [subscriptions, setSubscriptions] = useState<Subscription[]>([])
   const [loading, setLoading] = useState(true)
 
