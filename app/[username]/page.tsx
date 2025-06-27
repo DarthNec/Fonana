@@ -2,12 +2,10 @@
 
 import { useEffect, useState } from 'react'
 import { useParams, useRouter, notFound } from 'next/navigation'
-import { useUser } from '@/lib/hooks/useUser'
 
 export default function UserProfileShortcut() {
   const params = useParams()
   const router = useRouter()
-  const { user } = useUser()
   const username = params.username as string
   const [isLoading, setIsLoading] = useState(true)
 
