@@ -24,7 +24,7 @@ import {
   EllipsisVerticalIcon
 } from '@heroicons/react/24/outline'
 import { HeartIcon as HeartSolidIcon } from '@heroicons/react/24/solid'
-import { useUser } from '@/lib/hooks/useUser'
+import { useUserContext } from '@/lib/contexts/UserContext'
 import { getProfileLink } from '@/lib/utils/links'
 import EditPostModal from './EditPostModal'
 import FlashSale from './FlashSale'
@@ -146,7 +146,7 @@ export default function PostCard({
   onSellableClick,
   onEditClick
 }: PostCardProps) {
-  const { user } = useUser()
+  const { user } = useUserContext()
   const [likesCount, setLikesCount] = useState(likes)
   const [isLiked, setIsLiked] = useState(false)
   const [showComments, setShowComments] = useState(false)
