@@ -1481,6 +1481,24 @@ const { posts, newPostsCount, loadPendingPosts } = useRealtimePosts({ posts })
 - **Test Page**: `/test/realtime-demo` - полная демонстрация
 - **TODO**: Требуется WebSocket сервер для production
 
+#### WebSocket Server Audit (December 30, 2024)
+- **Audit Report**: `WEBSOCKET_SERVER_AUDIT_REPORT.md`
+- **Overall Readiness**: 30% (client 100% ready, server 0%)
+- **Missing Components**:
+  - WebSocket server implementation
+  - JWT authentication middleware
+  - Event routing and broadcasting
+  - Redis for pub/sub
+- **Recommended Approach**: Separate Node.js WebSocket server on port 3002
+- **Implementation Time**: 7-10 days
+- **Key Tasks**:
+  1. Create WebSocket server with `ws` library
+  2. Implement JWT authentication
+  3. Add event routing by channels
+  4. Integrate with existing APIs
+  5. Setup Redis for scaling
+  6. Test and deploy
+
 ### Modal Components
 
 // ... existing code ...
