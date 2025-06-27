@@ -12,30 +12,35 @@ import {
 } from '@heroicons/react/24/outline'
 import FlashSale from './FlashSale'
 import CreateFlashSale from './CreateFlashSale'
+import { useCreatorData } from '@/lib/hooks/useCreatorData'
 
 interface FlashSalesListProps {
-  creatorId?: string
   isOwner?: boolean
 }
 
-export default function FlashSalesList({ creatorId, isOwner = false }: FlashSalesListProps) {
+export default function FlashSalesList({ isOwner = false }: FlashSalesListProps) {
   const { publicKey } = useWallet()
+  const { creator } = useCreatorData()
   const [flashSales, setFlashSales] = useState<any[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [showCreateModal, setShowCreateModal] = useState(false)
   const [selectedPostId, setSelectedPostId] = useState<string | undefined>()
 
   useEffect(() => {
-    loadFlashSales()
-    // Обновляем каждые 30 секунд
-    const interval = setInterval(loadFlashSales, 30000)
-    return () => clearInterval(interval)
-  }, [creatorId])
+    if (creator) {
+      loadFlashSales()
+      // Обновляем каждые 30 секунд
+      const interval = setInterval(loadFlashSales, 30000)
+      return () => clearInterval(interval)
+    }
+  }, [creator])
 
   const loadFlashSales = async () => {
+    if (!creator) return
+    
     try {
       const params = new URLSearchParams()
-      if (creatorId) params.append('creatorId', creatorId)
+      params.append('creatorId', creator.id)
       
       const response = await fetch(`/api/flash-sales?${params}`)
       const data = await response.json()

@@ -269,7 +269,25 @@ export default function SearchPage() {
                       }
                     } else if (action.type === 'purchase') {
                       const post = filteredResults.posts.find(p => p.id === action.postId)
-                      if (post) setPurchaseModalData(post)
+                      if (post) {
+                        // Форматируем данные для PurchaseModal
+                        const formattedPost = {
+                          id: post.id,
+                          title: post.title || post.content?.title || '',
+                          content: post.content?.text || post.content || '',
+                          price: post.price || post.access?.price || 0,
+                          currency: post.currency || post.access?.currency || 'SOL',
+                          flashSale: post.flashSale || post.commerce?.flashSale,
+                          creator: {
+                            id: post.creator?.id || post.creatorId,
+                            name: post.creator?.name || post.creator?.fullName || post.creator?.nickname || '',
+                            username: post.creator?.username || post.creator?.nickname || '',
+                            avatar: post.creator?.avatar || null,
+                            isVerified: post.creator?.isVerified || false
+                          }
+                        }
+                        setPurchaseModalData(formattedPost)
+                      }
                     } else if (action.type === 'edit') {
                       const post = filteredResults.posts.find(p => p.id === action.postId)
                       if (post) setEditModalData(post)

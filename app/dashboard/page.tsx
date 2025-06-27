@@ -16,6 +16,7 @@ import {
   ChatBubbleLeftEllipsisIcon
 } from '@heroicons/react/24/outline'
 import { useUserContext } from '@/lib/contexts/UserContext'
+import { CreatorDataProvider } from '@/lib/contexts/CreatorContext'
 import { useWallet } from '@solana/wallet-adapter-react'
 import { useUnifiedPosts } from '@/lib/hooks/useUnifiedPosts'
 import { PostsContainer } from '@/components/posts/layouts/PostsContainer'
@@ -324,7 +325,11 @@ export default function DashboardPage() {
 
               {/* Revenue Charts */}
               <div className="px-0 sm:px-0 mb-4 sm:mb-8">
-                {user?.id && <RevenueChart creatorId={user.id} />}
+                {user?.id && (
+                  <CreatorDataProvider creatorId={user.id}>
+                    <RevenueChart />
+                  </CreatorDataProvider>
+                )}
               </div>
 
               {/* Recent Posts */}

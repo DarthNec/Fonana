@@ -481,36 +481,158 @@ const transaction = await prisma.transaction.create({
 
 ## Key Components
 
-### 🔥 User State Management (NEW - June 27, 2025)
-- **MIGRATION COMPLETED**: System fully migrated to centralized UserContext
+### 🔥 User State Management (COMPLETED - June 27, 2025)
 - **Core**: `lib/contexts/UserContext.tsx` - единая точка управления состоянием пользователя
-- **Usage**: Все компоненты используют `useUserContext()` для доступа к данным пользователя
+- **MIGRATION COMPLETED**: 100% компонентов мигрированы на централизованный UserContext
 - **Features**:
   - Централизованное управление состоянием пользователя
   - Автоматическая загрузка данных при подключении кошелька
-  - Кеширование в localStorage с TTL на 7 дней
+  - Кеширование с TTL на 7 дней (управляется ТОЛЬКО внутри UserContext)
   - Автоматическая повторная загрузка при ошибках (retry через 2 сек)
   - Синхронизация состояния между всеми компонентами
-- **API**:
-  ```typescript
-  import { useUserContext } from '@/lib/contexts/UserContext'
+  - API fallback для асинхронных операций
+
+#### Usage Guidelines
+```typescript
+// ✅ ПРАВИЛЬНО - использование UserContext
+import { useUserContext } from '@/lib/contexts/UserContext'
+
+function MyComponent() {
+  const { user, isLoading, error, refreshUser } = useUserContext()
   
-  function MyComponent() {
-    const { user, isLoading, error, refreshUser } = useUserContext()
-    
-    // Access user data
-    if (user) {
-      console.log(user.id, user.wallet, user.nickname)
+  // Access user data
+  if (user) {
+    console.log(user.id, user.wallet, user.nickname)
+    // Use user.id for API calls
+    // Use user.wallet for blockchain operations
+    // Use user.nickname for display
+  }
+  
+  // Handle loading state
+  if (isLoading) return <div>Loading...</div>
+  
+  // Handle errors
+  if (error) return <div>Error: {error}</div>
+  
+  // Force refresh if needed
+  const handleRefresh = () => refreshUser()
+}
+
+// ❌ НЕПРАВИЛЬНО - прямой доступ к localStorage
+const wallet = localStorage.getItem('fonana_user_wallet') // НЕ ДЕЛАЙТЕ ТАК!
+
+// ❌ НЕПРАВИЛЬНО - использование устаревших хуков
+import { useUser } from '@/lib/hooks/useUser' // УДАЛЕН!
+```
+
+#### Key Points
+- **Single Source of Truth**: UserContext управляет всем состоянием пользователя
+- **No Direct localStorage Access**: ЗАПРЕЩЕНО читать/писать localStorage напрямую
+- **Automatic Session Management**: Сессии автоматически сохраняются и восстанавливаются
+  - **Error Recovery**: Автоматический retry при ошибках загрузки
+  - **Type Safety**: Полная типизация всех данных пользователя
+
+### 🚀 Creator Data Management (COMPLETED - December 2024)
+- **Core**: `lib/contexts/CreatorContext.tsx` - централизованное управление данными создателя
+- **Hook**: `lib/hooks/useCreatorData.ts` - экспорт хука для удобства
+- **Status**: ✅ ЗАВЕРШЕНО + v2 улучшения (29.12.2024)
+- **Features**:
+  - Централизованное управление данными создателя по ID
+  - Кеширование данных с TTL на 7 дней
+  - Автоматическая повторная загрузка при ошибках
+  - Поддержка tierSettings, flashSales, earnings
+  - Интеграция с компонентами RevenueChart и FlashSalesList
+  
+#### v2 Улучшения (COMPLETED - December 29, 2024)
+- **Оптимистичные обновления**: 
+  - `updateCreatorLocally()` - мгновенное применение изменений
+  - `revertCreator()` - откат при ошибках
+  - Синхронизация с сервером после успеха
+- **WebSocket интеграция**:
+  - Real-time обновления данных создателя
+  - Автоматическое переподключение
+  - События: профиль, подписки, earnings, flash sales
+- **Синхронизация между вкладками**:
+  - BroadcastChannel API для современных браузеров
+  - Fallback на localStorage events
+  - Мгновенная синхронизация во всех вкладках
+- **Улучшенная обработка ошибок**:
+  - Категоризация ошибок (401/403/404/500)
+  - Ограниченные retry с экспоненциальной задержкой
+  - Понятные сообщения для пользователя
+
+#### Usage Guidelines
+```typescript
+// На странице создателя - оберните в провайдер
+import { CreatorDataProvider } from '@/lib/contexts/CreatorContext'
+
+export default function CreatorPage() {
+  const params = useParams()
+  const creatorId = params.id as string
+
+  return (
+    <CreatorDataProvider creatorId={creatorId}>
+      <CreatorPageContent />
+    </CreatorDataProvider>
+  )
+}
+
+// Внутри компонентов - используйте хук
+import { useCreatorData } from '@/lib/hooks/useCreatorData'
+
+function MyComponent() {
+  const { 
+    creator, 
+    isLoading, 
+    error, 
+    refreshCreator,
+    updateCreatorLocally,
+    revertCreator 
+  } = useCreatorData()
+  
+  if (isLoading) return <div>Loading...</div>
+  if (error) return <div>Error: {error}</div>
+  if (!creator) return <div>Creator not found</div>
+  
+  // Оптимистичное обновление
+  const handleUpdate = async (data) => {
+    updateCreatorLocally(data) // Мгновенное UI обновление
+    try {
+      await updateAPI(data)
+      await refreshCreator() // Синхронизация с сервером
+    } catch (err) {
+      revertCreator() // Откат при ошибке
     }
   }
-  ```
-- **REMOVED**:
-  - ❌ `lib/hooks/useUser.ts` - удален после миграции
-  - ❌ `getUserIdQuick()` - удален из useUnifiedPosts
-  - ❌ Прямые обращения к localStorage в компонентах
-- **Note**: LocalStorage используется ТОЛЬКО внутри UserContext для кеширования
+  
+  return (
+    <div>
+      <h1>{creator.nickname}</h1>
+      <p>{creator.bio}</p>
+      <button onClick={refreshCreator}>Refresh</button>
+    </div>
+  )
+}
+```
 
-### Unified Post System (NEW - January 2025, Fixed - February 2025)
+#### Migrated Components
+- ✅ `app/creator/[id]/page.tsx` - основная страница создателя
+- ✅ `app/creator/[id]/subscribe/page.tsx` - страница подписки
+- ✅ `components/RevenueChart.tsx` - график доходов (удален prop creatorId)
+- ✅ `components/FlashSalesList.tsx` - список Flash Sales (удален prop creatorId)
+
+#### Key Points
+- **Single Source of Truth**: CreatorContext управляет всеми данными создателя
+- **Automatic Caching**: Данные кешируются в localStorage на 7 дней
+- **Error Recovery**: Автоматический retry через 2 секунды при ошибках (max 3 попытки)
+- **Type Safety**: Полная типизация с расширенным интерфейсом CreatorData
+- **Test Pages**: 
+  - `/test/creator-data` - базовая функциональность
+  - `/test/creator-data-v2` - v2 улучшения (оптимистичные обновления, WebSocket, синхронизация)
+- **WebSocket Service**: `lib/services/websocket.ts` - управление real-time обновлениями
+- **Cross-tab Sync**: Автоматическая синхронизация между вкладками браузера
+
+### Unified Post System (COMPLETED - February 2025)
 - **components/posts/layouts/**
   - `PostsContainer.tsx` - Главный контейнер с поддержкой list/grid/masonry
   - `PostGrid.tsx` - Grid layout для Dashboard/Search
@@ -845,7 +967,7 @@ node scripts/check-price-discrepancy.js
 
 ## Recent Updates & Fixes
 
-### User State Management Migration (June 27, 2025) 🚀 NEW
+### User State Management Migration (June 27, 2025) 🚀 COMPLETED
 - **Problem**: User data loading was inconsistent, multiple components used different methods to get user info
 - **Root Cause**: 
   - Asynchronous user data loading created race conditions
@@ -856,64 +978,31 @@ node scripts/check-price-discrepancy.js
   - Features: localStorage caching (7-day TTL), retry mechanism, auto-loading
   - Migrated 100% of components (25 components migrated, 19 didn't need changes)
   - Removed all temporary solutions and deprecated code
-- **Removed**:
-  - ❌ `lib/hooks/useUser.ts` - completely removed
-  - ❌ `getUserIdQuick()` - removed from useUnifiedPosts
-  - ❌ Direct localStorage access in components
+- **Key Changes**:
+  - ✅ All components now use `useUserContext()` hook
+  - ✅ No direct localStorage access anywhere in codebase
+  - ✅ Automatic session restoration on page refresh
+  - ✅ Built-in error recovery with retry mechanism
 - **Result**: Centralized, reliable user state management across entire application
 - **Docs**: USER_CONTEXT_MIGRATION_STATUS.md
 
-### Unified Post System - Fixes Part 3 (February 27, 2025) 🔥 NEW
-- **Problems**: Like button required wallet connection despite being connected; Comments opened in new window
-- **Solutions**:
-  - Added `getUserId` function with API fallback for async user loading
-  - Created `CommentsSection` component for inline comments
-  - Added fade-in animation for smooth comment appearance
-- **Components**: 
-  - `components/posts/core/CommentsSection/index.tsx` - full comment system
-  - Updated `useUnifiedPosts` hook for better wallet handling
-- **Result**: Seamless UX with instant likes and inline comments
-- **Docs**: UNIFIED_POSTCARD_FIX_V3.md
-
-### Unified Post System - Fixes Part 2 (February 27, 2025) 🔥 NEW
-- **Problems**: Navigation errors, My Posts errors, like errors, comment navigation
-- **Root Causes**:
-  - Missing creator.id validation in PostNormalizer
-  - PostsContainer failed on invalid data
-  - API expected userId but received wallet
-  - Comments used direct navigation instead of callbacks
-- **Solutions**:
-  - Added creator.id validation with fallback values
-  - Safe normalization with try-catch error handling
-  - Updated to use userId from user context
-  - Added comment action handling in PostCard
-- **Files Modified**: 7 files including normalizer, PostHeader, useUnifiedPosts
-- **Docs**: UNIFIED_POSTCARD_FIX_V2.md
-
-### Unified Post System - Fixes Part 1 (February 26, 2025) 🔥 NEW
-- **Problems**: Authors couldn't see own posts, subscription prompts for own content, infinite loading
-- **Solutions**:
-  - Added userWallet parameter passing in Profile page
-  - Added isCreatorPost flag in API response
-  - Fixed loading state management in Creator page
-- **Key Changes**:
-  - `app/profile/page.tsx` - pass userWallet to PostsContainer
-  - `app/api/posts/route.ts` - add isCreatorPost logic
-  - `components/posts/core/PostContent/index.tsx` - check isCreatorPost
-- **Docs**: UNIFIED_POSTCARD_FIX.md
-
-### Unified Post System Implementation (January 30, 2025)
-- **Problem**: Posts displayed inconsistently across pages with 1210-line PostCard component
+### Unified Post System - Complete Implementation (February 2025) 🔥 COMPLETED
+- **Initial Problems**: Posts displayed inconsistently across pages with 1210-line PostCard component
 - **Solution**: Complete post system unification with modular architecture
-- **Changes**:
-  - Created unified types: `types/posts/index.ts` (UnifiedPost, PostCreator, etc.)
-  - Split PostCard into focused components: PostHeader, PostContent, PostActions, PostLocked, PostTierBadge, PostFlashSale
-  - Implemented adaptive layouts: PostsContainer, PostGrid, PostList
-  - Added PostNormalizer service for backward compatibility
-  - Created useUnifiedPosts hook for data management
-- **Migration**: All 5 pages migrated (Feed, Dashboard, Profile, Creator, Search)
+- **Implementation Phases**:
+  1. Created unified types and interfaces
+  2. Built container and layout components
+  3. Developed modular core components
+  4. Migrated all pages to new system
+  5. Fixed all edge cases and issues
+- **Key Features**:
+  - Modular architecture with focused components
+  - Three layout variants (list/grid/masonry)
+  - Full TypeScript support
+  - Inline comments with animations
+  - Async user loading with API fallback
 - **Test Page**: `/test/unified-posts` - interactive testing of all variants
-- **Benefits**: Consistent UI, reduced code duplication, better performance, easier maintenance
+- **Docs**: UNIFIED_POSTCARD_FIX.md, UNIFIED_POSTCARD_FIX_V2.md, UNIFIED_POSTCARD_FIX_V3.md
 
 ### Subscription Display Fix (January 29, 2025)
 - **Problem**: Premium subscriptions showed as "basic" in UI after successful payment
@@ -927,17 +1016,6 @@ node scripts/check-price-discrepancy.js
   - `diagnose-subscription-display-issue.js` - analyze subscription formats
   - `fix-subscription-display-issue.js` - fix display issues
 - **Docs**: SUBSCRIPTION_DISPLAY_FIX_2025.md
-
-### Feed Display Fix (January 27, 2025)
-- **Problem**: Authors couldn't see their own posts unlocked, posts locked when switching windows
-- **Root Cause**: `userWallet` wasn't passed to API when user context lost (window focus events)
-- **Solution**:
-  - Added localStorage fallback for userWallet: `localStorage.getItem('fonana_user_wallet')`
-  - Added 100ms delay on window focus to allow context restoration
-  - Clear localStorage on wallet disconnect
-- **Files**: `app/feed/page.tsx`, `app/creator/[id]/page.tsx`
-- **Docs**: FEED_DISPLAY_OPTIMIZATION.md
-- **Note**: This fix was implemented before UserContext migration. After June 27, 2025, localStorage is only used within UserContext
 
 ### Referral System Fix (January 27, 2025)
 - **Problem**: Welcome popup appeared randomly with wrong values (feed, 404, etc)
@@ -1049,6 +1127,8 @@ node scripts/check-price-discrepancy.js
 ## Current Features Status
 
 ✅ **COMPLETED & WORKING:**
+- **User State Management** - Полная миграция на UserContext завершена (27.06.2025)
+- **Unified Post System** - Модульная архитектура с единообразным отображением
 - Personal Messages + PPV (Pay-per-view) - Полностью исправлено 23.01.2025
 - Tips система с Quick Tips в чате - Улучшено 23.01.2025
 - Flash Sales with countdown timers
@@ -1072,11 +1152,10 @@ node scripts/check-price-discrepancy.js
 - CSV export of all analytics data
 - Hybrid wallet authentication (JWT + Solana)
 - Session persistence without constant wallet connection
-- Unified Post System with modular architecture - Завершено 27.02.2025
-- Async user loading with API fallback for actions - Добавлено 27.02.2025
-- Centralized User State Management via UserContext - Миграция завершена 27.06.2025
+- Async user loading with API fallback for actions
 
 🔄 **IN DEVELOPMENT:**
+- **Creator Data Hook (useCreatorData)** - централизованное управление данными создателей
 - Mobile Wallet Adapter (MWA) integration
 - Live streaming (waiting for user base)
 - Stories (waiting for user base)
@@ -1097,6 +1176,7 @@ app/
 
 components/        # React components
 lib/              # Utilities & configs
+├── contexts/     # React contexts (UserContext)
 ├── hooks/        # React hooks
 ├── pricing/      # Pricing system
 └── solana/       # Blockchain integration
@@ -1127,7 +1207,10 @@ public/           # Static assets
 4. **Deploy Safely**: Use the deploy script, don't break production data
 5. **Check Logs**: Always check pm2 logs after deployment
 6. **Use Scripts**: Leverage existing diagnostic scripts before implementing new ones
-7. **User State**: Always use `useUserContext()` for user data access, never access localStorage directly
+7. **User State**: Always use `useUserContext()` for user data access, NEVER access localStorage directly
+8. **Type Safety**: Use TypeScript types for all data structures
+9. **Error Handling**: Always handle loading and error states in components
+10. **Performance**: Use caching and lazy loading where appropriate
 
 ## Before Making Changes - ALWAYS CHECK:
 ```bash
@@ -1183,6 +1266,9 @@ git log --oneline -10
 - ❌ Create paid subscriptions via `/api/subscriptions` POST - always use `/api/subscriptions/process-payment`
 - ❌ Check only `isActive` for subscription access - must also check `paymentStatus === 'COMPLETED'`
 - ❌ Compare subscription plans without normalization - DB stores "Premium", always use `.toLowerCase()` for comparisons
+- ❌ Access localStorage directly - use UserContext for all user data
+- ❌ Use deprecated hooks like useUser - only use useUserContext
+- ❌ Pass user data through props when UserContext is available
 
 ## Important Constants & Configuration
 
@@ -1331,11 +1417,13 @@ GITHUB_SECRET=...
 - **Modular Components**: Small, focused components instead of monoliths
 - **API Consistency**: Normalized data structures across all endpoints
 - **Performance First**: Caching, lazy loading, and optimistic updates
+- **Single Source of Truth**: One context, one state, no duplication
 
 ### 📝 Key Architectural Decisions:
 - **No Direct localStorage Access**: Only UserContext manages localStorage
-- **Single Source of Truth**: User state centralized in one context
-- **Automatic Retry**: Failed requests retry automatically with backoff
+- **User State Centralization**: User state centralized in one context
+- **Automatic Session Management**: Sessions persist and restore automatically
+- **Error Recovery**: Failed requests retry automatically with backoff
 - **Session Persistence**: 7-day TTL for cached user data
 - **Backward Compatibility**: All APIs maintain backward compatibility
 
@@ -1344,3 +1432,5 @@ GITHUB_SECRET=...
 - All temporary solutions have been removed
 - Code base is clean and maintainable
 - Performance optimized with proper caching
+- Full TypeScript coverage ensures type safety
+- UserContext is the ONLY way to access user data
