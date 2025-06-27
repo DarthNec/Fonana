@@ -31,6 +31,9 @@ import { CreatorDataProvider, useCreatorData } from '@/lib/contexts/CreatorConte
 import { useWallet } from '@solana/wallet-adapter-react'
 import toast from 'react-hot-toast'
 import { useSolRate } from '@/lib/hooks/useSolRate'
+import { hasAccessToTier, normalizeTierName } from '@/lib/utils/access'
+import { TIER_HIERARCHY } from '@/lib/constants/tiers'
+import { formatPlanName } from '@/lib/utils/subscriptions'
 
 // Внутренний компонент, который использует данные создателя из контекста
 function CreatorPageContent() {
@@ -69,10 +72,7 @@ function CreatorPageContent() {
     }
   }, [creatorError, router])
 
-  const formatPlanName = (plan: string | null | undefined): string => {
-    if (!plan) return ''
-    return plan.charAt(0).toUpperCase() + plan.slice(1).toLowerCase()
-  }
+
 
   const loadPosts = async () => {
     if (!creator) return
@@ -238,27 +238,12 @@ function CreatorPageContent() {
     }
   }
 
-  // Проверка доступа к тиру
-  const checkTierAccess = (requiredTier: string | null, userTier: string): boolean => {
-    if (!requiredTier) return true
-    
-    const tierHierarchy: { [key: string]: number } = {
-      'free': 0,
-      'basic': 1,
-      'premium': 2,
-      'vip': 3
-    }
-    
-    const userLevel = tierHierarchy[userTier.toLowerCase()] || 0
-    const requiredLevel = tierHierarchy[requiredTier.toLowerCase()] || 0
-    
-    return userLevel >= requiredLevel
-  }
+
 
   // Обновление постов после подписки
   const updatePostsAfterSubscription = (tier: string) => {
     setPosts(prevPosts => prevPosts.map(post => {
-      const hasAccess = checkTierAccess(post.requiredTier, tier)
+      const hasAccess = hasAccessToTier(tier, post.requiredTier)
       return {
         ...post,
         isSubscribed: true,

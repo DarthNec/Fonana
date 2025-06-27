@@ -168,10 +168,10 @@ model Post {
   thumbnail     String?
   mediaUrl      String?
   isLocked      Boolean   @default(false)
-  isPremium     Boolean   @default(false)
+  isPremium     Boolean   @default(false)  // DEPRECATED: Use minSubscriptionTier instead
   price         Float?
   currency      String    @default("SOL")
-  minSubscriptionTier String?  // 'basic' | 'premium' | 'vip'
+  minSubscriptionTier String?  // 'basic' | 'premium' | 'vip' - Primary access control field
   imageAspectRatio String?     // 'vertical' | 'square' | 'horizontal'
   likesCount    Int       @default(0)
   commentsCount Int       @default(0)
@@ -491,6 +491,7 @@ const transaction = await prisma.transaction.create({
   - Автоматическая повторная загрузка при ошибках (retry через 2 сек)
   - Синхронизация состояния между всеми компонентами
   - API fallback для асинхронных операций
+  - Интеграция с централизованной логикой доступа через `checkPostAccess()` из `lib/utils/access.ts`
 
 #### Usage Guidelines
 ```typescript
@@ -759,7 +760,14 @@ ssh -p 43988 root@69.10.59.234 "tail -n 100 /root/.pm2/logs/fonana-error.log > /
 
 ### Restart:
 ```bash
+# Restart Next.js app
 ssh -p 43988 root@69.10.59.234 "pm2 restart fonana"
+
+# Restart WebSocket server
+ssh -p 43988 root@69.10.59.234 "pm2 restart fonana-ws"
+
+# Restart all
+ssh -p 43988 root@69.10.59.234 "pm2 restart all"
 ```
 
 ### Database Stats:
@@ -966,6 +974,26 @@ node scripts/check-price-discrepancy.js
 ```
 
 ## Recent Updates & Fixes
+
+### Access Control System Refactoring (June 27, 2025) 🚀 COMPLETED
+- **Problem**: Дублирующая логика доступа к контенту, локальные константы тиров в компонентах
+- **Root Cause**: 
+  - Отсутствие централизованной системы контроля доступа
+  - Локальные определения TIER_HIERARCHY в разных файлах
+  - Использование устаревшего поля isPremium
+- **Solution**: Полная централизация логики доступа и визуальных констант
+  - Создан `lib/constants/tiers.ts` с TIER_HIERARCHY и DEFAULT_TIER_PRICES
+  - Создан `lib/constants/tier-styles.ts` с TIER_VISUAL_DETAILS
+  - Создан `lib/utils/access.ts` с утилитами контроля доступа
+  - Мигрированы все компоненты на централизованные импорты
+  - isPremium оставлен только для обратной совместимости
+- **Key Changes**:
+  - ✅ Все компоненты используют централизованные константы
+  - ✅ Единая логика проверки доступа через checkPostAccess()
+  - ✅ Визуальные стили тиров в одном месте
+  - ✅ Полная TypeScript типизация
+- **Result**: Единообразная, поддерживаемая система контроля доступа
+- **Docs**: LEGACY_CODE_AUDIT_REPORT.md
 
 ### User State Management Migration (June 27, 2025) 🚀 COMPLETED
 - **Problem**: User data loading was inconsistent, multiple components used different methods to get user info
@@ -1176,10 +1204,12 @@ app/
 
 components/        # React components
 lib/              # Utilities & configs
+├── constants/    # Centralized constants (tiers, tier-styles)
 ├── contexts/     # React contexts (UserContext)
 ├── hooks/        # React hooks
 ├── pricing/      # Pricing system
-└── solana/       # Blockchain integration
+├── solana/       # Blockchain integration
+└── utils/        # Utility functions (access.ts, subscriptions.ts)
 prisma/           # Database schema
 scripts/          # Diagnostic & fix tools
 public/           # Static assets
@@ -1269,6 +1299,10 @@ git log --oneline -10
 - ❌ Access localStorage directly - use UserContext for all user data
 - ❌ Use deprecated hooks like useUser - only use useUserContext
 - ❌ Pass user data through props when UserContext is available
+- ❌ Use `isPremium` field for access control - use `minSubscriptionTier` instead
+- ❌ Define tier hierarchies or visual constants locally - use centralized from `lib/constants/`
+- ❌ Hardcode tier prices - use `DEFAULT_TIER_PRICES` from `lib/constants/tiers.ts`
+- ❌ Implement custom access logic - use utilities from `lib/utils/access.ts`
 
 ## Important Constants & Configuration
 
@@ -1277,11 +1311,21 @@ git log --oneline -10
 - **Referrer Fee**: 5% от реферальных транзакций
 - **Creator Earnings**: 90% (95% если нет реферера)
 
-### Subscription Tiers
-- Цены и описания настраиваются каждым создателем индивидуально
-- Три уровня: Basic, Premium, VIP
-- Хранятся в CreatorTierSettings (relation name: tierSettings)
+### Subscription Tiers & Access Control
+- **Цены**: Дефолтные цены определены в `lib/constants/tiers.ts` (DEFAULT_TIER_PRICES)
+  - Basic: 0.05 SOL
+  - Premium: 0.15 SOL
+  - VIP: 0.35 SOL
+- **Кастомизация**: Создатели могут переопределить цены через CreatorTierSettings
+- **Иерархия доступа**: Определена в `lib/constants/tiers.ts` (TIER_HIERARCHY)
+  - free: 1
+  - basic: 2
+  - premium: 3
+  - vip: 4
+- **Основное поле доступа**: `minSubscriptionTier` (НЕ `isPremium`!)
+- **Логика доступа**: Централизована в `lib/utils/access.ts`
 - **НЕ корректировать план автоматически по цене!**
+- **НЕ определять логику доступа локально в компонентах!**
 
 ### Image Aspect Ratios
 - **vertical**: 3:4 (aspect-3/4)
@@ -1410,6 +1454,7 @@ GITHUB_SECRET=...
 2. **User State Management** - Centralized UserContext for all user data
 3. **Dynamic Pricing** - Real-time SOL/USD conversion across all components
 4. **Subscription System** - Fixed payment validation and tier display
+5. **Access Control Refactoring** - Centralized tier logic and visual constants (June 27, 2025)
 
 ### 🔧 Architecture Principles:
 - **Centralized State**: All user data managed through UserContext
@@ -1438,6 +1483,7 @@ GITHUB_SECRET=...
 ### 🔄 Real-time WebSocket Layer (COMPLETED - December 29, 2024)
 - **Core**: `lib/services/websocket.ts` - расширенный WebSocket сервис
 - **Status**: ✅ ЗАВЕРШЕНО (клиентская часть)
+- **Server Status**: ✅ РАЗВЕРНУТ В ПРОДАКШН (27 июня 2025)
 - **Features**:
   - Real-time уведомления с звуковыми оповещениями
   - Обновления ленты постов (лайки, комментарии, новые посты)
@@ -1445,6 +1491,14 @@ GITHUB_SECRET=...
   - Throttling для защиты от частых событий
   - Очередь сообщений для offline режима
   - Статистика и мониторинг соединения
+
+#### Server Configuration:
+- **Port**: 3002 (WebSocket)
+- **Process**: fonana-ws (PM2)
+- **Endpoint**: wss://fonana.me/ws
+- **Path**: /var/www/fonana/websocket-server/
+- **Database**: PostgreSQL (connected)
+- **Redis**: Not used (single server mode)
 
 #### Components:
 - **NotificationContext** - интегрирован с WebSocket для real-time уведомлений
@@ -1479,7 +1533,7 @@ const { posts, newPostsCount, loadPendingPosts } = useRealtimePosts({ posts })
 - **Optimistic Updates**: Мгновенные UI обновления
 - **Cross-tab Sync**: Синхронизация между вкладками
 - **Test Page**: `/test/realtime-demo` - полная демонстрация
-- **TODO**: Требуется WebSocket сервер для production
+- **Production**: Развернут на порту 3002, управляется через PM2
 
 #### WebSocket Server Audit (December 30, 2024)
 - **Audit Report**: `WEBSOCKET_SERVER_AUDIT_REPORT.md`
@@ -1499,8 +1553,8 @@ const { posts, newPostsCount, loadPendingPosts } = useRealtimePosts({ posts })
   5. Setup Redis for scaling
   6. Test and deploy
 
-### WebSocket Server Implementation (December 30, 2024) ✅ COMPLETED
-- **Status**: Этап 1 и 2 завершены - сервер готов и интегрирован
+### WebSocket Server Implementation (June 27, 2025) ✅ DEPLOYED
+- **Status**: Полностью развернут в продакшн и работает
 - **Location**: `websocket-server/` директория
 - **Port**: 3002 (WebSocket) + 3000 (Next.js)
 - **Features**:
@@ -1522,6 +1576,143 @@ const { posts, newPostsCount, loadPendingPosts } = useRealtimePosts({ posts })
   - ✅ `/api/user/notifications` - создание/чтение/очистка уведомлений
   - ✅ `/api/tips` - чаевые с уведомлениями
 - **Deployment**: Требуется обновить Nginx и запустить через PM2
+
+### 🎨 Visual Tier Styles (CENTRALIZED - June 27, 2025)
+- **Core**: `lib/constants/tier-styles.ts` - централизованные визуальные константы тиров
+- **Status**: ✅ ЦЕНТРАЛИЗОВАНО в рамках рефакторинга системы доступа
+- **Features**:
+  - Единые визуальные стили для всех тиров (free, basic, premium, vip)
+  - Цвета, иконки, градиенты, границы, текстовые стили
+  - TypeScript типизация с TierVisualDetails интерфейсом
+  - Импортируется во все компоненты вместо локальных определений
+
+#### Структура константы TIER_VISUAL_DETAILS:
+```typescript
+{
+  'free': { 
+    name: 'Free', 
+    color: 'gray', 
+    icon: '🔓', 
+    gradient: 'from-gray-500/20 to-slate-500/20', 
+    border: 'border-gray-500/30', 
+    text: 'text-gray-700 dark:text-gray-300', 
+    dot: 'bg-gray-500 dark:bg-gray-400' 
+  },
+  'basic': { 
+    name: 'Basic', 
+    color: 'blue', 
+    icon: '⭐', 
+    gradient: 'from-blue-500/20 to-cyan-500/20', 
+    border: 'border-blue-500/30', 
+    text: 'text-blue-700 dark:text-blue-300', 
+    dot: 'bg-blue-500 dark:bg-blue-400' 
+  },
+  'premium': { 
+    name: 'Premium', 
+    color: 'purple', 
+    icon: '💎', 
+    gradient: 'from-purple-500/20 to-pink-500/20', 
+    border: 'border-purple-500/30', 
+    text: 'text-purple-700 dark:text-purple-300', 
+    dot: 'bg-purple-500 dark:bg-purple-400' 
+  },
+  'vip': { 
+    name: 'VIP', 
+    color: 'gold', 
+    icon: '👑', 
+    gradient: 'from-yellow-500/20 to-amber-500/20', 
+    border: 'border-yellow-500/30', 
+    text: 'text-yellow-700 dark:text-yellow-300', 
+    dot: 'bg-yellow-500 dark:bg-yellow-400' 
+  }
+}
+```
+
+#### Usage:
+```typescript
+import { TIER_VISUAL_DETAILS } from '@/lib/constants/tier-styles'
+
+// Получить визуальные детали для тира
+const tierDetail = TIER_VISUAL_DETAILS[tier.toLowerCase()]
+if (tierDetail) {
+  return (
+    <div className={`${tierDetail.gradient} ${tierDetail.border}`}>
+      <span className={tierDetail.dot}>{tierDetail.icon}</span>
+      <span className={tierDetail.text}>{tierDetail.name}</span>
+    </div>
+  )
+}
+```
+
+#### Key Points:
+- **Single Source**: Все визуальные константы тиров в одном месте
+- **No Local Definitions**: Запрещено определять стили тиров локально
+- **Type Safety**: Полная TypeScript типизация
+- **Consistency**: Единообразный визуальный стиль во всем приложении
+
+### 🔐 Access Control Utilities (CENTRALIZED - June 27, 2025)
+- **Core**: `lib/utils/access.ts` - централизованные утилиты контроля доступа
+- **Status**: ✅ ЦЕНТРАЛИЗОВАНО в рамках рефакторинга системы доступа
+- **Purpose**: Единая логика проверки доступа к контенту на основе подписок
+
+#### Доступные функции:
+
+##### 1. `normalizeTierName(tier: string | null | undefined): string | null`
+- Нормализует название тира к нижнему регистру
+- Обрабатывает null/undefined значения
+- Используется для сравнения тиров из разных источников
+
+##### 2. `hasAccessToTier(userTier: string | undefined, requiredTier: string | undefined): boolean`
+- Проверяет, есть ли у пользователя доступ к контенту требуемого тира
+- Использует иерархию тиров из TIER_HIERARCHY
+- Возвращает true если userTier >= requiredTier
+
+##### 3. `checkPostAccess(post: any, userId?: string, userSubscriptions?: any[]): AccessCheckResult`
+- Комплексная проверка доступа к посту
+- Учитывает:
+  - Является ли пользователь автором
+  - Куплен ли пост
+  - Есть ли подписка нужного уровня
+  - Активна ли подписка и оплачена ли она
+- Возвращает объект с полями:
+  - `hasAccess`: boolean - есть ли доступ
+  - `reason`: string - причина отказа в доступе
+  - `requiredAction`: 'subscribe' | 'upgrade' | 'purchase' | null
+
+##### 4. `mapAccessTypeToTier(accessType?: string): string | undefined`
+- Маппинг типов доступа из API на тиры
+- Преобразует: FREE → free, BASIC → basic, PREMIUM → premium, VIP → vip
+- Используется при обновлении постов
+
+#### Usage Examples:
+```typescript
+import { checkPostAccess, hasAccessToTier, normalizeTierName } from '@/lib/utils/access'
+
+// Проверка доступа к посту
+const accessResult = checkPostAccess(post, userId, userSubscriptions)
+if (!accessResult.hasAccess) {
+  console.log(`Access denied: ${accessResult.reason}`)
+  if (accessResult.requiredAction === 'subscribe') {
+    // Показать модалку подписки
+  } else if (accessResult.requiredAction === 'purchase') {
+    // Показать модалку покупки
+  }
+}
+
+// Проверка иерархии тиров
+const canAccess = hasAccessToTier('premium', 'basic') // true
+const needsUpgrade = hasAccessToTier('basic', 'vip') // false
+
+// Нормализация названий тиров
+const normalized = normalizeTierName('Premium') // 'premium'
+```
+
+#### Key Points:
+- **Centralized Logic**: Вся логика доступа в одном месте
+- **No Duplication**: Запрещено дублировать проверки доступа
+- **Consistent Behavior**: Единообразное поведение во всем приложении
+- **Type Safe**: TypeScript типизация для всех функций
+- **Payment Validation**: Проверка не только isActive, но и paymentStatus
 
 ### Modal Components
 
