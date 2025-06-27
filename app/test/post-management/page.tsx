@@ -2,12 +2,12 @@
 
 import { useState, useEffect } from 'react'
 import PostCard from '@/components/PostCard'
-import { useUser } from '@/lib/hooks/useUser'
+import { useUserContext } from '@/lib/contexts/UserContext'
 import { PlusIcon } from '@heroicons/react/24/outline'
 import Link from 'next/link'
 
 export default function PostManagementTestPage() {
-  const { user } = useUser()
+  const { user } = useUserContext()
   const [posts, setPosts] = useState<any[]>([])
   const [isLoading, setIsLoading] = useState(true)
 

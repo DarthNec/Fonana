@@ -26,11 +26,13 @@ interface UseUnifiedPostsReturn {
  * Хук для работы с унифицированными постами
  */
 export function useUnifiedPosts(options: UseUnifiedPostsOptions = {}): UseUnifiedPostsReturn {
+  const { user, isLoading: isUserLoading } = useUserContext()
+  const { publicKey } = useWallet()
   const [posts, setPosts] = useState<UnifiedPost[]>([])
   const [isLoading, setIsLoading] = useState(true)
+  const [hasMore, setHasMore] = useState(true)
+  const [page, setPage] = useState(1)
   const [error, setError] = useState<Error | null>(null)
-  const { publicKey } = useWallet()
-  const { user, isLoading: isUserLoading, error: userError } = useUserContext()
 
   const fetchPosts = useCallback(async () => {
     try {
@@ -68,29 +70,6 @@ export function useUnifiedPosts(options: UseUnifiedPostsOptions = {}): UseUnifie
   useEffect(() => {
     fetchPosts()
   }, [fetchPosts])
-
-  // Быстрое получение userId из контекста или localStorage
-  const getUserIdQuick = useCallback((): string | null => {
-    // Сначала проверяем user из контекста
-    if (user?.id) return user.id
-    
-    // Если user загружается и есть кошелек, проверяем localStorage
-    if (isUserLoading && publicKey) {
-      try {
-        const savedData = localStorage.getItem('fonana_user_data')
-        const savedWallet = localStorage.getItem('fonana_user_wallet')
-        
-        if (savedData && savedWallet === publicKey.toBase58()) {
-          const userData = JSON.parse(savedData)
-          if (userData.id) return userData.id
-        }
-      } catch (e) {
-        console.error('[getUserIdQuick] Failed to parse saved user data', e)
-      }
-    }
-    
-    return null
-  }, [user, isUserLoading, publicKey])
 
   // Обработка действий с постами
   const handleAction = useCallback(async (action: PostAction) => {
@@ -136,12 +115,10 @@ export function useUnifiedPosts(options: UseUnifiedPostsOptions = {}): UseUnifie
   // Лайк поста
   const handleLike = async (postId: string) => {
     // Используем быстрое получение userId
-    const userId = getUserIdQuick()
+    const userId = await getUserId()
     
     if (!userId) {
-      if (userError) {
-        toast.error('Ошибка загрузки профиля. Попробуйте еще раз')
-      } else if (isUserLoading) {
+      if (isUserLoading) {
         toast('Загружаем данные пользователя...', { icon: '⏳' })
       } else if (!publicKey) {
         toast.error('Подключите кошелек')
@@ -206,12 +183,10 @@ export function useUnifiedPosts(options: UseUnifiedPostsOptions = {}): UseUnifie
   // Убрать лайк
   const handleUnlike = async (postId: string) => {
     // Используем быстрое получение userId
-    const userId = getUserIdQuick()
+    const userId = await getUserId()
     
     if (!userId) {
-      if (userError) {
-        toast.error('Ошибка загрузки профиля. Попробуйте еще раз')
-      } else if (isUserLoading) {
+      if (isUserLoading) {
         toast('Загружаем данные пользователя...', { icon: '⏳' })
       } else if (!publicKey) {
         toast.error('Подключите кошелек')
@@ -323,6 +298,29 @@ export function useUnifiedPosts(options: UseUnifiedPostsOptions = {}): UseUnifie
       toast.error('Ошибка при удалении поста')
     }
   }
+
+  // getUserId function that tries context first, then API
+  const getUserId = useCallback(async (): Promise<string | null> => {
+    // Сначала проверяем user из контекста
+    if (user?.id) return user.id
+    
+    // Если user загружается и есть кошелек, проверяем localStorage
+    if (isUserLoading && publicKey) {
+      try {
+        const savedData = localStorage.getItem('fonana_user_data')
+        const savedWallet = localStorage.getItem('fonana_user_wallet')
+        
+        if (savedData && savedWallet === publicKey.toBase58()) {
+          const userData = JSON.parse(savedData)
+          if (userData.id) return userData.id
+        }
+      } catch (e) {
+        console.error('[getUserId] Failed to parse saved user data', e)
+      }
+    }
+    
+    return null
+  }, [user, isUserLoading, publicKey])
 
   return {
     posts,

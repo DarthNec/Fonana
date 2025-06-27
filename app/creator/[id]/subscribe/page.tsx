@@ -15,7 +15,7 @@ import {
 } from '@heroicons/react/24/outline'
 import { CheckBadgeIcon } from '@heroicons/react/24/solid'
 import { toast } from 'react-hot-toast'
-import { useUser } from '@/lib/hooks/useUser'
+import { useUserContext } from '@/lib/contexts/UserContext'
 import { getProfileLink } from '@/lib/utils/links'
 
 // Динамический импорт SubscriptionPayment для избежания проблем с SSR
@@ -110,7 +110,7 @@ const getSubscriptionTiers = (creatorCategory?: string): SubscriptionTier[] => {
 
 export default function SubscribePage({ params }: SubscribePageProps) {
   const router = useRouter()
-  const { user } = useUser()
+  const { user } = useUserContext()
   const [creator, setCreator] = useState<any>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [isSubscribed, setIsSubscribed] = useState(false)

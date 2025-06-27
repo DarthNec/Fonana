@@ -1,11 +1,11 @@
 'use client'
 
-import { useUser } from '@/lib/hooks/useUser'
+import { useUserContext } from '@/lib/contexts/UserContext'
 import { UserIcon } from '@heroicons/react/24/outline'
 import PostCard from '@/components/PostCard'
 
 export default function AvatarDemoPage() {
-  const { user } = useUser()
+  const { user } = useUserContext()
 
   const mockPost = {
     id: 1,

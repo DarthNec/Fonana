@@ -310,11 +310,4 @@ export function useUserContext() {
     throw new Error('useUserContext must be used within a UserContextProvider')
   }
   return context
-}
-
-// Экспорт для обратной совместимости (временно)
-// TODO: Удалить после полной миграции всех компонентов
-export function useUser() {
-  console.warn('[DEPRECATED] useUser is deprecated. Use useUserContext instead.')
-  return useUserContext()
 } 
