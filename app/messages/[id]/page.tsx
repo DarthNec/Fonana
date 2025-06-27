@@ -23,7 +23,7 @@ import OptimizedImage from '@/components/OptimizedImage'
 import { useConnection } from '@solana/wallet-adapter-react'
 import { PublicKey } from '@solana/web3.js'
 import toast from 'react-hot-toast'
-import { useUser } from '@/lib/hooks/useUser'
+import { useUserContext } from '@/lib/contexts/UserContext'
 import { 
   createPostPurchaseTransaction,
   createTipTransaction,
@@ -71,7 +71,7 @@ interface Participant {
 export default function ConversationPage() {
   const { publicKey, sendTransaction } = useWallet()
   const { connection } = useConnection()
-  const { user } = useUser()
+  const { user } = useUserContext()
   const params = useParams()
   const router = useRouter()
   const conversationId = params.id as string

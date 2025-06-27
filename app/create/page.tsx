@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { useWallet } from '@solana/wallet-adapter-react'
-import { useUser } from '@/lib/hooks/useUser'
+import { useUserContext } from '@/lib/contexts/UserContext'
 import { useRouter } from 'next/navigation'
 import toast from 'react-hot-toast'
 import CreatePostModal from '@/components/CreatePostModal'
@@ -76,7 +76,7 @@ const tips = [
 
 export default function CreatePage() {
   const { connected } = useWallet()
-  const { user } = useUser()
+  const { user } = useUserContext()
   const router = useRouter()
   const [showCreateModal, setShowCreateModal] = useState(false)
 
