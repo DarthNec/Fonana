@@ -7,10 +7,29 @@ export type WebSocketEvent =
   | { type: 'earnings_updated'; creatorId: string; earnings: any }
   | { type: 'flash_sale_created'; creatorId: string; flashSale: any }
   | { type: 'flash_sale_ended'; creatorId: string; flashSaleId: string }
+  // Новые события для уведомлений
+  | { type: 'notification'; userId: string; notification: any }
+  | { type: 'notification_read'; userId: string; notificationId: string }
+  | { type: 'notifications_cleared'; userId: string }
+  // События для ленты постов
+  | { type: 'post_liked'; postId: string; userId: string; likesCount: number }
+  | { type: 'post_unliked'; postId: string; userId: string; likesCount: number }
+  | { type: 'post_created'; creatorId: string; post: any }
+  | { type: 'post_deleted'; postId: string }
+  | { type: 'comment_added'; postId: string; comment: any }
+  | { type: 'comment_deleted'; postId: string; commentId: string }
+  | { type: 'feed_update'; userId: string; posts: any[] }
+
+// Типы каналов для подписки
+export type SubscriptionChannel = 
+  | { type: 'creator'; id: string }
+  | { type: 'notifications'; userId: string }
+  | { type: 'feed'; userId: string }
+  | { type: 'post'; postId: string }
 
 // Простая реализация EventEmitter для браузера
 class EventEmitter {
-  private events: { [key: string]: Function[] } = {}
+  protected events: { [key: string]: Function[] } = {}
 
   on(event: string, listener: Function) {
     if (!this.events[event]) {
@@ -36,6 +55,17 @@ class EventEmitter {
       this.events = {}
     }
   }
+
+  getListenerCount(event?: string): number {
+    if (event) {
+      return this.events[event]?.length || 0
+    }
+    return Object.values(this.events).reduce((acc, listeners) => acc + listeners.length, 0)
+  }
+
+  getEvents(): string[] {
+    return Object.keys(this.events)
+  }
 }
 
 class WebSocketService extends EventEmitter {
@@ -45,7 +75,9 @@ class WebSocketService extends EventEmitter {
   private maxReconnectAttempts = 5
   private reconnectDelay = 1000
   private isConnecting = false
-  private subscribedCreators = new Set<string>()
+  private subscribedChannels = new Map<string, SubscriptionChannel>()
+  private messageQueue: any[] = []
+  private isProcessingQueue = false
 
   constructor() {
     super()
@@ -68,16 +100,23 @@ class WebSocketService extends EventEmitter {
         this.reconnectAttempts = 0
         this.emit('connected')
         
-        // Переподписываемся на всех создателей
-        this.subscribedCreators.forEach(creatorId => {
-          this.subscribeToCreator(creatorId)
+        // Переподписываемся на все каналы
+        this.subscribedChannels.forEach((channel) => {
+          this.sendSubscription(channel)
         })
+
+        // Отправляем накопившиеся сообщения
+        this.processMessageQueue()
       }
 
       this.ws.onmessage = (event) => {
         try {
           const data = JSON.parse(event.data) as WebSocketEvent
-          this.emit(data.type, data)
+          
+          // Защита от слишком частых событий
+          this.throttleEvent(data.type, () => {
+            this.emit(data.type, data)
+          })
         } catch (error) {
           console.error('Error parsing WebSocket message:', error)
         }
@@ -140,41 +179,147 @@ class WebSocketService extends EventEmitter {
       this.ws = null
     }
 
-    this.subscribedCreators.clear()
+    this.subscribedChannels.clear()
+    this.messageQueue = []
     this.reconnectAttempts = 0
     this.isConnecting = false
   }
 
-  subscribeToCreator(creatorId: string) {
-    this.subscribedCreators.add(creatorId)
+  // Унифицированная подписка на каналы
+  subscribe(channel: SubscriptionChannel) {
+    const key = this.getChannelKey(channel)
+    this.subscribedChannels.set(key, channel)
+    
+    if (this.ws?.readyState === WebSocket.OPEN) {
+      this.sendSubscription(channel)
+    }
+  }
+
+  unsubscribe(channel: SubscriptionChannel) {
+    const key = this.getChannelKey(channel)
+    this.subscribedChannels.delete(key)
     
     if (this.ws?.readyState === WebSocket.OPEN) {
       this.send({
-        type: 'subscribe_creator',
-        creatorId
+        type: 'unsubscribe',
+        channel
       })
     }
   }
 
+  // Обратная совместимость для создателей
+  subscribeToCreator(creatorId: string) {
+    this.subscribe({ type: 'creator', id: creatorId })
+  }
+
   unsubscribeFromCreator(creatorId: string) {
-    this.subscribedCreators.delete(creatorId)
-    
-    if (this.ws?.readyState === WebSocket.OPEN) {
-      this.send({
-        type: 'unsubscribe_creator',
-        creatorId
-      })
+    this.unsubscribe({ type: 'creator', id: creatorId })
+  }
+
+  // Новые методы для уведомлений
+  subscribeToNotifications(userId: string) {
+    this.subscribe({ type: 'notifications', userId })
+  }
+
+  unsubscribeFromNotifications(userId: string) {
+    this.unsubscribe({ type: 'notifications', userId })
+  }
+
+  // Новые методы для ленты
+  subscribeToFeed(userId: string) {
+    this.subscribe({ type: 'feed', userId })
+  }
+
+  unsubscribeFromFeed(userId: string) {
+    this.unsubscribe({ type: 'feed', userId })
+  }
+
+  // Подписка на конкретный пост
+  subscribeToPost(postId: string) {
+    this.subscribe({ type: 'post', postId })
+  }
+
+  unsubscribeFromPost(postId: string) {
+    this.unsubscribe({ type: 'post', postId })
+  }
+
+  private getChannelKey(channel: SubscriptionChannel): string {
+    switch (channel.type) {
+      case 'creator':
+        return `creator_${channel.id}`
+      case 'notifications':
+        return `notifications_${channel.userId}`
+      case 'feed':
+        return `feed_${channel.userId}`
+      case 'post':
+        return `post_${channel.postId}`
+      default:
+        return `unknown_${JSON.stringify(channel)}`
     }
+  }
+
+  private sendSubscription(channel: SubscriptionChannel) {
+    this.send({
+      type: 'subscribe',
+      channel
+    })
   }
 
   private send(data: any) {
     if (this.ws?.readyState === WebSocket.OPEN) {
       this.ws.send(JSON.stringify(data))
+    } else {
+      // Добавляем в очередь если соединение не готово
+      this.messageQueue.push(data)
+    }
+  }
+
+  private processMessageQueue() {
+    if (this.isProcessingQueue || this.messageQueue.length === 0) {
+      return
+    }
+
+    this.isProcessingQueue = true
+    const queue = [...this.messageQueue]
+    this.messageQueue = []
+
+    queue.forEach(message => {
+      if (this.ws?.readyState === WebSocket.OPEN) {
+        this.ws.send(JSON.stringify(message))
+      }
+    })
+
+    this.isProcessingQueue = false
+  }
+
+  // Защита от слишком частых событий
+  private eventThrottles = new Map<string, number>()
+  private throttleEvent(eventType: string, callback: Function, delay = 100) {
+    const now = Date.now()
+    const lastEmit = this.eventThrottles.get(eventType) || 0
+
+    if (now - lastEmit >= delay) {
+      this.eventThrottles.set(eventType, now)
+      callback()
     }
   }
 
   isConnected(): boolean {
     return this.ws?.readyState === WebSocket.OPEN
+  }
+
+  // Метод для получения статистики
+  getStats() {
+    return {
+      connected: this.isConnected(),
+      reconnectAttempts: this.reconnectAttempts,
+      subscribedChannels: this.subscribedChannels.size,
+      queuedMessages: this.messageQueue.length,
+      listeners: this.getEvents().reduce((acc, event) => {
+        acc[event] = this.getListenerCount(event)
+        return acc
+      }, {} as Record<string, number>)
+    }
   }
 }
 

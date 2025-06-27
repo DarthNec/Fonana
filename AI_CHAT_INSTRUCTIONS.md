@@ -1434,3 +1434,53 @@ GITHUB_SECRET=...
 - Performance optimized with proper caching
 - Full TypeScript coverage ensures type safety
 - UserContext is the ONLY way to access user data
+
+### 🔄 Real-time WebSocket Layer (COMPLETED - December 29, 2024)
+- **Core**: `lib/services/websocket.ts` - расширенный WebSocket сервис
+- **Status**: ✅ ЗАВЕРШЕНО (клиентская часть)
+- **Features**:
+  - Real-time уведомления с звуковыми оповещениями
+  - Обновления ленты постов (лайки, комментарии, новые посты)
+  - Множественные каналы подписки (creator, notifications, feed, post)
+  - Throttling для защиты от частых событий
+  - Очередь сообщений для offline режима
+  - Статистика и мониторинг соединения
+
+#### Components:
+- **NotificationContext** - интегрирован с WebSocket для real-time уведомлений
+- **useRealtimePosts** - хук для real-time обновлений постов
+- **RealtimePostsContainer** - обертка с баннером новых постов
+
+#### Usage:
+```typescript
+// Real-time лента постов
+import { RealtimePostsContainer } from '@/components/posts/layouts/RealtimePostsContainer'
+
+<RealtimePostsContainer
+  posts={posts}
+  enableRealtime={true}
+  autoUpdateFeed={false}  // true = автообновление, false = накопление с уведомлением
+/>
+
+// Real-time хук для кастомных компонентов
+import { useRealtimePosts } from '@/lib/hooks/useRealtimePosts'
+
+const { posts, newPostsCount, loadPendingPosts } = useRealtimePosts({ posts })
+```
+
+#### WebSocket Events:
+- `notification` - новое уведомление
+- `post_liked` / `post_unliked` - обновления лайков
+- `post_created` / `post_deleted` - управление постами
+- `comment_added` / `comment_deleted` - обновления комментариев
+
+#### Key Points:
+- **Graceful Degradation**: Fallback на polling при отсутствии WebSocket
+- **Optimistic Updates**: Мгновенные UI обновления
+- **Cross-tab Sync**: Синхронизация между вкладками
+- **Test Page**: `/test/realtime-demo` - полная демонстрация
+- **TODO**: Требуется WebSocket сервер для production
+
+### Modal Components
+
+// ... existing code ...

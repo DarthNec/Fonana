@@ -1,29 +1,36 @@
 'use client'
 
-import React, { createContext, useContext, useState, useEffect, useRef, useCallback } from 'react'
+import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react'
+import { NotificationType } from '@prisma/client'
 import { useUserContext } from '@/lib/contexts/UserContext'
-import { toast } from 'react-hot-toast'
+import { wsService, WebSocketEvent } from '@/lib/services/websocket'
+import toast from 'react-hot-toast'
 
 interface Notification {
   id: string
-  type: string
+  type: NotificationType
   title: string
   message: string
   isRead: boolean
   metadata?: any
   createdAt: string
+  fromUser?: {
+    id: string
+    nickname?: string
+    avatar?: string
+  }
 }
 
 interface NotificationContextType {
   notifications: Notification[]
   unreadCount: number
-  loading: boolean
-  fetchNotifications: () => Promise<void>
-  markAsRead: (notificationIds: string[]) => Promise<void>
+  isLoading: boolean
+  error: string | null
+  refreshNotifications: () => Promise<void>
+  markAsRead: (notificationId: string) => Promise<void>
   markAllAsRead: () => Promise<void>
   deleteNotification: (notificationId: string) => Promise<void>
-  clearReadNotifications: () => Promise<void>
-  playNotificationSound: (count?: number) => void
+  clearAll: () => Promise<void>
 }
 
 const NotificationContext = createContext<NotificationContextType | undefined>(undefined)
@@ -46,188 +53,320 @@ const createAudioElements = () => {
   return sounds
 }
 
-export function NotificationProvider({ children }: { children: React.ReactNode }) {
+export function NotificationProvider({ children }: { children: ReactNode }) {
   const { user } = useUserContext()
   const [notifications, setNotifications] = useState<Notification[]>([])
   const [unreadCount, setUnreadCount] = useState(0)
-  const [loading, setLoading] = useState(false)
+  const [isLoading, setIsLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [audioEnabled, setAudioEnabled] = useState(true)
   const [lastNotificationId, setLastNotificationId] = useState<string | null>(null)
-  const soundsRef = useRef(createAudioElements())
-  const pollingIntervalRef = useRef<NodeJS.Timeout>()
+  const soundsRef = React.useRef(createAudioElements())
   
-  // Функция воспроизведения звука
-  const playNotificationSound = useCallback((count: number = 1) => {
-    if (!soundsRef.current) return
-    
-    try {
-      if (count > 1) {
-        // Для нескольких уведомлений играем трель
-        soundsRef.current.trill.currentTime = 0
-        soundsRef.current.trill.play().catch(console.error)
-      } else {
-        // Для одного уведомления играем одиночный звук
-        soundsRef.current.single.currentTime = 0
-        soundsRef.current.single.play().catch(console.error)
-      }
-    } catch (error) {
-      console.error('Error playing notification sound:', error)
+  // Звуковое уведомление
+  const playNotificationSound = useCallback(() => {
+    if (audioEnabled && typeof window !== 'undefined') {
+      const audio = new Audio('/sounds/notification-single.mp3')
+      audio.volume = 0.5
+      audio.play().catch(err => console.log('Audio play failed:', err))
     }
-  }, [])
+  }, [audioEnabled])
   
-  // Функция загрузки уведомлений
-  const fetchNotifications = useCallback(async () => {
+  // Загрузка уведомлений
+  const refreshNotifications = useCallback(async () => {
     if (!user?.id) return
-    
+
     try {
-      const response = await fetch(`/api/user/notifications?userId=${user.id}`)
-      if (response.ok) {
-        const data = await response.json()
-        setNotifications(data.notifications)
-        setUnreadCount(data.unreadCount)
-        
-        // Проверяем новые уведомления для звукового оповещения
-        if (data.notifications.length > 0) {
-          const newestId = data.notifications[0].id
-          if (lastNotificationId && newestId !== lastNotificationId) {
-            // Есть новые уведомления
-            const newNotificationsCount = data.notifications.findIndex(
-              (n: Notification) => n.id === lastNotificationId
-            )
-            
-            if (newNotificationsCount > 0) {
-              // Воспроизводим звук для новых уведомлений
-              playNotificationSound(newNotificationsCount)
-              
-              // Показываем toast для первого нового уведомления
-              const newestNotification = data.notifications[0]
-              toast.success(newestNotification.title, {
-                duration: 4000,
-                icon: '🔔'
-              })
-            }
-          }
-          setLastNotificationId(newestId)
+      setIsLoading(true)
+      setError(null)
+
+      const response = await fetch('/api/user/notifications', {
+        headers: {
+          'x-user-wallet': user.wallet || ''
         }
+      })
+
+      if (!response.ok) {
+        throw new Error('Failed to load notifications')
       }
-    } catch (error) {
-      console.error('Error fetching notifications:', error)
+
+      const data = await response.json()
+      setNotifications(data.notifications || [])
+      setUnreadCount(data.unreadCount || 0)
+    } catch (err) {
+      console.error('Error loading notifications:', err)
+      setError(err instanceof Error ? err.message : 'Failed to load notifications')
+    } finally {
+      setIsLoading(false)
+    }
+  }, [user])
+  
+  // Обработка нового уведомления через WebSocket
+  const handleNewNotification = useCallback((event: WebSocketEvent) => {
+    if (event.type === 'notification' && event.userId === user?.id) {
+      const newNotification = event.notification as Notification
+      
+      // Проверяем, что это действительно новое уведомление
+      if (newNotification.id !== lastNotificationId) {
+        setLastNotificationId(newNotification.id)
+        
+        // Добавляем уведомление в начало списка
+        setNotifications(prev => [newNotification, ...prev])
+        
+        // Увеличиваем счётчик непрочитанных
+        if (!newNotification.isRead) {
+          setUnreadCount(prev => prev + 1)
+        }
+        
+        // Показываем toast и играем звук
+        showNotificationToast(newNotification)
+        playNotificationSound()
+      }
     }
   }, [user?.id, lastNotificationId, playNotificationSound])
   
-  // Пометить как прочитанные
-  const markAsRead = async (notificationIds: string[]) => {
-    if (!user?.id) return
-    
-    try {
-      const response = await fetch(`/api/user/notifications?userId=${user.id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ notificationIds })
-      })
-      
-      if (response.ok) {
-        setNotifications(prev => 
-          prev.map(n => 
-            notificationIds.includes(n.id) ? { ...n, isRead: true } : n
-          )
-        )
-        setUnreadCount(prev => Math.max(0, prev - notificationIds.length))
+  // Обработка прочитанного уведомления
+  const handleNotificationRead = useCallback((event: WebSocketEvent) => {
+    if (event.type === 'notification_read' && event.userId === user?.id) {
+      setNotifications(prev => 
+        prev.map(n => n.id === event.notificationId ? { ...n, isRead: true } : n)
+      )
+      setUnreadCount(prev => Math.max(0, prev - 1))
+    }
+  }, [user?.id])
+  
+  // Обработка очистки уведомлений
+  const handleNotificationsCleared = useCallback((event: WebSocketEvent) => {
+    if (event.type === 'notifications_cleared' && event.userId === user?.id) {
+      setNotifications([])
+      setUnreadCount(0)
+    }
+  }, [user?.id])
+  
+  // Показать уведомление в toast
+  const showNotificationToast = (notification: Notification) => {
+    const icon = getNotificationIcon(notification.type)
+    const message = notification.fromUser?.nickname 
+      ? `${notification.fromUser.nickname} ${notification.message}`
+      : notification.message
+
+    toast(message, {
+      icon,
+      duration: 4000,
+      style: {
+        borderRadius: '10px',
+        background: '#333',
+        color: '#fff',
       }
-    } catch (error) {
-      console.error('Error marking notifications as read:', error)
+    })
+  }
+  
+  // Получить иконку для типа уведомления
+  const getNotificationIcon = (type: NotificationType): string => {
+    switch (type) {
+      case 'LIKE_POST':
+      case 'LIKE_COMMENT':
+        return '❤️'
+      case 'COMMENT_POST':
+      case 'REPLY_COMMENT':
+        return '💬'
+      case 'NEW_SUBSCRIBER':
+        return '👤'
+      case 'POST_PURCHASE':
+        return '💰'
+      case 'NEW_MESSAGE':
+        return '✉️'
+      case 'TIP_RECEIVED':
+        return '💎'
+      default:
+        return '🔔'
     }
   }
   
-  // Пометить все как прочитанные
-  const markAllAsRead = async () => {
+  // Отметить как прочитанное
+  const markAsRead = useCallback(async (notificationId: string) => {
     if (!user?.id) return
-    
+
+    // Оптимистичное обновление
+    setNotifications(prev => 
+      prev.map(n => n.id === notificationId ? { ...n, isRead: true } : n)
+    )
+    setUnreadCount(prev => Math.max(0, prev - 1))
+
     try {
-      const response = await fetch(`/api/user/notifications?userId=${user.id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
+      const response = await fetch(`/api/user/notifications`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-user-wallet': user.wallet || ''
+        },
+        body: JSON.stringify({ notificationId, isRead: true })
+      })
+
+      if (!response.ok) {
+        // Откатываем при ошибке
+        setNotifications(prev => 
+          prev.map(n => n.id === notificationId ? { ...n, isRead: false } : n)
+        )
+        setUnreadCount(prev => prev + 1)
+        throw new Error('Failed to mark as read')
+      }
+    } catch (err) {
+      console.error('Error marking notification as read:', err)
+    }
+  }, [user])
+  
+  // Отметить все как прочитанные
+  const markAllAsRead = useCallback(async () => {
+    if (!user?.id || unreadCount === 0) return
+
+    // Оптимистичное обновление
+    const previousNotifications = notifications
+    setNotifications(prev => prev.map(n => ({ ...n, isRead: true })))
+    setUnreadCount(0)
+
+    try {
+      const response = await fetch(`/api/user/notifications`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-user-wallet': user.wallet || ''
+        },
         body: JSON.stringify({ markAllAsRead: true })
       })
-      
-      if (response.ok) {
-        setNotifications(prev => prev.map(n => ({ ...n, isRead: true })))
-        setUnreadCount(0)
+
+      if (!response.ok) {
+        // Откатываем при ошибке
+        setNotifications(previousNotifications)
+        setUnreadCount(previousNotifications.filter(n => !n.isRead).length)
+        throw new Error('Failed to mark all as read')
       }
-    } catch (error) {
-      console.error('Error marking all notifications as read:', error)
+    } catch (err) {
+      console.error('Error marking all as read:', err)
     }
-  }
+  }, [user, notifications, unreadCount])
   
   // Удалить уведомление
-  const deleteNotification = async (notificationId: string) => {
+  const deleteNotification = useCallback(async (notificationId: string) => {
     if (!user?.id) return
-    
+
+    // Оптимистичное удаление
+    const deletedNotification = notifications.find(n => n.id === notificationId)
+    if (!deletedNotification) return
+
+    setNotifications(prev => prev.filter(n => n.id !== notificationId))
+    if (!deletedNotification.isRead) {
+      setUnreadCount(prev => Math.max(0, prev - 1))
+    }
+
     try {
-      const response = await fetch(`/api/user/notifications?userId=${user.id}&id=${notificationId}`, {
-        method: 'DELETE'
+      const response = await fetch(`/api/user/notifications`, {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-user-wallet': user.wallet || ''
+        },
+        body: JSON.stringify({ notificationId })
       })
-      
-      if (response.ok) {
-        setNotifications(prev => prev.filter(n => n.id !== notificationId))
-        const notification = notifications.find(n => n.id === notificationId)
-        if (notification && !notification.isRead) {
-          setUnreadCount(prev => Math.max(0, prev - 1))
+
+      if (!response.ok) {
+        // Восстанавливаем при ошибке
+        setNotifications(prev => [...prev, deletedNotification].sort(
+          (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+        ))
+        if (!deletedNotification.isRead) {
+          setUnreadCount(prev => prev + 1)
         }
+        throw new Error('Failed to delete notification')
       }
-    } catch (error) {
-      console.error('Error deleting notification:', error)
+    } catch (err) {
+      console.error('Error deleting notification:', err)
     }
-  }
+  }, [user, notifications])
   
-  // Очистить прочитанные уведомления
-  const clearReadNotifications = async () => {
-    if (!user?.id) return
-    
+  // Очистить все уведомления
+  const clearAll = useCallback(async () => {
+    if (!user?.id || notifications.length === 0) return
+
+    // Оптимистичная очистка
+    const previousNotifications = notifications
+    const previousUnreadCount = unreadCount
+    setNotifications([])
+    setUnreadCount(0)
+
     try {
-      const response = await fetch(`/api/user/notifications?userId=${user.id}`, {
-        method: 'DELETE'
+      const response = await fetch(`/api/user/notifications`, {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-user-wallet': user.wallet || ''
+        },
+        body: JSON.stringify({ clearAll: true })
       })
-      
-      if (response.ok) {
-        setNotifications(prev => prev.filter(n => !n.isRead))
+
+      if (!response.ok) {
+        // Восстанавливаем при ошибке
+        setNotifications(previousNotifications)
+        setUnreadCount(previousUnreadCount)
+        throw new Error('Failed to clear notifications')
       }
-    } catch (error) {
-      console.error('Error clearing read notifications:', error)
+    } catch (err) {
+      console.error('Error clearing notifications:', err)
     }
-  }
+  }, [user, notifications, unreadCount])
   
-  // Начальная загрузка и polling
+  // Подписка на WebSocket события
   useEffect(() => {
-    if (user?.id) {
-      // Начальная загрузка
-      setLoading(true)
-      fetchNotifications().finally(() => setLoading(false))
-      
-      // Настраиваем polling каждые 30 секунд
-      pollingIntervalRef.current = setInterval(fetchNotifications, 30000)
-    }
-    
+    if (!user?.id) return
+
+    // Подписываемся на канал уведомлений
+    wsService.subscribeToNotifications(user.id)
+
+    // Обработчики событий
+    wsService.on('notification', handleNewNotification)
+    wsService.on('notification_read', handleNotificationRead)
+    wsService.on('notifications_cleared', handleNotificationsCleared)
+
+    // Загружаем начальные уведомления
+    refreshNotifications()
+
+    // Отписываемся при размонтировании
     return () => {
-      if (pollingIntervalRef.current) {
-        clearInterval(pollingIntervalRef.current)
-      }
+      wsService.unsubscribeFromNotifications(user.id)
+      wsService.off('notification', handleNewNotification)
+      wsService.off('notification_read', handleNotificationRead)
+      wsService.off('notifications_cleared', handleNotificationsCleared)
     }
-  }, [user?.id, fetchNotifications])
+  }, [user?.id, handleNewNotification, handleNotificationRead, handleNotificationsCleared, refreshNotifications])
+  
+  // Периодическое обновление для fallback (каждые 30 секунд)
+  useEffect(() => {
+    if (!user?.id) return
+
+    const interval = setInterval(() => {
+      // Обновляем только если WebSocket отключен
+      if (!wsService.isConnected()) {
+        refreshNotifications()
+      }
+    }, 30000)
+
+    return () => clearInterval(interval)
+  }, [user?.id, refreshNotifications])
+  
+  const value: NotificationContextType = {
+    notifications,
+    unreadCount,
+    isLoading,
+    error,
+    refreshNotifications,
+    markAsRead,
+    markAllAsRead,
+    deleteNotification,
+    clearAll
+  }
   
   return (
-    <NotificationContext.Provider
-      value={{
-        notifications,
-        unreadCount,
-        loading,
-        fetchNotifications,
-        markAsRead,
-        markAllAsRead,
-        deleteNotification,
-        clearReadNotifications,
-        playNotificationSound
-      }}
-    >
+    <NotificationContext.Provider value={value}>
       {children}
     </NotificationContext.Provider>
   )
