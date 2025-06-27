@@ -21,7 +21,7 @@ import {
 } from '@heroicons/react/24/outline'
 import { MobileWalletConnect } from './MobileWalletConnect'
 import { useWallet } from '@solana/wallet-adapter-react'
-import { useUser } from '@/lib/hooks/useUser'
+import { useUserContext } from '@/lib/contexts/UserContext'
 import SearchBar from './SearchBar'
 
   const navigation = [
@@ -38,7 +38,7 @@ export function Navbar() {
   const [isScrolled, setIsScrolled] = useState(false)
   const [unreadMessages, setUnreadMessages] = useState(0)
   const { connected, disconnect, publicKey } = useWallet()
-  const { user } = useUser()
+  const { user } = useUserContext()
   const pathname = usePathname()
 
   useEffect(() => {
