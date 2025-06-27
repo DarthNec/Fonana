@@ -26,7 +26,7 @@ import {
   VideoCameraIcon,
   ChatBubbleLeftEllipsisIcon
 } from '@heroicons/react/24/outline'
-import { useUser } from '@/lib/hooks/useUser'
+import { useUserContext } from '@/lib/contexts/UserContext'
 import { useWallet } from '@solana/wallet-adapter-react'
 import toast from 'react-hot-toast'
 import { useSolRate } from '@/lib/hooks/useSolRate'
@@ -54,7 +54,7 @@ interface Creator {
 export default function CreatorPage() {
   const params = useParams()
   const router = useRouter()
-  const { user, isLoading: isAuthLoading } = useUser()
+  const { user, isLoading: isAuthLoading } = useUserContext()
   const { connected, publicKey } = useWallet()
   const { rate: solRate } = useSolRate()
   const [creator, setCreator] = useState<Creator | null>(null)

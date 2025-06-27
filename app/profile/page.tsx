@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react'
 import Image from 'next/image'
-import { useUser } from '@/lib/hooks/useUser'
+import { useUserContext } from '@/lib/contexts/UserContext'
 import { useWallet } from '@solana/wallet-adapter-react'
 import { 
   UserIcon, 
@@ -215,7 +215,7 @@ function MyPostsSection({ userId, userWallet }: MyPostsSectionProps) {
 }
 
 export default function ProfilePage() {
-  const { user, isLoading, deleteAccount, updateProfile, refreshUser } = useUser()
+  const { user, isLoading, deleteAccount, updateProfile, refreshUser } = useUserContext()
   const { disconnect } = useWallet()
   const { theme: currentTheme, setTheme } = useTheme()
   const [activeTab, setActiveTab] = useState<'profile' | 'creator' | 'subscriptions' | 'posts'>('profile')

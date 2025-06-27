@@ -15,7 +15,7 @@ import {
   GiftIcon,
   ChatBubbleLeftEllipsisIcon
 } from '@heroicons/react/24/outline'
-import { useUser } from '@/lib/hooks/useUser'
+import { useUserContext } from '@/lib/contexts/UserContext'
 import { useWallet } from '@solana/wallet-adapter-react'
 import { useUnifiedPosts } from '@/lib/hooks/useUnifiedPosts'
 import { PostsContainer } from '@/components/posts/layouts/PostsContainer'
@@ -42,7 +42,7 @@ interface DashboardRevenue {
 }
 
 export default function DashboardPage() {
-  const { user } = useUser()
+  const { user } = useUserContext()
   const { publicKey } = useWallet()
   const { rate: solRate } = useSolRate()
   const [showCreateModal, setShowCreateModal] = useState(false)
