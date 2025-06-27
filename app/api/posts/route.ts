@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getPosts, createPost, getPostsByCreator, getUserByWallet } from '@/lib/db'
 import { prisma } from '@/lib/prisma'
+import { hasAccessToTier, checkPostAccess, normalizeTierName } from '@/lib/utils/access'
+import { TIER_HIERARCHY } from '@/lib/constants/tiers'
 
 // WebSocket события
 import { notifyNewPost } from '@/websocket-server/src/events/posts'
@@ -27,24 +29,7 @@ function getOptimizedImageUrls(mediaUrl: string | null) {
   }
 }
 
-// Определяем иерархию тиров подписок
-const TIER_HIERARCHY: Record<string, number> = {
-  'vip': 4,
-  'premium': 3,
-  'basic': 2,
-  'free': 1
-}
 
-// Функция для проверки, достаточен ли уровень подписки
-function hasAccessToTier(userTier: string | undefined, requiredTier: string | undefined): boolean {
-  if (!requiredTier) return true // Если тир не указан, доступ есть у всех
-  if (!userTier) return false // Если у пользователя нет подписки, доступа нет
-  
-  const userLevel = TIER_HIERARCHY[userTier.toLowerCase()] || 0
-  const requiredLevel = TIER_HIERARCHY[requiredTier.toLowerCase()] || 0
-  
-  return userLevel >= requiredLevel
-}
 
 // GET /api/posts - получить список постов
 export async function GET(req: Request) {
@@ -194,45 +179,17 @@ export async function GET(req: Request) {
         console.log(`[API/posts] User viewing own post "${post.title}" - currentUser.id: ${currentUser?.id}, post.creatorId: ${post.creatorId}`)
       }
       
-      // Проверяем доступ к контенту
-      // Если пост заблокирован, проверяем:
-      // 1. Это пост самого пользователя
-      // 2. У пользователя есть достаточный уровень подписки
-      // Примечание: sellable посты видны согласно обычным правилам доступа,
-      // продажа касается реального товара, а не доступа к контенту
+      // Используем централизованную функцию проверки доступа
+      const accessStatus = checkPostAccess(
+        post,
+        currentUser,
+        userSubscriptionsMap.has(post.creatorId) 
+          ? { plan: userSubscriptionsMap.get(post.creatorId)! } 
+          : null,
+        hasPurchased
+      )
       
-      let shouldHideContent = false
-      
-      if (post.isLocked && !isCreatorPost) {
-        // Для sellable постов НЕ проверяем покупку товара, так как это не влияет на доступ к контенту
-        // Sellable посты продают товары, а не доступ к контенту
-        if (post.isSellable && post.minSubscriptionTier) {
-          // Проверяем подписку пользователя для доступа к контенту
-          const userTier = userSubscriptionsMap.get(post.creatorId)
-          const hasRequiredTier = hasAccessToTier(userTier, post.minSubscriptionTier)
-          shouldHideContent = !hasRequiredTier
-        }
-        // Если у поста есть минимальный тир подписки
-        else if (!post.isSellable && post.minSubscriptionTier) {
-          const userTier = userSubscriptionsMap.get(post.creatorId)
-          const hasRequiredTier = hasAccessToTier(userTier, post.minSubscriptionTier)
-          shouldHideContent = !hasRequiredTier
-        } 
-        // Обратная совместимость: если isPremium=true, считаем это VIP постом
-        else if (post.isPremium) {
-          const userTier = userSubscriptionsMap.get(post.creatorId)
-          const hasRequiredTier = hasAccessToTier(userTier, 'vip')
-          shouldHideContent = !hasRequiredTier
-        }
-        // Если у поста есть цена - это платный пост за доступ
-        else if (post.price && post.price > 0 && !post.isSellable) {
-          shouldHideContent = !hasPurchased
-        }
-        // Обычный заблокированный пост - доступен любым подписчикам
-        else {
-          shouldHideContent = !isSubscribed
-        }
-      }
+      const shouldHideContent = !accessStatus.hasAccess
 
       const userSubscriptionPlan = userSubscriptionsMap.get(post.creatorId) || null
 

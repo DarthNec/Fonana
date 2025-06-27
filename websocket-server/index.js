@@ -1,4 +1,4 @@
-require('dotenv').config({ path: '../.env' });
+require('dotenv').config();
 const { createWebSocketServer } = require('./src/server');
 const { connectRedis } = require('./src/redis');
 const { initPrisma } = require('./src/db');

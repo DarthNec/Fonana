@@ -1,6 +1,6 @@
 'use client'
 
-import React from 'react'
+import React, { useState, useEffect } from 'react'
 import { UnifiedPost, PostAction, PostCardVariant } from '@/types/posts'
 import { cn } from '@/lib/utils'
 
@@ -20,12 +20,40 @@ export function PostActions({
   variant = 'full',
   className
 }: PostActionsProps) {
-  const handleLike = () => {
-    if (onAction) {
-      onAction({ 
-        type: post.engagement.isLiked ? 'unlike' : 'like', 
-        postId: post.id 
-      })
+  // Оптимистичные состояния
+  const [optimisticLikes, setOptimisticLikes] = useState(post.engagement.likes)
+  const [optimisticIsLiked, setOptimisticIsLiked] = useState(post.engagement.isLiked)
+  const [isProcessing, setIsProcessing] = useState(false)
+
+  // Синхронизация с props при изменениях
+  useEffect(() => {
+    setOptimisticLikes(post.engagement.likes)
+    setOptimisticIsLiked(post.engagement.isLiked)
+  }, [post.engagement.likes, post.engagement.isLiked])
+
+  const handleLike = async () => {
+    if (isProcessing) return
+    
+    // Оптимистичное обновление
+    const newIsLiked = !optimisticIsLiked
+    setOptimisticIsLiked(newIsLiked)
+    setOptimisticLikes(newIsLiked ? optimisticLikes + 1 : optimisticLikes - 1)
+    setIsProcessing(true)
+    
+    try {
+      if (onAction) {
+        await onAction({ 
+          type: newIsLiked ? 'like' : 'unlike', 
+          postId: post.id 
+        })
+      }
+    } catch (error) {
+      // Откат при ошибке
+      console.error('Failed to update like:', error)
+      setOptimisticIsLiked(post.engagement.isLiked)
+      setOptimisticLikes(post.engagement.likes)
+    } finally {
+      setIsProcessing(false)
     }
   }
 
@@ -78,26 +106,36 @@ export function PostActions({
       {/* Like button */}
       <button
         onClick={handleLike}
-        className="flex items-center gap-2 text-gray-600 dark:text-slate-400 hover:text-red-500 dark:hover:text-red-400 transition-colors group"
+        disabled={isProcessing}
+        className={cn(
+          "flex items-center gap-2 text-gray-600 dark:text-slate-400 hover:text-red-500 dark:hover:text-red-400 transition-colors group",
+          isProcessing && "opacity-50 cursor-wait"
+        )}
       >
         <div className={cn(
-          'rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors',
-          buttonSize
+          'rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 transition-all duration-200',
+          buttonSize,
+          optimisticIsLiked && 'scale-110'
         )}>
           <svg 
             className={cn(
               iconSize,
-              post.engagement.isLiked && 'fill-current text-red-500 dark:text-red-400'
+              'transition-all duration-200',
+              optimisticIsLiked && 'fill-current text-red-500 dark:text-red-400 scale-110'
             )} 
-            fill={post.engagement.isLiked ? "currentColor" : "none"} 
+            fill={optimisticIsLiked ? "currentColor" : "none"} 
             viewBox="0 0 24 24" 
             stroke="currentColor"
           >
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
           </svg>
         </div>
-        <span className={cn(textSize, 'font-medium group-hover:text-red-500 dark:group-hover:text-red-400')}>
-          {post.engagement.likes}
+        <span className={cn(
+          textSize, 
+          'font-medium group-hover:text-red-500 dark:group-hover:text-red-400 transition-colors',
+          'min-w-[1.5rem] text-center'
+        )}>
+          {optimisticLikes}
         </span>
       </button>
 

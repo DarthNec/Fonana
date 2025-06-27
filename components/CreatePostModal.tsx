@@ -351,7 +351,6 @@ export default function CreatePostModal({ onPostCreated, onClose }: CreatePostMo
       // Единое поле price для всех типов постов с ценой
       price: (formData.accessType === 'paid' || (formData.isSellable && formData.sellType === 'FIXED_PRICE')) ? formData.price : undefined,
         currency: (formData.accessType === 'paid' || (formData.isSellable && formData.sellType === 'FIXED_PRICE')) ? formData.currency : undefined,
-        isPremium: false,
         // Мапим accessType на minSubscriptionTier
         minSubscriptionTier: formData.accessType === 'vip' ? 'vip' : 
                             formData.accessType === 'premium' ? 'premium' :

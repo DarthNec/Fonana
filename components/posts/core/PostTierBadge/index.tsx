@@ -1,7 +1,7 @@
 'use client'
 
 import React from 'react'
-import { TIER_DETAILS } from '@/components/posts/utils/postHelpers'
+import { TIER_VISUAL_DETAILS } from '@/lib/constants/tier-styles'
 import { cn } from '@/lib/utils'
 
 export interface PostTierBadgeProps {
@@ -18,7 +18,7 @@ export function PostTierBadge({
   size = 'md',
   className
 }: PostTierBadgeProps) {
-  const tierDetail = TIER_DETAILS[tier.toLowerCase() as keyof typeof TIER_DETAILS]
+  const tierDetail = TIER_VISUAL_DETAILS[tier.toLowerCase() as keyof typeof TIER_VISUAL_DETAILS]
   
   if (!tierDetail) return null
 

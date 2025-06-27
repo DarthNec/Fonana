@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { getUserByWallet } from '@/lib/db'
+import { mapAccessTypeToTier } from '@/lib/utils/access'
 
 export const dynamic = 'force-dynamic'
 
@@ -131,6 +132,8 @@ export async function PUT(
       dataToUpdate.minSubscriptionTier = updateData.minSubscriptionTier
     } else if (updateData.accessType !== undefined) {
       // Мапим accessType на minSubscriptionTier
+      const mappedTier = mapAccessTypeToTier(updateData.accessType.toUpperCase())
+      
       switch (updateData.accessType) {
         case 'free':
           dataToUpdate.minSubscriptionTier = null
@@ -149,15 +152,8 @@ export async function PUT(
           }
           break
         case 'premium':
-          dataToUpdate.minSubscriptionTier = 'premium'
-          dataToUpdate.isLocked = true
-          // Не сбрасываем цену если это sellable пост
-          if (!updateData.isSellable) {
-            dataToUpdate.price = null
-          }
-          break
         case 'vip':
-          dataToUpdate.minSubscriptionTier = 'vip'
+          dataToUpdate.minSubscriptionTier = mappedTier || updateData.accessType
           dataToUpdate.isLocked = true
           // Не сбрасываем цену если это sellable пост
           if (!updateData.isSellable) {

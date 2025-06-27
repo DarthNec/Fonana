@@ -110,7 +110,7 @@ export default function EditPostModal({ isOpen, onClose, post, onPostUpdated }: 
         // Если есть цена и это НЕ sellable - значит это paid пост
         setAccessType('paid')
         setPrice(post.price.toString())
-      } else if (post.requiredTier === 'vip' || post.isPremium) {
+      } else if (post.requiredTier === 'vip' || post.minSubscriptionTier === 'vip' || post.isPremium) {
         setAccessType('vip')
         // Сохраняем цену для sellable VIP постов
         if (post.price && post.price > 0) {
@@ -321,7 +321,6 @@ export default function EditPostModal({ isOpen, onClose, post, onPostUpdated }: 
           price: (accessType === 'paid' || (post.isSellable && price)) ? parseFloat(price) : null,
           // Map access type to proper fields
           isLocked: accessType !== 'free',
-          isPremium: accessType === 'vip',
           minSubscriptionTier: 
             accessType === 'vip' ? 'vip' :
             accessType === 'premium' ? 'premium' :

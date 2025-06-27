@@ -12,6 +12,7 @@ import {
 } from '@/components/posts/utils/postHelpers'
 import { useSolRate } from '@/lib/hooks/useSolRate'
 import { cn } from '@/lib/utils'
+import { TIER_INFO } from '@/lib/constants/tiers'
 
 export interface PostLockedProps {
   post: UnifiedPost
@@ -126,12 +127,21 @@ export function PostLocked({
 
         {/* Lock message */}
         <h4 className="text-white font-semibold text-lg sm:text-xl mb-2">
-          {needsPay ? 'Платный контент' :
-           needsUpgrade ? `Требуется ${tierInfo?.required.name} подписка` :
-           needsSub ? 'Требуется подписка' :
-           post.commerce?.isSellable ? 'Эксклюзивный контент' :
+          {needsPay ? 'Премиум контент' :
+           needsUpgrade ? `Доступно с ${tierInfo?.required.name} подпиской` :
+           needsSub ? 'Контент для подписчиков' :
+           post.commerce?.isSellable ? 'Эксклюзивный товар' :
            'Контент недоступен'}
         </h4>
+        
+        {/* Descriptive message */}
+        <p className="text-white/80 text-sm mb-4 max-w-sm">
+          {needsPay ? 'Приобретите доступ к этому эксклюзивному контенту' :
+           needsUpgrade ? `Обновите подписку, чтобы получить доступ к ${tierInfo?.required.name} контенту` :
+           needsSub ? 'Подпишитесь на создателя для просмотра' :
+           post.commerce?.isSellable ? 'Уникальный товар доступен для покупки' :
+           'Этот контент имеет ограниченный доступ'}
+        </p>
 
         {/* Price or tier info */}
         {needsPay && finalPrice && (
@@ -160,10 +170,17 @@ export function PostLocked({
               'px-6 py-3 rounded-xl font-medium transition-all',
               'bg-white/20 backdrop-blur-sm text-white',
               'hover:bg-white/30 hover:scale-105',
-              'border border-white/30'
+              'border border-white/30',
+              'shadow-lg hover:shadow-xl',
+              'transform hover:-translate-y-0.5'
             )}
           >
-            {buttonText}
+            <span className="flex items-center gap-2">
+              {needsPay && '🔓'}
+              {(needsSub || needsUpgrade) && '⭐'}
+              {post.commerce?.isSellable && '🛍️'}
+              {buttonText}
+            </span>
           </button>
         )}
 

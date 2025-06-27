@@ -2,71 +2,11 @@
 // Вспомогательные функции для работы с постами
 
 import { UnifiedPost, PostAccess, PostCommerce } from '@/types/posts'
+import { TIER_HIERARCHY } from '@/lib/constants/tiers'
+import { hasAccessToTier } from '@/lib/utils/access'
+import { TIER_VISUAL_DETAILS } from '@/lib/constants/tier-styles'
 
-/**
- * Иерархия тиров подписок
- */
-export const TIER_HIERARCHY: Record<string, number> = {
-  'vip': 4,
-  'premium': 3,
-  'basic': 2,
-  'free': 1
-}
 
-/**
- * Детали тиров с визуальными элементами
- */
-export const TIER_DETAILS = {
-  'free': { 
-    name: 'Free', 
-    color: 'gray', 
-    icon: '🔓', 
-    gradient: 'from-gray-500/20 to-slate-500/20', 
-    border: 'border-gray-500/30', 
-    text: 'text-gray-700 dark:text-gray-300', 
-    dot: 'bg-gray-500 dark:bg-gray-400' 
-  },
-  'basic': { 
-    name: 'Basic', 
-    color: 'blue', 
-    icon: '⭐', 
-    gradient: 'from-blue-500/20 to-cyan-500/20', 
-    border: 'border-blue-500/30', 
-    text: 'text-blue-700 dark:text-blue-300', 
-    dot: 'bg-blue-500 dark:bg-blue-400' 
-  },
-  'premium': { 
-    name: 'Premium', 
-    color: 'purple', 
-    icon: '💎', 
-    gradient: 'from-purple-500/20 to-pink-500/20', 
-    border: 'border-purple-500/30', 
-    text: 'text-purple-700 dark:text-purple-300', 
-    dot: 'bg-purple-500 dark:bg-purple-400' 
-  },
-  'vip': { 
-    name: 'VIP', 
-    color: 'gold', 
-    icon: '👑', 
-    gradient: 'from-yellow-500/20 to-amber-500/20', 
-    border: 'border-yellow-500/30', 
-    text: 'text-yellow-700 dark:text-yellow-300', 
-    dot: 'bg-yellow-500 dark:bg-yellow-400' 
-  }
-} as const
-
-/**
- * Проверяет, достаточен ли уровень подписки для доступа к контенту
- */
-export function hasAccessToTier(userTier: string | undefined, requiredTier: string | undefined): boolean {
-  if (!requiredTier) return true
-  if (!userTier) return false
-  
-  const userLevel = TIER_HIERARCHY[userTier.toLowerCase()] || 0
-  const requiredLevel = TIER_HIERARCHY[requiredTier.toLowerCase()] || 0
-  
-  return userLevel >= requiredLevel
-}
 
 /**
  * Определяет тип доступа к посту
@@ -116,11 +56,11 @@ export function needsTierUpgrade(post: UnifiedPost): boolean {
 export function getTierInfo(access: PostAccess) {
   if (!access.tier) return null
   
-  const required = TIER_DETAILS[access.tier.toLowerCase() as keyof typeof TIER_DETAILS]
+  const required = TIER_VISUAL_DETAILS[access.tier.toLowerCase() as keyof typeof TIER_VISUAL_DETAILS]
   if (!required) return null
   
   const current = access.userTier 
-    ? TIER_DETAILS[access.userTier.toLowerCase() as keyof typeof TIER_DETAILS] 
+    ? TIER_VISUAL_DETAILS[access.userTier.toLowerCase() as keyof typeof TIER_VISUAL_DETAILS] 
     : null
   
   return {
@@ -135,7 +75,7 @@ export function getTierInfo(access: PostAccess) {
  */
 export function formatTierName(tier: string | null | undefined): string {
   if (!tier) return ''
-  const tierDetail = TIER_DETAILS[tier.toLowerCase() as keyof typeof TIER_DETAILS]
+  const tierDetail = TIER_VISUAL_DETAILS[tier.toLowerCase() as keyof typeof TIER_VISUAL_DETAILS]
   return tierDetail?.name || tier
 }
 

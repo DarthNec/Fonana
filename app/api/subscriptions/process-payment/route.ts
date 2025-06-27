@@ -5,6 +5,7 @@ import { validatePaymentDistribution, waitForTransactionConfirmation } from '@/l
 import { paymentLogger } from '@/lib/utils/logger'
 import { generateRandomNickname, generateRandomBio, generateFullNameFromNickname } from '@/lib/usernames'
 import { notifyNewSubscriber } from '@/lib/notifications'
+import { DEFAULT_TIER_PRICES } from '@/lib/constants/tiers'
 
 // WebSocket события
 import { notifyNewSubscription } from '@/websocket-server/src/events/creators'
@@ -89,9 +90,9 @@ export async function POST(request: Request) {
     
     // Определяем ожидаемые цены (кастомные или дефолтные)
     const tierPrices: Record<string, number> = {
-      'basic': 0.05,
-      'premium': 0.15,
-      'vip': 0.35
+      'basic': DEFAULT_TIER_PRICES.basic,
+      'premium': DEFAULT_TIER_PRICES.premium,
+      'vip': DEFAULT_TIER_PRICES.vip
     }
     
     // Если есть кастомные настройки, используем их
