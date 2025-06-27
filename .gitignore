@@ -69,3 +69,8 @@ dist/
 
 # AI Assistant instructions (local only)
 AI_CHAT_INSTRUCTIONS.md
+
+# WebSocket server
+websocket-server/node_modules/
+websocket-server/logs/
+websocket-server/*.log
