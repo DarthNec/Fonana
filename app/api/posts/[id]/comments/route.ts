@@ -2,6 +2,10 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { notifyNewComment, notifyCommentReply } from '@/lib/notifications'
 
+// WebSocket события
+import { notifyNewComment as wsNotifyNewComment } from '@/websocket-server/src/events/posts'
+import { sendNotification } from '@/websocket-server/src/events/notifications'
+
 export async function GET(
   request: NextRequest,
   { params }: { params: { id: string } }
@@ -212,6 +216,44 @@ export async function POST(
       isAnonymous: comment.isAnonymous,
       parentId: comment.parentId,
       replies: []
+    }
+
+    // Отправляем WebSocket событие о новом комментарии
+    try {
+      await wsNotifyNewComment(params.id, formattedComment)
+      
+      // Отправляем WebSocket уведомления
+      if (parentComment && parentComment.userId !== userId) {
+        // Уведомление об ответе на комментарий
+        const userSettings = await prisma.userSettings.findUnique({
+          where: { userId: parentComment.userId }
+        })
+        
+        if (!userSettings || userSettings.notifyComments) {
+          await sendNotification(parentComment.userId, {
+            type: 'REPLY_COMMENT',
+            title: 'Новый ответ',
+            message: `${commenterName} ответил на ваш комментарий`,
+            metadata: { postId: params.id, commentId: comment.id }
+          })
+        }
+      } else if (post.creatorId !== userId) {
+        // Уведомление о комментарии к посту
+        const authorSettings = await prisma.userSettings.findUnique({
+          where: { userId: post.creatorId }
+        })
+        
+        if (!authorSettings || authorSettings.notifyComments) {
+          await sendNotification(post.creatorId, {
+            type: 'COMMENT_POST',
+            title: 'Новый комментарий',
+            message: `${commenterName} прокомментировал "${post.title || 'ваш пост'}"`,
+            metadata: { postId: params.id, commentId: comment.id }
+          })
+        }
+      }
+    } catch (error) {
+      console.error('WebSocket notification failed:', error)
     }
 
     return NextResponse.json({

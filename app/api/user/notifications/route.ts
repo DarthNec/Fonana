@@ -2,7 +2,63 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { getUserByWallet } from '@/lib/db'
 
+// WebSocket события  
+import { sendNotification } from '@/websocket-server/src/events/notifications'
+
 export const dynamic = 'force-dynamic'
+
+// POST /api/user/notifications - создать новое уведомление
+export async function POST(req: NextRequest) {
+  try {
+    const body = await req.json()
+    const { userId, type, title, message, metadata } = body
+    
+    if (!userId || !type || !title || !message) {
+      return NextResponse.json(
+        { error: 'Missing required fields' },
+        { status: 400 }
+      )
+    }
+    
+    // Создаем уведомление в базе данных
+    const notification = await prisma.notification.create({
+      data: {
+        userId,
+        type,
+        title,
+        message,
+        metadata,
+        isRead: false
+      }
+    })
+    
+    // Отправляем WebSocket событие
+    try {
+      await sendNotification(userId, {
+        type: 'notification',
+        notification: {
+          id: notification.id,
+          type: notification.type,
+          title: notification.title,
+          message: notification.message,
+          metadata: notification.metadata,
+          isRead: notification.isRead,
+          createdAt: notification.createdAt
+        }
+      })
+    } catch (error) {
+      console.error('WebSocket notification failed:', error)
+    }
+    
+    return NextResponse.json({ success: true, notification })
+  } catch (error) {
+    console.error('Error creating notification:', error)
+    return NextResponse.json(
+      { error: 'Failed to create notification' },
+      { status: 500 }
+    )
+  }
+}
 
 // GET /api/user/notifications - получить уведомления пользователя
 export async function GET(req: NextRequest) {

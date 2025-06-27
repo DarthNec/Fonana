@@ -3,6 +3,9 @@ import { prisma } from '@/lib/prisma'
 import { waitForTransactionConfirmation } from '@/lib/solana/validation'
 import { getConnection } from '@/lib/solana/connection'
 
+// WebSocket события
+import { sendNotification } from '@/websocket-server/src/events/notifications'
+
 export async function POST(request: NextRequest) {
   try {
     const userWallet = request.headers.get('x-user-wallet')
@@ -142,7 +145,7 @@ export async function POST(request: NextRequest) {
     })
     
     // Создаем уведомление для создателя
-    await prisma.notification.create({
+    const notification = await prisma.notification.create({
       data: {
         userId: creatorId,
         type: 'TIP_RECEIVED',
@@ -155,6 +158,24 @@ export async function POST(request: NextRequest) {
         }
       }
     })
+    
+    // Отправляем WebSocket уведомление
+    try {
+      await sendNotification(creatorId, {
+        type: 'notification',
+        notification: {
+          id: notification.id,
+          type: notification.type,
+          title: notification.title,
+          message: notification.message,
+          metadata: notification.metadata,
+          isRead: notification.isRead,
+          createdAt: notification.createdAt
+        }
+      })
+    } catch (error) {
+      console.error('WebSocket notification failed:', error)
+    }
     
     // Если это чаевые из чата, создаем сообщение о донате в беседе
     if (conversationId) {
