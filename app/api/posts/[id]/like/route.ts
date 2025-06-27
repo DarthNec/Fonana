@@ -2,6 +2,10 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { notifyPostLike } from '@/lib/notifications'
 
+// WebSocket события
+import { updatePostLikes } from '@/websocket-server/src/events/posts'
+import { sendNotification } from '@/websocket-server/src/events/notifications'
+
 export async function GET(
   request: NextRequest,
   { params }: { params: { id: string } }
@@ -94,6 +98,17 @@ export async function POST(
         })
       ])
 
+      // Отправляем WebSocket событие об удалении лайка
+      try {
+        await updatePostLikes(params.id, {
+          isLiked: false,
+          likesCount: post.likesCount - 1,
+          userId
+        })
+      } catch (error) {
+        console.error('WebSocket notification failed:', error)
+      }
+
       return NextResponse.json({
         success: true,
         isLiked: false,
@@ -133,8 +148,31 @@ export async function POST(
           
           if (!authorSettings || authorSettings.notifyLikes) {
             await notifyPostLike(post.creatorId, likerName, postTitle, post.id)
+            
+            // Отправляем WebSocket уведомление
+            try {
+              await sendNotification(post.creatorId, {
+                type: 'LIKE_POST',
+                title: 'Новый лайк',
+                message: `${likerName} лайкнул ваш пост "${postTitle}"`,
+                metadata: { postId: post.id, userId }
+              })
+            } catch (error) {
+              console.error('WebSocket notification failed:', error)
+            }
           }
         }
+      }
+
+      // Отправляем WebSocket событие о новом лайке
+      try {
+        await updatePostLikes(params.id, {
+          isLiked: true,
+          likesCount: post.likesCount + 1,
+          userId
+        })
+      } catch (error) {
+        console.error('WebSocket notification failed:', error)
       }
 
       return NextResponse.json({

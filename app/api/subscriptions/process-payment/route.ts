@@ -6,6 +6,10 @@ import { paymentLogger } from '@/lib/utils/logger'
 import { generateRandomNickname, generateRandomBio, generateFullNameFromNickname } from '@/lib/usernames'
 import { notifyNewSubscriber } from '@/lib/notifications'
 
+// WebSocket события
+import { notifyNewSubscription } from '@/websocket-server/src/events/creators'
+import { sendNotification } from '@/websocket-server/src/events/notifications'
+
 export async function POST(request: Request) {
   const startTime = Date.now()
   
@@ -369,6 +373,31 @@ export async function POST(request: Request) {
       
       if (!creatorSettings || creatorSettings.notifySubscriptions) {
         await notifyNewSubscriber(creatorId, subscriberName, plan)
+        
+        // Отправляем WebSocket уведомления
+        try {
+          // Уведомление для создателя
+          await sendNotification(creatorId, {
+            type: 'NEW_SUBSCRIBER',
+            title: 'Новый подписчик',
+            message: `${subscriberName} подписался на план ${plan}`,
+            metadata: { userId: user.id, plan }
+          })
+          
+          // Обновление информации о создателе (для обновления счетчиков)
+          await notifyNewSubscription(creatorId, {
+            userId: user.id,
+            plan,
+            userInfo: {
+              id: user.id,
+              nickname: user.nickname || '',
+              fullName: user.fullName || '',
+              avatar: user.avatar || null
+            }
+          })
+        } catch (error) {
+          console.error('WebSocket notification failed:', error)
+        }
       }
     }
 

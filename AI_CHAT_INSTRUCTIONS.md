@@ -1500,7 +1500,7 @@ const { posts, newPostsCount, loadPendingPosts } = useRealtimePosts({ posts })
   6. Test and deploy
 
 ### WebSocket Server Implementation (December 30, 2024) ✅ COMPLETED
-- **Status**: Этап 1 завершен - базовый сервер готов
+- **Status**: Этап 1 и 2 завершены - сервер готов и интегрирован
 - **Location**: `websocket-server/` директория
 - **Port**: 3002 (WebSocket) + 3000 (Next.js)
 - **Features**:
@@ -1511,11 +1511,17 @@ const { posts, newPostsCount, loadPendingPosts } = useRealtimePosts({ posts })
   - Redis поддержка (опционально)
 - **Setup**: `./scripts/setup-websocket-server.sh`
 - **Test**: `cd websocket-server && node test-client.js`
-- **Docs**: `WEBSOCKET_SERVER_IMPLEMENTATION.md`
-- **Next Steps**:
-  1. Обновить Nginx (добавить location /ws)
-  2. Интегрировать с API endpoints
-  3. Деплой на production
+- **Docs**: 
+  - `WEBSOCKET_SERVER_IMPLEMENTATION.md` - техническая документация
+  - `WEBSOCKET_INTEGRATION_COMPLETED.md` - статус интеграции
+- **Integrated APIs**:
+  - ✅ `/api/posts` - создание постов, уведомления подписчикам
+  - ✅ `/api/posts/[id]/like` - лайки/анлайки с уведомлениями
+  - ✅ `/api/posts/[id]/comments` - комментарии с уведомлениями
+  - ✅ `/api/subscriptions/process-payment` - новые подписки
+  - ✅ `/api/user/notifications` - создание/чтение/очистка уведомлений
+  - ✅ `/api/tips` - чаевые с уведомлениями
+- **Deployment**: Требуется обновить Nginx и запустить через PM2
 
 ### Modal Components
 

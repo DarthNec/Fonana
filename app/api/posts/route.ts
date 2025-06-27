@@ -2,6 +2,10 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getPosts, createPost, getPostsByCreator, getUserByWallet } from '@/lib/db'
 import { prisma } from '@/lib/prisma'
 
+// WebSocket события
+import { notifyNewPost } from '@/websocket-server/src/events/posts'
+import { sendNotification } from '@/websocket-server/src/events/notifications'
+
 export const dynamic = 'force-dynamic'
 
 // Функция для генерации путей к оптимизированным изображениям
@@ -366,6 +370,43 @@ export async function POST(request: NextRequest) {
       auctionDuration: body.auctionDuration,
       auctionDepositAmount: body.auctionDepositAmount
     })
+
+    // Отправляем WebSocket событие о новом посте
+    try {
+      await notifyNewPost(post)
+      
+      // Получаем информацию о создателе
+      const creator = await prisma.user.findUnique({
+        where: { id: post.creatorId },
+        select: { nickname: true, fullName: true }
+      })
+      
+      // Отправляем уведомления подписчикам
+      const subscribers = await prisma.subscription.findMany({
+        where: {
+          creatorId: post.creatorId,
+          isActive: true,
+          paymentStatus: 'COMPLETED'
+        },
+        select: { userId: true }
+      })
+      
+      // Отправляем уведомления всем подписчикам
+      const creatorName = creator?.nickname || creator?.fullName || 'Creator'
+      await Promise.all(
+        subscribers.map(sub => 
+          sendNotification(sub.userId, {
+            type: 'NEW_POST_FROM_SUBSCRIPTION',
+            title: 'Новый пост',
+            message: `${creatorName} опубликовал новый пост: ${post.title}`,
+            metadata: { postId: post.id, creatorId: post.creatorId }
+          }).catch(err => console.error('Failed to send notification:', err))
+        )
+      )
+    } catch (error) {
+      // Не прерываем основной поток если WebSocket недоступен
+      console.error('WebSocket notification failed:', error)
+    }
 
     return NextResponse.json({ post })
   } catch (error) {
