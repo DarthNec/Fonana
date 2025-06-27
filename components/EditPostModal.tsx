@@ -12,9 +12,11 @@ import {
   UsersIcon,
   StarIcon,
   SparklesIcon,
-  ScissorsIcon
+  ScissorsIcon,
+  PlayIcon,
+  MusicalNoteIcon
 } from '@heroicons/react/24/outline'
-import { useUser } from '@/lib/hooks/useUser'
+import { useUserContext } from '@/lib/contexts/UserContext'
 import toast from 'react-hot-toast'
 import ImageCropModal from './ImageCropModal'
 
@@ -40,7 +42,7 @@ const accessTypes = [
 ]
 
 export default function EditPostModal({ isOpen, onClose, post, onPostUpdated }: EditPostModalProps) {
-  const { user } = useUser()
+  const { user } = useUserContext()
   const [isSubmitting, setIsSubmitting] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const isMountedRef = useRef(true)
