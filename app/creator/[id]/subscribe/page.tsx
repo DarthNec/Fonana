@@ -1,6 +1,6 @@
 'use client'
 
-import { notFound, useRouter } from 'next/navigation'
+import { notFound, useRouter, useParams } from 'next/navigation'
 import { useState, useEffect } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
@@ -16,6 +16,7 @@ import {
 import { CheckBadgeIcon } from '@heroicons/react/24/solid'
 import { toast } from 'react-hot-toast'
 import { useUserContext } from '@/lib/contexts/UserContext'
+import { CreatorDataProvider, useCreatorData } from '@/lib/contexts/CreatorContext'
 import { getProfileLink } from '@/lib/utils/links'
 
 // Динамический импорт SubscriptionPayment для избежания проблем с SSR
@@ -31,12 +32,6 @@ const SubscriptionPayment = dynamic(
     )
   }
 )
-
-interface SubscribePageProps {
-  params: {
-    id: string
-  }
-}
 
 interface SubscriptionTier {
   id: string
@@ -108,61 +103,50 @@ const getSubscriptionTiers = (creatorCategory?: string): SubscriptionTier[] => {
   return baseTiers
 }
 
-export default function SubscribePage({ params }: SubscribePageProps) {
+// Внутренний компонент, который использует данные создателя из контекста
+function SubscribePageContent() {
   const router = useRouter()
   const { user } = useUserContext()
-  const [creator, setCreator] = useState<any>(null)
-  const [isLoading, setIsLoading] = useState(true)
+  const { creator, isLoading: isCreatorLoading, error: creatorError } = useCreatorData()
   const [isSubscribed, setIsSubscribed] = useState(false)
   const [selectedTier, setSelectedTier] = useState('premium')
   const [showInCarousel, setShowInCarousel] = useState(true)
 
+  // Проверяем подписку
   useEffect(() => {
-    loadCreatorData()
-  }, [params.id, user])
+    if (creator && user) {
+      checkSubscription()
+    }
+  }, [creator, user])
 
-  const loadCreatorData = async () => {
+  // Обрабатываем ошибку загрузки создателя
+  useEffect(() => {
+    if (creatorError) {
+      toast.error('Creator not found')
+      router.push('/creators')
+    }
+  }, [creatorError, router])
+
+  const checkSubscription = async () => {
+    if (!creator || !user) return
+
     try {
-      setIsLoading(true)
-      
-      // Load creator data
-      const creatorResponse = await fetch(`/api/user?id=${params.id}`)
-      if (!creatorResponse.ok) {
-        throw new Error('Creator not found')
-      }
-      
-      const creatorData = await creatorResponse.json()
-      const creatorInfo = {
-        ...creatorData.user,
-        followersCount: creatorData.user._count?.followers || 0,
-        followingCount: creatorData.user._count?.follows || 0,
-        postsCount: creatorData.user._count?.posts || 0
-      }
-      setCreator(creatorInfo)
-
-      // Check subscription status
-      if (user) {
-        const subResponse = await fetch(`/api/subscriptions/check?userId=${user.id}&creatorId=${params.id}`)
-        if (subResponse.ok) {
-          const subData = await subResponse.json()
-          setIsSubscribed(subData.isSubscribed)
-          
-          if (subData.isSubscribed) {
-            // Redirect to creator page if already subscribed
-            router.push(getProfileLink({ id: creatorInfo.id, nickname: creatorInfo.nickname }))
-          }
+      const subResponse = await fetch(`/api/subscriptions/check?userId=${user.id}&creatorId=${creator.id}`)
+      if (subResponse.ok) {
+        const subData = await subResponse.json()
+        setIsSubscribed(subData.isSubscribed)
+        
+        if (subData.isSubscribed) {
+          // Redirect to creator page if already subscribed
+          router.push(getProfileLink({ id: creator.id, nickname: creator.nickname || '' }))
         }
       }
     } catch (error) {
-      console.error('Error loading creator:', error)
-      toast.error('Creator not found')
-      router.push('/creators')
-    } finally {
-      setIsLoading(false)
+      console.error('Error checking subscription:', error)
     }
   }
 
-  if (isLoading) {
+  if (isCreatorLoading) {
     return (
       <div className="min-h-screen bg-slate-900 pt-32 flex items-center justify-center">
         <div className="text-center">
@@ -191,7 +175,7 @@ export default function SubscribePage({ params }: SubscribePageProps) {
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
           <div className="flex items-center gap-4">
             <Link 
-              href={getProfileLink({ id: creator.id, nickname: creator.nickname })}
+              href={getProfileLink({ id: creator.id, nickname: creator.nickname || '' })}
               className="text-slate-400 hover:text-white transition-colors flex items-center gap-2"
             >
               <ArrowLeftIcon className="w-5 h-5" />
@@ -208,8 +192,8 @@ export default function SubscribePage({ params }: SubscribePageProps) {
             <div className="w-20 h-20 rounded-2xl overflow-hidden border-2 border-purple-500/30">
               <Avatar
                 src={creator.avatar}
-                alt={creator.fullName || creator.nickname}
-                seed={creator.wallet}
+                alt={creator.fullName || creator.nickname || ''}
+                seed={creator.wallet || creator.id}
                 size={80}
                 rounded="2xl"
               />
@@ -232,7 +216,7 @@ export default function SubscribePage({ params }: SubscribePageProps) {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 text-center">
             <div className="p-6 bg-slate-700/30 rounded-2xl border border-slate-600/50">
               <div className="text-3xl font-bold text-purple-400 mb-2">
-                {creator.followersCount.toLocaleString()}
+                {(creator.followersCount || 0).toLocaleString()}
               </div>
               <div className="text-slate-400 font-medium">
                 Subscribers
@@ -240,7 +224,7 @@ export default function SubscribePage({ params }: SubscribePageProps) {
             </div>
             <div className="p-6 bg-slate-700/30 rounded-2xl border border-slate-600/50">
               <div className="text-3xl font-bold text-blue-400 mb-2">
-                {creator.postsCount}
+                {creator.postsCount || 0}
               </div>
               <div className="text-slate-400 font-medium">
                 Posts
@@ -348,10 +332,10 @@ export default function SubscribePage({ params }: SubscribePageProps) {
             
             <SubscriptionPayment
               creatorId={creator.id}
-              creatorName={creator.fullName || creator.nickname}
-              creatorWallet={creator.solanaWallet || creator.wallet}
+              creatorName={creator.fullName || creator.nickname || ''}
+              creatorWallet={creator.solanaWallet || creator.wallet || ''}
               hasReferrer={hasReferrer}
-              referrerWallet={referrerWallet}
+              referrerWallet={referrerWallet || undefined}
               plans={subscriptionTiers.map(tier => ({
                 id: tier.id,
                 name: tier.name,
@@ -363,5 +347,17 @@ export default function SubscribePage({ params }: SubscribePageProps) {
         )}
       </div>
     </div>
+  )
+}
+
+// Внешний компонент-обёртка с провайдером
+export default function SubscribePage() {
+  const params = useParams()
+  const creatorId = params.id as string
+
+  return (
+    <CreatorDataProvider creatorId={creatorId}>
+      <SubscribePageContent />
+    </CreatorDataProvider>
   )
 } 

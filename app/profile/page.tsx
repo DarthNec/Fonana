@@ -62,34 +62,30 @@ interface UserProfile {
 }
 
 // Component for displaying user's posts - вынесен из ProfilePage
-interface MyPostsSectionProps {
-  userId?: string
-  userWallet?: string | null
-}
-
-function MyPostsSection({ userId, userWallet }: MyPostsSectionProps) {
+function MyPostsSection() {
+  const { user } = useUserContext()
   const [posts, setPosts] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [selectedPost, setSelectedPost] = useState<any>(null)
   const [isEditModalOpen, setIsEditModalOpen] = useState(false)
 
   useEffect(() => {
-    if (userId) {
+    if (user?.id) {
       fetchUserPosts()
     }
-  }, [userId, userWallet]) // Перезагружаем при изменении wallet
+  }, [user?.id])
 
   const fetchUserPosts = async () => {
     try {
       // Добавляем userWallet в запрос, чтобы API мог определить что это автор
       const params = new URLSearchParams()
       
-      if (userId) {
-        params.append('creatorId', userId)
+      if (user?.id) {
+        params.append('creatorId', user.id)
       }
       
-      if (userWallet) {
-        params.append('userWallet', userWallet)
+      if (user?.wallet) {
+        params.append('userWallet', user.wallet)
       }
       
       const response = await fetch(`/api/posts?${params.toString()}`)
@@ -1028,7 +1024,7 @@ export default function ProfilePage() {
         ) : (
           /* My Posts Tab */
           <div className="max-w-5xl mx-auto">
-            <MyPostsSection userId={user?.id} userWallet={user?.wallet} />
+            <MyPostsSection />
           </div>
         )}
       </div>

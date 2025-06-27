@@ -34,6 +34,7 @@ import {
 } from '@heroicons/react/24/outline'
 import toast from 'react-hot-toast'
 import { useSolRate } from '@/lib/hooks/useSolRate'
+import { useCreatorData } from '@/lib/hooks/useCreatorData'
 
 ChartJS.register(
   CategoryScale,
@@ -48,9 +49,7 @@ ChartJS.register(
   Filler
 )
 
-interface RevenueChartProps {
-  creatorId: string
-}
+interface RevenueChartProps {}
 
 interface SubscriberData {
   user: {
@@ -128,26 +127,29 @@ interface AnalyticsData {
   }
 }
 
-export default function RevenueChart({ creatorId }: RevenueChartProps) {
+export default function RevenueChart({}: RevenueChartProps) {
   const [period, setPeriod] = useState<'day' | 'week' | 'month'>('week')
   const [analytics, setAnalytics] = useState<AnalyticsData | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [showAllSubscribers, setShowAllSubscribers] = useState(false)
   const [subscribersPage, setSubscribersPage] = useState(0)
   const { rate: solRate } = useSolRate()
+  const { creator } = useCreatorData()
   
   const subscribersPerPage = 10
 
   useEffect(() => {
-    if (creatorId) {
+    if (creator) {
       fetchAnalytics()
     }
-  }, [creatorId, period])
+  }, [creator, period])
 
   const fetchAnalytics = async () => {
+    if (!creator) return
+    
     try {
       setIsLoading(true)
-      const response = await fetch(`/api/creators/analytics?creatorId=${creatorId}&period=${period}`)
+      const response = await fetch(`/api/creators/analytics?creatorId=${creator.id}&period=${period}`)
       if (response.ok) {
         const data = await response.json()
         setAnalytics(data)

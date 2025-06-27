@@ -76,10 +76,10 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
   
   // Функция загрузки уведомлений
   const fetchNotifications = useCallback(async () => {
-    if (!user?.wallet) return
+    if (!user?.id) return
     
     try {
-      const response = await fetch(`/api/user/notifications?wallet=${user.wallet}`)
+      const response = await fetch(`/api/user/notifications?userId=${user.id}`)
       if (response.ok) {
         const data = await response.json()
         setNotifications(data.notifications)
@@ -112,14 +112,14 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
     } catch (error) {
       console.error('Error fetching notifications:', error)
     }
-  }, [user?.wallet, lastNotificationId, playNotificationSound])
+  }, [user?.id, lastNotificationId, playNotificationSound])
   
   // Пометить как прочитанные
   const markAsRead = async (notificationIds: string[]) => {
-    if (!user?.wallet) return
+    if (!user?.id) return
     
     try {
-      const response = await fetch(`/api/user/notifications?wallet=${user.wallet}`, {
+      const response = await fetch(`/api/user/notifications?userId=${user.id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ notificationIds })
@@ -140,10 +140,10 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
   
   // Пометить все как прочитанные
   const markAllAsRead = async () => {
-    if (!user?.wallet) return
+    if (!user?.id) return
     
     try {
-      const response = await fetch(`/api/user/notifications?wallet=${user.wallet}`, {
+      const response = await fetch(`/api/user/notifications?userId=${user.id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ markAllAsRead: true })
@@ -160,10 +160,10 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
   
   // Удалить уведомление
   const deleteNotification = async (notificationId: string) => {
-    if (!user?.wallet) return
+    if (!user?.id) return
     
     try {
-      const response = await fetch(`/api/user/notifications?wallet=${user.wallet}&id=${notificationId}`, {
+      const response = await fetch(`/api/user/notifications?userId=${user.id}&id=${notificationId}`, {
         method: 'DELETE'
       })
       
@@ -181,10 +181,10 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
   
   // Очистить прочитанные уведомления
   const clearReadNotifications = async () => {
-    if (!user?.wallet) return
+    if (!user?.id) return
     
     try {
-      const response = await fetch(`/api/user/notifications?wallet=${user.wallet}`, {
+      const response = await fetch(`/api/user/notifications?userId=${user.id}`, {
         method: 'DELETE'
       })
       
@@ -198,7 +198,7 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
   
   // Начальная загрузка и polling
   useEffect(() => {
-    if (user?.wallet) {
+    if (user?.id) {
       // Начальная загрузка
       setLoading(true)
       fetchNotifications().finally(() => setLoading(false))
@@ -212,7 +212,7 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
         clearInterval(pollingIntervalRef.current)
       }
     }
-  }, [user?.wallet, fetchNotifications])
+  }, [user?.id, fetchNotifications])
   
   return (
     <NotificationContext.Provider

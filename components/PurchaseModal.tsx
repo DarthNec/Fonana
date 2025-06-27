@@ -21,6 +21,7 @@ import {
 import { isValidSolanaAddress } from '@/lib/solana/config'
 import { connection } from '@/lib/solana/connection'
 import { useSolRate } from '@/lib/hooks/useSolRate'
+import { useUserContext } from '@/lib/contexts/UserContext'
 
 interface PurchaseModalProps {
   post: {
@@ -58,6 +59,7 @@ interface PurchaseModalProps {
 
 export default function PurchaseModal({ post, onClose, onSuccess }: PurchaseModalProps) {
   const { publicKey, connected, sendTransaction } = useWallet()
+  const { user, isLoading: isUserLoading } = useUserContext()
   const [isProcessing, setIsProcessing] = useState(false)
   const [creatorData, setCreatorData] = useState<any>(null)
   const { rate: solToUsdRate, isLoading: isRateLoading } = useSolRate()
@@ -79,11 +81,15 @@ export default function PurchaseModal({ post, onClose, onSuccess }: PurchaseModa
       .catch(err => console.error('Error loading creator data:', err))
   }, [post.creator.id])
 
-
-
   const handlePurchase = async () => {
     if (!publicKey || !connected) {
       toast.error('Пожалуйста, подключите кошелек')
+      return
+    }
+    
+    // Проверяем, что данные пользователя загружены
+    if (!user || isUserLoading) {
+      toast.error('Загрузка данных пользователя...')
       return
     }
     
@@ -229,7 +235,7 @@ export default function PurchaseModal({ post, onClose, onSuccess }: PurchaseModa
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           postId: post.id,
-          userId: publicKey.toBase58(),
+          userId: user.id,
           price: actualPrice,
           originalPrice: post.price,
           currency: post.currency,

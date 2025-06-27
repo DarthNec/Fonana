@@ -132,7 +132,14 @@ export default function FeedPage() {
       content: postData.content.text,
       price: postData.access.price,
       currency: postData.access.currency,
-      flashSale: postData.commerce?.flashSale
+      flashSale: postData.commerce?.flashSale,
+      creator: {
+        id: postData.creator.id,
+        name: postData.creator.name,
+        username: postData.creator.username,
+        avatar: postData.creator.avatar,
+        isVerified: postData.creator.isVerified
+      }
     })
     setShowPurchaseModal(true)
   }

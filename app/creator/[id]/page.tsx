@@ -27,39 +27,19 @@ import {
   ChatBubbleLeftEllipsisIcon
 } from '@heroicons/react/24/outline'
 import { useUserContext } from '@/lib/contexts/UserContext'
+import { CreatorDataProvider, useCreatorData } from '@/lib/contexts/CreatorContext'
 import { useWallet } from '@solana/wallet-adapter-react'
 import toast from 'react-hot-toast'
 import { useSolRate } from '@/lib/hooks/useSolRate'
 
-interface Creator {
-  id: string
-  wallet: string
-  nickname: string
-  fullName: string
-  bio: string
-  avatar: string | null
-  backgroundImage: string | null
-  website: string | null
-  twitter: string | null
-  telegram: string | null
-  location: string | null
-  isVerified: boolean
-  isCreator: boolean
-  followersCount: number
-  followingCount: number
-  postsCount: number
-  createdAt: string
-}
-
-export default function CreatorPage() {
-  const params = useParams()
+// Внутренний компонент, который использует данные создателя из контекста
+function CreatorPageContent() {
   const router = useRouter()
   const { user, isLoading: isAuthLoading } = useUserContext()
+  const { creator, isLoading: isCreatorLoading, error: creatorError, refreshCreator } = useCreatorData()
   const { connected, publicKey } = useWallet()
   const { rate: solRate } = useSolRate()
-  const [creator, setCreator] = useState<Creator | null>(null)
   const [posts, setPosts] = useState<any[]>([])
-  const [isLoading, setIsLoading] = useState(true)
   const [activeTab, setActiveTab] = useState<'posts' | 'photos' | 'videos' | 'flash-sales'>('posts')
   const [showSubscribeModal, setShowSubscribeModal] = useState(false)
   const [isSubscribed, setIsSubscribed] = useState(false)
@@ -72,57 +52,43 @@ export default function CreatorPage() {
   const [isLoadingPosts, setIsLoadingPosts] = useState(true)
   const [creatorTiers, setCreatorTiers] = useState<any>(null)
 
+  // Загружаем посты и проверяем подписку, когда данные создателя загружены
   useEffect(() => {
-    if (params.id) {
-      loadCreatorData()
-      
-      // Очищаем сохраненный wallet при отключении
-      if (!user?.wallet) {
-        localStorage.removeItem('fonana_user_wallet')
-      }
+    if (creator && !isCreatorLoading) {
+      loadPosts()
+      checkSubscription()
+      loadCreatorTiers()
     }
-  }, [params.id, user?.wallet])
+  }, [creator, isCreatorLoading, user])
+
+  // Обрабатываем ошибку загрузки создателя
+  useEffect(() => {
+    if (creatorError) {
+      toast.error('Creator not found')
+      router.push('/creators')
+    }
+  }, [creatorError, router])
 
   const formatPlanName = (plan: string | null | undefined): string => {
     if (!plan) return ''
     return plan.charAt(0).toUpperCase() + plan.slice(1).toLowerCase()
   }
 
-  const loadCreatorData = async () => {
+  const loadPosts = async () => {
+    if (!creator) return
+    
     try {
-      setIsLoading(true)
+      setIsLoadingPosts(true)
       
-      // Load creator data
-      const creatorResponse = await fetch(`/api/user?id=${params.id}`)
-      if (!creatorResponse.ok) {
-        throw new Error('Creator not found')
-      }
-      const creatorData = await creatorResponse.json()
-      
-      // Transform data for proper display
-      const creatorInfo = {
-        ...creatorData.user,
-        followersCount: creatorData.user._count?.followers || 0,
-        followingCount: creatorData.user._count?.follows || 0,
-        postsCount: creatorData.user._count?.posts || 0
-      }
-      setCreator(creatorInfo)
-
-      // Load creator posts
       const postsParams = new URLSearchParams({
-        creatorId: params.id as string
+        creatorId: creator.id
       })
       
-      // Используем wallet из user или из localStorage как fallback
-      const userWallet = user?.wallet || localStorage.getItem('fonana_user_wallet')
+      // Используем wallet из UserContext
+      const userWallet = user?.wallet
       
       if (userWallet) {
         postsParams.append('userWallet', userWallet)
-        
-        // Сохраняем wallet в localStorage для будущего использования
-        if (user?.wallet) {
-          localStorage.setItem('fonana_user_wallet', user.wallet)
-        }
       }
       
       const postsResponse = await fetch(`/api/posts?${postsParams.toString()}`)
@@ -132,16 +98,16 @@ export default function CreatorPage() {
         const formattedPosts = postsData.posts.map((post: any) => ({
           id: post.id,
           creator: {
-            id: creatorInfo.id,
-            name: creatorInfo.fullName || creatorInfo.nickname,
-            username: creatorInfo.nickname,
-            avatar: creatorInfo.avatar,
-            isVerified: creatorInfo.isVerified
+            id: creator.id,
+            name: creator.fullName || creator.nickname,
+            username: creator.nickname || '',
+            avatar: creator.avatar || null,
+            isVerified: creator.isVerified || false
           },
           title: post.title,
           content: post.content,
           category: post.category,
-                              image: post.mediaUrl || post.thumbnail,
+          image: post.mediaUrl || post.thumbnail,
           mediaUrl: post.mediaUrl,
           thumbnail: post.thumbnail,
           preview: post.preview,
@@ -164,32 +130,42 @@ export default function CreatorPage() {
         }))
         setPosts(formattedPosts)
       }
-      setIsLoadingPosts(false) // Устанавливаем флаг загрузки в false
+    } catch (error) {
+      console.error('Error loading posts:', error)
+      toast.error('Error loading posts')
+    } finally {
+      setIsLoadingPosts(false)
+    }
+  }
 
-      // Check subscription if user is authenticated
-      if (user) {
-        const subResponse = await fetch(`/api/subscriptions/check?userId=${user.id}&creatorId=${params.id}`)
-        if (subResponse.ok) {
-          const subData = await subResponse.json()
-          setIsSubscribed(subData.isSubscribed)
-          if (subData.subscription && subData.isSubscribed) {
-            setCurrentSubscriptionTier(subData.subscription.plan?.toLowerCase() || null)
-          }
+  const checkSubscription = async () => {
+    if (!creator || !user) return
+    
+    try {
+      const subResponse = await fetch(`/api/subscriptions/check?userId=${user.id}&creatorId=${creator.id}`)
+      if (subResponse.ok) {
+        const subData = await subResponse.json()
+        setIsSubscribed(subData.isSubscribed)
+        if (subData.subscription && subData.isSubscribed) {
+          setCurrentSubscriptionTier(subData.subscription.plan?.toLowerCase() || null)
         }
       }
+    } catch (error) {
+      console.error('Error checking subscription:', error)
+    }
+  }
 
-      // Load creator tier settings
-      const tierResponse = await fetch(`/api/user/tier-settings?wallet=${creatorInfo.wallet}`)
+  const loadCreatorTiers = async () => {
+    if (!creator?.wallet) return
+    
+    try {
+      const tierResponse = await fetch(`/api/user/tier-settings?wallet=${creator.wallet}`)
       if (tierResponse.ok) {
         const tierData = await tierResponse.json()
         setCreatorTiers(tierData.settings)
       }
     } catch (error) {
-      console.error('Error loading creator data:', error)
-      toast.error('Error loading creator data')
-      router.push('/creators')
-    } finally {
-      setIsLoading(false)
+      console.error('Error loading creator tiers:', error)
     }
   }
 
@@ -209,7 +185,23 @@ export default function CreatorPage() {
   }
 
   const handlePurchaseClick = (postData: any) => {
-    setSelectedPurchaseData(postData)
+    // Формируем данные в правильном формате для PurchaseModal
+    const formattedPost = {
+      id: postData.id,
+      title: postData.title,
+      content: postData.content,
+      price: postData.price,
+      currency: postData.currency || 'SOL',
+      flashSale: postData.flashSale,
+      creator: {
+        id: postData.creator?.id || creator?.id,
+        name: postData.creator?.name || creator?.fullName || creator?.nickname || '',
+        username: postData.creator?.username || creator?.nickname || '',
+        avatar: postData.creator?.avatar || creator?.avatar || null,
+        isVerified: postData.creator?.isVerified || creator?.isVerified || false
+      }
+    }
+    setSelectedPurchaseData(formattedPost)
     setShowPurchaseModal(true)
   }
 
@@ -218,6 +210,8 @@ export default function CreatorPage() {
       toast.error('Please connect your wallet')
       return
     }
+
+    if (!creator) return
 
     try {
       // Create or get existing conversation
@@ -228,7 +222,7 @@ export default function CreatorPage() {
           'x-user-wallet': user.wallet
         },
         body: JSON.stringify({
-          participantId: creator!.id
+          participantId: creator.id
         })
       })
 
@@ -301,7 +295,17 @@ export default function CreatorPage() {
     return true // 'posts' tab shows all
   })
 
-  if (isLoading) {
+  // Обновляем функцию для перезагрузки данных
+  const reloadData = async () => {
+    await Promise.all([
+      refreshCreator(),
+      loadPosts(),
+      checkSubscription(),
+      loadCreatorTiers()
+    ])
+  }
+
+  if (isCreatorLoading) {
     return (
       <div className="min-h-screen bg-slate-900 pt-32 flex items-center justify-center">
         <div className="text-center">
@@ -315,7 +319,7 @@ export default function CreatorPage() {
   if (!creator) {
     return (
       <div className="min-h-screen bg-gray-50 dark:bg-slate-900 pt-32 flex items-center justify-center">
-        <p className="text-gray-600 dark:text-slate-400">Error: Invalid creator ID</p>
+        <p className="text-gray-600 dark:text-slate-400">Creator not found</p>
       </div>
     )
   }
@@ -357,8 +361,8 @@ export default function CreatorPage() {
                     <div className="w-24 sm:w-32 h-24 sm:h-32 rounded-3xl overflow-hidden border-4 border-white/50 dark:border-slate-800/50 bg-gradient-to-br from-purple-500/20 to-pink-500/20 shadow-xl">
                       <Avatar
                         src={creator.avatar}
-                        alt={creator.nickname}
-                        seed={creator.wallet}
+                        alt={creator.nickname || ''}
+                        seed={creator.wallet || creator.id}
                         size={128}
                         rounded="3xl"
                       />
@@ -436,15 +440,15 @@ export default function CreatorPage() {
                     {/* Stats */}
                     <div className="flex flex-wrap gap-6 mt-6">
                       <div>
-                        <p className="text-gray-900 dark:text-white font-bold text-2xl">{creator.followersCount}</p>
+                        <p className="text-gray-900 dark:text-white font-bold text-2xl">{creator.followersCount || 0}</p>
                         <p className="text-gray-600 dark:text-slate-400">Subscribers</p>
                       </div>
                       <div>
-                        <p className="text-gray-900 dark:text-white font-bold text-2xl">{creator.postsCount}</p>
+                        <p className="text-gray-900 dark:text-white font-bold text-2xl">{creator.postsCount || 0}</p>
                         <p className="text-gray-600 dark:text-slate-400">Posts</p>
                       </div>
                       <div>
-                        <p className="text-gray-900 dark:text-white font-bold text-2xl">{creator.followingCount}</p>
+                        <p className="text-gray-900 dark:text-white font-bold text-2xl">{creator.followingCount || 0}</p>
                         <p className="text-gray-600 dark:text-slate-400">Following</p>
                       </div>
                     </div>
@@ -682,7 +686,7 @@ export default function CreatorPage() {
           {/* Flash Sales */}
           {creator.isCreator && (
             <div className="mb-8">
-              <FlashSalesList creatorId={creator.id} isOwner={false} />
+              <FlashSalesList isOwner={false} />
             </div>
           )}
 
@@ -751,7 +755,7 @@ export default function CreatorPage() {
             {/* Flash Sales Content */}
             {activeTab === 'flash-sales' && creator.isCreator && (
               <div className="max-w-4xl mx-auto py-0 sm:py-8">
-                <FlashSalesList creatorId={creator.id} />
+                <FlashSalesList />
               </div>
             )}
 
@@ -787,28 +791,28 @@ export default function CreatorPage() {
                       {creator.fullName || creator.nickname} hasn't posted any {activeTab} yet
                     </p>
                   </div>
-                                  ) : (
-                    <PostsContainer 
-                      posts={filteredPosts}
-                      layout="list"
-                      variant="creator"
-                      showCreator={false}
-                      onAction={(action) => {
-                        if (action.type === 'subscribe') {
-                          handleSubscribeClick({
-                            id: creator.id,
-                            name: creator.fullName || creator.nickname,
-                            username: creator.nickname,
-                            avatar: creator.avatar || '',
-                            isVerified: creator.isVerified
-                          })
-                        } else if (action.type === 'purchase') {
-                          const post = filteredPosts.find(p => p.id === action.postId)
-                          if (post) handlePurchaseClick(post)
-                        }
-                      }}
-                    />
-                  )}
+                ) : (
+                  <PostsContainer 
+                    posts={filteredPosts}
+                    layout="list"
+                    variant="creator"
+                    showCreator={false}
+                    onAction={(action) => {
+                      if (action.type === 'subscribe') {
+                        handleSubscribeClick({
+                          id: creator.id,
+                          name: creator.fullName || creator.nickname,
+                          username: creator.nickname,
+                          avatar: creator.avatar || '',
+                          isVerified: creator.isVerified
+                        })
+                      } else if (action.type === 'purchase') {
+                        const post = filteredPosts.find(p => p.id === action.postId)
+                        if (post) handlePurchaseClick(post)
+                      }
+                    }}
+                  />
+                )}
               </div>
             )}
           </div>
@@ -826,7 +830,7 @@ export default function CreatorPage() {
             <div className="bg-white dark:bg-slate-800/50 backdrop-blur-xl border border-gray-200 dark:border-slate-700/50 rounded-3xl p-6">
               <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-4">About</h2>
               <div className="space-y-2 text-gray-600 dark:text-slate-400">
-                <p>Joined {new Date(creator.createdAt).toLocaleDateString()}</p>
+                <p>Joined {creator.createdAt ? formatDate(typeof creator.createdAt === 'string' ? creator.createdAt : creator.createdAt.toISOString()) : 'Recently'}</p>
                 {creator.location && <p>📍 {creator.location}</p>}
               </div>
             </div>
@@ -839,10 +843,10 @@ export default function CreatorPage() {
         <SubscribeModal
           creator={{
             id: creator.id,
-            name: creator.fullName || creator.nickname,
-            username: creator.nickname,
+            name: creator.fullName || creator.nickname || '',
+            username: creator.nickname || '',
             avatar: creator.avatar || '',
-            isVerified: creator.isVerified
+            isVerified: creator.isVerified || false
           }}
           preferredTier={selectedTier}
           onClose={() => setShowSubscribeModal(false)}
@@ -871,7 +875,7 @@ export default function CreatorPage() {
             // Проверяем с сервера через небольшую задержку
             setTimeout(() => {
               console.log('[CreatorPage] Reloading creator data after subscription')
-              loadCreatorData()
+              reloadData()
             }, 2500)
           }}
         />
@@ -892,11 +896,23 @@ export default function CreatorPage() {
             
             // Затем проверяем с сервера
             setTimeout(() => {
-              loadCreatorData()
+              reloadData()
             }, 1000)
           }}
         />
       )}
     </div>
+  )
+}
+
+// Внешний компонент-обёртка с провайдером
+export default function CreatorPage() {
+  const params = useParams()
+  const creatorId = params.id as string
+
+  return (
+    <CreatorDataProvider creatorId={creatorId}>
+      <CreatorPageContent />
+    </CreatorDataProvider>
   )
 } 
