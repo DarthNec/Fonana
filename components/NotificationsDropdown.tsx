@@ -32,11 +32,11 @@ export default function NotificationsDropdown() {
   const { 
     notifications, 
     unreadCount, 
-    loading, 
+    isLoading, 
     markAsRead, 
     markAllAsRead, 
     deleteNotification,
-    clearReadNotifications 
+    clearAll 
   } = useNotifications()
   
   const [isOpen, setIsOpen] = useState(false)
@@ -84,7 +84,7 @@ export default function NotificationsDropdown() {
   // Обработка клика на уведомление
   const handleNotificationClick = async (notification: any) => {
     if (!notification.isRead) {
-      await markAsRead([notification.id])
+      await markAsRead(notification.id)
     }
     
     // Переход к соответствующему контенту
@@ -144,7 +144,7 @@ export default function NotificationsDropdown() {
           
           {/* Notifications List */}
           <div className="max-h-96 overflow-y-auto">
-            {loading ? (
+            {isLoading ? (
               <div className="p-8 text-center">
                 <div className="w-8 h-8 border-2 border-purple-500 border-t-transparent rounded-full animate-spin mx-auto"></div>
               </div>
@@ -188,7 +188,7 @@ export default function NotificationsDropdown() {
                           <button
                             onClick={(e) => {
                               e.stopPropagation()
-                              markAsRead([notification.id])
+                              markAsRead(notification.id)
                             }}
                             className="p-1 text-green-600 hover:text-green-700 dark:text-green-400 dark:hover:text-green-300"
                             title="Mark as read"
@@ -218,7 +218,7 @@ export default function NotificationsDropdown() {
           {notifications.length > 0 && (
             <div className="px-4 py-3 border-t border-gray-200 dark:border-slate-700 flex items-center justify-between">
               <button
-                onClick={clearReadNotifications}
+                onClick={clearAll}
                 className="text-sm text-gray-600 dark:text-slate-400 hover:text-gray-900 dark:hover:text-white"
               >
                 Clear read notifications
