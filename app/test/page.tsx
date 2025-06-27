@@ -31,6 +31,11 @@ const testPages = [
     href: '/test/purchase-test',
     title: 'Purchase Test',
     description: 'Test purchase modal and payment flow'
+  },
+  {
+    href: '/test/realtime-demo',
+    title: 'Real-time Demo',
+    description: 'Test WebSocket real-time updates for notifications and feed'
   }
 ]
 
