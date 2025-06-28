@@ -24,6 +24,14 @@ async function verifyToken(token) {
     
     const userId = decoded.userId || decoded.sub;
     
+    console.log('🔍 Looking up user in database:', userId);
+    
+    // Проверяем подключение к базе данных
+    if (!prisma) {
+      console.error('❌ Prisma client is not initialized');
+      return null;
+    }
+    
     // Получаем пользователя из БД для актуализации данных
     const user = await prisma.user.findUnique({
       where: { id: userId },
