@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fonana Post Purchase Test</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #0f0f0f;
+            color: #e0e0e0;
+        }
+        
+        .section {
+            background: #1a1a1a;
+            border: 1px solid #333;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+        
+        h1 {
+            color: #9333ea;
+            margin-bottom: 10px;
+        }
+        
+        h2 {
+            color: #a855f7;
+            margin-top: 0;
+        }
+        
+        .status {
+            padding: 10px;
+            border-radius: 4px;
+            margin: 10px 0;
+            font-family: monospace;
+        }
+        
+        .success {
+            background: #166534;
+            color: #86efac;
+        }
+        
+        .warning {
+            background: #713f12;
+            color: #fde047;
+        }
+        
+        .error {
+            background: #7f1d1d;
+            color: #fca5a5;
+        }
+        
+        .info {
+            background: #1e3a8a;
+            color: #93c5fd;
+        }
+        
+        button {
+            background: #9333ea;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 5px;
+        }
+        
+        button:hover {
+            background: #7c3aed;
+        }
+        
+        button:disabled {
+            background: #6b7280;
+            cursor: not-allowed;
+        }
+        
+        input {
+            background: #262626;
+            color: white;
+            border: 1px solid #404040;
+            padding: 8px 12px;
+            border-radius: 4px;
+            width: 100%;
+            margin-bottom: 10px;
+        }
+        
+        .log-entry {
+            font-family: monospace;
+            font-size: 12px;
+            padding: 5px;
+            border-bottom: 1px solid #333;
+        }
+        
+        #logs {
+            max-height: 300px;
+            overflow-y: auto;
+            background: #0a0a0a;
+            border: 1px solid #333;
+            border-radius: 4px;
+            padding: 10px;
+        }
+        
+        .highlight {
+            background: #fbbf24;
+            color: #000;
+            padding: 2px 4px;
+            border-radius: 2px;
+        }
+    </style>
+</head>
+<body>
+    <h1>🚀 Fonana Post Purchase Test</h1>
+    
+    <div class="section">
+        <h2>1. WebSocket Connection</h2>
+        <div id="ws-status" class="status info">Not connected</div>
+        <button onclick="connectWebSocket()">Connect WebSocket</button>
+        <button onclick="disconnectWebSocket()">Disconnect</button>
+    </div>
+    
+    <div class="section">
+        <h2>2. Test Configuration</h2>
+        <label>Post URL:</label>
+        <input type="text" id="post-url" placeholder="https://fonana.me/post/123" value="https://fonana.me/post/cmc4240js0003qokmvvsfcv41">
+        <button onclick="startTest()">Start Purchase Test</button>
+    </div>
+    
+    <div class="section">
+        <h2>3. Test Progress</h2>
+        <div id="test-status"></div>
+    </div>
+    
+    <div class="section">
+        <h2>4. WebSocket Events Log</h2>
+        <div id="logs"></div>
+        <button onclick="clearLogs()">Clear Logs</button>
+    </div>
+    
+    <script>
+        let ws = null;
+        let jwtToken = null;
+        
+        function log(message, type = 'info') {
+            const timestamp = new Date().toISOString().split('T')[1].split('.')[0];
+            const logsDiv = document.getElementById('logs');
+            const entry = document.createElement('div');
+            entry.className = `log-entry ${type}`;
+            entry.innerHTML = `[${timestamp}] ${message}`;
+            logsDiv.appendChild(entry);
+            logsDiv.scrollTop = logsDiv.scrollHeight;
+        }
+        
+        function updateStatus(elementId, message, type = 'info') {
+            const element = document.getElementById(elementId);
+            element.textContent = message;
+            element.className = `status ${type}`;
+        }
+        
+        async function getJWT() {
+            // In real app, this would come from your auth system
+            const token = localStorage.getItem('fonana_jwt_token');
+            if (!token) {
+                throw new Error('No JWT token found. Please login to Fonana first.');
+            }
+            return token;
+        }
+        
+        async function connectWebSocket() {
+            try {
+                updateStatus('ws-status', 'Getting JWT token...', 'warning');
+                jwtToken = await getJWT();
+                
+                updateStatus('ws-status', 'Connecting to WebSocket...', 'warning');
+                
+                ws = new WebSocket('wss://fonana.me/ws');
+                
+                ws.onopen = () => {
+                    updateStatus('ws-status', 'WebSocket connected', 'success');
+                    log('WebSocket connected successfully', 'success');
+                    
+                    // Send auth message if needed
+                    ws.send(JSON.stringify({
+                        type: 'auth',
+                        token: jwtToken
+                    }));
+                };
+                
+                ws.onmessage = (event) => {
+                    try {
+                        const data = JSON.parse(event.data);
+                        log(`Event: ${data.type} - ${JSON.stringify(data)}`, 'info');
+                        
+                        // Check for post-purchased event
+                        if (data.type === 'post-purchased') {
+                            log(`<span class="highlight">POST PURCHASED EVENT RECEIVED!</span>`, 'success');
+                            updateStatus('test-status', '✅ WebSocket event received: post-purchased', 'success');
+                        }
+                    } catch (e) {
+                        log(`Raw message: ${event.data}`, 'info');
+                    }
+                };
+                
+                ws.onerror = (error) => {
+                    updateStatus('ws-status', 'WebSocket error', 'error');
+                    log(`WebSocket error: ${error}`, 'error');
+                };
+                
+                ws.onclose = () => {
+                    updateStatus('ws-status', 'WebSocket disconnected', 'warning');
+                    log('WebSocket disconnected', 'warning');
+                };
+                
+            } catch (error) {
+                updateStatus('ws-status', `Error: ${error.message}`, 'error');
+                log(`Connection error: ${error.message}`, 'error');
+            }
+        }
+        
+        function disconnectWebSocket() {
+            if (ws) {
+                ws.close();
+                ws = null;
+            }
+        }
+        
+        function clearLogs() {
+            document.getElementById('logs').innerHTML = '';
+        }
+        
+        function startTest() {
+            const postUrl = document.getElementById('post-url').value;
+            if (!postUrl) {
+                alert('Please enter a post URL');
+                return;
+            }
+            
+            updateStatus('test-status', 'Test Instructions:', 'info');
+            
+            const instructions = `
+                <ol>
+                    <li>Make sure WebSocket is connected (green status above)</li>
+                    <li>Open the post in a new tab: <a href="${postUrl}" target="_blank">${postUrl}</a></li>
+                    <li>Click the "Buy" button on the post</li>
+                    <li>Complete the wallet transaction</li>
+                    <li>Watch this page for the WebSocket event</li>
+                    <li>Check if the post content becomes visible WITHOUT page reload</li>
+                </ol>
+                <p><strong>Expected result:</strong> You should see a "post-purchased" event in the logs below, and the post content should unlock immediately.</p>
+            `;
+            
+            document.getElementById('test-status').innerHTML = instructions;
+            
+            log('Test started. Waiting for purchase...', 'info');
+        }
+        
+        // Auto-connect on load if JWT exists
+        window.onload = async () => {
+            try {
+                const token = await getJWT();
+                if (token) {
+                    log('JWT token found, auto-connecting...', 'info');
+                    connectWebSocket();
+                }
+            } catch (e) {
+                log('No JWT token found. Please login to Fonana first.', 'warning');
+            }
+        };
+    </script>
+</body>
+</html> 
