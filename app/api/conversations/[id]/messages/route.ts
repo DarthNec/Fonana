@@ -145,10 +145,7 @@ export async function POST(
     
     // Проверяем, что чат существует
     const conversation = await prisma.conversation.findUnique({
-      where: { id: conversationId },
-      include: {
-        participants: true
-      }
+      where: { id: conversationId }
     })
     
     if (!conversation) {
@@ -187,8 +184,16 @@ export async function POST(
       data: { lastMessageAt: new Date() }
     })
     
+    // Получаем участников чата для создания уведомления
+    const conversationWithParticipants = await prisma.conversation.findUnique({
+      where: { id: conversationId },
+      include: {
+        participants: true
+      }
+    })
+    
     // Создаем уведомление для получателя
-    const recipient = conversation.participants.find((p: any) => p.id !== user.id)
+    const recipient = conversationWithParticipants?.participants.find((p: any) => p.id !== user.id)
     if (recipient) {
       await prisma.notification.create({
         data: {
