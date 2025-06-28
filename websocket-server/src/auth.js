@@ -5,11 +5,16 @@ const JWT_SECRET = process.env.NEXTAUTH_SECRET || 'your-secret-key';
 
 async function verifyToken(token) {
   try {
+    console.log('🔍 Verifying token...');
+    console.log('JWT_SECRET:', JWT_SECRET ? 'SET' : 'NOT SET');
+    
     // Декодируем JWT токен
     const decoded = jwt.verify(token, JWT_SECRET, {
       issuer: 'fonana.me',
       audience: 'fonana-websocket'
     });
+    
+    console.log('✅ Token decoded:', { userId: decoded.userId, sub: decoded.sub });
     
     // Проверяем наличие userId в токене
     if (!decoded.userId && !decoded.sub) {
