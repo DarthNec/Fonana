@@ -86,7 +86,7 @@ git pull origin main
 
 # Step 7: Install dependencies
 echo "📦 Installing dependencies..."
-npm ci --production
+npm ci
 
 # Step 8: Run database migrations
 echo "🗄️  Running database migrations..."
@@ -99,6 +99,10 @@ npx prisma generate
 # Step 10: Build application
 echo "🔨 Building application..."
 npm run build
+
+# Step 10.5: Optimize for production (remove dev dependencies after build)
+echo "🧹 Optimizing for production..."
+npm prune --production
 
 # Step 11: Start application with PM2
 echo "🚀 Starting application..."
