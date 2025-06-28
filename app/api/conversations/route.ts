@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 
@@ -26,26 +25,30 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'User not found' }, { status: 404 })
     }
     
-    // Получаем все чаты пользователя
+    // Получаем все чаты пользователя используя raw query для обхода проблем с типами
     console.log('[Conversations API] Fetching conversations...')
+    
+    // Сначала получаем ID всех conversations где участвует пользователь
+    const conversationIds = await prisma.$queryRaw<{conversation_id: string}[]>`
+      SELECT "A" as conversation_id 
+      FROM "_UserConversations" 
+      WHERE "B" = ${user.id}
+    `
+    console.log('[Conversations API] Found conversation IDs:', conversationIds.length)
+    
+    if (conversationIds.length === 0) {
+      console.log('[Conversations API] No conversations found for user')
+      return NextResponse.json({ conversations: [] })
+    }
+    
+    // Теперь получаем полные данные conversations
     const conversations = await prisma.conversation.findMany({
       where: {
-        participants: {
-          some: {
-            id: user.id
-          }
+        id: {
+          in: conversationIds.map(c => c.conversation_id)
         }
       },
       include: {
-        participants: {
-          select: {
-            id: true,
-            wallet: true,
-            nickname: true,
-            fullName: true,
-            avatar: true
-          }
-        },
         messages: {
           orderBy: { createdAt: 'desc' },
           take: 1,
@@ -68,16 +71,31 @@ export async function GET(request: NextRequest) {
         lastMessageAt: 'desc'
       }
     })
-    console.log('[Conversations API] Found conversations:', conversations.length)
+    console.log('[Conversations API] Found conversations with details:', conversations.length)
+    
+    // Получаем участников для каждого conversation
+    const conversationsWithParticipants = await Promise.all(
+      conversations.map(async (conv) => {
+        // Получаем участников через raw query
+        const participants = await prisma.$queryRaw<{id: string, wallet: string | null, nickname: string | null, fullName: string | null, avatar: string | null}[]>`
+          SELECT u.id, u.wallet, u.nickname, u."fullName", u.avatar
+          FROM users u
+          INNER JOIN "_UserConversations" uc ON u.id = uc."B"
+          WHERE uc."A" = ${conv.id}
+        `
+        
+        return {
+          ...conv,
+          participants
+        }
+      })
+    )
     
     // Получаем непрочитанные сообщения для каждого чата
-    const conversationIds = conversations.map((conv: any) => conv.id)
-    console.log('[Conversations API] Getting unread counts for conversation IDs:', conversationIds)
-    
     const unreadCounts = await prisma.message.groupBy({
       by: ['conversationId'],
       where: {
-        conversationId: { in: conversationIds },
+        conversationId: { in: conversations.map(c => c.id) },
         senderId: { not: user.id },
         isRead: false
       },
@@ -94,7 +112,7 @@ export async function GET(request: NextRequest) {
     
     // Форматируем данные
     console.log('[Conversations API] Formatting conversations...')
-    const formattedConversations = conversations.map((conv: any) => {
+    const formattedConversations = conversationsWithParticipants.map((conv: any) => {
       const otherParticipant = conv.participants.find((p: any) => p.id !== user.id)
       const lastMessage = conv.messages[0]
       
@@ -120,7 +138,7 @@ export async function GET(request: NextRequest) {
     
     console.log('[Conversations API] Successfully formatted', formattedConversations.length, 'conversations')
     return NextResponse.json({ conversations: formattedConversations })
-  } catch (error) {
+  } catch (error: any) {
     console.error('[Conversations API] Error details:', error)
     console.error('[Conversations API] Error stack:', error.stack)
     console.error('[Conversations API] Error name:', error.name)
@@ -154,45 +172,63 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'User not found' }, { status: 404 })
     }
     
-    // Проверяем, существует ли уже чат между этими пользователями
-    const existingConversation = await prisma.conversation.findFirst({
-      where: {
-        AND: [
-          { participants: { some: { id: user.id } } },
-          { participants: { some: { id: participant.id } } }
-        ]
-      }
-    })
+    // Проверяем, существует ли уже чат между этими пользователями через raw query
+    const existingConversations = await prisma.$queryRaw<{conversation_id: string}[]>`
+      SELECT DISTINCT c1."A" as conversation_id
+      FROM "_UserConversations" c1
+      INNER JOIN "_UserConversations" c2 ON c1."A" = c2."A"
+      WHERE c1."B" = ${user.id} AND c2."B" = ${participant.id}
+      LIMIT 1
+    `
     
-    if (existingConversation) {
-      return NextResponse.json({ conversation: existingConversation })
+    if (existingConversations.length > 0) {
+      const existingConversation = await prisma.conversation.findUnique({
+        where: { id: existingConversations[0].conversation_id }
+      })
+      
+      // Получаем участников
+      const participants = await prisma.$queryRaw<{id: string, wallet: string | null, nickname: string | null, fullName: string | null, avatar: string | null}[]>`
+        SELECT u.id, u.wallet, u.nickname, u."fullName", u.avatar
+        FROM users u
+        INNER JOIN "_UserConversations" uc ON u.id = uc."B"
+        WHERE uc."A" = ${existingConversations[0].conversation_id}
+      `
+      
+      return NextResponse.json({ 
+        conversation: {
+          ...existingConversation,
+          participants
+        }
+      })
     }
     
     // Создаем новый чат
     const conversation = await prisma.conversation.create({
-      data: {
-        participants: {
-          connect: [
-            { id: user.id },
-            { id: participant.id }
-          ]
-        }
-      },
-      include: {
-        participants: {
-          select: {
-            id: true,
-            wallet: true,
-            nickname: true,
-            fullName: true,
-            avatar: true
-          }
-        }
-      }
+      data: {}
     })
     
-    return NextResponse.json({ conversation })
-  } catch (error) {
+    // Добавляем участников через raw query
+    await prisma.$executeRaw`
+      INSERT INTO "_UserConversations" ("A", "B")
+      VALUES 
+        (${conversation.id}, ${user.id}),
+        (${conversation.id}, ${participant.id})
+    `
+    
+    // Получаем участников для ответа
+    const participants = await prisma.$queryRaw<{id: string, wallet: string | null, nickname: string | null, fullName: string | null, avatar: string | null}[]>`
+      SELECT u.id, u.wallet, u.nickname, u."fullName", u.avatar
+      FROM users u
+      WHERE u.id IN (${user.id}, ${participant.id})
+    `
+    
+    return NextResponse.json({ 
+      conversation: {
+        ...conversation,
+        participants
+      }
+    })
+  } catch (error: any) {
     console.error('Error creating conversation:', error)
     return NextResponse.json({ error: 'Failed to create conversation' }, { status: 500 })
   }

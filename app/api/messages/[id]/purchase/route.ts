@@ -1,8 +1,8 @@
-// @ts-nocheck
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { waitForTransactionConfirmation } from '@/lib/solana/validation'
 
+// Purchase a paid message
 export async function POST(
   request: NextRequest,
   { params }: { params: { id: string } }
@@ -15,15 +15,13 @@ export async function POST(
     }
     
     const messageId = params.id
-    const { txSignature, price } = await request.json()
+    const { txSignature } = await request.json()
     
     if (!txSignature) {
       return NextResponse.json({ error: 'Transaction signature required' }, { status: 400 })
     }
     
-    console.log('Purchasing message:', { messageId, txSignature, price })
-    
-    // Получаем пользователя
+    // Get user
     const user = await prisma.user.findUnique({
       where: { wallet: userWallet }
     })
@@ -32,16 +30,15 @@ export async function POST(
       return NextResponse.json({ error: 'User not found' }, { status: 404 })
     }
     
-    // Получаем сообщение
+    // Get message with conversation
     const message = await prisma.message.findUnique({
       where: { id: messageId },
       include: {
-        sender: true,
-        conversation: {
-          include: {
-            participants: {
-              select: { id: true }
-            }
+        conversation: true,
+        sender: {
+          select: {
+            id: true,
+            wallet: true
           }
         }
       }
@@ -51,18 +48,22 @@ export async function POST(
       return NextResponse.json({ error: 'Message not found' }, { status: 404 })
     }
     
-    // Проверяем, что пользователь участник чата
-    const isParticipant = message.conversation.participants.some((p: any) => p.id === user.id)
-    if (!isParticipant) {
-      return NextResponse.json({ error: 'Access denied' }, { status: 403 })
-    }
-    
-    // Проверяем, что сообщение платное
     if (!message.isPaid || !message.price) {
       return NextResponse.json({ error: 'Message is not paid' }, { status: 400 })
     }
     
-    // Проверяем, не куплено ли уже
+    // Check if user is participant of the conversation using raw query
+    const isParticipant = await prisma.$queryRaw<{count: bigint}[]>`
+      SELECT COUNT(*) as count
+      FROM "_UserConversations"
+      WHERE "A" = ${message.conversationId} AND "B" = ${user.id}
+    `
+    
+    if (!isParticipant[0] || Number(isParticipant[0].count) === 0) {
+      return NextResponse.json({ error: 'Access denied' }, { status: 403 })
+    }
+    
+    // Check if already purchased
     const existingPurchase = await prisma.messagePurchase.findUnique({
       where: {
         messageId_userId: {
@@ -76,16 +77,14 @@ export async function POST(
       return NextResponse.json({ error: 'Message already purchased' }, { status: 400 })
     }
     
-    // Ждём подтверждения транзакции (как в рабочих подписках)
-    console.log('Waiting for transaction confirmation:', txSignature)
-    const isConfirmed = await waitForTransactionConfirmation(txSignature)
+    // Confirm transaction
+    const txConfirmed = await waitForTransactionConfirmation(txSignature)
     
-    if (!isConfirmed) {
-      console.error('Transaction not confirmed:', txSignature)
+    if (!txConfirmed) {
       return NextResponse.json({ error: 'Transaction not confirmed' }, { status: 400 })
     }
     
-    // Создаем запись о покупке
+    // Create purchase record
     const purchase = await prisma.messagePurchase.create({
       data: {
         messageId,
@@ -95,29 +94,25 @@ export async function POST(
       }
     })
     
-    // Создаем транзакцию для истории
-    await prisma.transaction.create({
-      data: {
-        type: 'MESSAGE_PURCHASE',
-        senderId: user.id,
-        receiverId: message.senderId,
-        amount: message.price,
-        txSignature,
-        status: 'CONFIRMED',
-        fromWallet: userWallet,
-        toWallet: message.sender.wallet!
+    // Get full message data for response
+    const fullMessage = await prisma.message.findUnique({
+      where: { id: messageId },
+      include: {
+        sender: {
+          select: {
+            id: true,
+            wallet: true,
+            nickname: true,
+            fullName: true,
+            avatar: true
+          }
+        }
       }
     })
     
-    // Возвращаем разблокированное сообщение
     return NextResponse.json({ 
       purchase,
-      message: {
-        id: message.id,
-        content: message.content,
-        mediaUrl: message.mediaUrl,
-        mediaType: message.mediaType
-      }
+      message: fullMessage
     })
   } catch (error) {
     console.error('Error purchasing message:', error)

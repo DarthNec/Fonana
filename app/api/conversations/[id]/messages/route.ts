@@ -1,8 +1,7 @@
-// @ts-nocheck
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 
-// Получение сообщений чата
+// Получение сообщений
 export async function GET(
   request: NextRequest,
   { params }: { params: { id: string } }
@@ -15,11 +14,8 @@ export async function GET(
     }
     
     const conversationId = params.id
-    const searchParams = request.nextUrl.searchParams
-    const limit = parseInt(searchParams.get('limit') || '50')
-    const before = searchParams.get('before') // для пагинации
     
-    // Проверяем, что пользователь участник чата
+    // Получаем пользователя
     const user = await prisma.user.findUnique({
       where: { wallet: userWallet }
     })
@@ -28,71 +24,42 @@ export async function GET(
       return NextResponse.json({ error: 'User not found' }, { status: 404 })
     }
     
-    // Проверяем, что чат существует
-    const conversation = await prisma.conversation.findUnique({
-      where: { id: conversationId }
-    })
+    // Проверяем что пользователь участник чата через raw query
+    const isParticipant = await prisma.$queryRaw<{count: bigint}[]>`
+      SELECT COUNT(*) as count
+      FROM "_UserConversations"
+      WHERE "A" = ${conversationId} AND "B" = ${user.id}
+    `
     
-    if (!conversation) {
-      return NextResponse.json({ error: 'Conversation not found' }, { status: 404 })
+    if (!isParticipant[0] || Number(isParticipant[0].count) === 0) {
+      return NextResponse.json({ error: 'Access denied' }, { status: 403 })
     }
-    
-    // TODO: В будущем добавить проверку что пользователь является участником чата
-    // Сейчас обходим проблему с типами Prisma на продакшн сервере
     
     // Получаем сообщения
     const messages = await prisma.message.findMany({
-      where: {
-        conversationId,
-        ...(before && { createdAt: { lt: new Date(before) } })
-      },
+      where: { conversationId },
+      orderBy: { createdAt: 'desc' },
       include: {
         sender: {
           select: {
             id: true,
+            wallet: true,
             nickname: true,
             fullName: true,
             avatar: true
           }
         },
         purchases: {
-          select: { 
+          where: { userId: user.id },
+          select: {
             id: true,
-            userId: true 
+            createdAt: true
           }
         }
-      },
-      orderBy: { createdAt: 'desc' },
-      take: limit
-    })
-    
-    // Форматируем сообщения
-    const formattedMessages = messages.map((msg: any) => {
-      const isOwn = msg.senderId === user.id
-      const isPurchasedByMe = msg.purchases.some((p: any) => p.userId === user.id)
-      
-      return {
-        id: msg.id,
-        content: msg.isPaid && !isPurchasedByMe && !isOwn
-          ? null // Скрываем контент платных сообщений только если не автор и не куплено
-          : msg.content,
-        mediaUrl: msg.isPaid && !isPurchasedByMe && !isOwn
-          ? null // Скрываем медиа платных сообщений только если не автор и не куплено
-          : msg.mediaUrl,
-        mediaType: msg.mediaType,
-        isPaid: msg.isPaid,
-        price: msg.price,
-        isPurchased: isPurchasedByMe,
-        purchases: isOwn ? msg.purchases : [], // Отправитель видит все покупки
-        sender: msg.sender,
-        isOwn,
-        isRead: msg.isRead,
-        createdAt: msg.createdAt,
-        metadata: msg.metadata as any
       }
     })
     
-    // Отмечаем сообщения как прочитанные
+    // Помечаем сообщения как прочитанные
     await prisma.message.updateMany({
       where: {
         conversationId,
@@ -102,10 +69,16 @@ export async function GET(
       data: { isRead: true }
     })
     
-    return NextResponse.json({ 
-      messages: formattedMessages.reverse(),
-      hasMore: messages.length === limit
-    })
+    // Форматируем сообщения
+    const formattedMessages = messages.map((message: any) => ({
+      ...message,
+      content: message.isPaid && message.purchases.length === 0 
+        ? null 
+        : message.content,
+      isPurchased: message.purchases.length > 0
+    }))
+    
+    return NextResponse.json({ messages: formattedMessages })
   } catch (error) {
     console.error('Error fetching messages:', error)
     return NextResponse.json({ error: 'Failed to fetch messages' }, { status: 500 })
@@ -125,8 +98,9 @@ export async function POST(
     }
     
     const conversationId = params.id
-    const { content, mediaUrl, mediaType, isPaid, price } = await request.json()
+    const { content, mediaUrl, mediaType, isPaid, price, metadata } = await request.json()
     
+    // Валидация
     if (!content && !mediaUrl) {
       return NextResponse.json({ error: 'Message content or media required' }, { status: 400 })
     }
@@ -135,7 +109,7 @@ export async function POST(
       return NextResponse.json({ error: 'Valid price required for paid messages' }, { status: 400 })
     }
     
-    // Получаем пользователя и проверяем участие в чате
+    // Получаем пользователя
     const user = await prisma.user.findUnique({
       where: { wallet: userWallet }
     })
@@ -153,8 +127,16 @@ export async function POST(
       return NextResponse.json({ error: 'Conversation not found' }, { status: 404 })
     }
     
-    // TODO: В будущем добавить проверку что пользователь является участником чата
-    // Сейчас обходим проблему с типами Prisma на продакшн сервере
+    // Проверяем что пользователь участник чата через raw query
+    const isParticipant = await prisma.$queryRaw<{count: bigint}[]>`
+      SELECT COUNT(*) as count
+      FROM "_UserConversations"
+      WHERE "A" = ${conversationId} AND "B" = ${user.id}
+    `
+    
+    if (!isParticipant[0] || Number(isParticipant[0].count) === 0) {
+      return NextResponse.json({ error: 'Access denied' }, { status: 403 })
+    }
     
     // Создаем сообщение
     const message = await prisma.message.create({
@@ -165,12 +147,14 @@ export async function POST(
         mediaUrl,
         mediaType,
         isPaid: isPaid || false,
-        price: isPaid ? price : null
+        price: isPaid ? price : null,
+        metadata
       },
       include: {
         sender: {
           select: {
             id: true,
+            wallet: true,
             nickname: true,
             fullName: true,
             avatar: true
@@ -185,34 +169,37 @@ export async function POST(
       data: { lastMessageAt: new Date() }
     })
     
-    // Для создания уведомления предположим что в чате всегда 2 участника
-    // TODO: В будущем нужно получить всех участников чата
-    // Сейчас просто создаем уведомление без проверки получателя
+    // Получаем участников чата для создания уведомления
+    const participants = await prisma.$queryRaw<{id: string}[]>`
+      SELECT "B" as id
+      FROM "_UserConversations"
+      WHERE "A" = ${conversationId} AND "B" != ${user.id}
+    `
     
-    // Создаем уведомление (в будущем нужно определить правильного получателя)
-    try {
-      // Пока пропускаем создание уведомления из-за проблем с типами
-      // await prisma.notification.create({...})
-    } catch (e) {
-      // Игнорируем ошибки создания уведомления
+    // Создаем уведомление для получателя
+    if (participants.length > 0) {
+      const recipient = participants[0]
+      await prisma.notification.create({
+        data: {
+          userId: recipient.id,
+          type: 'NEW_MESSAGE',
+          title: 'New message',
+          message: isPaid 
+            ? `${user.nickname || 'User'} sent you a paid message (${price} SOL)`
+            : `${user.nickname || 'User'}: ${content?.substring(0, 50) || 'Sent a media'}`,
+          metadata: {
+            conversationId,
+            messageId: message.id,
+            senderId: user.id,
+            senderName: user.nickname || 'User',
+            isPaid,
+            price
+          }
+        }
+      })
     }
     
-    return NextResponse.json({ 
-      message: {
-        id: message.id,
-        content: message.content,
-        mediaUrl: message.mediaUrl,
-        mediaType: message.mediaType,
-        isPaid: message.isPaid,
-        price: message.price,
-        sender: message.sender,
-        isOwn: true,
-        isPurchased: false,
-        isRead: false,
-        createdAt: message.createdAt,
-        metadata: message.metadata as any
-      }
-    })
+    return NextResponse.json({ message })
   } catch (error) {
     console.error('Error sending message:', error)
     return NextResponse.json({ error: 'Failed to send message' }, { status: 500 })
