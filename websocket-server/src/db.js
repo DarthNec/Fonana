@@ -28,7 +28,15 @@ async function initPrisma() {
   }
 }
 
+// Функция для получения инициализированного prisma
+function getPrisma() {
+  if (!prisma) {
+    throw new Error('Prisma not initialized. Call initPrisma() first.');
+  }
+  return prisma;
+}
+
 module.exports = {
-  prisma,
+  getPrisma,
   initPrisma
 }; 
