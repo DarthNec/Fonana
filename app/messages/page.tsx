@@ -11,8 +11,7 @@ import {
 } from '@heroicons/react/24/outline'
 import Link from 'next/link'
 import OptimizedImage from '@/components/OptimizedImage'
-// @ts-ignore
-import formatDistanceToNow from 'date-fns/formatDistanceToNow'
+import { formatDistanceToNow } from 'date-fns/formatDistanceToNow'
 
 interface Conversation {
   id: string
