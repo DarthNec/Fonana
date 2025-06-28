@@ -37,6 +37,7 @@ export async function GET(
     }
     
     // Проверяем, что пользователь участник чата через отдельный запрос
+    // @ts-ignore - обход проблемы с типами Prisma
     const participantCheck = await prisma.conversation.findFirst({
       where: {
         id: conversationId,
@@ -157,6 +158,7 @@ export async function POST(
     }
     
     // Проверяем, что чат существует и пользователь участник
+    // @ts-ignore - обход проблемы с типами Prisma
     const conversation = await prisma.conversation.findFirst({
       where: {
         id: conversationId,
