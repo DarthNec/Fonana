@@ -9,7 +9,8 @@ module.exports = {
     env: {
       NODE_ENV: 'production',
       PORT: 3002,
-      WS_PORT: 3002
+      WS_PORT: 3002,
+      NEXTAUTH_SECRET: 'your-secret-key'
     },
     env_file: './.env',
     error_file: '../logs/ws-error.log',
