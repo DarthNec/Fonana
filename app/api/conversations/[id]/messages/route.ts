@@ -185,15 +185,19 @@ export async function POST(
     })
     
     // Получаем участников чата для создания уведомления
-    const conversationWithParticipants = await prisma.conversation.findUnique({
-      where: { id: conversationId },
-      include: {
-        participants: true
+    // Используем отдельный запрос для обхода проблем с типами
+    const participants = await prisma.user.findMany({
+      where: {
+        conversations: {
+          some: {
+            id: conversationId
+          }
+        }
       }
     })
     
     // Создаем уведомление для получателя
-    const recipient = conversationWithParticipants?.participants.find((p: any) => p.id !== user.id)
+    const recipient = participants.find((p: any) => p.id !== user.id)
     if (recipient) {
       await prisma.notification.create({
         data: {
