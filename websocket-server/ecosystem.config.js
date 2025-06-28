@@ -10,7 +10,8 @@ module.exports = {
       NODE_ENV: 'production',
       PORT: 3002,
       WS_PORT: 3002,
-      NEXTAUTH_SECRET: 'your-secret-key'
+      NEXTAUTH_SECRET: 'your-secret-key',
+      DATABASE_URL: 'postgresql://postgres:postgres@localhost:5432/fonana_dev?schema=public'
     },
     env_file: './.env',
     error_file: '../logs/ws-error.log',
