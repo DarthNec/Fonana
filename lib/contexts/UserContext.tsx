@@ -1,6 +1,6 @@
 'use client'
 
-import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react'
+import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode, useRef } from 'react'
 import { useWallet } from '@solana/wallet-adapter-react'
 import { useRouter } from 'next/navigation'
 
@@ -70,6 +70,8 @@ export function UserContextProvider({ children }: { children: ReactNode }) {
   const [isLoading, setIsLoading] = useState(false)
   const [showProfileForm, setShowProfileForm] = useState(false)
   const [error, setError] = useState<Error | null>(null)
+  const [retryAttempt, setRetryAttempt] = useState(0)
+  const cacheTimestampRef = useRef<number>(0)
 
   // Загрузка кешированных данных при монтировании
   useEffect(() => {
@@ -278,11 +280,30 @@ export function UserContextProvider({ children }: { children: ReactNode }) {
     }
   }
 
-  const refreshUser = useCallback(() => {
-    if (publicKey && connected) {
-      createOrGetUser(publicKey.toString())
+  const refreshUser = useCallback(async () => {
+    if (connected && publicKey) {
+      await createOrGetUser(publicKey.toString())
+    } else {
+      // Попробуем загрузить из кеша
+      const wallet = localStorage.getItem('fonana_user_wallet')
+      if (wallet) {
+        await createOrGetUser(wallet)
+      }
     }
-  }, [publicKey, connected])
+  }, [connected, publicKey])
+  
+  // Делаем refreshUser доступным глобально для утилит
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      (window as any).__refreshUser = refreshUser
+    }
+    
+    return () => {
+      if (typeof window !== 'undefined') {
+        delete (window as any).__refreshUser
+      }
+    }
+  }, [refreshUser])
 
   const value: UserContextValue = {
     user,

@@ -1,11 +1,56 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { getUserByWallet } from '@/lib/db'
+import jwt from 'jsonwebtoken'
 
 // WebSocket события  
-import { sendNotification } from '@/websocket-server/src/events/notifications'
+import { sendNotification } from '@/lib/services/websocket-client'
 
 export const dynamic = 'force-dynamic'
+
+const JWT_SECRET = process.env.NEXTAUTH_SECRET || 'your-secret-key'
+
+// Вспомогательная функция для получения пользователя из запроса
+async function getUserFromRequest(req: NextRequest) {
+  const { searchParams } = new URL(req.url)
+  
+  // 1. Проверяем JWT токен в заголовке Authorization
+  const authHeader = req.headers.get('authorization')
+  if (authHeader && authHeader.startsWith('Bearer ')) {
+    const token = authHeader.substring(7)
+    try {
+      const decoded = jwt.verify(token, JWT_SECRET, {
+        issuer: 'fonana.me',
+        audience: 'fonana-websocket'
+      }) as any
+      
+      if (decoded.userId) {
+        const user = await prisma.user.findUnique({
+          where: { id: decoded.userId }
+        })
+        if (user) {
+          return user
+        }
+      }
+    } catch (error) {
+      console.log('[Notifications] Invalid JWT token:', error)
+    }
+  }
+  
+  // 2. Fallback: проверяем wallet в заголовках
+  let wallet = req.headers.get('x-user-wallet')
+  
+  // 3. Fallback: проверяем wallet в query параметрах
+  if (!wallet) {
+    wallet = searchParams.get('wallet')
+  }
+  
+  if (!wallet) {
+    return null
+  }
+  
+  return getUserByWallet(wallet)
+}
 
 // POST /api/user/notifications - создать новое уведомление
 export async function POST(req: NextRequest) {
@@ -35,13 +80,12 @@ export async function POST(req: NextRequest) {
     // Отправляем WebSocket событие
     try {
       await sendNotification(userId, {
-        type: 'notification',
-        notification: {
+        type: notification.type,
+        title: notification.title,
+        message: notification.message,
+        metadata: {
+          ...notification.metadata as any,
           id: notification.id,
-          type: notification.type,
-          title: notification.title,
-          message: notification.message,
-          metadata: notification.metadata,
           isRead: notification.isRead,
           createdAt: notification.createdAt
         }
@@ -64,17 +108,12 @@ export async function POST(req: NextRequest) {
 export async function GET(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url)
-    const wallet = searchParams.get('wallet')
     const unreadOnly = searchParams.get('unreadOnly') === 'true'
     const limit = parseInt(searchParams.get('limit') || '20')
     
-    if (!wallet) {
-      return NextResponse.json({ error: 'Wallet required' }, { status: 400 })
-    }
-    
-    const user = await getUserByWallet(wallet)
+    const user = await getUserFromRequest(req)
     if (!user) {
-      return NextResponse.json({ error: 'User not found' }, { status: 404 })
+      return NextResponse.json({ error: 'Authentication required' }, { status: 401 })
     }
     
     const where = {
@@ -109,16 +148,9 @@ export async function GET(req: NextRequest) {
 // PUT /api/user/notifications - пометить уведомления как прочитанные
 export async function PUT(req: NextRequest) {
   try {
-    const { searchParams } = new URL(req.url)
-    const wallet = searchParams.get('wallet')
-    
-    if (!wallet) {
-      return NextResponse.json({ error: 'Wallet required' }, { status: 400 })
-    }
-    
-    const user = await getUserByWallet(wallet)
+    const user = await getUserFromRequest(req)
     if (!user) {
-      return NextResponse.json({ error: 'User not found' }, { status: 404 })
+      return NextResponse.json({ error: 'Authentication required' }, { status: 401 })
     }
     
     const body = await req.json()
@@ -159,16 +191,11 @@ export async function PUT(req: NextRequest) {
 export async function DELETE(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url)
-    const wallet = searchParams.get('wallet')
     const notificationId = searchParams.get('id')
     
-    if (!wallet) {
-      return NextResponse.json({ error: 'Wallet required' }, { status: 400 })
-    }
-    
-    const user = await getUserByWallet(wallet)
+    const user = await getUserFromRequest(req)
     if (!user) {
-      return NextResponse.json({ error: 'User not found' }, { status: 404 })
+      return NextResponse.json({ error: 'Authentication required' }, { status: 401 })
     }
     
     if (notificationId) {
@@ -193,5 +220,61 @@ export async function DELETE(req: NextRequest) {
   } catch (error) {
     console.error('Error deleting notifications:', error)
     return NextResponse.json({ error: 'Failed to delete notifications' }, { status: 500 })
+  }
+}
+
+// PATCH /api/user/notifications - обновить уведомления (для совместимости с клиентом)
+export async function PATCH(req: NextRequest) {
+  try {
+    const user = await getUserFromRequest(req)
+    if (!user) {
+      return NextResponse.json({ error: 'Authentication required' }, { status: 401 })
+    }
+    
+    const body = await req.json()
+    const { notificationId, isRead, markAllAsRead } = body
+    
+    if (markAllAsRead) {
+      // Помечаем все уведомления как прочитанные
+      await prisma.notification.updateMany({
+        where: {
+          userId: user.id,
+          isRead: false
+        },
+        data: {
+          isRead: true
+        }
+      })
+    } else if (notificationId && typeof isRead === 'boolean') {
+      // Помечаем конкретное уведомление
+      await prisma.notification.updateMany({
+        where: {
+          id: notificationId,
+          userId: user.id
+        },
+        data: {
+          isRead
+        }
+      })
+      
+      // Отправляем WebSocket событие о прочтении
+      if (isRead) {
+        try {
+          await sendNotification(user.id, {
+            type: 'notification_read',
+            title: 'Уведомление прочитано',
+            message: '',
+            metadata: { notificationId }
+          })
+        } catch (error) {
+          console.error('WebSocket notification failed:', error)
+        }
+      }
+    }
+    
+    return NextResponse.json({ success: true })
+  } catch (error) {
+    console.error('Error updating notification:', error)
+    return NextResponse.json({ error: 'Failed to update notification' }, { status: 500 })
   }
 } 

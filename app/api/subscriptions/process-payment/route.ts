@@ -8,8 +8,7 @@ import { notifyNewSubscriber } from '@/lib/notifications'
 import { DEFAULT_TIER_PRICES } from '@/lib/constants/tiers'
 
 // WebSocket события
-import { notifyNewSubscription } from '@/websocket-server/src/events/creators'
-import { sendNotification } from '@/websocket-server/src/events/notifications'
+import { notifyNewSubscription, sendNotification } from '@/lib/services/websocket-client'
 
 export async function POST(request: Request) {
   const startTime = Date.now()

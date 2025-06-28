@@ -3,8 +3,7 @@ import { prisma } from '@/lib/prisma'
 import { notifyPostLike } from '@/lib/notifications'
 
 // WebSocket события
-import { updatePostLikes } from '@/websocket-server/src/events/posts'
-import { sendNotification } from '@/websocket-server/src/events/notifications'
+import { updatePostLikes, sendNotification } from '@/lib/services/websocket-client'
 
 export async function GET(
   request: NextRequest,
@@ -100,11 +99,7 @@ export async function POST(
 
       // Отправляем WebSocket событие об удалении лайка
       try {
-        await updatePostLikes(params.id, {
-          isLiked: false,
-          likesCount: post.likesCount - 1,
-          userId
-        })
+        await updatePostLikes(params.id, post.likesCount - 1)
       } catch (error) {
         console.error('WebSocket notification failed:', error)
       }
@@ -166,11 +161,7 @@ export async function POST(
 
       // Отправляем WebSocket событие о новом лайке
       try {
-        await updatePostLikes(params.id, {
-          isLiked: true,
-          likesCount: post.likesCount + 1,
-          userId
-        })
+        await updatePostLikes(params.id, post.likesCount + 1)
       } catch (error) {
         console.error('WebSocket notification failed:', error)
       }

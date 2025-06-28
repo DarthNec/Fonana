@@ -1,5 +1,7 @@
 'use client'
 
+import { getJWTToken } from '@/lib/utils/jwt'
+
 export type WebSocketEvent = 
   | { type: 'creator_updated'; creatorId: string; data: any }
   | { type: 'new_subscription'; creatorId: string; userId: string }
@@ -89,60 +91,95 @@ class WebSocketService extends EventEmitter {
     }
 
     this.isConnecting = true
-    const wsUrl = url || this.getWebSocketUrl()
-
-    try {
-      this.ws = new WebSocket(wsUrl)
-
-      this.ws.onopen = () => {
-        console.log('WebSocket connected')
+    
+    // Асинхронная функция для получения URL с токеном
+    this.getWebSocketUrlWithAuth(url).then(wsUrl => {
+      if (!wsUrl) {
+        console.error('Failed to get WebSocket URL with auth')
         this.isConnecting = false
-        this.reconnectAttempts = 0
-        this.emit('connected')
-        
-        // Переподписываемся на все каналы
-        this.subscribedChannels.forEach((channel) => {
-          this.sendSubscription(channel)
-        })
-
-        // Отправляем накопившиеся сообщения
-        this.processMessageQueue()
+        this.scheduleReconnect()
+        return
       }
 
-      this.ws.onmessage = (event) => {
-        try {
-          const data = JSON.parse(event.data) as WebSocketEvent
+      try {
+        this.ws = new WebSocket(wsUrl)
+
+        this.ws.onopen = () => {
+          console.log('WebSocket connected')
+          this.isConnecting = false
+          this.reconnectAttempts = 0
+          this.emit('connected')
           
-          // Защита от слишком частых событий
-          this.throttleEvent(data.type, () => {
-            this.emit(data.type, data)
+          // Переподписываемся на все каналы
+          this.subscribedChannels.forEach((channel) => {
+            this.sendSubscription(channel)
           })
-        } catch (error) {
-          console.error('Error parsing WebSocket message:', error)
+
+          // Отправляем накопившиеся сообщения
+          this.processMessageQueue()
         }
-      }
 
-      this.ws.onerror = (error) => {
-        console.error('WebSocket error:', error)
-        this.isConnecting = false
-      }
+        this.ws.onmessage = (event) => {
+          try {
+            const data = JSON.parse(event.data) as WebSocketEvent
+            
+            // Защита от слишком частых событий
+            this.throttleEvent(data.type, () => {
+              this.emit(data.type, data)
+            })
+          } catch (error) {
+            console.error('Error parsing WebSocket message:', error)
+          }
+        }
 
-      this.ws.onclose = () => {
-        console.log('WebSocket disconnected')
+        this.ws.onerror = (error) => {
+          console.error('WebSocket error:', error)
+          this.isConnecting = false
+        }
+
+        this.ws.onclose = () => {
+          console.log('WebSocket disconnected')
+          this.isConnecting = false
+          this.ws = null
+          this.emit('disconnected')
+          this.scheduleReconnect()
+        }
+      } catch (error) {
+        console.error('Error creating WebSocket:', error)
         this.isConnecting = false
-        this.ws = null
-        this.emit('disconnected')
         this.scheduleReconnect()
       }
-    } catch (error) {
-      console.error('Error creating WebSocket:', error)
-      this.isConnecting = false
-      this.scheduleReconnect()
+    })
+  }
+
+  private async getWebSocketUrlWithAuth(customUrl?: string): Promise<string | null> {
+    // Если передан кастомный URL, используем его
+    if (customUrl) {
+      return customUrl
     }
+    
+    // В production используем WSS, в development - WS
+    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
+    const host = window.location.host
+    let url = `${protocol}//${host}/ws`
+    
+    // Получаем JWT токен
+    const token = await getJWTToken()
+    
+    if (!token) {
+      console.warn('[WebSocket] No JWT token available, connection may fail')
+      return url
+    }
+    
+    // Добавляем токен как query параметр
+    url += `?token=${encodeURIComponent(token)}`
+    
+    return url
   }
 
   private getWebSocketUrl(): string {
-    // В production используем WSS, в development - WS
+    // Этот метод больше не используется, но оставлен для обратной совместимости
+    console.warn('[WebSocket] getWebSocketUrl is deprecated, use getWebSocketUrlWithAuth')
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
     const host = window.location.host
     return `${protocol}//${host}/ws`

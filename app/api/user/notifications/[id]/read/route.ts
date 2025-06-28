@@ -3,7 +3,7 @@ import { prisma } from '@/lib/prisma'
 import { getUserByWallet } from '@/lib/db'
 
 // WebSocket события
-import { sendNotification } from '@/websocket-server/src/events/notifications'
+import { sendNotification } from '@/lib/services/websocket-client'
 
 // PUT /api/user/notifications/[id]/read - отметить уведомление как прочитанное
 export async function PUT(
@@ -45,7 +45,9 @@ export async function PUT(
     try {
       await sendNotification(user.id, {
         type: 'notification_read',
-        notificationId: params.id
+        title: 'Уведомление прочитано',
+        message: '',
+        metadata: { notificationId: params.id }
       })
     } catch (error) {
       console.error('WebSocket notification failed:', error)
