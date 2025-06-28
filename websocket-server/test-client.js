@@ -2,7 +2,7 @@ const WebSocket = require('ws');
 const { createToken } = require('./src/auth');
 
 // Тестовые данные
-const TEST_USER_ID = 'clvqxqg7w0000ux1wsyc9vdqt'; // Замените на реальный ID из БД
+const TEST_USER_ID = 'cmcceumg7001iyjleslvczux6'; // Реальный ID из БД
 const WS_URL = 'ws://localhost:3002';
 
 async function testWebSocketServer() {
