@@ -1,5 +1,5 @@
 const jwt = require('jsonwebtoken');
-const { prisma } = require('./db');
+const { getPrisma } = require('./db');
 
 const JWT_SECRET = process.env.NEXTAUTH_SECRET || 'your-secret-key';
 
@@ -26,9 +26,12 @@ async function verifyToken(token) {
     
     console.log('🔍 Looking up user in database:', userId);
     
-    // Проверяем подключение к базе данных
-    if (!prisma) {
-      console.error('❌ Prisma client is not initialized');
+    // Получаем инициализированный prisma
+    let prisma;
+    try {
+      prisma = getPrisma();
+    } catch (error) {
+      console.error('❌ Prisma not initialized:', error.message);
       return null;
     }
     
