@@ -29,10 +29,14 @@ export async function GET(
     
     const conversation = await prisma.conversation.findFirst({
       where: {
-        id: conversationId,
-        participants: {
-          some: { id: user.id }
-        }
+        AND: [
+          { id: conversationId },
+          { 
+            participants: {
+              some: { id: user.id }
+            }
+          }
+        ]
       }
     })
     
@@ -146,10 +150,14 @@ export async function POST(
     
     const conversation = await prisma.conversation.findFirst({
       where: {
-        id: conversationId,
-        participants: {
-          some: { id: user.id }
-        }
+        AND: [
+          { id: conversationId },
+          { 
+            participants: {
+              some: { id: user.id }
+            }
+          }
+        ]
       },
       include: {
         participants: true
