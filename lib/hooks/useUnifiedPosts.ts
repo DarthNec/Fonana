@@ -1,17 +1,19 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { UnifiedPost, PostAction } from '@/types/posts'
 import { PostNormalizer } from '@/services/posts/normalizer'
 import { useWallet } from '@solana/wallet-adapter-react'
 import { useUserContext } from '@/lib/contexts/UserContext'
 import toast from 'react-hot-toast'
+import { checkPostAccess, hasAccessToTier } from '@/lib/utils/access'
 
 interface UseUnifiedPostsOptions {
   creatorId?: string
   category?: string
   limit?: number
   variant?: 'feed' | 'profile' | 'creator' | 'search' | 'dashboard'
+  initialPosts?: any[]
 }
 
 interface UseUnifiedPostsReturn {
@@ -33,6 +35,12 @@ export function useUnifiedPosts(options: UseUnifiedPostsOptions = {}): UseUnifie
   const [hasMore, setHasMore] = useState(true)
   const [page, setPage] = useState(1)
   const [error, setError] = useState<Error | null>(null)
+  const postsRef = useRef<UnifiedPost[]>([])
+
+  // Синхронизируем ref с состоянием
+  useEffect(() => {
+    postsRef.current = posts
+  }, [posts])
 
   const fetchPosts = useCallback(async () => {
     try {
@@ -73,6 +81,9 @@ export function useUnifiedPosts(options: UseUnifiedPostsOptions = {}): UseUnifie
 
   // Обработка действий с постами
   const handleAction = useCallback(async (action: PostAction) => {
+    const post = postsRef.current.find(p => p.id === action.postId)
+    if (!post) return
+
     try {
       switch (action.type) {
         case 'like':
@@ -110,7 +121,7 @@ export function useUnifiedPosts(options: UseUnifiedPostsOptions = {}): UseUnifie
       console.error('Action error:', error)
       toast.error('Ошибка выполнения действия')
     }
-  }, [])
+  }, [user?.wallet])
 
   // Лайк поста
   const handleLike = async (postId: string) => {
@@ -321,6 +332,66 @@ export function useUnifiedPosts(options: UseUnifiedPostsOptions = {}): UseUnifie
     
     return null
   }, [user, isUserLoading, publicKey])
+
+  // Обработчик событий обновления подписки
+  const handleSubscriptionUpdate = useCallback((event: CustomEvent) => {
+    const { creatorId: updatedCreatorId } = event.detail
+    
+    // Обновляем посты этого создателя
+    setPosts(prevPosts => prevPosts.map(post => {
+      if (post.creator.id === updatedCreatorId) {
+        // Перезагружаем данные о подписке для этого поста
+        return {
+          ...post,
+          access: {
+            ...post.access,
+            // Сбрасываем флаг блокировки, чтобы перепроверить доступ
+            needsRefresh: true
+          }
+        }
+      }
+      return post
+    }))
+    
+    // Перезагружаем посты через короткий интервал
+    setTimeout(() => {
+      fetchPosts()
+    }, 500)
+  }, [fetchPosts])
+
+  // Обработчик событий покупки поста
+  const handlePostPurchase = useCallback((event: CustomEvent) => {
+    const { postId } = event.detail
+    
+    // Оптимистично обновляем конкретный пост
+    setPosts(prevPosts => prevPosts.map(post => {
+      if (post.id === postId) {
+        return {
+          ...post,
+          access: {
+            ...post.access,
+            isLocked: false,
+            hasPurchased: true
+          }
+        }
+      }
+      return post
+    }))
+  }, [])
+
+  // Подписываемся на события
+  useEffect(() => {
+    const handleSubscriptionUpdateWrapper = (e: Event) => handleSubscriptionUpdate(e as CustomEvent)
+    const handlePostPurchaseWrapper = (e: Event) => handlePostPurchase(e as CustomEvent)
+    
+    window.addEventListener('subscription-updated', handleSubscriptionUpdateWrapper)
+    window.addEventListener('post-purchased', handlePostPurchaseWrapper)
+    
+    return () => {
+      window.removeEventListener('subscription-updated', handleSubscriptionUpdateWrapper)
+      window.removeEventListener('post-purchased', handlePostPurchaseWrapper)
+    }
+  }, [handleSubscriptionUpdate, handlePostPurchase])
 
   return {
     posts,

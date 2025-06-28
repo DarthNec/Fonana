@@ -10,6 +10,7 @@ import SubscribeModal from '@/components/SubscribeModal'
 import PurchaseModal from '@/components/PurchaseModal'
 import EditPostModal from '@/components/EditPostModal'
 import SellablePostModal from '@/components/SellablePostModal'
+import { hasAccessToTier } from '@/lib/utils/access'
 import { 
   SparklesIcon, 
   FireIcon, 
@@ -353,6 +354,31 @@ export default function FeedPage() {
           onSuccess={(data) => {
             setShowSubscribeModal(false)
             
+            // Оптимистичное обновление для подписки
+            if (data?.subscription) {
+              const newTier = data.subscription.plan?.toLowerCase() || 'basic'
+              
+              // Обновляем посты локально
+              const updatedPosts = posts.map(post => {
+                if (post.creator.id === selectedCreator.id) {
+                  const hasAccess = hasAccessToTier(newTier, post.access.tier)
+                  return {
+                    ...post,
+                    access: {
+                      ...post.access,
+                      hasSubscription: true,
+                      userTier: newTier,
+                      isLocked: post.access.isLocked && !hasAccess && !post.access.price
+                    }
+                  }
+                }
+                return post
+              })
+              
+              // Это обновит UI мгновенно (нужно добавить setPosts в хук)
+              // События subscription-updated обработаются автоматически через хук
+            }
+            
             // Проверяем с сервера через небольшую задержку
             setTimeout(() => {
               console.log('[Feed] Checking posts after subscription')
@@ -368,6 +394,12 @@ export default function FeedPage() {
           onClose={() => setShowPurchaseModal(false)}
           onSuccess={(data) => {
             setShowPurchaseModal(false)
+            
+            // Оптимистичное обновление для покупки
+            if (data?.postId) {
+              // События post-purchased обработаются автоматически через хук
+              // Дополнительно можно обновить UI здесь если нужно
+            }
             
             // Затем проверяем с сервера
             setTimeout(() => {
