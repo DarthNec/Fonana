@@ -27,17 +27,23 @@ export async function GET(
       return NextResponse.json({ error: 'User not found' }, { status: 404 })
     }
     
-    const conversation = await prisma.conversation.findFirst({
-      where: {
-        id: conversationId,
+    const conversation = await prisma.conversation.findUnique({
+      where: { id: conversationId },
+      include: {
         participants: {
-          some: { id: user.id }
+          select: { id: true }
         }
       }
     })
     
     if (!conversation) {
       return NextResponse.json({ error: 'Conversation not found' }, { status: 404 })
+    }
+    
+    // Проверяем, что пользователь участник чата
+    const isParticipant = conversation.participants.some((p: any) => p.id === user.id)
+    if (!isParticipant) {
+      return NextResponse.json({ error: 'Access denied' }, { status: 403 })
     }
     
     // Получаем сообщения
@@ -144,13 +150,8 @@ export async function POST(
       return NextResponse.json({ error: 'User not found' }, { status: 404 })
     }
     
-    const conversation = await prisma.conversation.findFirst({
-      where: {
-        id: conversationId,
-        participants: {
-          some: { id: user.id }
-        }
-      },
+    const conversation = await prisma.conversation.findUnique({
+      where: { id: conversationId },
       include: {
         participants: true
       }
@@ -158,6 +159,12 @@ export async function POST(
     
     if (!conversation) {
       return NextResponse.json({ error: 'Conversation not found' }, { status: 404 })
+    }
+    
+    // Проверяем, что пользователь участник чата
+    const isParticipant = conversation.participants.some((p: any) => p.id === user.id)
+    if (!isParticipant) {
+      return NextResponse.json({ error: 'Access denied' }, { status: 403 })
     }
     
     // Создаем сообщение
