@@ -3,23 +3,31 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 
 export async function GET(request: NextRequest) {
+  console.log('[Conversations API] Starting GET request')
+  
   try {
     const userWallet = request.headers.get('x-user-wallet')
+    console.log('[Conversations API] User wallet:', userWallet)
     
     if (!userWallet) {
+      console.log('[Conversations API] No wallet provided')
       return NextResponse.json({ error: 'Wallet not connected' }, { status: 401 })
     }
     
     // Получаем пользователя
+    console.log('[Conversations API] Fetching user by wallet...')
     const user = await prisma.user.findUnique({
       where: { wallet: userWallet }
     })
+    console.log('[Conversations API] User found:', user?.id, user?.nickname)
     
     if (!user) {
+      console.log('[Conversations API] User not found')
       return NextResponse.json({ error: 'User not found' }, { status: 404 })
     }
     
     // Получаем все чаты пользователя
+    console.log('[Conversations API] Fetching conversations...')
     const conversations = await prisma.conversation.findMany({
       where: {
         participants: {
@@ -60,9 +68,12 @@ export async function GET(request: NextRequest) {
         lastMessageAt: 'desc'
       }
     })
+    console.log('[Conversations API] Found conversations:', conversations.length)
     
     // Получаем непрочитанные сообщения для каждого чата
     const conversationIds = conversations.map((conv: any) => conv.id)
+    console.log('[Conversations API] Getting unread counts for conversation IDs:', conversationIds)
+    
     const unreadCounts = await prisma.message.groupBy({
       by: ['conversationId'],
       where: {
@@ -74,6 +85,7 @@ export async function GET(request: NextRequest) {
         id: true
       }
     })
+    console.log('[Conversations API] Unread counts:', unreadCounts.length)
     
     // Создаем map для быстрого доступа к количеству непрочитанных
     const unreadMap = new Map(
@@ -81,6 +93,7 @@ export async function GET(request: NextRequest) {
     )
     
     // Форматируем данные
+    console.log('[Conversations API] Formatting conversations...')
     const formattedConversations = conversations.map((conv: any) => {
       const otherParticipant = conv.participants.find((p: any) => p.id !== user.id)
       const lastMessage = conv.messages[0]
@@ -105,9 +118,13 @@ export async function GET(request: NextRequest) {
       }
     })
     
+    console.log('[Conversations API] Successfully formatted', formattedConversations.length, 'conversations')
     return NextResponse.json({ conversations: formattedConversations })
   } catch (error) {
-    console.error('Error fetching conversations:', error)
+    console.error('[Conversations API] Error details:', error)
+    console.error('[Conversations API] Error stack:', error.stack)
+    console.error('[Conversations API] Error name:', error.name)
+    console.error('[Conversations API] Error message:', error.message)
     return NextResponse.json({ error: 'Failed to fetch conversations' }, { status: 500 })
   }
 }
