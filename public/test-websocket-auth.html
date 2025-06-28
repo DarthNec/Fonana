@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WebSocket Test with JWT</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #1e293b;
+            color: #e2e8f0;
+        }
+        #status {
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 5px;
+            font-weight: bold;
+        }
+        .connected { background-color: #059669; }
+        .disconnected { background-color: #dc2626; }
+        .error { background-color: #ea580c; }
+        #log {
+            background-color: #0f172a;
+            border: 1px solid #334155;
+            padding: 10px;
+            margin: 10px 0;
+            height: 400px;
+            overflow-y: auto;
+            font-family: monospace;
+            font-size: 12px;
+        }
+        .log-entry {
+            margin: 5px 0;
+            padding: 5px;
+            border-left: 3px solid #334155;
+        }
+        .log-sent { border-left-color: #3b82f6; }
+        .log-received { border-left-color: #10b981; }
+        .log-error { border-left-color: #ef4444; }
+        button {
+            background-color: #6366f1;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            margin: 5px;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #818cf8;
+        }
+        button:disabled {
+            background-color: #4b5563;
+            cursor: not-allowed;
+        }
+        input {
+            width: 100%;
+            padding: 8px;
+            margin: 5px 0;
+            background-color: #0f172a;
+            border: 1px solid #334155;
+            color: #e2e8f0;
+            border-radius: 5px;
+        }
+    </style>
+</head>
+<body>
+    <h1>WebSocket Test with JWT Authentication</h1>
+    
+    <div>
+        <label>JWT Token (leave empty to get from localStorage):</label>
+        <input type="text" id="jwtToken" placeholder="Enter JWT token or leave empty">
+    </div>
+    
+    <div>
+        <label>User ID:</label>
+        <input type="text" id="userId" value="cmcceumg7001iyjleslvczux6" placeholder="Enter user ID">
+    </div>
+    
+    <div id="status" class="disconnected">Disconnected</div>
+    
+    <div>
+        <button id="connectBtn" onclick="connect()">Connect</button>
+        <button id="disconnectBtn" onclick="disconnect()" disabled>Disconnect</button>
+        <button id="clearBtn" onclick="clearLog()">Clear Log</button>
+    </div>
+    
+    <div>
+        <button onclick="subscribeToNotifications()" id="subNotifBtn" disabled>Subscribe to Notifications</button>
+        <button onclick="subscribeToFeed()" id="subFeedBtn" disabled>Subscribe to Feed</button>
+        <button onclick="sendPing()" id="pingBtn" disabled>Send Ping</button>
+    </div>
+    
+    <div id="log"></div>
+
+    <script>
+        let ws = null;
+        let reconnectAttempts = 0;
+        const maxReconnectAttempts = 5;
+
+        function log(message, type = 'info') {
+            const logDiv = document.getElementById('log');
+            const entry = document.createElement('div');
+            entry.className = `log-entry log-${type}`;
+            const timestamp = new Date().toISOString().substr(11, 12);
+            entry.textContent = `[${timestamp}] ${message}`;
+            logDiv.appendChild(entry);
+            logDiv.scrollTop = logDiv.scrollHeight;
+        }
+
+        function updateStatus(status, className) {
+            const statusDiv = document.getElementById('status');
+            statusDiv.textContent = status;
+            statusDiv.className = className;
+        }
+
+        function setButtonsState(connected) {
+            document.getElementById('connectBtn').disabled = connected;
+            document.getElementById('disconnectBtn').disabled = !connected;
+            document.getElementById('subNotifBtn').disabled = !connected;
+            document.getElementById('subFeedBtn').disabled = !connected;
+            document.getElementById('pingBtn').disabled = !connected;
+        }
+
+        async function getJWTToken() {
+            // First check if user provided a token
+            const providedToken = document.getElementById('jwtToken').value.trim();
+            if (providedToken) {
+                log('Using provided JWT token', 'info');
+                return providedToken;
+            }
+
+            // Try to get from localStorage
+            const storedToken = localStorage.getItem('fonana_jwt_token');
+            if (storedToken) {
+                log('Using JWT token from localStorage', 'info');
+                return storedToken;
+            }
+
+            log('No JWT token found!', 'error');
+            return null;
+        }
+
+        async function connect() {
+            if (ws && ws.readyState === WebSocket.OPEN) {
+                log('Already connected', 'error');
+                return;
+            }
+
+            const token = await getJWTToken();
+            if (!token) {
+                log('Cannot connect without JWT token', 'error');
+                updateStatus('No JWT Token', 'error');
+                return;
+            }
+
+            const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+            const host = window.location.host;
+            const wsUrl = `${protocol}//${host}/ws?token=${encodeURIComponent(token)}`;
+            
+            log(`Connecting to ${wsUrl.split('?')[0]}...`, 'info');
+            
+            try {
+                ws = new WebSocket(wsUrl);
+                
+                ws.onopen = () => {
+                    log('WebSocket connected!', 'received');
+                    updateStatus('Connected', 'connected');
+                    setButtonsState(true);
+                    reconnectAttempts = 0;
+                };
+
+                ws.onmessage = (event) => {
+                    log(`Received: ${event.data}`, 'received');
+                    
+                    try {
+                        const data = JSON.parse(event.data);
+                        
+                        // Handle specific message types
+                        if (data.type === 'connected') {
+                            log(`Server confirmed connection for user: ${data.data.userId}`, 'received');
+                        } else if (data.type === 'subscribed') {
+                            log(`Subscribed to channel: ${data.data.channelKey}`, 'received');
+                        } else if (data.type === 'error') {
+                            log(`Server error: ${data.data.message}`, 'error');
+                        }
+                    } catch (e) {
+                        log('Failed to parse message', 'error');
+                    }
+                };
+
+                ws.onerror = (error) => {
+                    log(`WebSocket error: ${error.message || 'Unknown error'}`, 'error');
+                    updateStatus('Error', 'error');
+                };
+
+                ws.onclose = (event) => {
+                    log(`WebSocket closed. Code: ${event.code}, Reason: ${event.reason || 'No reason'}`, 'error');
+                    updateStatus('Disconnected', 'disconnected');
+                    setButtonsState(false);
+                    ws = null;
+                    
+                    // Auto-reconnect logic
+                    if (reconnectAttempts < maxReconnectAttempts && event.code !== 1000) {
+                        reconnectAttempts++;
+                        const delay = Math.min(1000 * Math.pow(2, reconnectAttempts - 1), 30000);
+                        log(`Reconnecting in ${delay/1000}s (attempt ${reconnectAttempts}/${maxReconnectAttempts})...`, 'info');
+                        setTimeout(connect, delay);
+                    }
+                };
+            } catch (error) {
+                log(`Failed to create WebSocket: ${error.message}`, 'error');
+                updateStatus('Connection Failed', 'error');
+            }
+        }
+
+        function disconnect() {
+            if (ws) {
+                reconnectAttempts = maxReconnectAttempts; // Prevent auto-reconnect
+                ws.close(1000, 'User disconnect');
+                log('Disconnecting...', 'info');
+            }
+        }
+
+        function send(data) {
+            if (ws && ws.readyState === WebSocket.OPEN) {
+                const message = JSON.stringify(data);
+                ws.send(message);
+                log(`Sent: ${message}`, 'sent');
+            } else {
+                log('WebSocket is not connected', 'error');
+            }
+        }
+
+        function subscribeToNotifications() {
+            const userId = document.getElementById('userId').value;
+            send({
+                type: 'subscribe',
+                channel: {
+                    type: 'notifications',
+                    userId: userId
+                }
+            });
+        }
+
+        function subscribeToFeed() {
+            const userId = document.getElementById('userId').value;
+            send({
+                type: 'subscribe',
+                channel: {
+                    type: 'feed',
+                    userId: userId
+                }
+            });
+        }
+
+        function sendPing() {
+            send({ type: 'ping' });
+        }
+
+        function clearLog() {
+            document.getElementById('log').innerHTML = '';
+        }
+
+        // Auto-connect on page load if JWT token is available
+        window.addEventListener('load', async () => {
+            const token = await getJWTToken();
+            if (token) {
+                log('JWT token found, auto-connecting...', 'info');
+                setTimeout(connect, 1000);
+            } else {
+                log('No JWT token found. Please provide one to connect.', 'error');
+            }
+        });
+    </script>
+</body>
+</html> 
