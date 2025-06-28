@@ -536,13 +536,14 @@ import { useUser } from '@/lib/hooks/useUser' // УДАЛЕН!
 ### 🚀 Creator Data Management (COMPLETED - December 2024)
 - **Core**: `lib/contexts/CreatorContext.tsx` - централизованное управление данными создателя
 - **Hook**: `lib/hooks/useCreatorData.ts` - экспорт хука для удобства
-- **Status**: ✅ ЗАВЕРШЕНО + v2 улучшения (29.12.2024)
+- **Status**: ✅ ЗАВЕРШЕНО + v2 улучшения (29.12.2024) + интеграция с системой доступа (30.12.2024)
 - **Features**:
   - Централизованное управление данными создателя по ID
   - Кеширование данных с TTL на 7 дней
   - Автоматическая повторная загрузка при ошибках
   - Поддержка tierSettings, flashSales, earnings
   - Интеграция с компонентами RevenueChart и FlashSalesList
+  - Real-time обновление доступа через WebSocket события
   
 #### v2 Улучшения (COMPLETED - December 29, 2024)
 - **Оптимистичные обновления**: 
@@ -553,6 +554,7 @@ import { useUser } from '@/lib/hooks/useUser' // УДАЛЕН!
   - Real-time обновления данных создателя
   - Автоматическое переподключение
   - События: профиль, подписки, earnings, flash sales
+  - **НОВОЕ**: События `subscription-updated` и `post-purchased` для мгновенного обновления доступа
 - **Синхронизация между вкладками**:
   - BroadcastChannel API для современных браузеров
   - Fallback на localStorage events
@@ -561,6 +563,19 @@ import { useUser } from '@/lib/hooks/useUser' // УДАЛЕН!
   - Категоризация ошибок (401/403/404/500)
   - Ограниченные retry с экспоненциальной задержкой
   - Понятные сообщения для пользователя
+
+#### Real-time Access Updates (COMPLETED - December 30, 2024)
+- **Проблема**: После апгрейда подписки или покупки поста требовалась перезагрузка страницы
+- **Решение**: Автоматическое обновление доступа через WebSocket события
+- **События**:
+  - `subscription-updated` - при апгрейде/даунгрейде подписки
+  - `post-purchased` - при покупке отдельного поста
+- **Механизм**:
+  1. CreatorContext слушает WebSocket события
+  2. При получении события обновляются данные пользователя
+  3. UI автоматически обновляется без перезагрузки
+  4. Заблокированный контент становится доступным мгновенно
+- **Документация**: См. `SUBSCRIPTION_AND_PURCHASE_ACCESS_FIX.md`
 
 #### Usage Guidelines
 ```typescript
@@ -1203,13 +1218,16 @@ node scripts/check-price-discrepancy.js
 ✅ **COMPLETED & WORKING:**
 - **User State Management** - Полная миграция на UserContext завершена (27.06.2025)
 - **Unified Post System** - Модульная архитектура с единообразным отображением
+- **Creator Data Management** - Централизованное управление через CreatorContext с real-time обновлениями
+- **WebSocket Real-time Layer** - Полностью развернут с JWT аутентификацией (30.12.2024)
+- **Subscription & Access System** - Мгновенное обновление доступа без перезагрузки страницы
 - Personal Messages + PPV (Pay-per-view) - Полностью исправлено 23.01.2025
 - Tips система с Quick Tips в чате - Улучшено 23.01.2025
 - Flash Sales with countdown timers
-- Subscription tiers (3 levels) - настраиваемые создателями
+- Subscription tiers (3 levels) - настраиваемые создателями с real-time доступом
 - Post creation/editing with image crop
-- Solana wallet integration
-- Notification system with sounds
+- Solana wallet integration с JWT сессиями
+- Notification system with sounds и real-time доставкой
 - Comment system with inline display - Добавлено 27.02.2025
 - Creator earnings dashboard with full analytics
 - Dynamic SOL/USD exchange rate
@@ -1227,13 +1245,19 @@ node scripts/check-price-discrepancy.js
 - Hybrid wallet authentication (JWT + Solana)
 - Session persistence without constant wallet connection
 - Async user loading with API fallback for actions
+- Real-time updates via WebSocket (лайки, комментарии, подписки, покупки)
+- Cross-tab synchronization для всех данных
+- Optimistic UI updates для мгновенной отзывчивости
 
-🔄 **IN DEVELOPMENT:**
-- **Creator Data Hook (useCreatorData)** - централизованное управление данными создателей
+⚠️ **KNOWN ISSUES:**
+- Redis не установлен (WebSocket работает в single-server mode)
+- WebSocket сервер имел 16 рестартов (стабилизирован)
+
+📱 **PLANNED FEATURES:**
 - Mobile Wallet Adapter (MWA) integration
 - Live streaming (waiting for user base)
 - Stories (waiting for user base)
-- Advanced search/discovery
+- Push notifications (PWA)
 
 ## Project Structure
 ```
@@ -1484,6 +1508,13 @@ ssh -p 43988 root@69.10.59.234 "pm2 delete all && cd /var/www/fonana && pm2 star
 - ❌ Define tier hierarchies or visual constants locally - use centralized from `lib/constants/`
 - ❌ Hardcode tier prices - use `DEFAULT_TIER_PRICES` from `lib/constants/tiers.ts`
 - ❌ Implement custom access logic - use utilities from `lib/utils/access.ts`
+- ❌ Allow anonymous WebSocket connections - JWT authentication is mandatory
+- ❌ Manually refresh page after subscription/purchase - use real-time events
+- ❌ Update access state manually after payment - CreatorContext handles it automatically
+- ❌ Create WebSocket connections without JWT token - will be rejected
+- ❌ Ignore WebSocket disconnections - implement proper reconnection logic
+- ❌ Store sensitive data in WebSocket messages - use secure API calls
+- ❌ Test real-time features without checking WebSocket connection first
 
 ## Important Constants & Configuration
 
@@ -1661,10 +1692,10 @@ GITHUB_SECRET=...
 - Full TypeScript coverage ensures type safety
 - UserContext is the ONLY way to access user data
 
-### 🔄 Real-time WebSocket Layer (COMPLETED - December 29, 2024)
+### 🔄 Real-time WebSocket Layer (COMPLETED - December 30, 2024)
 - **Core**: `lib/services/websocket.ts` - расширенный WebSocket сервис
-- **Status**: ✅ ЗАВЕРШЕНО (клиентская часть)
-- **Server Status**: ✅ РАЗВЕРНУТ В ПРОДАКШН (27 июня 2025)
+- **Status**: ✅ ПОЛНОСТЬЮ РАЗВЕРНУТ В ПРОДАКШН
+- **Server Status**: ✅ РАБОТАЕТ НА ПОРТУ 3002
 - **Features**:
   - Real-time уведомления с звуковыми оповещениями
   - Обновления ленты постов (лайки, комментарии, новые посты)
@@ -1674,12 +1705,45 @@ GITHUB_SECRET=...
   - Статистика и мониторинг соединения
 
 #### Server Configuration:
-- **Port**: 3002 (WebSocket)
-- **Process**: fonana-ws (PM2)
+- **Port**: 3002 (стандартный порт WebSocket)
+- **Process**: fonana-ws (управляется через PM2)
 - **Endpoint**: wss://fonana.me/ws
+- **Nginx**: Настроен proxy на /ws → localhost:3002
 - **Path**: /var/www/fonana/websocket-server/
-- **Database**: PostgreSQL (connected)
-- **Redis**: Not used (single server mode)
+- **Database**: PostgreSQL (подключено)
+- **Redis**: Не используется (single server mode)
+
+#### JWT Authentication (ОБЯЗАТЕЛЬНО):
+- **Требование**: Все подключения требуют JWT токен
+- **Формат**: Bearer токен в заголовке Authorization при handshake
+- **Проверка**: Токен проверяется через NEXTAUTH_SECRET
+- **Структура токена**:
+  ```typescript
+  {
+    userId: string,    // ID пользователя
+    sub: string,       // Альтернативный ID
+    wallet: string,    // Адрес кошелька
+    iat: number,       // Время выдачи
+    exp: number        // Время истечения
+  }
+  ```
+- **Без токена**: Соединение закрывается с кодом 1008 (Policy Violation)
+- **Анонимные подключения**: НЕ ПОДДЕРЖИВАЮТСЯ (временное решение удалено)
+
+#### Monitoring & Restart:
+```bash
+# Проверка статуса WebSocket сервера
+ssh -p 43988 root@69.10.59.234 "pm2 status fonana-ws"
+
+# Просмотр логов (последние 100 строк)
+ssh -p 43988 root@69.10.59.234 "pm2 logs fonana-ws --lines 100 --nostream > /tmp/ws-logs.txt && cat /tmp/ws-logs.txt"
+
+# Перезапуск при проблемах
+ssh -p 43988 root@69.10.59.234 "pm2 restart fonana-ws"
+
+# Проверка подключений через netstat
+ssh -p 43988 root@69.10.59.234 "netstat -an | grep :3002"
+```
 
 #### Components:
 - **NotificationContext** - интегрирован с WebSocket для real-time уведомлений
@@ -1706,57 +1770,133 @@ const { posts, newPostsCount, loadPendingPosts } = useRealtimePosts({ posts })
 #### WebSocket Events:
 - `notification` - новое уведомление
 - `post_liked` / `post_unliked` - обновления лайков
-- `post_created` / `post_deleted` - управление постами
+- `post_created` / `post_deleted` - управление постами  
 - `comment_added` / `comment_deleted` - обновления комментариев
+- `subscription-updated` - обновление подписки (апгрейд/даунгрейд)
+- `post-purchased` - покупка поста
 
 #### Key Points:
+- **JWT Required**: Подключение невозможно без валидного JWT токена
+- **Auto-reconnect**: Клиент автоматически переподключается при обрыве
 - **Graceful Degradation**: Fallback на polling при отсутствии WebSocket
 - **Optimistic Updates**: Мгновенные UI обновления
 - **Cross-tab Sync**: Синхронизация между вкладками
 - **Test Page**: `/test/realtime-demo` - полная демонстрация
 - **Production**: Развернут на порту 3002, управляется через PM2
 
-#### WebSocket Server Audit (December 30, 2024)
-- **Audit Report**: `WEBSOCKET_SERVER_AUDIT_REPORT.md`
-- **Overall Readiness**: 30% (client 100% ready, server 0%)
-- **Missing Components**:
-  - WebSocket server implementation
-  - JWT authentication middleware
-  - Event routing and broadcasting
-  - Redis for pub/sub
-- **Recommended Approach**: Separate Node.js WebSocket server on port 3002
-- **Implementation Time**: 7-10 days
-- **Key Tasks**:
-  1. Create WebSocket server with `ws` library
-  2. Implement JWT authentication
-  3. Add event routing by channels
-  4. Integrate with existing APIs
-  5. Setup Redis for scaling
-  6. Test and deploy
-
-### WebSocket Server Implementation (June 27, 2025) ✅ DEPLOYED
-- **Status**: Полностью развернут в продакшн и работает
+### WebSocket Server Implementation (COMPLETED - December 30, 2024) ✅ DEPLOYED
+- **Status**: Полностью развернут в продакшн и работает стабильно
 - **Location**: `websocket-server/` директория
 - **Port**: 3002 (WebSocket) + 3000 (Next.js)
 - **Features**:
-  - JWT аутентификация через NEXTAUTH_SECRET
+  - JWT аутентификация через NEXTAUTH_SECRET (ОБЯЗАТЕЛЬНО)
   - Каналы: notifications, feed, creator, post
-  - События: лайки, комментарии, уведомления
+  - События: лайки, комментарии, уведомления, подписки, покупки
   - Heartbeat механизм (30 сек)
-  - Redis поддержка (опционально)
-- **Setup**: `./scripts/setup-websocket-server.sh`
-- **Test**: `cd websocket-server && node test-client.js`
-- **Docs**: 
-  - `WEBSOCKET_SERVER_IMPLEMENTATION.md` - техническая документация
-  - `WEBSOCKET_INTEGRATION_COMPLETED.md` - статус интеграции
-- **Integrated APIs**:
-  - ✅ `/api/posts` - создание постов, уведомления подписчикам
-  - ✅ `/api/posts/[id]/like` - лайки/анлайки с уведомлениями
-  - ✅ `/api/posts/[id]/comments` - комментарии с уведомлениями
-  - ✅ `/api/subscriptions/process-payment` - новые подписки
-  - ✅ `/api/user/notifications` - создание/чтение/очистка уведомлений
-  - ✅ `/api/tips` - чаевые с уведомлениями
-- **Deployment**: Требуется обновить Nginx и запустить через PM2
+  - Redis поддержка (опционально, не используется)
+  - 16 рестартов на сервере (стабильная работа после исправлений)
+  
+// ... existing code ...
+
+## 🧪 Testing & Debugging
+
+### Test Pages & Tools
+
+#### WebSocket Testing:
+- **HTML Test Pages** (доступны на сервере):
+  - `https://fonana.me/test-websocket.html` - базовый тест подключения
+  - `https://fonana.me/test-websocket-auth.html` - тест с JWT аутентификацией
+- **Проверка через DevTools**:
+  ```javascript
+  // В консоли браузера на fonana.me
+  // Проверить статус WebSocket
+  window.websocketService?.isConnected
+  
+  // Посмотреть активные подписки
+  window.websocketService?.subscriptions
+  
+  // Проверить последние события
+  window.websocketService?.messageHistory
+  ```
+
+#### Feature Test Pages:
+- `/test/creator-data` - тестирование CreatorContext
+- `/test/creator-data-v2` - расширенный тест с WebSocket и оптимистичными обновлениями
+- `/test/api-notifications` - тестирование API уведомлений
+- `/test/unified-posts` - интерактивное тестирование всех вариантов постов
+- `/test/realtime-demo` - демонстрация real-time функций
+- `/test/browser-detection` - проверка окружения браузера
+- `/test/wallet-debug` - отладка подключения кошелька
+
+#### Access Control Testing:
+1. **Проверка доступа после оплаты**:
+   - Купите подписку или пост
+   - Доступ должен открыться БЕЗ перезагрузки страницы
+   - Проверьте через DevTools: `window.websocketService?.messageHistory`
+
+2. **Тестирование апгрейда подписки**:
+   - Начните с Basic подписки
+   - Апгрейдьте до Premium
+   - Premium контент должен стать доступен мгновенно
+
+3. **Проверка JWT токена**:
+   ```javascript
+   // Получить текущий JWT токен
+   const token = localStorage.getItem('fonana_jwt_token')
+   
+   // Декодировать токен (для отладки)
+   const payload = JSON.parse(atob(token.split('.')[1]))
+   console.log(payload)
+   ```
+
+### Diagnostic Scripts:
+```bash
+# Общая проверка здоровья системы
+ssh -p 43988 root@69.10.59.234 "cd /var/www/fonana && node scripts/health-check.js"
+
+# Проверка WebSocket соединений
+ssh -p 43988 root@69.10.59.234 "netstat -an | grep :3002 | wc -l"
+
+# Проверка JWT токенов (последние 10 созданных)
+ssh -p 43988 root@69.10.59.234 "cd /var/www/fonana && tail -n 50 /root/.pm2/logs/fonana-out.log | grep 'JWT token created'"
+
+# Тестирование системы доступа
+node scripts/test-tier-access.js
+node scripts/test-subscription-flow.js
+```
+
+### Common Testing Scenarios:
+
+1. **WebSocket Connection Issues**:
+   - Проверьте наличие JWT токена в localStorage
+   - Убедитесь что WebSocket сервер запущен: `pm2 status fonana-ws`
+   - Проверьте логи: `pm2 logs fonana-ws --lines 100`
+
+2. **Access Not Updating**:
+   - Откройте DevTools Network → WS → проверьте сообщения
+   - Должны приходить события `subscription-updated` или `post-purchased`
+   - Проверьте что CreatorContext подписан на события
+
+3. **JWT Token Issues**:
+   - Токен истекает через 30 дней
+   - При истечении автоматически обновляется
+   - Проверить валидность: `exp` поле в payload > текущее время
+
+### Performance Monitoring:
+```bash
+# Количество активных WebSocket соединений
+ssh -p 43988 root@69.10.59.234 "netstat -an | grep :3002 | grep ESTABLISHED | wc -l"
+
+# Использование памяти WebSocket сервером
+ssh -p 43988 root@69.10.59.234 "pm2 monit fonana-ws"
+
+# Проверка задержки событий
+# В браузере: window.websocketService?.stats
+```
+
+## Current Features Status
+
+// ... existing code ...
 
 ### 🎨 Visual Tier Styles (CENTRALIZED - June 27, 2025)
 - **Core**: `lib/constants/tier-styles.ts` - централизованные визуальные константы тиров
@@ -1833,7 +1973,7 @@ if (tierDetail) {
 
 ### 🔐 Access Control Utilities (CENTRALIZED - June 27, 2025)
 - **Core**: `lib/utils/access.ts` - централизованные утилиты контроля доступа
-- **Status**: ✅ ЦЕНТРАЛИЗОВАНО в рамках рефакторинга системы доступа
+- **Status**: ✅ ЦЕНТРАЛИЗОВАНО с поддержкой real-time обновлений
 - **Purpose**: Единая логика проверки доступа к контенту на основе подписок
 
 #### Доступные функции:
@@ -1894,6 +2034,7 @@ const normalized = normalizeTierName('Premium') // 'premium'
 - **Consistent Behavior**: Единообразное поведение во всем приложении
 - **Type Safe**: TypeScript типизация для всех функций
 - **Payment Validation**: Проверка не только isActive, но и paymentStatus
+- **Real-time Updates**: Доступ обновляется автоматически через WebSocket события
 
 ### Modal Components
 
