@@ -27,20 +27,28 @@ export async function GET(
       return NextResponse.json({ error: 'User not found' }, { status: 404 })
     }
     
+    // Проверяем, что чат существует
     const conversation = await prisma.conversation.findUnique({
-      where: { id: conversationId },
-      include: {
-        participants: true
-      }
+      where: { id: conversationId }
     })
     
     if (!conversation) {
       return NextResponse.json({ error: 'Conversation not found' }, { status: 404 })
     }
     
-    // Проверяем, что пользователь участник чата
-    const isParticipant = conversation.participants.some((p: any) => p.id === user.id)
-    if (!isParticipant) {
+    // Проверяем, что пользователь участник чата через отдельный запрос
+    const participantCheck = await prisma.conversation.findFirst({
+      where: {
+        id: conversationId,
+        participants: {
+          some: {
+            id: user.id
+          }
+        }
+      }
+    })
+    
+    if (!participantCheck) {
       return NextResponse.json({ error: 'Access denied' }, { status: 403 })
     }
     
@@ -148,21 +156,23 @@ export async function POST(
       return NextResponse.json({ error: 'User not found' }, { status: 404 })
     }
     
-    const conversation = await prisma.conversation.findUnique({
-      where: { id: conversationId },
+    // Проверяем, что чат существует и пользователь участник
+    const conversation = await prisma.conversation.findFirst({
+      where: {
+        id: conversationId,
+        participants: {
+          some: {
+            id: user.id
+          }
+        }
+      },
       include: {
         participants: true
       }
     })
     
     if (!conversation) {
-      return NextResponse.json({ error: 'Conversation not found' }, { status: 404 })
-    }
-    
-    // Проверяем, что пользователь участник чата
-    const isParticipant = conversation.participants.some((p: any) => p.id === user.id)
-    if (!isParticipant) {
-      return NextResponse.json({ error: 'Access denied' }, { status: 403 })
+      return NextResponse.json({ error: 'Conversation not found or access denied' }, { status: 404 })
     }
     
     // Создаем сообщение
