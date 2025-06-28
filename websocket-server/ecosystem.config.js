@@ -11,6 +11,7 @@ module.exports = {
       PORT: 3002,
       WS_PORT: 3002
     },
+    env_file: './.env',
     error_file: '../logs/ws-error.log',
     out_file: '../logs/ws-out.log',
     log_file: '../logs/ws-combined.log',
