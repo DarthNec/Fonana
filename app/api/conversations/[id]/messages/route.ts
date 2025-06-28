@@ -30,9 +30,7 @@ export async function GET(
     const conversation = await prisma.conversation.findUnique({
       where: { id: conversationId },
       include: {
-        participants: {
-          select: { id: true }
-        }
+        participants: true
       }
     })
     
