@@ -2039,3 +2039,83 @@ const normalized = normalizeTierName('Premium') // 'premium'
 ### Modal Components
 
 // ... existing code ...
+
+## 🔧 Prisma Type Management (STABILIZED - December 28, 2024)
+
+### Current Configuration
+- **@prisma/client**: 5.22.0 (fixed version, no ^)
+- **prisma**: 5.22.0 (fixed version, no ^) 
+- **Generated types**: Standard location (node_modules/@prisma/client)
+- **Reference types**: lib/generated/prisma/ (for documentation only)
+
+### Standard Workflow
+
+#### 1. Schema Changes
+```bash
+# Edit schema
+vim prisma/schema.prisma
+
+# Create migration
+npx prisma migrate dev --name your_change
+
+# Generate types
+npx prisma generate
+```
+
+#### 2. Before Deployment
+```bash
+# ALWAYS regenerate types
+npx prisma generate
+
+# Test build locally
+npm run build
+
+# If successful, commit
+git add -A
+git commit -m "db: your changes"
+```
+
+#### 3. Production Deployment  
+```bash
+# Deploy script handles everything
+./deploy-to-production.sh
+
+# Manual steps if needed:
+ssh -p 43988 root@69.10.59.234 "cd /var/www/fonana && npx prisma migrate deploy && npx prisma generate"
+```
+
+### Key Rules
+
+#### ✅ DO:
+1. Use exact versions (5.22.0 not ^5.22.0)
+2. Run `prisma generate` before every build
+3. Keep versions synchronized between dev and prod
+4. Test build locally before deploying
+
+#### ❌ DON'T:
+1. Don't use different Prisma versions between environments
+2. Don't skip `prisma generate` step
+3. Don't generate types in custom directories (causes adapter issues)
+4. Don't use ^ in version numbers
+
+### Troubleshooting
+
+#### Type Mismatch Between Dev/Prod
+```bash
+# Check versions
+npm list prisma @prisma/client
+
+# Fix: Delete node_modules, reinstall, regenerate
+rm -rf node_modules package-lock.json
+npm install
+npx prisma generate
+```
+
+#### Many-to-Many Relation Issues
+- Some versions handle relations differently
+- Use raw SQL for complex queries (see conversations API)
+- Junction tables may have different names
+
+### Documentation
+- Full guide: PRISMA_TYPE_MANAGEMENT.md
+- Version history tracked in guide

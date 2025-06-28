@@ -1,78 +1,133 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
 generator client {
   provider = "prisma-client-js"
   output   = "../lib/generated/prisma"
 }
 
 datasource db {
-  provider = "sqlite"
+  provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 
 model User {
-  id       String  @id @default(cuid())
-  wallet   String  @unique // Адрес кошелька - уникальный идентификатор
-  nickname String? // Никнейм пользователя
-  bio      String? // Описание профиля
-  avatar   String? // URL аватара
-  website  String? // Личный сайт
-  twitter  String? // Twitter профиль
-  telegram String? // Telegram профиль
-  location String? // Местоположение
+  id              String    @id @default(cuid())
+  email           String?   @unique
+  emailVerified   DateTime? @map("email_verified")
+  name            String?
+  image           String?
+  nickname        String?   @unique
+  fullName        String?
+  bio             String?
+  avatar          String?
+  backgroundImage String?
+  website         String?
+  twitter         String?
+  telegram        String?
+  location        String?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  isVerified      Boolean   @default(false)
+  isCreator       Boolean   @default(false)
+  followersCount  Int       @default(0)
+  followingCount  Int       @default(0)
+  postsCount      Int       @default(0)
 
-  // Системные поля
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  // Wallet fields
+  wallet       String? @unique
+  solanaWallet String? @unique @map("solana_wallet")
 
-  // Настройки профиля
-  isVerified Boolean @default(false)
-  isCreator  Boolean @default(false)
-
-  // Статистика
-  followersCount Int @default(0)
-  followingCount Int @default(0)
-  postsCount     Int @default(0)
-
-  // Связи
-  posts         Post[]
-  subscriptions Subscription[]
+  // Relations
   comments      Comment[]
-  likes         Like[]
   follows       Follow[]       @relation("UserFollows")
   followers     Follow[]       @relation("UserFollowers")
+  likes         Like[]
+  posts         Post[]
+  subscriptions Subscription[] @relation("UserSubscriptions")
+  subscribers   Subscription[] @relation("CreatorSubscriptions")
+  postPurchases PostPurchase[]
+
+  // Referral system
+  referrerId String?
+  referrer   User?   @relation("Referrals", fields: [referrerId], references: [id])
+  referrals  User[]  @relation("Referrals")
+
+  // NextAuth
+  accounts Account[]
+  sessions Session[]
+
+  // Settings
+  settings     UserSettings?
+  tierSettings CreatorTierSettings?
+
+  // Notifications
+  notifications Notification[]
+
+  // Additional relations for auctions
+  purchasedSellablePosts Post[]           @relation("PurchasedSellablePosts")
+  auctionDeposits        AuctionDeposit[]
+  auctionBids            AuctionBid[]
+  auctionPayments        AuctionPayment[]
+
+  // Flash sales
+  flashSales           FlashSale[]
+  flashSaleRedemptions FlashSaleRedemption[]
+
+  // Direct Messages
+  conversations    Conversation[]    @relation("UserConversations")
+  sentMessages     Message[]         @relation("SentMessages")
+  messagePurchases MessagePurchase[]
 
   @@map("users")
 }
 
 model Post {
-  id        String  @id @default(cuid())
-  creatorId String
-  title     String
-  content   String
-  type      String // 'text', 'image', 'video', 'audio'
-  thumbnail String? // URL превью
-  mediaUrl  String? // URL медиа файла
+  id                  String   @id @default(cuid())
+  creatorId           String
+  title               String
+  content             String
+  type                String
+  category            String?
+  thumbnail           String?
+  mediaUrl            String?
+  isLocked            Boolean  @default(false)
+  isPremium           Boolean  @default(false)
+  price               Float?
+  currency            String   @default("SOL")
+  minSubscriptionTier String?
+  imageAspectRatio    String? // 'vertical' | 'square' | 'horizontal'
+  likesCount          Int      @default(0)
+  commentsCount       Int      @default(0)
+  viewsCount          Int      @default(0)
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
 
-  // Доступ и монетизация
-  isLocked Boolean @default(false)
-  price    Float? // Цена в SOL
-  currency String  @default("SOL")
+  // Sellable post fields
+  isSellable           Boolean       @default(false)
+  sellType             SellType?
+  quantity             Int?          @default(1) // Количество товара
+  auctionStartPrice    Float?
+  auctionStepPrice     Float?
+  auctionDepositAmount Float?        @default(0.01) // Залог для участия
+  auctionStartAt       DateTime?
+  auctionEndAt         DateTime?
+  auctionStatus        AuctionStatus @default(DRAFT)
 
-  // Статистика
-  likesCount    Int @default(0)
-  commentsCount Int @default(0)
-  viewsCount    Int @default(0)
+  // Sold post fields
+  soldAt            DateTime?
+  soldToId          String?
+  soldTo            User?     @relation("PurchasedSellablePosts", fields: [soldToId], references: [id])
+  soldPrice         Float?
+  sellerConfirmedAt DateTime? // Когда продавец подтвердил продажу
 
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  // Связи
-  creator  User      @relation(fields: [creatorId], references: [id], onDelete: Cascade)
-  comments Comment[]
-  likes    Like[]
-  tags     PostTag[]
+  // Relations
+  comments        Comment[]
+  likes           Like[]
+  tags            PostTag[]
+  creator         User             @relation(fields: [creatorId], references: [id], onDelete: Cascade)
+  purchases       PostPurchase[]
+  auctionDeposits AuctionDeposit[]
+  auctionBids     AuctionBid[]
+  auctionPayment  AuctionPayment?
+  flashSales      FlashSale[]
 
   @@map("posts")
 }
@@ -88,95 +143,465 @@ model Tag {
 model PostTag {
   postId String
   tagId  String
-
-  post Post @relation(fields: [postId], references: [id], onDelete: Cascade)
-  tag  Tag  @relation(fields: [tagId], references: [id], onDelete: Cascade)
+  post   Post   @relation(fields: [postId], references: [id], onDelete: Cascade)
+  tag    Tag    @relation(fields: [tagId], references: [id], onDelete: Cascade)
 
   @@id([postId, tagId])
   @@map("post_tags")
 }
 
 model Comment {
-  id      String @id @default(cuid())
-  postId  String
-  userId  String
-  content String
-
-  // Анонимность
-  isAnonymous Boolean @default(false)
-
-  // Статистика
-  likesCount Int @default(0)
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  // Ответы на комментарии
-  parentId String?
-  parent   Comment?  @relation("CommentReplies", fields: [parentId], references: [id])
-  replies  Comment[] @relation("CommentReplies")
-
-  // Связи
-  post  Post   @relation(fields: [postId], references: [id], onDelete: Cascade)
-  user  User   @relation(fields: [userId], references: [id], onDelete: Cascade)
-  likes Like[]
+  id          String    @id @default(cuid())
+  postId      String
+  userId      String
+  content     String
+  isAnonymous Boolean   @default(false)
+  likesCount  Int       @default(0)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  parentId    String?
+  parent      Comment?  @relation("CommentReplies", fields: [parentId], references: [id])
+  replies     Comment[] @relation("CommentReplies")
+  post        Post      @relation(fields: [postId], references: [id], onDelete: Cascade)
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  likes       Like[]
 
   @@map("comments")
 }
 
 model Like {
-  id        String  @id @default(cuid())
+  id        String   @id @default(cuid())
   userId    String
   postId    String?
   commentId String?
-
   createdAt DateTime @default(now())
+  comment   Comment? @relation(fields: [commentId], references: [id], onDelete: Cascade)
+  post      Post?    @relation(fields: [postId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  // Связи
-  user    User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  post    Post?    @relation(fields: [postId], references: [id], onDelete: Cascade)
-  comment Comment? @relation(fields: [commentId], references: [id], onDelete: Cascade)
-
-  // Уникальность - один лайк на пост/комментарий от пользователя
   @@unique([userId, postId])
   @@unique([userId, commentId])
   @@map("likes")
 }
 
 model Subscription {
-  id        String @id @default(cuid())
-  userId    String // Кто подписался
-  creatorId String // На кого подписался
-  plan      String // 'Basic', 'Premium', 'VIP'
-  price     Float // Цена подписки
-  currency  String @default("SOL")
-
+  id           String   @id @default(cuid())
+  userId       String
+  creatorId    String
+  plan         String
+  price        Float
+  currency     String   @default("SOL")
   subscribedAt DateTime @default(now())
   validUntil   DateTime
   isActive     Boolean  @default(true)
+  txSignature  String?
 
-  // Транзакция
-  txSignature String? // Подпись транзакции Solana
+  // Payment details
+  paymentStatus PaymentStatus @default(PENDING)
+  paymentAmount Float?
+  platformFee   Float?
+  referrerFee   Float?
+  creatorAmount Float?
 
-  // Связи
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-  // Note: creator связь через User таблицу
+  // Relations
+  user         User          @relation("UserSubscriptions", fields: [userId], references: [id], onDelete: Cascade)
+  creator      User          @relation("CreatorSubscriptions", fields: [creatorId], references: [id], onDelete: Cascade)
+  transactions Transaction[]
 
-  @@unique([userId, creatorId]) // Одна активная подписка на автора
+  @@unique([userId, creatorId])
   @@map("subscriptions")
 }
 
 model Follow {
-  id          String @id @default(cuid())
-  followerId  String // Кто подписывается
-  followingId String // На кого подписывается
-
-  createdAt DateTime @default(now())
-
-  // Связи
-  follower  User @relation("UserFollows", fields: [followerId], references: [id], onDelete: Cascade)
-  following User @relation("UserFollowers", fields: [followingId], references: [id], onDelete: Cascade)
+  id          String   @id @default(cuid())
+  followerId  String
+  followingId String
+  createdAt   DateTime @default(now())
+  follower    User     @relation("UserFollows", fields: [followerId], references: [id], onDelete: Cascade)
+  following   User     @relation("UserFollowers", fields: [followingId], references: [id], onDelete: Cascade)
 
   @@unique([followerId, followingId])
   @@map("follows")
+}
+
+// Transaction tracking model
+model Transaction {
+  id             String        @id @default(cuid())
+  subscriptionId String?
+  subscription   Subscription? @relation(fields: [subscriptionId], references: [id])
+  postPurchaseId String?       @unique
+  postPurchase   PostPurchase? @relation(fields: [postPurchaseId], references: [id])
+
+  // Transaction details
+  txSignature String            @unique
+  fromWallet  String
+  toWallet    String
+  amount      Float
+  currency    String            @default("SOL")
+  type        TransactionType
+  status      TransactionStatus @default(PENDING)
+
+  // Additional fields for flexible tracking
+  senderId   String?
+  receiverId String?
+
+  // Fee distribution
+  platformFee    Float?
+  referrerFee    Float?
+  referrerWallet String?
+
+  // Metadata
+  metadata     Json?
+  errorMessage String?
+  confirmedAt  DateTime?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  @@map("transactions")
+}
+
+// Payment status enum
+enum PaymentStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+  REFUNDED
+}
+
+// Transaction type enum
+enum TransactionType {
+  SUBSCRIPTION
+  POST_PURCHASE
+  PLATFORM_FEE
+  REFERRER_FEE
+  WITHDRAWAL
+  REFUND
+  MESSAGE_PURCHASE
+  TIP
+}
+
+// Transaction status enum
+enum TransactionStatus {
+  PENDING
+  CONFIRMED
+  FAILED
+  EXPIRED
+}
+
+// NextAuth models
+model Account {
+  id                String  @id @default(cuid())
+  userId            String  @map("user_id")
+  type              String
+  provider          String
+  providerAccountId String  @map("provider_account_id")
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@map("accounts")
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique @map("session_token")
+  userId       String   @map("user_id")
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("sessions")
+}
+
+// New model for tracking post purchases
+model PostPurchase {
+  id          String   @id @default(cuid())
+  postId      String
+  userId      String
+  price       Float
+  currency    String   @default("SOL")
+  txSignature String?
+  purchasedAt DateTime @default(now())
+
+  // Payment details
+  paymentStatus PaymentStatus @default(PENDING)
+  platformFee   Float?
+  referrerFee   Float?
+  creatorAmount Float?
+
+  // Relations
+  post        Post         @relation(fields: [postId], references: [id], onDelete: Cascade)
+  user        User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  transaction Transaction?
+
+  @@unique([userId, postId])
+  @@map("post_purchases")
+}
+
+// User settings model
+model UserSettings {
+  id     String @id @default(cuid())
+  userId String @unique
+
+  // Notification settings
+  notifyComments      Boolean @default(true)
+  notifyLikes         Boolean @default(true)
+  notifyNewPosts      Boolean @default(true)
+  notifySubscriptions Boolean @default(true)
+
+  // Privacy settings
+  showActivity     Boolean @default(true)
+  allowMessages    Boolean @default(true)
+  showOnlineStatus Boolean @default(true)
+
+  // Theme
+  theme String @default("dark")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("user_settings")
+}
+
+// Creator tier settings model
+model CreatorTierSettings {
+  id        String @id @default(cuid())
+  creatorId String @unique
+
+  // Tier settings stored as JSON
+  basicTier   Json? // { enabled: boolean, price: number, description: string, features: [] }
+  premiumTier Json? // { enabled: boolean, price: number, description: string, features: [] }
+  vipTier     Json? // { enabled: boolean, price: number, description: string, features: [] }
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  creator User @relation(fields: [creatorId], references: [id], onDelete: Cascade)
+
+  @@map("creator_tier_settings")
+}
+
+// Notification model
+model Notification {
+  id        String           @id @default(cuid())
+  userId    String
+  type      NotificationType
+  title     String
+  message   String
+  isRead    Boolean          @default(false)
+  metadata  Json? // Дополнительные данные (postId, commentId, etc)
+  createdAt DateTime         @default(now())
+
+  // Relations
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, isRead])
+  @@map("notifications")
+}
+
+// Notification types
+enum NotificationType {
+  LIKE_POST
+  LIKE_COMMENT
+  COMMENT_POST
+  REPLY_COMMENT
+  NEW_SUBSCRIBER
+  POST_PURCHASE
+  NEW_POST_FROM_SUBSCRIPTION
+  AUCTION_NEW_BID
+  AUCTION_WON
+  AUCTION_PAYMENT_REMINDER
+  AUCTION_DEPOSIT_REFUNDED
+  TIP_RECEIVED
+  NEW_MESSAGE
+}
+
+// Залоги участников аукциона
+model AuctionDeposit {
+  id                String        @id @default(cuid())
+  postId            String
+  post              Post          @relation(fields: [postId], references: [id], onDelete: Cascade)
+  userId            String
+  user              User          @relation(fields: [userId], references: [id])
+  amount            Float // Сумма залога
+  txSignature       String // Транзакция оплаты залога
+  status            DepositStatus @default(HELD)
+  createdAt         DateTime      @default(now())
+  refundedAt        DateTime?
+  refundTxSignature String?
+  forfeitedAt       DateTime? // Когда залог был конфискован
+
+  @@unique([postId, userId])
+  @@index([userId, status])
+  @@map("auction_deposits")
+}
+
+// Ставки на аукционе (без реальной оплаты)
+model AuctionBid {
+  id        String   @id @default(cuid())
+  postId    String
+  post      Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  amount    Float
+  isWinning Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  @@index([postId, amount])
+  @@index([userId])
+  @@map("auction_bids")
+}
+
+// Оплата победителя аукциона
+model AuctionPayment {
+  id                String               @id @default(cuid())
+  postId            String               @unique
+  post              Post                 @relation(fields: [postId], references: [id])
+  userId            String
+  user              User                 @relation(fields: [userId], references: [id])
+  amount            Float
+  txSignature       String?
+  status            AuctionPaymentStatus @default(PENDING)
+  dueAt             DateTime // Крайний срок оплаты (час после окончания)
+  paidAt            DateTime?
+  sellerConfirmedAt DateTime?
+  createdAt         DateTime             @default(now())
+
+  @@index([userId, status])
+  @@map("auction_payments")
+}
+
+// Enums for auction system
+enum SellType {
+  FIXED_PRICE
+  AUCTION
+}
+
+enum AuctionStatus {
+  DRAFT // Черновик
+  SCHEDULED // Запланирован
+  ACTIVE // Идет аукцион
+  ENDED // Завершен, ждет оплаты
+  SOLD // Продан
+  CANCELLED // Отменен
+  EXPIRED // Истек без оплаты
+}
+
+enum DepositStatus {
+  HELD // Удерживается
+  REFUNDED // Возвращен
+  FORFEITED // Конфискован
+}
+
+enum AuctionPaymentStatus {
+  PENDING // Ожидает оплаты
+  PAID // Оплачен
+  CONFIRMED // Подтвержден продавцом
+  EXPIRED // Истек срок оплаты
+  CANCELLED // Отменен
+}
+
+// Flash Sales model
+model FlashSale {
+  id               String  @id @default(cuid())
+  creatorId        String? // null = platform-wide sale
+  postId           String? // specific post sale
+  subscriptionPlan String? // 'basic' | 'premium' | 'vip' - for subscription sales
+
+  discount       Float // Percentage discount (10-90)
+  maxRedemptions Int? // Max number of uses
+  usedCount      Int   @default(0)
+
+  startAt DateTime @default(now())
+  endAt   DateTime // When sale expires
+
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  creator     User?                 @relation(fields: [creatorId], references: [id], onDelete: Cascade)
+  post        Post?                 @relation(fields: [postId], references: [id], onDelete: Cascade)
+  redemptions FlashSaleRedemption[]
+
+  @@index([creatorId, isActive])
+  @@index([endAt, isActive])
+  @@map("flash_sales")
+}
+
+// Track who used flash sales
+model FlashSaleRedemption {
+  id          String @id @default(cuid())
+  flashSaleId String
+  userId      String
+
+  originalPrice  Float // Price before discount
+  discountAmount Float // Amount saved
+  finalPrice     Float // Price paid
+
+  redeemedAt DateTime @default(now())
+
+  // Relations
+  flashSale FlashSale @relation(fields: [flashSaleId], references: [id], onDelete: Cascade)
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([flashSaleId, userId]) // One redemption per user per sale
+  @@map("flash_sale_redemptions")
+}
+
+// Direct Messages
+model Conversation {
+  id            String    @id @default(cuid())
+  participants  User[]    @relation("UserConversations")
+  messages      Message[]
+  lastMessageAt DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+}
+
+model Message {
+  id             String   @id @default(cuid())
+  conversationId String
+  senderId       String
+  content        String?  @db.Text
+  mediaUrl       String?
+  mediaType      String? // 'image' | 'video' | 'audio'
+  isPaid         Boolean  @default(false)
+  price          Float?
+  isRead         Boolean  @default(false)
+  metadata       Json?
+  createdAt      DateTime @default(now())
+
+  conversation Conversation      @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  sender       User              @relation("SentMessages", fields: [senderId], references: [id])
+  purchases    MessagePurchase[]
+
+  @@index([conversationId])
+  @@index([senderId])
+}
+
+model MessagePurchase {
+  id          String   @id @default(cuid())
+  messageId   String
+  userId      String
+  amount      Float
+  txSignature String
+  createdAt   DateTime @default(now())
+
+  message Message @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  user    User    @relation(fields: [userId], references: [id])
+
+  @@unique([messageId, userId])
+  @@index([userId])
 }
