@@ -742,6 +742,9 @@ ssh -p 43988 root@69.10.59.234 "pm2 status"
 # Comprehensive status (recommended)
 ./scripts/devops-status.sh
 
+# Check port usage
+ssh -p 43988 root@69.10.59.234 "lsof -i :3000,3002"
+
 # Check CI/CD status
 open https://github.com/DukeDeSouth/Fonana/actions
 ```
@@ -760,14 +763,17 @@ ssh -p 43988 root@69.10.59.234 "tail -n 100 /root/.pm2/logs/fonana-error.log > /
 
 ### Restart:
 ```bash
-# Restart Next.js app
+# ✅ ПРАВИЛЬНО - Restart через PM2
 ssh -p 43988 root@69.10.59.234 "pm2 restart fonana"
 
 # Restart WebSocket server
 ssh -p 43988 root@69.10.59.234 "pm2 restart fonana-ws"
 
-# Restart all
-ssh -p 43988 root@69.10.59.234 "pm2 restart all"
+# Restart all Fonana processes
+ssh -p 43988 root@69.10.59.234 "pm2 restart fonana fonana-ws"
+
+# ❌ НЕПРАВИЛЬНО - НЕ используйте pkill или смену портов!
+# pkill -f node && PORT=3001 npm run start
 ```
 
 ### Database Stats:
@@ -803,10 +809,11 @@ ssh -p 43988 root@69.10.59.234 "cd /var/www/fonana && npm run build && pm2 resta
 
 ### 1. Port Already in Use (EADDRINUSE)
 ```bash
-# Kill all node processes
-ssh -p 43988 root@69.10.59.234 "pkill -f node"
-# Restart
-ssh -p 43988 root@69.10.59.234 "cd /var/www/fonana && pm2 start ecosystem.config.js"
+# ✅ ПРАВИЛЬНО: Перезапустить через PM2
+ssh -p 43988 root@69.10.59.234 "pm2 restart fonana"
+
+# ❌ НЕПРАВИЛЬНО: НЕ убивайте процессы вручную!
+# ssh -p 43988 root@69.10.59.234 "pkill -f node"
 ```
 
 ### 2. Database Connection Issues  
@@ -922,6 +929,29 @@ ssh -p 43988 root@69.10.59.234 "cd /var/www/fonana && node scripts/fix-subscript
 - Use `formatPlanName()` function for display
 - File: `app/creator/[id]/page.tsx`
 
+### 11. WebSocket Import Build Error (June 2025)
+**Problem**: `Module not found: Can't resolve 'ioredis'` при сборке
+- **Symptoms**:
+  - `npm run build` падает с ошибкой
+  - Импорты из websocket-server не работают в Next.js
+  - Проект запускается только в dev режиме
+- **Cause**: API routes импортировали Node.js специфичные модули
+
+**Solution**:
+```bash
+# Проверить, что все импорты идут из правильного места
+grep -r "websocket-server/src" app/api/
+
+# Должны использовать клиентскую библиотеку
+# ✅ import { sendNotification } from '@/lib/services/websocket-client'
+# ❌ import { sendNotification } from '@/websocket-server/src/events/notifications'
+```
+
+**Prevention**:
+- Не импортировать напрямую из websocket-server в Next.js коде
+- Использовать `lib/services/websocket-client.ts` для WebSocket событий
+- WebSocket сервер должен быть отдельным процессом
+
 ## Diagnostic Scripts (Available)
 ```bash
 # General health check
@@ -974,6 +1004,22 @@ node scripts/check-price-discrepancy.js
 ```
 
 ## Recent Updates & Fixes
+
+### Production Build Fix (June 28, 2025) 🔧 COMPLETED
+- **Problem**: Проект не собирался для продакшн режима из-за импортов WebSocket сервера
+- **Root Cause**: 
+  - API routes импортировали функции напрямую из websocket-server директории
+  - WebSocket сервер использует Node.js специфичные модули (ioredis), несовместимые с Next.js
+- **Solution**: Создан клиентский прокси для WebSocket событий
+  - Создан `lib/services/websocket-client.ts` с заглушками функций
+  - Все импорты из `@/websocket-server/` заменены на `@/lib/services/websocket-client`
+  - WebSocket события отправляются через HTTP API (будет реализовано позже)
+- **Result**: 
+  - ✅ Проект успешно собирается: `npm run build`
+  - ✅ Запускается в продакшн режиме: `npm run start`
+  - ✅ Стандартный порт 3000 для основного приложения
+  - ✅ PM2 управление процессами работает корректно
+- **Docs**: Обновлена инструкция с правильным процессом деплоя
 
 ### Access Control System Refactoring (June 27, 2025) 🚀 COMPLETED
 - **Problem**: Дублирующая логика доступа к контенту, локальные константы тиров в компонентах
@@ -1260,12 +1306,147 @@ git log --oneline -10
 ./scripts/devops-status.sh
 ```
 
-## Deploy Process
-1. Test locally: `npm run dev`
-2. Commit changes: `git add -A && git commit -m "description"`
-3. Deploy: `./deploy-to-production.sh`
-4. Verify: Check pm2 logs and test functionality
-5. Push to GitHub: `git push origin main`
+## Deployment & Production Launch
+
+### 🚀 Standard Production Deployment Process
+
+⚠️ **ВАЖНО**: Проект Fonana работает на стандартных портах:
+- **Next.js Application**: Port 3000 (основное приложение)
+- **WebSocket Server**: Port 3002 (real-time обновления)
+- **Nginx**: Проксирует запросы с 80/443 на соответствующие порты
+
+### Step-by-Step Deployment:
+
+1. **Проверка текущего состояния**:
+```bash
+# Проверяем статус всех процессов
+ssh -p 43988 root@69.10.59.234 "pm2 status"
+
+# Проверяем занятость портов
+ssh -p 43988 root@69.10.59.234 "lsof -i :3000"
+ssh -p 43988 root@69.10.59.234 "lsof -i :3002"
+```
+
+2. **Локальное тестирование**:
+```bash
+# Сборка проекта локально
+npm run build
+
+# Тест продакшн сборки (временно на другом порту если 3000 занят)
+PORT=3001 npm run start
+
+# Проверка работоспособности
+curl http://localhost:3001
+```
+
+3. **Коммит изменений**:
+```bash
+git add -A
+git commit -m "feat: описание изменений"
+```
+
+4. **Деплой на продакшн**:
+```bash
+# Используем стандартный скрипт деплоя
+./deploy-to-production.sh
+
+# Скрипт автоматически:
+# - Останавливает текущие процессы через PM2
+# - Делает git pull из репозитория
+# - Устанавливает зависимости
+# - Собирает проект (npm run build)
+# - Перезапускает через PM2
+```
+
+5. **Проверка после деплоя**:
+```bash
+# Статус процессов
+ssh -p 43988 root@69.10.59.234 "pm2 status"
+
+# Логи приложения (первые 50 строк)
+ssh -p 43988 root@69.10.59.234 "pm2 logs fonana --lines 50 --nostream > /tmp/logs.txt && cat /tmp/logs.txt"
+
+# Проверка доступности
+curl -I https://fonana.me
+```
+
+6. **Push в GitHub**:
+```bash
+git push origin main
+```
+
+### ⚠️ Важные правила:
+
+1. **НЕ МЕНЯЙТЕ ПОРТЫ без необходимости**:
+   - Если порт 3000 занят = приложение уже работает
+   - Используйте `pm2 restart fonana` вместо смены порта
+   - Nginx настроен на проксирование именно порта 3000
+
+2. **Корректный перезапуск**:
+```bash
+# Правильно - через PM2
+pm2 restart fonana
+
+# Неправильно - убивать процессы и запускать на другом порту
+pkill -f node && PORT=3001 npm run start
+```
+
+3. **WebSocket сервер**:
+```bash
+# Перезапуск WebSocket сервера
+pm2 restart fonana-ws
+```
+
+### 📋 PM2 Process Management
+
+```bash
+# Список всех процессов
+pm2 list
+
+# Перезапуск всех процессов Fonana
+pm2 restart fonana fonana-ws
+
+# Остановка (при необходимости)
+pm2 stop fonana fonana-ws
+
+# Запуск (если остановлены)
+pm2 start ecosystem.config.js
+
+# Мониторинг в реальном времени
+pm2 monit
+```
+
+### 🔥 Emergency Procedures
+
+Если деплой прошел неудачно:
+```bash
+# Откат к предыдущей версии
+ssh -p 43988 root@69.10.59.234 "cd /var/www/fonana && git reset --hard HEAD~1 && npm install && npm run build && pm2 restart fonana"
+
+# Если приложение не запускается
+ssh -p 43988 root@69.10.59.234 "cd /var/www/fonana && pm2 logs fonana --err --lines 100"
+
+# Полный рестарт (крайний случай)
+ssh -p 43988 root@69.10.59.234 "pm2 delete all && cd /var/www/fonana && pm2 start ecosystem.config.js"
+```
+
+### 🚨 Common Issues & Solutions
+
+1. **"Port 3000 already in use"**:
+   - НЕ меняйте порт!
+   - Используйте: `pm2 restart fonana`
+
+2. **"Cannot find module"** после деплоя:
+   - Проверьте package.json
+   - Запустите: `npm install && npm run build`
+
+3. **WebSocket не подключается**:
+   - Проверьте: `pm2 status fonana-ws`
+   - Перезапустите: `pm2 restart fonana-ws`
+
+4. **500 ошибки после деплоя**:
+   - Проверьте .env файл на сервере
+   - Проверьте миграции БД: `npx prisma migrate deploy`
 
 ## Task Templates
 

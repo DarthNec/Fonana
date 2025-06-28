@@ -22,6 +22,7 @@ import { isValidSolanaAddress } from '@/lib/solana/config'
 import { connection } from '@/lib/solana/connection'
 import { useSolRate } from '@/lib/hooks/useSolRate'
 import { useUserContext } from '@/lib/contexts/UserContext'
+import { refreshPostAccess } from '@/lib/utils/subscriptions'
 
 interface PurchaseModalProps {
   post: {
@@ -254,6 +255,9 @@ export default function PurchaseModal({ post, onClose, onSuccess }: PurchaseModa
       }
 
       toast.success('Пост успешно куплен!')
+      
+      // Обновляем доступ к посту
+      await refreshPostAccess(post.id.toString())
       
       if (onSuccess) {
         // Передаем данные о покупке для оптимистичного обновления

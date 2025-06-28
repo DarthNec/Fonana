@@ -1,137 +1,169 @@
-const { createClient } = require('redis');
+const Redis = require('ioredis');
 
-let redisClient;
-let pubClient;
-let subClient;
+let redis = null;
+let subscriber = null;
 
-async function connectRedis() {
+function initRedis() {
   try {
-    // Создаем клиенты для pub/sub
-    const redisUrl = process.env.REDIS_URL || 'redis://localhost:6379';
-    
-    // Основной клиент
-    redisClient = createClient({ url: redisUrl });
-    
-    // Publisher клиент
-    pubClient = createClient({ url: redisUrl });
-    
-    // Subscriber клиент
-    subClient = createClient({ url: redisUrl });
-    
-    // Подключаемся
-    await redisClient.connect();
-    await pubClient.connect();
-    await subClient.connect();
-    
-    console.log('✅ Redis connected');
-    
-    // Обработка ошибок
-    redisClient.on('error', (err) => console.error('❌ Redis Client Error', err));
-    pubClient.on('error', (err) => console.error('❌ Redis Pub Error', err));
-    subClient.on('error', (err) => console.error('❌ Redis Sub Error', err));
-    
-    // Подписываемся на канал событий WebSocket
-    await subClient.subscribe('ws:events', handleRedisMessage);
-    
-  } catch (error) {
-    console.error('❌ Redis connection failed:', error);
-    // Продолжаем работу без Redis (single server mode)
-    console.log('⚠️  Running in single server mode without Redis');
-  }
-}
-
-// Обработка сообщений из Redis
-async function handleRedisMessage(message) {
-  try {
-    const event = JSON.parse(message);
-    const { broadcastToSubscribers } = require('./server');
-    
-    console.log(`📨 Redis event: ${event.type}`);
-    
-    // Рассылаем событие подписчикам
-    broadcastToSubscribers(event.channel, event);
-    
-  } catch (error) {
-    console.error('❌ Error handling Redis message:', error);
-  }
-}
-
-// Публикация события в Redis
-async function publishEvent(channel, event) {
-  if (!pubClient) {
-    console.log('⚠️  Redis not connected, skipping publish');
-    return;
-  }
-  
-  try {
-    const message = JSON.stringify({
-      ...event,
-      channel,
-      timestamp: new Date().toISOString()
+    // Создаем основное подключение
+    redis = new Redis({
+      host: '127.0.0.1',
+      port: 6379,
+      retryStrategy: (times) => {
+        const delay = Math.min(times * 50, 2000);
+        return delay;
+      },
+      reconnectOnError: (err) => {
+        const targetError = 'READONLY';
+        if (err.message.includes(targetError)) {
+          return true;
+        }
+        return false;
+      }
     });
     
-    await pubClient.publish('ws:events', message);
-    console.log(`📤 Published to Redis: ${event.type}`);
-    
-  } catch (error) {
-    console.error('❌ Failed to publish to Redis:', error);
-  }
-}
-
-// Сохранение данных в Redis
-async function setCache(key, value, ttl = 3600) {
-  if (!redisClient) return;
-  
-  try {
-    await redisClient.set(key, JSON.stringify(value), {
-      EX: ttl
+    // Создаем подписчика для pub/sub
+    subscriber = new Redis({
+      host: '127.0.0.1',
+      port: 6379
     });
+    
+    redis.on('connect', () => {
+      console.log('✅ Redis connected');
+    });
+    
+    redis.on('error', (err) => {
+      console.error('❌ Redis connection error:', err);
+    });
+    
+    subscriber.on('connect', () => {
+      console.log('✅ Redis subscriber connected');
+    });
+    
+    subscriber.on('error', (err) => {
+      console.error('❌ Redis subscriber error:', err);
+    });
+    
+    return true;
   } catch (error) {
-    console.error('❌ Redis set error:', error);
+    console.error('❌ Redis initialization failed:', error);
+    return false;
   }
 }
 
-// Получение данных из Redis
-async function getCache(key) {
-  if (!redisClient) return null;
+// Публикация события в канал
+async function publishToChannel(channel, event) {
+  if (!redis) {
+    console.log('⚠️  Redis not available, skipping publish');
+    return false;
+  }
   
   try {
-    const value = await redisClient.get(key);
+    await redis.publish(channel, JSON.stringify(event));
+    console.log(`📢 Published to Redis channel: ${channel}`);
+    return true;
+  } catch (error) {
+    console.error(`❌ Failed to publish to channel ${channel}:`, error);
+    return false;
+  }
+}
+
+// Подписка на канал
+function subscribeToChannel(channel, callback) {
+  if (!subscriber) {
+    console.log('⚠️  Redis subscriber not available');
+    return false;
+  }
+  
+  subscriber.subscribe(channel, (err) => {
+    if (err) {
+      console.error(`❌ Failed to subscribe to channel ${channel}:`, err);
+      return false;
+    }
+    console.log(`📡 Subscribed to Redis channel: ${channel}`);
+  });
+  
+  subscriber.on('message', (receivedChannel, message) => {
+    if (receivedChannel === channel) {
+      try {
+        const data = JSON.parse(message);
+        callback(data);
+      } catch (error) {
+        console.error('❌ Failed to parse Redis message:', error);
+      }
+    }
+  });
+  
+  return true;
+}
+
+// Отписка от канала
+function unsubscribeFromChannel(channel) {
+  if (!subscriber) return;
+  
+  subscriber.unsubscribe(channel, (err) => {
+    if (err) {
+      console.error(`❌ Failed to unsubscribe from channel ${channel}:`, err);
+    } else {
+      console.log(`📡 Unsubscribed from Redis channel: ${channel}`);
+    }
+  });
+}
+
+// Сохранение данных с TTL
+async function setWithTTL(key, value, ttl = 3600) {
+  if (!redis) return false;
+  
+  try {
+    await redis.setex(key, ttl, JSON.stringify(value));
+    return true;
+  } catch (error) {
+    console.error(`❌ Failed to set key ${key}:`, error);
+    return false;
+  }
+}
+
+// Получение данных
+async function get(key) {
+  if (!redis) return null;
+  
+  try {
+    const value = await redis.get(key);
     return value ? JSON.parse(value) : null;
   } catch (error) {
-    console.error('❌ Redis get error:', error);
+    console.error(`❌ Failed to get key ${key}:`, error);
     return null;
   }
 }
 
-// Удаление данных из Redis
-async function deleteCache(key) {
-  if (!redisClient) return;
+// Удаление данных
+async function del(key) {
+  if (!redis) return false;
   
   try {
-    await redisClient.del(key);
+    await redis.del(key);
+    return true;
   } catch (error) {
-    console.error('❌ Redis delete error:', error);
+    console.error(`❌ Failed to delete key ${key}:`, error);
+    return false;
   }
 }
 
-// Закрытие соединений
-async function disconnectRedis() {
-  try {
-    if (redisClient) await redisClient.quit();
-    if (pubClient) await pubClient.quit();
-    if (subClient) await subClient.quit();
-    console.log('✅ Redis disconnected');
-  } catch (error) {
-    console.error('❌ Error disconnecting Redis:', error);
-  }
+// Проверка доступности Redis
+function isAvailable() {
+  return redis && redis.status === 'ready';
 }
 
 module.exports = {
-  connectRedis,
-  disconnectRedis,
-  publishEvent,
-  setCache,
-  getCache,
-  deleteCache
+  initRedis,
+  publishToChannel,
+  subscribeToChannel,
+  unsubscribeFromChannel,
+  setWithTTL,
+  get,
+  del,
+  isAvailable,
+  // Для доступа к raw клиентам если нужно
+  getRedisClient: () => redis,
+  getSubscriberClient: () => subscriber
 }; 

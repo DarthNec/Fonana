@@ -10,7 +10,7 @@ import {
   XMarkIcon
 } from '@heroicons/react/24/outline'
 import { CheckBadgeIcon } from '@heroicons/react/24/solid'
-import { useWallet } from '@solana/wallet-adapter-react'
+import { useWallet, useConnection } from '@solana/wallet-adapter-react'
 import { toast } from 'react-hot-toast'
 import { 
   createSubscriptionTransaction, 
@@ -20,6 +20,7 @@ import {
 import { isValidSolanaAddress } from '@/lib/solana/config'
 import { connection } from '@/lib/solana/connection'
 import { useSolRate } from '@/lib/hooks/useSolRate'
+import { refreshSubscriptionStatus } from '@/lib/utils/subscriptions'
 
 interface SubscriptionTier {
   id: string
@@ -443,6 +444,9 @@ export default function SubscribeModal({ creator, preferredTier, onClose, onSucc
       }
       
       toast.success(`Successfully subscribed to ${creator.name}!`)
+      
+      // Обновляем состояние подписки
+      await refreshSubscriptionStatus(creator.id.toString())
       
       // Вызываем callback успеха с данными о подписке
       if (onSuccess) {

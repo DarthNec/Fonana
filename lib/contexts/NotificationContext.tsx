@@ -5,6 +5,7 @@ import { NotificationType } from '@prisma/client'
 import { useUserContext } from '@/lib/contexts/UserContext'
 import { wsService, WebSocketEvent } from '@/lib/services/websocket'
 import toast from 'react-hot-toast'
+import { getJWTToken } from '@/lib/utils/jwt'
 
 interface Notification {
   id: string
@@ -80,10 +81,20 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
       setIsLoading(true)
       setError(null)
 
+      // Получаем JWT токен
+      const token = await getJWTToken()
+      
+      const headers: HeadersInit = {}
+      
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`
+      } else if (user.wallet) {
+        // Fallback на wallet для обратной совместимости
+        headers['x-user-wallet'] = user.wallet
+      }
+
       const response = await fetch('/api/user/notifications', {
-        headers: {
-          'x-user-wallet': user.wallet || ''
-        }
+        headers
       })
 
       if (!response.ok) {
@@ -194,12 +205,21 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
     setUnreadCount(prev => Math.max(0, prev - 1))
 
     try {
+      // Получаем JWT токен
+      const token = await getJWTToken()
+      const headers: HeadersInit = {
+        'Content-Type': 'application/json'
+      }
+      
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`
+      } else if (user.wallet) {
+        headers['x-user-wallet'] = user.wallet
+      }
+
       const response = await fetch(`/api/user/notifications`, {
         method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-user-wallet': user.wallet || ''
-        },
+        headers,
         body: JSON.stringify({ notificationId, isRead: true })
       })
 
@@ -226,12 +246,21 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
     setUnreadCount(0)
 
     try {
+      // Получаем JWT токен
+      const token = await getJWTToken()
+      const headers: HeadersInit = {
+        'Content-Type': 'application/json'
+      }
+      
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`
+      } else if (user.wallet) {
+        headers['x-user-wallet'] = user.wallet
+      }
+
       const response = await fetch(`/api/user/notifications`, {
         method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-user-wallet': user.wallet || ''
-        },
+        headers,
         body: JSON.stringify({ markAllAsRead: true })
       })
 

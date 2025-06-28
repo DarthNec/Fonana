@@ -5,8 +5,7 @@ import { hasAccessToTier, checkPostAccess, normalizeTierName } from '@/lib/utils
 import { TIER_HIERARCHY } from '@/lib/constants/tiers'
 
 // WebSocket события
-import { notifyNewPost } from '@/websocket-server/src/events/posts'
-import { sendNotification } from '@/websocket-server/src/events/notifications'
+import { notifyNewPost, sendNotification } from '@/lib/services/websocket-client'
 
 export const dynamic = 'force-dynamic'
 
@@ -330,15 +329,7 @@ export async function POST(request: NextRequest) {
 
     // Отправляем WebSocket событие о новом посте
     try {
-      await notifyNewPost(post)
-      
-      // Получаем информацию о создателе
-      const creator = await prisma.user.findUnique({
-        where: { id: post.creatorId },
-        select: { nickname: true, fullName: true }
-      })
-      
-      // Отправляем уведомления подписчикам
+      // Сначала получаем подписчиков
       const subscribers = await prisma.subscription.findMany({
         where: {
           creatorId: post.creatorId,
@@ -347,6 +338,17 @@ export async function POST(request: NextRequest) {
         },
         select: { userId: true }
       })
+      
+      const subscriberIds = subscribers.map(sub => sub.userId)
+      await notifyNewPost(post, subscriberIds)
+      
+      // Получаем информацию о создателе
+      const creator = await prisma.user.findUnique({
+        where: { id: post.creatorId },
+        select: { nickname: true, fullName: true }
+      })
+      
+      // Подписчики уже получены выше
       
       // Отправляем уведомления всем подписчикам
       const creatorName = creator?.nickname || creator?.fullName || 'Creator'

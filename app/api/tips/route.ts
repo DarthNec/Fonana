@@ -4,7 +4,7 @@ import { waitForTransactionConfirmation } from '@/lib/solana/validation'
 import { getConnection } from '@/lib/solana/connection'
 
 // WebSocket события
-import { sendNotification } from '@/websocket-server/src/events/notifications'
+import { sendNotification } from '@/lib/services/websocket-client'
 
 export async function POST(request: NextRequest) {
   try {
@@ -162,13 +162,12 @@ export async function POST(request: NextRequest) {
     // Отправляем WebSocket уведомление
     try {
       await sendNotification(creatorId, {
-        type: 'notification',
-        notification: {
+        type: notification.type,
+        title: notification.title,
+        message: notification.message,
+        metadata: {
+          ...notification.metadata as any,
           id: notification.id,
-          type: notification.type,
-          title: notification.title,
-          message: notification.message,
-          metadata: notification.metadata,
           isRead: notification.isRead,
           createdAt: notification.createdAt
         }

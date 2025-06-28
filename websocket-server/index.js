@@ -1,27 +1,46 @@
 require('dotenv').config();
 const { createWebSocketServer } = require('./src/server');
-const { connectRedis } = require('./src/redis');
 const { initPrisma } = require('./src/db');
+const { initRedis } = require('./src/redis');
+const { initLogs, startStatsReporter, createMetricsEndpoint } = require('./src/monitoring');
 
 const PORT = process.env.WS_PORT || 3002;
 
 async function startServer() {
   try {
-    // Инициализация подключений
-    await initPrisma();
-    await connectRedis();
+    // Инициализируем логирование
+    await initLogs();
+    console.log('✅ Logging initialized');
     
-    // Запуск WebSocket сервера
-    const server = createWebSocketServer(PORT);
+    // Инициализируем Prisma
+    await initPrisma();
+    
+    // Инициализируем Redis
+    const redisConnected = initRedis();
+    
+    if (redisConnected) {
+      console.log('✅ Redis initialized successfully');
+    } else {
+      console.log('⚠️  Running in single server mode without Redis');
+    }
+    
+    // Создаем WebSocket сервер
+    const wss = createWebSocketServer(PORT);
     
     console.log(`✅ WebSocket server started on port ${PORT}`);
-    console.log(`📡 Waiting for connections...`);
+    console.log('📡 Waiting for connections...');
+    
+    // Запускаем периодический вывод статистики
+    startStatsReporter(60000); // каждую минуту
+    
+    // Создаем HTTP endpoint для метрик
+    createMetricsEndpoint();
     
     // Graceful shutdown
-    process.on('SIGTERM', async () => {
-      console.log('⚠️  SIGTERM received, shutting down gracefully...');
-      server.close(() => {
-        console.log('✅ WebSocket server closed');
+    process.on('SIGTERM', () => {
+      console.log('SIGTERM received, shutting down gracefully');
+      wss.close(() => {
+        console.log('WebSocket server closed');
         process.exit(0);
       });
     });

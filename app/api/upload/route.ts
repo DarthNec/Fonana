@@ -7,6 +7,7 @@ export async function POST(request: NextRequest) {
   try {
     const formData = await request.formData()
     const file = formData.get('file') as File
+    const type = formData.get('type') as string // 'avatar', 'background', 'post', 'message'
     
     if (!file) {
       return NextResponse.json({ error: 'Файл не найден' }, { status: 400 })
@@ -15,7 +16,8 @@ export async function POST(request: NextRequest) {
     console.log('File upload attempt:', {
       name: file.name,
       type: file.type,
-      size: file.size
+      size: file.size,
+      uploadType: type
     })
 
     // Проверяем тип файла
@@ -27,11 +29,11 @@ export async function POST(request: NextRequest) {
       }, { status: 400 })
     }
 
-    // Проверяем размер файла (максимум 5MB)
-    const maxSize = 5 * 1024 * 1024 // 5MB
+    // Проверяем размер файла (максимум 5MB для аватарок и фонов, 10MB для постов и сообщений)
+    const maxSize = (type === 'avatar' || type === 'background') ? 5 * 1024 * 1024 : 10 * 1024 * 1024
     if (file.size > maxSize) {
       return NextResponse.json({ 
-        error: 'Файл слишком большой. Максимальный размер: 5MB' 
+        error: `Файл слишком большой. Максимальный размер: ${maxSize / 1024 / 1024}MB` 
       }, { status: 400 })
     }
 
@@ -44,26 +46,42 @@ export async function POST(request: NextRequest) {
     const fileExtension = path.extname(file.name)
     const fileName = `${fileHash}${fileExtension}`
     
-    // Определяем директорию для загрузки
-    // В development используем путь относительно корня проекта
+    // Определяем директорию для загрузки в зависимости от типа
+    let uploadSubDir: string
+    switch (type) {
+      case 'avatar':
+        uploadSubDir = 'avatars'
+        break
+      case 'background':
+        uploadSubDir = 'backgrounds'
+        break
+      case 'post':
+        uploadSubDir = 'posts'
+        break
+      case 'message':
+      case 'image': // для обратной совместимости
+      case 'video':
+        uploadSubDir = 'messages'
+        break
+      default:
+        uploadSubDir = 'uploads' // общая директория по умолчанию
+    }
+    
+    // Определяем полный путь
     let uploadDir: string
     if (process.env.NODE_ENV === 'production') {
-      uploadDir = '/var/www/fonana/public/avatars'
+      uploadDir = `/var/www/fonana/public/${uploadSubDir}`
     } else {
       // Для локальной разработки используем путь относительно корня проекта
-      // __dirname в Next.js API routes указывает на .next/server/app/api/upload
-      // Нужно подняться на 4 уровня вверх чтобы попасть в корень проекта
-      const projectRoot = path.join(__dirname, '..', '..', '..', '..')
-      uploadDir = path.join(projectRoot, 'public', 'avatars')
+      const projectRoot = path.join(process.cwd(), 'public')
+      uploadDir = path.join(projectRoot, uploadSubDir)
     }
     
     const filePath = path.join(uploadDir, fileName)
     
     console.log('Upload directory:', uploadDir)
     console.log('File path:', filePath)
-    console.log('__dirname:', __dirname)
-    console.log('process.cwd():', process.cwd())
-    console.log('Environment:', process.env.NODE_ENV)
+    console.log('Upload type:', type)
     
     try {
       await mkdir(uploadDir, { recursive: true })
@@ -73,28 +91,19 @@ export async function POST(request: NextRequest) {
       await writeFile(filePath, buffer)
       console.log('File written successfully:', fileName)
       
-      // Проверяем что файл создался
-      const fs = require('fs')
-      const exists = fs.existsSync(filePath)
-      console.log('File exists after write:', exists)
-      
     } catch (error) {
       console.error('File operation error:', error)
       throw error
     }
     
     // Возвращаем URL файла
-    const fileUrl = `/avatars/${fileName}`
+    const fileUrl = `/${uploadSubDir}/${fileName}`
     
     return NextResponse.json({ 
       success: true,
       url: fileUrl,
       filename: fileName,
-      debug: {
-        uploadDir,
-        filePath,
-        fileSize: buffer.length
-      }
+      uploadType: type || 'general'
     })
     
   } catch (error) {

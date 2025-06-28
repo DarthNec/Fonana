@@ -3,8 +3,7 @@ import { prisma } from '@/lib/prisma'
 import { notifyNewComment, notifyCommentReply } from '@/lib/notifications'
 
 // WebSocket события
-import { notifyNewComment as wsNotifyNewComment } from '@/websocket-server/src/events/posts'
-import { sendNotification } from '@/websocket-server/src/events/notifications'
+import { notifyNewComment as wsNotifyNewComment, sendNotification } from '@/lib/services/websocket-client'
 
 export async function GET(
   request: NextRequest,

@@ -3,7 +3,7 @@ import { prisma } from '@/lib/prisma'
 import { getUserByWallet } from '@/lib/db'
 
 // WebSocket события
-import { sendNotification } from '@/websocket-server/src/events/notifications'
+import { sendNotification } from '@/lib/services/websocket-client'
 
 // DELETE /api/user/notifications/clear - очистить все уведомления
 export async function DELETE(request: NextRequest) {
@@ -32,7 +32,9 @@ export async function DELETE(request: NextRequest) {
     try {
       await sendNotification(user.id, {
         type: 'notifications_cleared',
-        count: result.count
+        title: 'Уведомления очищены',
+        message: `Удалено ${result.count} прочитанных уведомлений`,
+        metadata: { count: result.count }
       })
     } catch (error) {
       console.error('WebSocket notification failed:', error)
