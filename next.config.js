@@ -1,3 +1,8 @@
+// Загружаем переменные окружения для production
+if (process.env.NODE_ENV === 'production') {
+  require('dotenv').config()
+}
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   generateBuildId: async () => {
@@ -64,7 +69,10 @@ const nextConfig = {
     return config
   },
   experimental: {
-    esmExternals: true
+    esmExternals: true,
+    serverActions: {
+      bodySizeLimit: '10mb',
+    },
   },
   transpilePackages: [
     '@solana/web3.js',
@@ -72,7 +80,26 @@ const nextConfig = {
     '@solana/wallet-adapter-react',
     '@solana/wallet-adapter-wallets',
     '@solana/wallet-adapter-react-ui'
-  ]
+  ],
+  typescript: {
+    ignoreBuildErrors: false,
+  },
+  eslint: {
+    ignoreDuringBuilds: false,
+  },
+  async headers() {
+    return [
+      {
+        source: '/:path*',
+        headers: [
+          {
+            key: 'X-Frame-Options',
+            value: 'DENY'
+          }
+        ]
+      }
+    ]
+  }
 }
 
 module.exports = nextConfig 
