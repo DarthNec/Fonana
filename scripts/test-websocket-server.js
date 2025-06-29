@@ -107,25 +107,34 @@ async function testInvalidConnection() {
   });
 
   return new Promise((resolve) => {
+    let wasRejected = false;
+    
     ws.on('open', () => {
-      console.log('❌ Соединение не должно было установиться!');
-      ws.close();
-      resolve(false);
+      // WebSocket может открыться на мгновение перед закрытием
+      console.log('⏳ Соединение открылось, ожидаем закрытия с ошибкой...');
     });
 
     ws.on('error', (error) => {
-      console.log('✅ Соединение отклонено (ожидаемо):', error.message);
-      resolve(true);
+      wasRejected = true;
+      console.log('✅ Ошибка соединения (ожидаемо):', error.message);
     });
 
     ws.on('close', (code, reason) => {
-      console.log(`✅ Закрыто с кодом ${code}${reason ? `: ${reason}` : ''}\n`);
-      resolve(true);
+      if (code === 1008) {
+        console.log(`✅ Правильно отклонено с кодом ${code}: ${reason || 'Unauthorized'}\n`);
+        resolve(true);
+      } else if (wasRejected) {
+        console.log(`✅ Соединение отклонено\n`);
+        resolve(true);
+      } else {
+        console.log(`❌ Неожиданное поведение: код ${code}\n`);
+        resolve(false);
+      }
     });
 
     // Timeout
     setTimeout(() => {
-      resolve(true);
+      resolve(wasRejected || false);
     }, 3000);
   });
 }
@@ -137,25 +146,34 @@ async function testNoToken() {
   const ws = new WebSocket(WS_URL);
 
   return new Promise((resolve) => {
+    let wasRejected = false;
+    
     ws.on('open', () => {
-      console.log('❌ Соединение не должно было установиться!');
-      ws.close();
-      resolve(false);
+      // WebSocket может открыться на мгновение перед закрытием
+      console.log('⏳ Соединение открылось, ожидаем закрытия с ошибкой...');
     });
 
     ws.on('error', (error) => {
-      console.log('✅ Соединение отклонено (ожидаемо):', error.message);
-      resolve(true);
+      wasRejected = true;
+      console.log('✅ Ошибка соединения (ожидаемо):', error.message);
     });
 
     ws.on('close', (code, reason) => {
-      console.log(`✅ Закрыто с кодом ${code}${reason ? `: ${reason}` : ''}\n`);
-      resolve(true);
+      if (code === 1008) {
+        console.log(`✅ Правильно отклонено с кодом ${code}: ${reason || 'Unauthorized'}\n`);
+        resolve(true);
+      } else if (wasRejected) {
+        console.log(`✅ Соединение отклонено\n`);
+        resolve(true);
+      } else {
+        console.log(`❌ Неожиданное поведение: код ${code}\n`);
+        resolve(false);
+      }
     });
 
     // Timeout
     setTimeout(() => {
-      resolve(true);
+      resolve(wasRejected || false);
     }, 3000);
   });
 }
