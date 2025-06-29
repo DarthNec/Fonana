@@ -6,16 +6,6 @@ import { isValidSolanaAddress } from '@/lib/solana/validation'
 const JWT_SECRET = process.env.NEXTAUTH_SECRET || 'your-secret-key'
 const JWT_EXPIRES_IN = '30m' // 30 минут
 
-// Временное логирование для отладки
-console.log('[JWT Debug] JWT_SECRET info:', {
-  exists: !!process.env.NEXTAUTH_SECRET,
-  length: JWT_SECRET.length,
-  first10: JWT_SECRET.substring(0, 10),
-  last5: JWT_SECRET.substring(JWT_SECRET.length - 5),
-  hasQuotes: JWT_SECRET.includes('"'),
-  isDefault: JWT_SECRET === 'your-secret-key'
-})
-
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json()
@@ -28,34 +18,30 @@ export async function POST(req: NextRequest) {
       )
     }
     
-    // Валидация Solana адреса
     if (!isValidSolanaAddress(wallet)) {
       return NextResponse.json(
-        { error: 'Invalid wallet address' },
+        { error: 'Invalid Solana wallet address' },
         { status: 400 }
       )
     }
     
-    // Проверяем существование пользователя
-    const user = await prisma.user.findUnique({
-      where: { wallet },
-      select: {
-        id: true,
-        wallet: true,
-        nickname: true,
-        isCreator: true,
-        isVerified: true
-      }
+    // Find or create user
+    let user = await prisma.user.findUnique({
+      where: { wallet }
     })
     
     if (!user) {
-      return NextResponse.json(
-        { error: 'User not found' },
-        { status: 404 }
-      )
+      user = await prisma.user.create({
+        data: {
+          wallet,
+          nickname: `user_${wallet.slice(0, 8).toLowerCase()}`,
+          isCreator: false,
+          isVerified: false
+        }
+      })
     }
     
-    // Генерируем JWT токен
+    // Create JWT token
     const token = jwt.sign(
       {
         userId: user.id,
@@ -67,29 +53,27 @@ export async function POST(req: NextRequest) {
       JWT_SECRET,
       {
         expiresIn: JWT_EXPIRES_IN,
-        issuer: 'fonana.me',
-        audience: 'fonana-websocket'
+        audience: 'fonana-websocket',
+        issuer: 'fonana.me'
       }
     )
     
-    // Логируем выдачу токена
-    console.log(`[JWT] Token issued for user ${user.nickname || user.id}, expires in ${JWT_EXPIRES_IN}`)
-    
     return NextResponse.json({
-      success: true,
       token,
-      expiresIn: JWT_EXPIRES_IN,
       user: {
         id: user.id,
         wallet: user.wallet,
-        nickname: user.nickname
+        nickname: user.nickname,
+        isCreator: user.isCreator,
+        isVerified: user.isVerified,
+        avatar: user.avatar,
+        fullName: user.fullName
       }
     })
-    
   } catch (error) {
-    console.error('[JWT] Error generating token:', error)
+    console.error('Error in wallet auth:', error)
     return NextResponse.json(
-      { error: 'Failed to generate token' },
+      { error: 'Internal server error' },
       { status: 500 }
     )
   }
