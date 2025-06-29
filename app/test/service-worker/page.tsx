@@ -88,11 +88,11 @@ export default function ServiceWorkerTestPage() {
     try {
       addLog('Clearing all caches...')
       const cacheNames = await caches.keys()
-      const cacheNamesArray = Array.from(cacheNames) as string[]
+      const cacheNamesArray = Array.from(cacheNames) as unknown as string[]
       await Promise.all(
         cacheNamesArray.map((cacheName: string) => {
           addLog(`Deleting cache: ${cacheName}`)
-          return caches.delete(cacheName)
+          return window.caches.delete(cacheName)
         })
       )
       addLog('All caches cleared')
