@@ -163,6 +163,8 @@ class WebSocketService extends EventEmitter {
     const host = window.location.host
     let url = `${protocol}//${host}/ws`
     
+    console.log('[WebSocket] Getting JWT token for connection...')
+    
     // Получаем JWT токен
     const token = await getJWTToken()
     
@@ -171,8 +173,12 @@ class WebSocketService extends EventEmitter {
       return url
     }
     
+    console.log('[WebSocket] JWT token obtained:', token.substring(0, 20) + '...')
+    
     // Добавляем токен как query параметр
     url += `?token=${encodeURIComponent(token)}`
+    
+    console.log('[WebSocket] Final URL:', url.substring(0, 50) + '...')
     
     return url
   }
@@ -365,5 +371,9 @@ export const wsService = new WebSocketService()
 
 // Автоматически подключаемся при загрузке в браузере
 if (typeof window !== 'undefined') {
-  wsService.connect()
+  // Откладываем подключение, чтобы дать время для загрузки JWT
+  setTimeout(() => {
+    console.log('[WebSocket] Initiating auto-connect...')
+    wsService.connect()
+  }, 1000)
 } 
