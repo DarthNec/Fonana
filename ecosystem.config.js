@@ -12,6 +12,7 @@ module.exports = {
         NODE_ENV: 'production',
         PORT: 3000
       },
+      env_file: './.env',
       error_file: '/var/www/fonana/logs/pm2-error.log',
       out_file: '/var/www/fonana/logs/pm2-out.log',
       log_file: '/var/www/fonana/logs/pm2-combined.log',
@@ -32,6 +33,7 @@ module.exports = {
         PORT: 3002,
         WS_PORT: 3002
       },
+      env_file: './.env',
       error_file: '/var/www/fonana/logs/ws-error.log',
       out_file: '/var/www/fonana/logs/ws-out.log',
       log_file: '/var/www/fonana/logs/ws-combined.log',

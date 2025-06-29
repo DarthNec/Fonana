@@ -6,6 +6,16 @@ import { isValidSolanaAddress } from '@/lib/solana/validation'
 const JWT_SECRET = process.env.NEXTAUTH_SECRET || 'your-secret-key'
 const JWT_EXPIRES_IN = '30m' // 30 минут
 
+// Временное логирование для отладки
+console.log('[JWT Debug] JWT_SECRET info:', {
+  exists: !!process.env.NEXTAUTH_SECRET,
+  length: JWT_SECRET.length,
+  first10: JWT_SECRET.substring(0, 10),
+  last5: JWT_SECRET.substring(JWT_SECRET.length - 5),
+  hasQuotes: JWT_SECRET.includes('"'),
+  isDefault: JWT_SECRET === 'your-secret-key'
+})
+
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json()

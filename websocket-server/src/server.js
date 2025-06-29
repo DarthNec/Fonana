@@ -196,17 +196,26 @@ function initRedisSubscriptions() {
 
 // Извлечение токена из запроса
 function extractToken(req) {
-  // Проверяем query параметр
-  const url = new URL(req.url, `http://${req.headers.host}`);
-  const queryToken = url.searchParams.get('token');
-  if (queryToken) return queryToken;
+  try {
+    // Проверяем query параметр
+    const url = new URL(req.url, `http://${req.headers.host || 'localhost'}`);
+    const queryToken = url.searchParams.get('token');
+    if (queryToken) {
+      console.log('📎 Token found in query params');
+      return queryToken;
+    }
+  } catch (error) {
+    console.error('⚠️  Error parsing URL:', error.message);
+  }
   
   // Проверяем заголовок Authorization
   const authHeader = req.headers.authorization;
   if (authHeader && authHeader.startsWith('Bearer ')) {
+    console.log('📎 Token found in Authorization header');
     return authHeader.substring(7);
   }
   
+  console.log('⚠️  No token found in request');
   return null;
 }
 
