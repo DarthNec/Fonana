@@ -46,23 +46,25 @@ export async function POST(req: NextRequest) {
       })
     }
     
-    // Create JWT token
+    // Генерируем JWT токен для использования в API
+    const jwtSecret = process.env.NEXTAUTH_SECRET || 'default-secret-key';
+    console.log('🔑 JWT generation:', {
+      hasEnvSecret: !!process.env.NEXTAUTH_SECRET,
+      secretLength: jwtSecret.length
+    });
+
     const token = jwt.sign(
       {
         userId: user.id,
         wallet: user.wallet,
-        nickname: user.nickname,
-        isCreator: user.isCreator,
-        isVerified: user.isVerified
+        sub: user.id
       },
-      JWT_SECRET,
-      {
-        expiresIn: JWT_EXPIRES_IN,
-        issuer: 'fonana.me',
-        audience: 'fonana-websocket'
-      }
-    )
-    
+      jwtSecret,
+      { expiresIn: '30d' }
+    );
+
+    console.log('✅ JWT token created successfully');
+
     return NextResponse.json({
       token,
       user: {

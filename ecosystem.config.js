@@ -2,46 +2,36 @@ module.exports = {
   apps: [
     {
       name: 'fonana',
-      script: './start-production-v2.js',
+      script: './start-production-final.js',
       instances: 1,
-      autorestart: true,
-      watch: false,
-      max_memory_restart: '1G',
-      env: {
-        NODE_ENV: 'production',
-        PORT: 3000,
-        DATABASE_URL: 'postgresql://postgres:postgres@localhost:5432/fonana_dev?schema=public',
-        NEXTAUTH_SECRET: 'rFbhMWHvRfv9AacQlVquu9JnY1jCoioNdpaPfIkAK9U=',
-        NEXTAUTH_URL: 'https://fonana.me'
-      },
+      exec_mode: 'cluster',
+      max_memory_restart: '500M',
       error_file: '/var/www/fonana/logs/pm2-error.log',
       out_file: '/var/www/fonana/logs/pm2-out.log',
-      log_file: '/var/www/fonana/logs/pm2-combined.log',
+      env_file: './.env',
+      env: {
+        NODE_ENV: 'production',
+        PORT: 3000
+      },
       time: true,
       merge_logs: true,
-      log_date_format: 'YYYY-MM-DD HH:mm:ss Z'
+      min_uptime: '10s',
+      max_restarts: 3,
+      restart_delay: 4000
     },
     {
       name: 'fonana-ws',
-      script: './index.js',
-      cwd: './websocket-server',
+      script: './websocket-server/index.js',
       instances: 1,
-      autorestart: true,
-      watch: false,
-      max_memory_restart: '512M',
+      exec_mode: 'cluster',
+      max_memory_restart: '200M',
+      env_file: './.env',
       env: {
         NODE_ENV: 'production',
-        PORT: 3002,
-        WS_PORT: 3002,
-        DATABASE_URL: 'postgresql://postgres:postgres@localhost:5432/fonana_dev?schema=public',
-        NEXTAUTH_SECRET: 'rFbhMWHvRfv9AacQlVquu9JnY1jCoioNdpaPfIkAK9U='
+        PORT: 3002
       },
-      error_file: '/var/www/fonana/logs/ws-error.log',
-      out_file: '/var/www/fonana/logs/ws-out.log',
-      log_file: '/var/www/fonana/logs/ws-combined.log',
       time: true,
-      merge_logs: true,
-      log_date_format: 'YYYY-MM-DD HH:mm:ss Z'
+      merge_logs: true
     }
   ]
 } 
