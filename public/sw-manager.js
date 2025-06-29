@@ -12,9 +12,31 @@ class ServiceWorkerManager {
     }
 
     try {
+      // Сначала проверяем существующую регистрацию
+      const existingReg = await navigator.serviceWorker.getRegistration();
+      
+      // Если есть старая версия, удаляем её
+      if (existingReg && existingReg.active) {
+        const activeWorker = existingReg.active;
+        if (activeWorker.scriptURL.includes('sw.js')) {
+          console.log('[SW Manager] Found existing registration, checking version...');
+          // Проверяем версию через кеш
+          const cacheNames = await caches.keys();
+          const hasOldVersion = cacheNames.some(name => 
+            name.includes('fonana-v1') || name.includes('fonana-v2')
+          );
+          
+          if (hasOldVersion) {
+            console.log('[SW Manager] Old version detected, clearing...');
+            await this.clearCache();
+          }
+        }
+      }
+      
       // Регистрируем Service Worker
       this.registration = await navigator.serviceWorker.register('/sw.js', {
-        scope: '/'
+        scope: '/',
+        updateViaCache: 'none' // Всегда проверять обновления
       });
       
       console.log('[SW Manager] Service Worker registered');
@@ -40,6 +62,15 @@ class ServiceWorkerManager {
 
     } catch (error) {
       console.error('[SW Manager] Registration failed:', error);
+      // В случае критической ошибки пытаемся очистить всё
+      if (error.name === 'SecurityError' || error.name === 'TypeError') {
+        console.log('[SW Manager] Attempting recovery...');
+        try {
+          await this.unregister();
+        } catch (e) {
+          console.error('[SW Manager] Recovery failed:', e);
+        }
+      }
     }
   }
 
