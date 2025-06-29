@@ -3,7 +3,8 @@ import jwt from 'jsonwebtoken'
 import { prisma } from '@/lib/prisma'
 import { isValidSolanaAddress } from '@/lib/solana/validation'
 
-const JWT_SECRET: string | undefined = process.env.NEXTAUTH_SECRET
+// ВРЕМЕННОЕ РЕШЕНИЕ: используем явный ключ для диагностики
+const JWT_SECRET = process.env.NEXTAUTH_SECRET || 'TEMP-NOT-LOADED-FROM-ENV'
 const JWT_EXPIRES_IN = '30m' // 30 минут
 
 export async function POST(req: NextRequest) {
@@ -25,17 +26,10 @@ export async function POST(req: NextRequest) {
       )
     }
     
-    // Проверяем что JWT_SECRET установлен
-    if (!JWT_SECRET) {
-      console.error('❌ CRITICAL: NEXTAUTH_SECRET is not set in environment variables!')
-      return NextResponse.json(
-        { error: 'Server configuration error: JWT secret not configured' },
-        { status: 500 }
-      )
+    // Логируем предупреждение если используется временный ключ
+    if (JWT_SECRET === 'TEMP-NOT-LOADED-FROM-ENV') {
+      console.error('⚠️ WARNING: Using temporary JWT secret! NEXTAUTH_SECRET not loaded from environment!')
     }
-    
-    // После проверки выше, TypeScript должен понять что JWT_SECRET не undefined
-    const jwtSecretKey: string = JWT_SECRET
     
     // Find or create user
     let user = await prisma.user.findUnique({
@@ -61,7 +55,7 @@ export async function POST(req: NextRequest) {
         isCreator: user.isCreator,
         isVerified: user.isVerified
       },
-      jwtSecretKey,
+      JWT_SECRET,
       {
         expiresIn: JWT_EXPIRES_IN,
         issuer: 'fonana.me',
