@@ -3,7 +3,7 @@ import jwt from 'jsonwebtoken'
 import { prisma } from '@/lib/prisma'
 import { isValidSolanaAddress } from '@/lib/solana/validation'
 
-const JWT_SECRET = process.env.NEXTAUTH_SECRET || 'your-secret-key'
+const JWT_SECRET: string | undefined = process.env.NEXTAUTH_SECRET
 const JWT_EXPIRES_IN = '30m' // 30 минут
 
 export async function POST(req: NextRequest) {
@@ -25,6 +25,18 @@ export async function POST(req: NextRequest) {
       )
     }
     
+    // Проверяем что JWT_SECRET установлен
+    if (!JWT_SECRET) {
+      console.error('❌ CRITICAL: NEXTAUTH_SECRET is not set in environment variables!')
+      return NextResponse.json(
+        { error: 'Server configuration error: JWT secret not configured' },
+        { status: 500 }
+      )
+    }
+    
+    // После проверки выше, TypeScript должен понять что JWT_SECRET не undefined
+    const jwtSecretKey: string = JWT_SECRET
+    
     // Find or create user
     let user = await prisma.user.findUnique({
       where: { wallet }
@@ -35,8 +47,7 @@ export async function POST(req: NextRequest) {
         data: {
           wallet,
           nickname: `user_${wallet.slice(0, 8).toLowerCase()}`,
-          isCreator: false,
-          isVerified: false
+          solanaWallet: wallet
         }
       })
     }
@@ -50,11 +61,11 @@ export async function POST(req: NextRequest) {
         isCreator: user.isCreator,
         isVerified: user.isVerified
       },
-      JWT_SECRET,
+      jwtSecretKey,
       {
         expiresIn: JWT_EXPIRES_IN,
-        audience: 'fonana-websocket',
-        issuer: 'fonana.me'
+        issuer: 'fonana.me',
+        audience: 'fonana-websocket'
       }
     )
     
@@ -71,9 +82,9 @@ export async function POST(req: NextRequest) {
       }
     })
   } catch (error) {
-    console.error('Error in wallet auth:', error)
+    console.error('Auth error:', error)
     return NextResponse.json(
-      { error: 'Internal server error' },
+      { error: 'Authentication failed' },
       { status: 500 }
     )
   }
