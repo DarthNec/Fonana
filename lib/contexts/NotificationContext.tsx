@@ -41,8 +41,8 @@ const createAudioElements = () => {
   if (typeof window === 'undefined') return null
   
   const sounds = {
-    single: new Audio('/sounds/notification-single.mp3'),
-    trill: new Audio('/sounds/notification-trill.mp3')
+    single: new Audio('/sounds/notification-single.m4a'),
+    trill: new Audio('/sounds/notification-trill.m4a')
   }
   
   // Предзагружаем звуки
@@ -67,7 +67,7 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
   // Звуковое уведомление
   const playNotificationSound = useCallback(() => {
     if (audioEnabled && typeof window !== 'undefined') {
-      const audio = new Audio('/sounds/notification-single.mp3')
+      const audio = new Audio('/sounds/notification-single.m4a')
       audio.volume = 0.5
       audio.play().catch(err => console.log('Audio play failed:', err))
     }

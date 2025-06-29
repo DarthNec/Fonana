@@ -1,6 +1,6 @@
-// Service Worker для Fonana PWA v3
-const CACHE_NAME = 'fonana-v3';
-const RUNTIME_CACHE = 'fonana-runtime-v2';
+// Service Worker для Fonana PWA v4
+const CACHE_NAME = 'fonana-v4';
+const RUNTIME_CACHE = 'fonana-runtime-v3';
 
 // Ресурсы для предварительного кеширования
 const urlsToCache = [
@@ -64,7 +64,7 @@ function shouldHandleRequest(request) {
 
 // Install Service Worker
 self.addEventListener('install', event => {
-  console.log('[SW] Installing Service Worker v3...');
+  console.log('[SW] Installing Service Worker v4...');
   
   event.waitUntil(
     caches.open(CACHE_NAME)
@@ -82,6 +82,7 @@ self.addEventListener('install', event => {
       })
       .then(() => {
         console.log('[SW] Installation complete');
+        // Принудительно активируем новую версию
         return self.skipWaiting();
       })
       .catch(err => {
@@ -92,13 +93,14 @@ self.addEventListener('install', event => {
 
 // Activate Service Worker
 self.addEventListener('activate', event => {
-  console.log('[SW] Activating Service Worker v3...');
+  console.log('[SW] Activating Service Worker v4...');
   
   const cacheWhitelist = [CACHE_NAME, RUNTIME_CACHE];
   
   event.waitUntil(
     caches.keys()
       .then(cacheNames => {
+        // Удаляем ВСЕ старые кеши
         return Promise.all(
           cacheNames.map(cacheName => {
             if (!cacheWhitelist.includes(cacheName)) {
@@ -109,9 +111,17 @@ self.addEventListener('activate', event => {
         );
       })
       .then(() => {
-        console.log('[SW] Activation complete');
-        // Берем контроль над всеми клиентами
+        console.log('[SW] Activation complete, claiming clients');
+        // Берем контроль над всеми клиентами немедленно
         return self.clients.claim();
+      })
+      .then(() => {
+        // Отправляем сообщение всем клиентам о готовности новой версии
+        return self.clients.matchAll().then(clients => {
+          clients.forEach(client => {
+            client.postMessage({ type: 'SW_UPDATED', version: 'v4' });
+          });
+        });
       })
       .catch(err => {
         console.error('[SW] Activation failed:', err);
@@ -121,11 +131,16 @@ self.addEventListener('activate', event => {
 
 // Fetch обработчик
 self.addEventListener('fetch', event => {
+  // Логируем для отладки
+  const url = new URL(event.request.url);
+  
   // Сначала проверяем, нужно ли обрабатывать запрос
   if (!shouldHandleRequest(event.request)) {
     // Пропускаем запрос без обработки
     return;
   }
+  
+  console.log('[SW v4] Handling request:', url.pathname);
   
   // Обрабатываем только разрешенные запросы
   event.respondWith(

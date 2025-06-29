@@ -259,7 +259,20 @@ export async function GET(req: Request) {
     return response
   } catch (error) {
     console.error('Error fetching posts:', error)
-    return NextResponse.json({ error: 'Failed to fetch posts' }, { status: 500 })
+    
+    // Добавляем детальное логирование ошибки
+    if (error instanceof Error) {
+      console.error('Error details:', {
+        message: error.message,
+        stack: error.stack,
+        name: error.name
+      })
+    }
+    
+    return NextResponse.json({ 
+      error: 'Failed to fetch posts',
+      details: error instanceof Error ? error.message : 'Unknown error'
+    }, { status: 500 })
   }
 }
 

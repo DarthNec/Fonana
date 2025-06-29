@@ -54,11 +54,35 @@ class ServiceWorkerManager {
         this.promptUpdate();
       }
 
-      // Слушаем изменения состояния
+      // Обработка обновлений
+      let refreshing = false;
       navigator.serviceWorker.addEventListener('controllerchange', () => {
-        console.log('[SW Manager] Controller changed, reloading...');
-        window.location.reload();
+        if (!refreshing) {
+          console.log('[SW Manager] New service worker activated, reloading page...');
+          refreshing = true;
+          window.location.reload();
+        }
       });
+
+      // Слушаем сообщения от Service Worker
+      navigator.serviceWorker.addEventListener('message', event => {
+        if (event.data && event.data.type === 'SW_UPDATED') {
+          console.log('[SW Manager] Service Worker updated to version:', event.data.version);
+          // Показываем уведомление пользователю
+          if (window.showToast) {
+            window.showToast('Приложение обновлено до последней версии', 'success');
+          }
+        }
+      });
+
+      // Проверка обновлений каждые 30 секунд
+      setInterval(() => {
+        if (this.registration && this.registration.update) {
+          this.checkForUpdates().catch(err => {
+            console.warn('[SW Manager] Update check failed:', err);
+          });
+        }
+      }, 30000);
 
     } catch (error) {
       console.error('[SW Manager] Registration failed:', error);
