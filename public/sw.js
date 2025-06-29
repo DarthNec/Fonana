@@ -1,6 +1,6 @@
-// Service Worker для Fonana PWA v4
-const CACHE_NAME = 'fonana-v4';
-const RUNTIME_CACHE = 'fonana-runtime-v3';
+// Service Worker для Fonana PWA v5
+const CACHE_NAME = 'fonana-v5';
+const RUNTIME_CACHE = 'fonana-runtime-v4';
 
 // Ресурсы для предварительного кеширования
 const urlsToCache = [
@@ -41,6 +41,11 @@ function shouldHandleRequest(request) {
     return false;
   }
   
+  // Пропускаем изображения постов
+  if (url.pathname.startsWith('/posts/')) {
+    return false;
+  }
+  
   // Пропускаем WebSocket пути
   if (url.pathname.includes('/ws') || url.pathname.includes('websocket')) {
     return false;
@@ -64,7 +69,7 @@ function shouldHandleRequest(request) {
 
 // Install Service Worker
 self.addEventListener('install', event => {
-  console.log('[SW] Installing Service Worker v4...');
+  console.log('[SW] Installing Service Worker v5...');
   
   event.waitUntil(
     caches.open(CACHE_NAME)
@@ -93,7 +98,7 @@ self.addEventListener('install', event => {
 
 // Activate Service Worker
 self.addEventListener('activate', event => {
-  console.log('[SW] Activating Service Worker v4...');
+  console.log('[SW] Activating Service Worker v5...');
   
   const cacheWhitelist = [CACHE_NAME, RUNTIME_CACHE];
   
@@ -119,7 +124,7 @@ self.addEventListener('activate', event => {
         // Отправляем сообщение всем клиентам о готовности новой версии
         return self.clients.matchAll().then(clients => {
           clients.forEach(client => {
-            client.postMessage({ type: 'SW_UPDATED', version: 'v4' });
+            client.postMessage({ type: 'SW_UPDATED', version: 'v5' });
           });
         });
       })
@@ -140,7 +145,7 @@ self.addEventListener('fetch', event => {
     return;
   }
   
-  console.log('[SW v4] Handling request:', url.pathname);
+  console.log('[SW v5] Handling request:', url.pathname);
   
   // Обрабатываем только разрешенные запросы
   event.respondWith(

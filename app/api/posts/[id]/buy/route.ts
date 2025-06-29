@@ -119,7 +119,7 @@ export async function POST(
     }
 
     // Обновляем пост как проданный в транзакции
-    const [updatedPost, transaction] = await prisma.$transaction([
+    const [updatedPost, transaction, postPurchase] = await prisma.$transaction([
       // Обновляем пост
       prisma.post.update({
         where: { id: params.id },
@@ -150,6 +150,19 @@ export async function POST(
             postId: params.id,
             sellType: 'FIXED_PRICE'
           }
+        }
+      }),
+      
+      // Создаем запись о покупке поста для доступа
+      prisma.postPurchase.create({
+        data: {
+          postId: params.id,
+          userId: buyer.id,
+          price: price,
+          currency: post.currency || 'SOL',
+          txSignature,
+          paymentStatus: 'COMPLETED',
+          creatorAmount: price // Пока без учета комиссий
         }
       })
     ])
