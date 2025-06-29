@@ -22,17 +22,23 @@ class JWTManager {
   }
   
   private loadFromStorage() {
+    console.log('[JWT] Loading token from localStorage...')
     try {
       const stored = localStorage.getItem(TOKEN_KEY)
       if (stored) {
+        console.log('[JWT] Found stored token')
         const data = JSON.parse(stored) as StoredToken
         if (data.expiresAt > Date.now()) {
           this.token = data
+          console.log('[JWT] Token is valid, expires at:', new Date(data.expiresAt).toISOString())
           this.scheduleRefresh()
         } else {
           // Токен истек, удаляем
+          console.log('[JWT] Token expired, clearing...')
           this.clearToken()
         }
+      } else {
+        console.log('[JWT] No token found in localStorage')
       }
     } catch (error) {
       console.error('[JWT] Error loading token from storage:', error)
@@ -69,17 +75,24 @@ class JWTManager {
   }
   
   async getToken(): Promise<string | null> {
+    console.log('[JWT] getToken called, checking current token...')
+    
     // Проверяем, есть ли валидный токен
     if (this.token && this.token.expiresAt > Date.now()) {
+      console.log('[JWT] Valid token found in memory')
       return this.token.token
     }
+    
+    console.log('[JWT] No valid token in memory, checking wallet...')
     
     // Пытаемся обновить токен
     const wallet = localStorage.getItem('fonana_user_wallet')
     if (!wallet) {
-      console.log('[JWT] No wallet found, cannot get token')
+      console.log('[JWT] No wallet found in localStorage, cannot get token')
       return null
     }
+    
+    console.log('[JWT] Wallet found:', wallet.substring(0, 8) + '...')
     
     return this.requestNewToken(wallet)
   }
