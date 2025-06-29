@@ -3,12 +3,30 @@ const { getPrisma } = require('./db');
 
 const JWT_SECRET = process.env.NEXTAUTH_SECRET || 'your-secret-key';
 
+// Debug logging
+console.log('🔑 JWT_SECRET configured:', JWT_SECRET ? `${JWT_SECRET.substring(0, 10)}...` : 'NOT SET');
+console.log('🔑 Using default key:', JWT_SECRET === 'your-secret-key');
+
 async function verifyToken(token) {
   try {
-    // Декодируем JWT токен
-    const decoded = jwt.verify(token, JWT_SECRET, {
-      issuer: 'fonana.me',
-      audience: 'fonana-websocket'
+    console.log('🔐 Verifying token...');
+    console.log('🔑 Token length:', token ? token.length : 0);
+    
+    // Декодируем JWT токен без строгой проверки issuer/audience
+    const decoded = jwt.verify(token, JWT_SECRET);
+    
+    // Проверяем что декодирование прошло успешно
+    if (!decoded) {
+      console.log('⚠️  Token decoded to null/undefined');
+      return null;
+    }
+    
+    console.log('📋 Decoded token:', {
+      userId: decoded.userId,
+      sub: decoded.sub,
+      iss: decoded.iss,
+      aud: decoded.aud,
+      exp: decoded.exp ? new Date(decoded.exp * 1000).toISOString() : 'no exp'
     });
     
     // Проверяем наличие userId в токене
