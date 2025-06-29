@@ -1,7 +1,7 @@
 module.exports = {
   apps: [{
     name: 'fonana-ws',
-    script: './index.js',
+    script: './start-production.js',
     instances: 1,
     autorestart: true,
     watch: false,

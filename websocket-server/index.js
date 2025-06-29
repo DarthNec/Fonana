@@ -1,10 +1,22 @@
-require('dotenv').config();
+require('dotenv').config({ path: require('path').join(__dirname, '../.env') });
 const { createWebSocketServer } = require('./src/server');
 const { initPrisma } = require('./src/db');
 const { initRedis } = require('./src/redis');
 const { initLogs, startStatsReporter, createMetricsEndpoint } = require('./src/monitoring');
 
 const PORT = process.env.WS_PORT || 3002;
+
+// Проверяем критические переменные окружения
+console.log('🔍 Checking environment variables...');
+if (!process.env.DATABASE_URL) {
+  console.error('❌ DATABASE_URL is not set!');
+  process.exit(1);
+}
+if (!process.env.NEXTAUTH_SECRET) {
+  console.error('❌ NEXTAUTH_SECRET is not set!');
+  process.exit(1);
+}
+console.log('✅ Environment variables loaded');
 
 async function startServer() {
   try {
