@@ -1,7 +1,5 @@
-// Загружаем переменные окружения для production
-if (process.env.NODE_ENV === 'production') {
-  require('dotenv').config()
-}
+// Переменные окружения теперь передаются через PM2 ecosystem.config.js
+// Загрузка dotenv больше не нужна
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
@@ -9,6 +7,7 @@ const nextConfig = {
     return `build-${Date.now()}`
   },
   images: {
+    domains: ['localhost', 'fonana.me'],
     unoptimized: true,
     remotePatterns: [
       {
