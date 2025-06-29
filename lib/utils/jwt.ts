@@ -1,16 +1,5 @@
 'use client'
 
-interface JWTResponse {
-  success: boolean
-  token: string
-  expiresIn: string
-  user: {
-    id: string
-    wallet: string
-    nickname?: string
-  }
-}
-
 interface StoredToken {
   token: string
   expiresAt: number
@@ -110,15 +99,15 @@ class JWTManager {
         return null
       }
       
-      const data: JWTResponse = await response.json()
+      const data = await response.json()
       
-      if (!data.success || !data.token) {
+      if (!data.token) {
         console.error('[JWT] Invalid response:', data)
         return null
       }
       
-      // Парсим время истечения
-      const expiresIn = this.parseExpiresIn(data.expiresIn)
+      // Парсим время истечения - по умолчанию 30 дней как в API
+      const expiresIn = 30 * 24 * 60 * 60 * 1000 // 30 дней в миллисекундах
       const expiresAt = Date.now() + expiresIn
       
       // Сохраняем токен
@@ -132,7 +121,7 @@ class JWTManager {
       this.saveToStorage(this.token)
       this.scheduleRefresh()
       
-      console.log('[JWT] New token obtained, expires in', data.expiresIn)
+      console.log('[JWT] New token obtained, expires in 30 days')
       
       return data.token
       
