@@ -11,6 +11,7 @@ import {
 import { isValidSolanaAddress } from '@/lib/solana/config'
 import { connection } from '@/lib/solana/connection'
 import { toast } from 'react-hot-toast'
+import { refreshSubscriptionStatus } from '@/lib/utils/subscriptions'
 
 interface SubscriptionPaymentProps {
   creatorId: string
@@ -192,8 +193,11 @@ export function SubscriptionPayment({
 
       toast.success(`Вы успешно подписались на ${creatorName}!`)
 
-      // Redirect or update UI
-      window.location.reload()
+      // Обновляем состояние подписки через события
+      await refreshSubscriptionStatus(creatorId, plan.id)
+      
+      // УБИРАЕМ перезагрузку страницы
+      // window.location.reload()
 
     } catch (error) {
       console.error('Payment error:', error)

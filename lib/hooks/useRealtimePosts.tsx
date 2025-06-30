@@ -158,6 +158,61 @@ export function useRealtimePosts({
     }
   }, [])
 
+  // Обработка покупки поста
+  const handlePostPurchased = useCallback((event: WebSocketEvent | any) => {
+    if (event.type === 'post_purchased' || event.type === 'post-purchased') {
+      const postId = event.postId || event.detail?.postId
+      setUpdatedPosts(prev => prev.map(post => {
+        if (post.id === postId) {
+          return {
+            ...post,
+            access: {
+              ...post.access,
+              isPurchased: true,
+              hasAccess: true,
+              isLocked: false
+            }
+          }
+        }
+        return post
+      }))
+      
+      toast.success('Контент разблокирован!')
+    }
+  }, [])
+
+  // Обработка обновления подписки
+  const handleSubscriptionUpdated = useCallback((event: WebSocketEvent | any) => {
+    if (event.type === 'subscription_updated' || event.type === 'subscription-updated') {
+      const creatorId = event.creatorId || event.detail?.creatorId
+      const newTier = event.tier || event.detail?.tier || 'basic'
+      
+      setUpdatedPosts(prev => prev.map(post => {
+        if (post.creator.id === creatorId) {
+          // Проверяем доступ с новым тиром
+          const hasAccess = !post.access.tier || 
+            (newTier === 'vip') ||
+            (newTier === 'premium' && ['basic', 'premium'].includes(post.access.tier)) ||
+            (newTier === 'basic' && post.access.tier === 'basic')
+          
+          return {
+            ...post,
+            access: {
+              ...post.access,
+              hasSubscription: true,
+              userTier: newTier,
+              hasAccess: hasAccess || post.access.isPurchased,
+              isLocked: post.access.isLocked && !hasAccess && !post.access.isPurchased
+            }
+          }
+        }
+        return post
+      }))
+      
+      toast.success('Подписка обновлена!')
+    }
+  }, [])
+
   // Загрузить ожидающие посты
   const loadPendingPosts = useCallback(() => {
     if (pendingPosts.length > 0) {
@@ -188,6 +243,23 @@ export function useRealtimePosts({
     wsService.on('post_deleted', handlePostDeleted)
     wsService.on('comment_added', handleCommentAdded)
     wsService.on('comment_deleted', handleCommentDeleted)
+    wsService.on('post_purchased', handlePostPurchased)
+    wsService.on('subscription_updated', handleSubscriptionUpdated)
+
+    // Также слушаем window события для обратной совместимости
+    const handleWindowPostPurchased = (e: Event) => handlePostPurchased(e as CustomEvent)
+    const handleWindowSubscriptionUpdated = (e: Event) => handleSubscriptionUpdated(e as CustomEvent)
+    const handleWindowPostDeleted = (e: Event) => {
+      const event = e as CustomEvent
+      const postId = event.detail?.postId
+      if (postId) {
+        handlePostDeleted({ type: 'post_deleted', postId })
+      }
+    }
+    
+    window.addEventListener('post-purchased', handleWindowPostPurchased)
+    window.addEventListener('subscription-updated', handleWindowSubscriptionUpdated)
+    window.addEventListener('post-deleted', handleWindowPostDeleted)
 
     // Отписываемся при размонтировании
     return () => {
@@ -201,6 +273,12 @@ export function useRealtimePosts({
       wsService.off('post_deleted', handlePostDeleted)
       wsService.off('comment_added', handleCommentAdded)
       wsService.off('comment_deleted', handleCommentDeleted)
+      wsService.off('post_purchased', handlePostPurchased)
+      wsService.off('subscription_updated', handleSubscriptionUpdated)
+      
+      window.removeEventListener('post-purchased', handleWindowPostPurchased)
+      window.removeEventListener('subscription-updated', handleWindowSubscriptionUpdated)
+      window.removeEventListener('post-deleted', handleWindowPostDeleted)
     }
   }, [
     user?.id, 
@@ -210,7 +288,9 @@ export function useRealtimePosts({
     handlePostCreated, 
     handlePostDeleted,
     handleCommentAdded,
-    handleCommentDeleted
+    handleCommentDeleted,
+    handlePostPurchased,
+    handleSubscriptionUpdated
   ])
 
   // Уведомляем об изменениях

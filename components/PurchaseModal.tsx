@@ -259,6 +259,15 @@ export default function PurchaseModal({ post, onClose, onSuccess }: PurchaseModa
       // Обновляем доступ к посту
       await refreshPostAccess(post.id.toString())
       
+      // Отправляем WebSocket событие о покупке
+      window.dispatchEvent(new CustomEvent('post-purchased', { 
+        detail: { 
+          postId: post.id,
+          userId: user.id,
+          purchased: true
+        } 
+      }))
+      
       if (onSuccess) {
         // Передаем данные о покупке для оптимистичного обновления
         onSuccess({
@@ -271,10 +280,10 @@ export default function PurchaseModal({ post, onClose, onSuccess }: PurchaseModa
       
       onClose()
       
-      // Принудительная перезагрузка страницы для обновления контента
-      setTimeout(() => {
-        window.location.reload()
-      }, 1000)
+      // УБИРАЕМ принудительную перезагрузку страницы
+      // setTimeout(() => {
+      //   window.location.reload()
+      // }, 1000)
 
     } catch (error) {
       console.error('Payment error:', error)

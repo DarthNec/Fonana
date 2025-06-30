@@ -83,8 +83,15 @@ export default function CreatePage() {
   const handlePostCreated = () => {
     setShowCreateModal(false)
     toast.success('Post created successfully!')
-    // Redirect to profile or feed page
-    router.push('/feed')
+    
+    // Отправляем событие о новом посте
+    window.dispatchEvent(new Event('postsUpdated'))
+    
+    // Небольшая задержка перед редиректом чтобы событие успело обработаться
+    setTimeout(() => {
+      // Redirect to profile or feed page
+      router.push('/feed')
+    }, 100)
   }
 
   if (!connected) {

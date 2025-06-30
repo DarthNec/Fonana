@@ -256,12 +256,15 @@ export default function SellablePostModal({ isOpen, onClose, post }: SellablePos
       
       toast.success(`Successfully bought the post!`)
       
-      onClose()
+      // Отправляем событие о покупке поста
+      window.dispatchEvent(new CustomEvent('post-purchased', { 
+        detail: { 
+          postId: post.id,
+          purchased: true
+        } 
+      }))
       
-      // Force page refresh after a small delay
-      setTimeout(() => {
-        window.location.reload()
-      }, 1500)
+      onClose()
     } catch (error) {
       console.error('Error buying post:', error)
       
