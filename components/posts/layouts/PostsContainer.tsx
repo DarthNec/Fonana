@@ -78,10 +78,7 @@ export function PostsContainer({
     posts: normalizedPosts,
     showNewPostsNotification,
     autoUpdateFeed,
-    onPostsUpdate: (updatedPosts) => {
-      // Обновляем локальное состояние при real-time обновлениях
-      setNormalizedPosts(updatedPosts)
-    }
+    // Убираем onPostsUpdate чтобы избежать бесконечного цикла
   }) : null
   
   // Используем посты из real-time хука если доступны
