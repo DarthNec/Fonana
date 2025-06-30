@@ -2,13 +2,14 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { getUserByWallet } from '@/lib/db'
 import jwt from 'jsonwebtoken'
+import { ENV } from '@/lib/constants/env'
 
 // WebSocket события  
 import { sendNotification } from '@/lib/services/websocket-client'
 
 export const dynamic = 'force-dynamic'
 
-const JWT_SECRET = process.env.NEXTAUTH_SECRET || 'your-secret-key'
+const JWT_SECRET = ENV.NEXTAUTH_SECRET
 
 // Вспомогательная функция для получения пользователя из запроса
 async function getUserFromRequest(req: NextRequest) {
