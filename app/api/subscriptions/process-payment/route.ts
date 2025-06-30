@@ -6,6 +6,8 @@ import { paymentLogger } from '@/lib/utils/logger'
 import { generateRandomNickname, generateRandomBio, generateFullNameFromNickname } from '@/lib/usernames'
 import { notifyNewSubscriber } from '@/lib/notifications'
 import { DEFAULT_TIER_PRICES } from '@/lib/constants/tiers'
+import jwt from 'jsonwebtoken'
+import { ENV } from '@/lib/constants/env'
 
 // WebSocket события
 import { notifyNewSubscription, sendNotification } from '@/lib/services/websocket-client'
@@ -14,6 +16,33 @@ export async function POST(request: Request) {
   const startTime = Date.now()
   
   try {
+    // Проверяем JWT токен
+    const authHeader = request.headers.get('authorization')
+    const userWallet = request.headers.get('x-user-wallet') // Для обратной совместимости
+    
+    let userId: string | null = null
+    
+    // Приоритет JWT авторизации
+    if (authHeader && authHeader.startsWith('Bearer ')) {
+      const token = authHeader.split(' ')[1]
+      try {
+        const decoded = jwt.verify(token, ENV.NEXTAUTH_SECRET) as any
+        userId = decoded.userId
+      } catch (error) {
+        paymentLogger.warn('Invalid JWT token')
+        return NextResponse.json(
+          { error: 'Invalid token' },
+          { status: 401 }
+        )
+      }
+    } else if (!userWallet) {
+      paymentLogger.warn('No authentication provided')
+      return NextResponse.json(
+        { error: 'Authentication required' },
+        { status: 401 }
+      )
+    }
+    
     const body = await request.json()
     let { 
       creatorId, 
@@ -37,17 +66,6 @@ export async function POST(request: Request) {
       flashSaleId?: string
     } = body
 
-    // Получаем пользователя из заголовков
-    const userWallet = request.headers.get('x-user-wallet')
-    
-    if (!userWallet) {
-      paymentLogger.warn('No user wallet in headers')
-      return NextResponse.json(
-        { error: 'User wallet required' },
-        { status: 401 }
-      )
-    }
-
     paymentLogger.info('Processing subscription payment', {
       creatorId,
       plan,
@@ -56,7 +74,8 @@ export async function POST(request: Request) {
       currency,
       hasReferrer,
       flashSaleId,
-      userWallet: userWallet.slice(0, 8) + '...',
+      userId,
+      userWallet: userWallet ? userWallet.slice(0, 8) + '...' : undefined,
       distribution: {
         creatorAmount: distribution.creatorAmount,
         platformAmount: distribution.platformAmount,
@@ -191,59 +210,83 @@ export async function POST(request: Request) {
       )
     }
 
-    // Найти или создать пользователя по кошельку
-    let user = await prisma.user.findUnique({
-      where: { solanaWallet: userWallet }
-    })
-
-    if (!user) {
+    // Найти пользователя по JWT или кошельку
+    let user
+    
+    if (userId) {
+      // Если есть JWT, получаем пользователя по ID
       user = await prisma.user.findUnique({
-        where: { wallet: userWallet }
+        where: { id: userId }
       })
-    }
+      
+      if (!user) {
+        paymentLogger.warn('User not found by ID', { userId })
+        return NextResponse.json(
+          { error: 'User not found' },
+          { status: 404 }
+        )
+      }
+    } else if (userWallet) {
+      // Обратная совместимость - поиск по кошельку
+      user = await prisma.user.findUnique({
+        where: { solanaWallet: userWallet }
+      })
 
-    if (!user) {
-      // Создаем нового пользователя если не существует
-      paymentLogger.info('Creating new user for subscription', { userWallet })
-      
-      // Генерируем уникальный никнейм
-      let nickname = generateRandomNickname()
-      let attempts = 0
-      
-      // Проверяем уникальность никнейма
-      while (attempts < 100) {
-        const existing = await prisma.user.findFirst({
-          where: { nickname }
+      if (!user) {
+        user = await prisma.user.findUnique({
+          where: { wallet: userWallet }
         })
+      }
+
+      if (!user) {
+        // Создаем нового пользователя если не существует
+        paymentLogger.info('Creating new user for subscription', { userWallet })
         
-        if (!existing) {
-          break
+        // Генерируем уникальный никнейм
+        let nickname = generateRandomNickname()
+        let attempts = 0
+        
+        // Проверяем уникальность никнейма
+        while (attempts < 100) {
+          const existing = await prisma.user.findFirst({
+            where: { nickname }
+          })
+          
+          if (!existing) {
+            break
+          }
+          
+          nickname = generateRandomNickname()
+          attempts++
         }
         
-        nickname = generateRandomNickname()
-        attempts++
-      }
-      
-      // Если не смогли сгенерировать уникальный никнейм, используем timestamp
-      if (attempts >= 100) {
-        nickname = `user${Date.now()}`
-      }
-      
-      // Генерируем остальные данные
-      const fullName = generateFullNameFromNickname(nickname)
-      const bio = generateRandomBio()
-      
-      user = await prisma.user.create({
-        data: {
-          solanaWallet: userWallet,
-          wallet: userWallet,
-          name: fullName,
-          nickname,
-          fullName,
-          bio,
-          isCreator: true
+        // Если не смогли сгенерировать уникальный никнейм, используем timestamp
+        if (attempts >= 100) {
+          nickname = `user${Date.now()}`
         }
-      })
+        
+        // Генерируем остальные данные
+        const fullName = generateFullNameFromNickname(nickname)
+        const bio = generateRandomBio()
+        
+        user = await prisma.user.create({
+          data: {
+            solanaWallet: userWallet,
+            wallet: userWallet,
+            name: fullName,
+            nickname,
+            fullName,
+            bio,
+            isCreator: true
+          }
+        })
+      }
+    } else {
+      // Не должно произойти, так как проверка выше
+      return NextResponse.json(
+        { error: 'Authentication required' },
+        { status: 401 }
+      )
     }
 
     // Проверяем, есть ли уже активная подписка
@@ -315,7 +358,7 @@ export async function POST(request: Request) {
       data: {
         subscriptionId: subscription.id,
         txSignature: signature,
-        fromWallet: userWallet,
+        fromWallet: user.solanaWallet || user.wallet || '',
         toWallet: distribution.creatorWallet,
         amount: price,
         currency,

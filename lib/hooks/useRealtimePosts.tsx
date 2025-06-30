@@ -170,7 +170,8 @@ export function useRealtimePosts({
               ...post.access,
               isPurchased: true,
               hasAccess: true,
-              isLocked: false
+              isLocked: false,
+              shouldHideContent: false // Важно! Показываем контент
             }
           }
         }
@@ -199,10 +200,12 @@ export function useRealtimePosts({
             ...post,
             access: {
               ...post.access,
+              isSubscribed: true,
               hasSubscription: true,
               userTier: newTier,
               hasAccess: hasAccess || post.access.isPurchased,
-              isLocked: post.access.isLocked && !hasAccess && !post.access.isPurchased
+              isLocked: post.access.isLocked && !hasAccess && !post.access.isPurchased,
+              shouldHideContent: post.access.isLocked && !hasAccess && !post.access.isPurchased
             }
           }
         }
