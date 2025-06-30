@@ -1,6 +1,8 @@
 // Переменные окружения теперь передаются через PM2 ecosystem.config.js
 // Загрузка dotenv больше не нужна
 
+require('dotenv').config()
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   generateBuildId: async () => {

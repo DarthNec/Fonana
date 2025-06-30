@@ -2,10 +2,11 @@ import { NextRequest, NextResponse } from 'next/server'
 import jwt from 'jsonwebtoken'
 import { prisma } from '@/lib/prisma'
 import { isValidSolanaAddress } from '@/lib/solana/validation'
+import { ENV } from '@/lib/constants/env'
 
-// ВРЕМЕННОЕ РЕШЕНИЕ: используем явный ключ для диагностики
-const JWT_SECRET = process.env.NEXTAUTH_SECRET || 'TEMP-NOT-LOADED-FROM-ENV'
-const JWT_EXPIRES_IN = '30m' // 30 минут
+// Используем тот же ключ, который сконфигурирован в .env файле
+const JWT_SECRET = ENV.NEXTAUTH_SECRET
+const JWT_EXPIRES_IN = '30d'
 
 export async function POST(req: NextRequest) {
   try {
@@ -27,7 +28,7 @@ export async function POST(req: NextRequest) {
     }
     
     // Логируем предупреждение если используется временный ключ
-    if (JWT_SECRET === 'TEMP-NOT-LOADED-FROM-ENV') {
+    if (JWT_SECRET === 'your-secret-key') {
       console.error('⚠️ WARNING: Using temporary JWT secret! NEXTAUTH_SECRET not loaded from environment!')
     }
     
@@ -47,10 +48,10 @@ export async function POST(req: NextRequest) {
     }
     
     // Генерируем JWT токен для использования в API
-    const jwtSecret = process.env.NEXTAUTH_SECRET || 'default-secret-key';
     console.log('🔑 JWT generation:', {
       hasEnvSecret: !!process.env.NEXTAUTH_SECRET,
-      secretLength: jwtSecret.length
+      secretLength: JWT_SECRET.length,
+      secretPrefix: JWT_SECRET.substring(0, 10)
     });
 
     const token = jwt.sign(
@@ -59,7 +60,7 @@ export async function POST(req: NextRequest) {
         wallet: user.wallet,
         sub: user.id
       },
-      jwtSecret,
+      JWT_SECRET,
       { 
         expiresIn: '30d'
       }
