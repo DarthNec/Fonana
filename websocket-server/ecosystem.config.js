@@ -1,7 +1,7 @@
 module.exports = {
   apps: [{
     name: 'fonana-ws',
-    script: './start-production.js',
+    script: './index.js',
     instances: 1,
     autorestart: true,
     watch: false,
@@ -11,7 +11,7 @@ module.exports = {
       PORT: 3002,
       WS_PORT: 3002
     },
-    env_file: './.env',
+    env_file: '../.env',
     error_file: '../logs/ws-error.log',
     out_file: '../logs/ws-out.log',
     log_file: '../logs/ws-combined.log',
