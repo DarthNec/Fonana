@@ -60,16 +60,20 @@ export async function POST(
       )
     }
 
-    // Проверяем, что пост продается
-    if (!post.isSellable || post.sellType !== 'FIXED_PRICE') {
+    // Проверяем, что пост можно купить
+    // Поддерживаем два типа: продаваемые посты (isSellable) и платные посты (isLocked с ценой)
+    const isPayablePost = post.isLocked && post.price && post.price > 0
+    const isSellablePost = post.isSellable && post.sellType === 'FIXED_PRICE'
+    
+    if (!isPayablePost && !isSellablePost) {
       return NextResponse.json(
         { error: 'This post is not for sale' },
         { status: 400 }
       )
     }
 
-    // Проверяем, что пост еще не продан
-    if (post.soldAt || post.soldToId) {
+    // Проверяем, что пост еще не продан (только для продаваемых постов)
+    if (isSellablePost && (post.soldAt || post.soldToId)) {
       return NextResponse.json(
         { error: 'This post has already been sold' },
         { status: 400 }
@@ -113,6 +117,25 @@ export async function POST(
         { status: 400 }
       )
     }
+    
+    // Для платных постов проверяем, не купил ли пользователь уже этот пост
+    if (isPayablePost) {
+      const existingPurchase = await prisma.postPurchase.findUnique({
+        where: {
+          userId_postId: {
+            userId: buyer.id,
+            postId: params.id
+          }
+        }
+      })
+      
+      if (existingPurchase) {
+        return NextResponse.json(
+          { error: 'You have already purchased this post' },
+          { status: 400 }
+        )
+      }
+    }
 
     // Ждем подтверждения транзакции
     console.log(`Waiting for transaction confirmation: ${txSignature}`)
@@ -139,17 +162,17 @@ export async function POST(
       )
     }
 
-    // Обновляем пост как проданный в транзакции
+    // Обновляем пост в транзакции
     const [updatedPost, transaction, postPurchase] = await prisma.$transaction([
-      // Обновляем пост
+      // Обновляем пост (только для продаваемых постов помечаем как проданный)
       prisma.post.update({
         where: { id: params.id },
-        data: {
+        data: isSellablePost ? {
           soldAt: new Date(),
           soldToId: buyer.id,
           soldPrice: price,
           auctionStatus: 'SOLD'
-        },
+        } : {},
         include: {
           creator: true,
           soldTo: true
@@ -193,8 +216,8 @@ export async function POST(
       data: {
         userId: post.creatorId,
         type: 'POST_PURCHASE',
-        title: 'Your post has been sold!',
-        message: `${buyer.nickname || (buyer.wallet ? buyer.wallet.slice(0, 6) + '...' : 'User')} bought your post "${post.title}" for ${price} ${post.currency}`,
+        title: isSellablePost ? 'Your post has been sold!' : 'Your post has been purchased!',
+        message: `${buyer.nickname || (buyer.wallet ? buyer.wallet.slice(0, 6) + '...' : 'User')} ${isSellablePost ? 'bought' : 'purchased access to'} your post "${post.title}" for ${price} ${post.currency}`,
         metadata: {
           postId: params.id,
           buyerId: buyer.id,
@@ -209,7 +232,9 @@ export async function POST(
     return NextResponse.json({
       success: true,
       post: updatedPost,
-      transaction
+      transaction,
+      purchase: postPurchase,
+      isPayablePost // Флаг для различения типов покупки
     })
   } catch (error) {
     console.error('Error buying post:', error)

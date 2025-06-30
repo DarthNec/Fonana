@@ -18,13 +18,14 @@ function getOptimizedImageUrls(mediaUrl: string | null) {
   
   const ext = mediaUrl.substring(mediaUrl.lastIndexOf('.'))
   const fileName = mediaUrl.substring(mediaUrl.lastIndexOf('/') + 1, mediaUrl.lastIndexOf('.'))
+  const baseName = fileName.substring(0, fileName.lastIndexOf('.'))
+  const dirPath = mediaUrl.substring(0, mediaUrl.lastIndexOf('/'))
   
-  // Возвращаем пути только для новых изображений
-  // Для старых изображений не генерируем оптимизированные пути
+  // Генерируем правильные пути к оптимизированным версиям
   return {
     original: mediaUrl,
-    thumb: null, // Временно отключаем, пока не загружены оптимизированные версии
-    preview: null
+    thumb: `${dirPath}/thumb_${baseName}.webp`,
+    preview: mediaUrl // Используем оригинал как preview пока
   }
 }
 
