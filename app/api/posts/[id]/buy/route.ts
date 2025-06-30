@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { validateTransaction, waitForTransactionConfirmation } from '@/lib/solana/validation'
+import jwt from 'jsonwebtoken'
+import { ENV } from '@/lib/constants/env'
 
 // POST /api/posts/[id]/buy - купить пост с фиксированной ценой
 export async function POST(
@@ -8,6 +10,21 @@ export async function POST(
   { params }: { params: { id: string } }
 ) {
   try {
+    // Проверяем JWT токен
+    const authHeader = request.headers.get('authorization')
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return NextResponse.json({ error: 'No token provided' }, { status: 401 })
+    }
+
+    const token = authHeader.split(' ')[1]
+    let decoded: any
+    
+    try {
+      decoded = jwt.verify(token, ENV.NEXTAUTH_SECRET)
+    } catch (error) {
+      return NextResponse.json({ error: 'Invalid token' }, { status: 401 })
+    }
+
     const body = await request.json()
     const { buyerWallet, txSignature } = body
 
@@ -68,20 +85,24 @@ export async function POST(
       )
     }
 
-    // Получаем покупателя
-    const buyer = await prisma.user.findFirst({
-      where: {
-        OR: [
-          { wallet: buyerWallet },
-          { solanaWallet: buyerWallet }
-        ]
-      }
+    // Получаем покупателя по ID из токена
+    const buyer = await prisma.user.findUnique({
+      where: { id: decoded.userId }
     })
 
     if (!buyer) {
       return NextResponse.json(
         { error: 'Buyer not found' },
         { status: 404 }
+      )
+    }
+
+    // Проверяем, что кошелек покупателя совпадает с указанным
+    const userWallet = buyer.wallet || buyer.solanaWallet
+    if (userWallet !== buyerWallet) {
+      return NextResponse.json(
+        { error: 'Wallet mismatch' },
+        { status: 400 }
       )
     }
 

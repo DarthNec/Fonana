@@ -32,6 +32,7 @@ import {
 } from '@/lib/solana/payments'
 import { isValidSolanaAddress } from '@/lib/solana/config'
 import { useSolRate } from '@/lib/hooks/useSolRate'
+import { jwtManager } from '@/lib/utils/jwt'
 
 interface Message {
   id: string
@@ -71,7 +72,7 @@ interface Participant {
 export default function ConversationPage() {
   const { publicKey, sendTransaction } = useWallet()
   const { connection } = useConnection()
-  const { user } = useUserContext()
+  const { user, isLoading: isUserLoading } = useUserContext()
   const params = useParams()
   const router = useRouter()
   const conversationId = params.id as string
@@ -98,7 +99,7 @@ export default function ConversationPage() {
   const { rate: solRate } = useSolRate()
 
   useEffect(() => {
-    if (publicKey && conversationId) {
+    if (user && !isUserLoading && conversationId) {
       loadMessages()
       
       // Request notification permission
@@ -109,8 +110,10 @@ export default function ConversationPage() {
       // Polling для новых сообщений
       const interval = setInterval(loadMessages, 5000)
       return () => clearInterval(interval)
+    } else if (!isUserLoading && !user) {
+      setIsLoading(false)
     }
-  }, [publicKey, conversationId])
+  }, [user, isUserLoading, conversationId])
 
   useEffect(() => {
     scrollToBottom()
@@ -122,12 +125,19 @@ export default function ConversationPage() {
 
   const loadMessages = async (before?: string) => {
     try {
+      const token = await jwtManager.getToken()
+      if (!token) {
+        console.error('No JWT token available')
+        setIsLoading(false)
+        return
+      }
+
       const params = new URLSearchParams()
       if (before) params.append('before', before)
       
       const response = await fetch(`/api/conversations/${conversationId}/messages?${params}`, {
         headers: {
-          'x-user-wallet': publicKey?.toString() || ''
+          'Authorization': `Bearer ${token}`
         }
       })
 
@@ -179,6 +189,8 @@ export default function ConversationPage() {
             loadConversationInfo()
           }
         }
+      } else {
+        console.error('Failed to load messages:', await response.text())
       }
     } catch (error) {
       console.error('Error loading messages:', error)
@@ -190,9 +202,15 @@ export default function ConversationPage() {
 
   const loadConversationInfo = async () => {
     try {
+      const token = await jwtManager.getToken()
+      if (!token) {
+        console.error('No JWT token available')
+        return
+      }
+
       const response = await fetch('/api/conversations', {
         headers: {
-          'x-user-wallet': publicKey?.toString() || ''
+          'Authorization': `Bearer ${token}`
         }
       })
 
@@ -236,6 +254,12 @@ export default function ConversationPage() {
   const uploadMedia = async (file: File): Promise<string | null> => {
     setIsUploadingMedia(true)
     try {
+      const token = await jwtManager.getToken()
+      if (!token) {
+        toast.error('No authentication token')
+        return null
+      }
+
       const formData = new FormData()
       formData.append('file', file)
       formData.append('type', file.type.startsWith('image/') ? 'image' : 'video')
@@ -243,7 +267,7 @@ export default function ConversationPage() {
       const response = await fetch('/api/upload', {
         method: 'POST',
         headers: {
-          'x-user-wallet': publicKey?.toString() || ''
+          'Authorization': `Bearer ${token}`
         },
         body: formData
       })
@@ -275,6 +299,13 @@ export default function ConversationPage() {
 
     setIsSending(true)
     try {
+      const token = await jwtManager.getToken()
+      if (!token) {
+        toast.error('No authentication token')
+        setIsSending(false)
+        return
+      }
+
       let mediaUrl = null
       let mediaType = null
 
@@ -292,7 +323,7 @@ export default function ConversationPage() {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'x-user-wallet': publicKey?.toString() || ''
+          'Authorization': `Bearer ${token}`
         },
         body: JSON.stringify({
           content: messageText || null,
@@ -416,12 +447,17 @@ export default function ConversationPage() {
       console.log('Waiting 10 seconds for transaction to propagate...')
       await new Promise(resolve => setTimeout(resolve, 10000))
 
+      const token = await jwtManager.getToken()
+      if (!token) {
+        throw new Error('No authentication token')
+      }
+
       // Record tip as a transaction
       const response = await fetch('/api/tips', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'x-user-wallet': publicKey.toString()
+          'Authorization': `Bearer ${token}`
         },
         body: JSON.stringify({
           creatorId: participant.id,

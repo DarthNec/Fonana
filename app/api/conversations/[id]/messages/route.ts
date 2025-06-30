@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
+import jwt from 'jsonwebtoken'
+import { ENV } from '@/lib/constants/env'
 
 // Получение сообщений
 export async function GET(
@@ -7,17 +9,26 @@ export async function GET(
   { params }: { params: { id: string } }
 ) {
   try {
-    const userWallet = request.headers.get('x-user-wallet')
+    // Проверяем JWT токен
+    const authHeader = request.headers.get('authorization')
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return NextResponse.json({ error: 'No token provided' }, { status: 401 })
+    }
+
+    const token = authHeader.split(' ')[1]
+    let decoded: any
     
-    if (!userWallet) {
-      return NextResponse.json({ error: 'Wallet not connected' }, { status: 401 })
+    try {
+      decoded = jwt.verify(token, ENV.NEXTAUTH_SECRET)
+    } catch (error) {
+      return NextResponse.json({ error: 'Invalid token' }, { status: 401 })
     }
     
     const conversationId = params.id
     
     // Получаем пользователя
     const user = await prisma.user.findUnique({
-      where: { wallet: userWallet }
+      where: { id: decoded.userId }
     })
     
     if (!user) {
@@ -91,10 +102,19 @@ export async function POST(
   { params }: { params: { id: string } }
 ) {
   try {
-    const userWallet = request.headers.get('x-user-wallet')
+    // Проверяем JWT токен
+    const authHeader = request.headers.get('authorization')
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return NextResponse.json({ error: 'No token provided' }, { status: 401 })
+    }
+
+    const token = authHeader.split(' ')[1]
+    let decoded: any
     
-    if (!userWallet) {
-      return NextResponse.json({ error: 'Wallet not connected' }, { status: 401 })
+    try {
+      decoded = jwt.verify(token, ENV.NEXTAUTH_SECRET)
+    } catch (error) {
+      return NextResponse.json({ error: 'Invalid token' }, { status: 401 })
     }
     
     const conversationId = params.id
@@ -111,7 +131,7 @@ export async function POST(
     
     // Получаем пользователя
     const user = await prisma.user.findUnique({
-      where: { wallet: userWallet }
+      where: { id: decoded.userId }
     })
     
     if (!user) {
