@@ -140,7 +140,15 @@
                 document.getElementById('walletInput').value = wallet;
                 addLog('info', 'Wallet loaded: ' + wallet.substring(0, 8) + '...');
             }
-            checkJWT();
+            
+            // Проверяем токен при загрузке
+            checkJWT().then(valid => {
+                if (!valid) {
+                    // Если токен невалидный, удаляем его
+                    localStorage.removeItem('fonana_jwt_token');
+                    addLog('warning', 'Invalid token removed, please re-authenticate');
+                }
+            });
         };
 
         async function authenticate() {
@@ -161,7 +169,8 @@
                 });
 
                 if (!response.ok) {
-                    throw new Error('HTTP ' + response.status);
+                    const error = await response.json();
+                    throw new Error(error.error || 'HTTP ' + response.status);
                 }
 
                 const data = await response.json();
@@ -178,6 +187,10 @@
 
                 document.getElementById('authStatus').innerHTML = '✅ Authenticated as <strong>' + (data.user.nickname || userId) + '</strong>';
                 addLog('success', 'Authenticated! User ID: ' + userId);
+                addLog('info', 'Token length: ' + jwtToken.length);
+                
+                // Автоматически подключаемся к WebSocket после аутентификации
+                setTimeout(() => connectWS(), 500);
             } catch (error) {
                 addLog('error', 'Authentication failed: ' + error.message);
                 document.getElementById('authStatus').textContent = '❌ Authentication failed';
@@ -188,7 +201,7 @@
             const stored = localStorage.getItem('fonana_jwt_token');
             if (!stored) {
                 addLog('warning', 'No JWT token in localStorage');
-                return;
+                return false;
             }
 
             try {
@@ -196,15 +209,26 @@
                 jwtToken = data.token;
                 userId = data.userId;
                 
-                if (data.expiresAt > Date.now()) {
+                // Проверяем валидность токена через API
+                const response = await fetch('/api/auth/wallet', {
+                    headers: {
+                        'Authorization': 'Bearer ' + jwtToken
+                    }
+                });
+                
+                if (response.ok) {
+                    const result = await response.json();
                     document.getElementById('authStatus').innerHTML = '✅ JWT Valid (User: ' + userId + ')';
-                    addLog('success', 'JWT token loaded from localStorage');
+                    addLog('success', 'JWT token is valid, expires: ' + new Date(result.expiresAt).toLocaleString());
+                    return true;
                 } else {
-                    addLog('warning', 'JWT token expired');
-                    document.getElementById('authStatus').textContent = '⚠️ JWT expired';
+                    addLog('warning', 'JWT token is invalid or expired');
+                    document.getElementById('authStatus').textContent = '⚠️ JWT invalid or expired';
+                    return false;
                 }
             } catch (error) {
-                addLog('error', 'Failed to parse JWT: ' + error.message);
+                addLog('error', 'Failed to check JWT: ' + error.message);
+                return false;
             }
         }
 
