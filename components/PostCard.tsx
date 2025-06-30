@@ -404,8 +404,11 @@ export default function PostCard({
       }
 
       toast.success('Post deleted successfully')
-      // Refresh the page or remove the post from the list
-      window.location.reload()
+      
+      // Отправляем событие об удалении поста
+      window.dispatchEvent(new CustomEvent('post-deleted', {
+        detail: { postId: id }
+      }))
     } catch (error) {
       console.error('Error deleting post:', error)
       toast.error(error instanceof Error ? error.message : 'Failed to delete post')

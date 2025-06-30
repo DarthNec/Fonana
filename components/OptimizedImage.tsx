@@ -27,9 +27,15 @@ export default function OptimizedImage({
   const [isInView, setIsInView] = useState(false)
   const [showVideo, setShowVideo] = useState(false)
   const [isPlaying, setIsPlaying] = useState(false)
+  const [retryCount, setRetryCount] = useState(0)
+  const [imageError, setImageError] = useState(false)
   const imgRef = useRef<HTMLImageElement>(null)
   const videoRef = useRef<HTMLVideoElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
+  const retryTimeoutRef = useRef<NodeJS.Timeout | null>(null)
+
+  const MAX_RETRIES = 3
+  const RETRY_DELAYS = [1000, 2000, 4000] // экспоненциальная задержка
 
   // Определяем, какое изображение показывать
   const imageSrc = src || '/placeholder-image.png'
@@ -57,34 +63,60 @@ export default function OptimizedImage({
     return () => observer.disconnect()
   }, [])
 
+  // Очистка таймера при размонтировании
+  useEffect(() => {
+    return () => {
+      if (retryTimeoutRef.current) {
+        clearTimeout(retryTimeoutRef.current)
+      }
+    }
+  }, [])
+
   // Последовательная загрузка изображений
   useEffect(() => {
     if (!isInView) return
 
-    // Если нет preview, сразу показываем основное изображение
-    if (!preview) {
-      setCurrentSrc(thumbSrc)
-      setIsLoading(true)
-    } else {
-      // Если есть preview, показываем его первым
-      setCurrentSrc(previewSrc)
-      setIsLoading(true)
+    const loadImage = (attempt = 0) => {
+      // Если нет preview, сразу показываем основное изображение
+      if (!preview) {
+        setCurrentSrc(thumbSrc)
+        setIsLoading(true)
+      } else {
+        // Если есть preview, показываем его первым
+        setCurrentSrc(previewSrc)
+        setIsLoading(true)
+      }
+
+      // Загружаем основное изображение (thumbnail или оригинал)
+      const mainImage = new Image()
+      mainImage.src = thumbSrc
+      
+      mainImage.onload = () => {
+        setCurrentSrc(thumbSrc)
+        setIsLoading(false)
+        setImageError(false)
+        setRetryCount(0)
+      }
+
+      mainImage.onerror = () => {
+        console.warn(`Failed to load image: ${thumbSrc}, attempt ${attempt + 1}`)
+        
+        if (attempt < MAX_RETRIES && thumbSrc !== '/placeholder-image.png') {
+          // Retry с задержкой
+          retryTimeoutRef.current = setTimeout(() => {
+            setRetryCount(attempt + 1)
+            loadImage(attempt + 1)
+          }, RETRY_DELAYS[attempt])
+        } else {
+          // После всех попыток показываем оригинал или плейсхолдер
+          setCurrentSrc(imageSrc)
+          setIsLoading(false)
+          setImageError(true)
+        }
+      }
     }
 
-    // Загружаем основное изображение (thumbnail или оригинал)
-    const mainImage = new Image()
-    mainImage.src = thumbSrc
-    
-    mainImage.onload = () => {
-      setCurrentSrc(thumbSrc)
-      setIsLoading(false)
-    }
-
-    mainImage.onerror = () => {
-      // При ошибке показываем оригинал или плейсхолдер
-      setCurrentSrc(imageSrc)
-      setIsLoading(false)
-    }
+    loadImage()
   }, [isInView, preview, thumbSrc, previewSrc, imageSrc])
 
   const handleVideoClick = () => {

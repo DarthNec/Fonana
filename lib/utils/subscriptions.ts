@@ -53,7 +53,7 @@ export function canUpgradeTier(currentTier: string | null | undefined): boolean 
 /**
  * Обновляет состояние подписки в реальном времени после оплаты
  */
-export async function refreshSubscriptionStatus(creatorId: string): Promise<void> {
+export async function refreshSubscriptionStatus(creatorId: string, tier?: string): Promise<void> {
   try {
     // Принудительно обновляем данные пользователя через UserContext
     const refreshUser = (window as any).__refreshUser
@@ -61,25 +61,34 @@ export async function refreshSubscriptionStatus(creatorId: string): Promise<void
       await refreshUser()
     }
     
-    // Перезагружаем страницу если находимся на странице создателя
-    if (window.location.pathname.includes(`/creator/${creatorId}`)) {
-      // Используем мягкую перезагрузку с сохранением позиции скролла
-      const scrollPosition = window.scrollY
-      window.location.reload()
-      
-      // Восстанавливаем позицию после загрузки
-      window.addEventListener('load', () => {
-        window.scrollTo(0, scrollPosition)
-      })
-    } else {
-      // На других страницах просто обновляем данные
-      // Отправляем событие для обновления постов
-      window.dispatchEvent(new CustomEvent('subscription-updated', { 
-        detail: { creatorId } 
-      }))
-    }
+    // Отправляем событие для обновления UI
+    window.dispatchEvent(new CustomEvent('subscription-updated', { 
+      detail: { 
+        creatorId,
+        tier: tier || 'basic'
+      } 
+    }))
+    
+    // УБИРАЕМ перезагрузку страницы
+    // if (window.location.pathname.includes(`/creator/${creatorId}`)) {
+    //   // Используем мягкую перезагрузку с сохранением позиции скролла
+    //   const scrollPosition = window.scrollY
+    //   window.location.reload()
+    //   
+    //   // Восстанавливаем позицию после загрузки
+    //   window.addEventListener('load', () => {
+    //     window.scrollTo(0, scrollPosition)
+    //   })
+    // }
+    
+    // Показываем уведомление об успехе
+    toast.success('Подписка обновлена! Контент станет доступен мгновенно.', {
+      duration: 4000,
+      position: 'top-center'
+    })
   } catch (error) {
     console.error('Error refreshing subscription status:', error)
+    toast.error('Ошибка обновления подписки')
   }
 }
 
