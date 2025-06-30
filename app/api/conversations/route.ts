@@ -1,22 +1,34 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
+import jwt from 'jsonwebtoken'
+import { ENV } from '@/lib/constants/env'
 
 export async function GET(request: NextRequest) {
   console.log('[Conversations API] Starting GET request')
   
   try {
-    const userWallet = request.headers.get('x-user-wallet')
-    console.log('[Conversations API] User wallet:', userWallet)
+    // Проверяем JWT токен
+    const authHeader = request.headers.get('authorization')
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      console.log('[Conversations API] No token provided')
+      return NextResponse.json({ error: 'No token provided' }, { status: 401 })
+    }
+
+    const token = authHeader.split(' ')[1]
+    let decoded: any
     
-    if (!userWallet) {
-      console.log('[Conversations API] No wallet provided')
-      return NextResponse.json({ error: 'Wallet not connected' }, { status: 401 })
+    try {
+      decoded = jwt.verify(token, ENV.NEXTAUTH_SECRET)
+      console.log('[Conversations API] Token verified:', decoded.userId)
+    } catch (error) {
+      console.log('[Conversations API] Invalid token')
+      return NextResponse.json({ error: 'Invalid token' }, { status: 401 })
     }
     
-    // Получаем пользователя
-    console.log('[Conversations API] Fetching user by wallet...')
+    // Получаем пользователя по ID из токена
+    console.log('[Conversations API] Fetching user by ID...')
     const user = await prisma.user.findUnique({
-      where: { wallet: userWallet }
+      where: { id: decoded.userId }
     })
     console.log('[Conversations API] User found:', user?.id, user?.nickname)
     
@@ -116,16 +128,27 @@ export async function GET(request: NextRequest) {
       const otherParticipant = conv.participants.find((p: any) => p.id !== user.id)
       const lastMessage = conv.messages[0]
       
+      // Убедимся что participant всегда существует
+      if (!otherParticipant) {
+        console.log('[Conversations API] Warning: No other participant found for conversation', conv.id)
+        return null
+      }
+      
       return {
         id: conv.id,
-        participant: otherParticipant,
+        participant: {
+          id: otherParticipant.id,
+          nickname: otherParticipant.nickname || 'Unknown',
+          fullName: otherParticipant.fullName || null,
+          avatar: otherParticipant.avatar || null
+        },
         lastMessage: lastMessage ? {
           id: lastMessage.id,
           content: lastMessage.isPaid && !lastMessage.purchases?.some((p: any) => p.userId === user.id) 
             ? '💰 Paid message' 
             : lastMessage.content,
           senderId: lastMessage.senderId,
-          senderName: lastMessage.sender.nickname,
+          senderName: lastMessage.sender.nickname || 'Unknown',
           createdAt: lastMessage.createdAt,
           isPaid: lastMessage.isPaid,
           price: lastMessage.price
@@ -134,7 +157,7 @@ export async function GET(request: NextRequest) {
         createdAt: conv.createdAt,
         unreadCount: unreadMap.get(conv.id) || 0
       }
-    })
+    }).filter(Boolean) // Фильтруем null значения
     
     console.log('[Conversations API] Successfully formatted', formattedConversations.length, 'conversations')
     return NextResponse.json({ conversations: formattedConversations })
@@ -150,10 +173,19 @@ export async function GET(request: NextRequest) {
 // Создание нового чата
 export async function POST(request: NextRequest) {
   try {
-    const userWallet = request.headers.get('x-user-wallet')
+    // Проверяем JWT токен
+    const authHeader = request.headers.get('authorization')
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return NextResponse.json({ error: 'No token provided' }, { status: 401 })
+    }
+
+    const token = authHeader.split(' ')[1]
+    let decoded: any
     
-    if (!userWallet) {
-      return NextResponse.json({ error: 'Wallet not connected' }, { status: 401 })
+    try {
+      decoded = jwt.verify(token, ENV.NEXTAUTH_SECRET)
+    } catch (error) {
+      return NextResponse.json({ error: 'Invalid token' }, { status: 401 })
     }
     
     const { participantId } = await request.json()
@@ -164,7 +196,7 @@ export async function POST(request: NextRequest) {
     
     // Получаем обоих пользователей
     const [user, participant] = await Promise.all([
-      prisma.user.findUnique({ where: { wallet: userWallet } }),
+      prisma.user.findUnique({ where: { id: decoded.userId } }),
       prisma.user.findUnique({ where: { id: participantId } })
     ])
     

@@ -2,16 +2,27 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { waitForTransactionConfirmation } from '@/lib/solana/validation'
 import { getConnection } from '@/lib/solana/connection'
+import jwt from 'jsonwebtoken'
+import { ENV } from '@/lib/constants/env'
 
 // WebSocket события
 import { sendNotification } from '@/lib/services/websocket-client'
 
 export async function POST(request: NextRequest) {
   try {
-    const userWallet = request.headers.get('x-user-wallet')
+    // Проверяем JWT токен
+    const authHeader = request.headers.get('authorization')
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return NextResponse.json({ error: 'No token provided' }, { status: 401 })
+    }
+
+    const token = authHeader.split(' ')[1]
+    let decoded: any
     
-    if (!userWallet) {
-      return NextResponse.json({ error: 'Wallet not connected' }, { status: 401 })
+    try {
+      decoded = jwt.verify(token, ENV.NEXTAUTH_SECRET)
+    } catch (error) {
+      return NextResponse.json({ error: 'Invalid token' }, { status: 401 })
     }
     
     const { creatorId, amount, txSignature, conversationId } = await request.json()
@@ -102,32 +113,33 @@ export async function POST(request: NextRequest) {
     }
     console.log('Transaction confirmed successfully:', txSignature)
     
-    // Получаем пользователя и создателя
-    const [user, creator] = await Promise.all([
-      prisma.user.findUnique({
-        where: { wallet: userWallet }
-      }),
-      prisma.user.findUnique({
-        where: { id: creatorId },
-        select: {
-          id: true,
-          wallet: true,
-          solanaWallet: true,
-          nickname: true,
-          fullName: true
-        }
-      })
-    ])
+    // Получаем пользователя по ID из токена
+    const user = await prisma.user.findUnique({
+      where: { id: decoded.userId }
+    })
     
     if (!user) {
       return NextResponse.json({ error: 'User not found' }, { status: 404 })
     }
+    
+    // Получаем создателя
+    const creator = await prisma.user.findUnique({
+      where: { id: creatorId },
+      select: {
+        id: true,
+        wallet: true,
+        solanaWallet: true,
+        nickname: true,
+        fullName: true
+      }
+    })
     
     if (!creator) {
       return NextResponse.json({ error: 'Creator not found' }, { status: 404 })
     }
     
     const creatorWallet = creator.solanaWallet || creator.wallet || ''
+    const userWallet = user.solanaWallet || user.wallet || ''
     
     // Создаем запись о транзакции
     const transaction = await prisma.transaction.create({

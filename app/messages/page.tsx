@@ -1,7 +1,6 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { useWallet } from '@solana/wallet-adapter-react'
 import { useRouter } from 'next/navigation'
 import { 
   ChatBubbleLeftEllipsisIcon,
@@ -12,6 +11,8 @@ import {
 import Link from 'next/link'
 import OptimizedImage from '@/components/OptimizedImage'
 import { formatDistanceToNow } from 'date-fns/formatDistanceToNow'
+import { useUserContext } from '@/lib/contexts/UserContext'
+import { jwtManager } from '@/lib/utils/jwt'
 
 interface Conversation {
   id: string
@@ -35,29 +36,40 @@ interface Conversation {
 }
 
 export default function MessagesPage() {
-  const { publicKey } = useWallet()
   const router = useRouter()
+  const { user, isLoading: isUserLoading } = useUserContext()
   const [conversations, setConversations] = useState<Conversation[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState('')
 
   useEffect(() => {
-    if (publicKey) {
+    if (user && !isUserLoading) {
       loadConversations()
+    } else if (!isUserLoading && !user) {
+      setIsLoading(false)
     }
-  }, [publicKey])
+  }, [user, isUserLoading])
 
   const loadConversations = async () => {
     try {
+      const token = await jwtManager.getToken()
+      if (!token) {
+        console.error('No JWT token available')
+        setIsLoading(false)
+        return
+      }
+
       const response = await fetch('/api/conversations', {
         headers: {
-          'x-user-wallet': publicKey?.toString() || ''
+          'Authorization': `Bearer ${token}`
         }
       })
 
       if (response.ok) {
         const data = await response.json()
         setConversations(data.conversations)
+      } else {
+        console.error('Failed to load conversations:', await response.text())
       }
     } catch (error) {
       console.error('Error loading conversations:', error)
@@ -72,7 +84,18 @@ export default function MessagesPage() {
            conv.participant.fullName?.toLowerCase().includes(searchLower)
   })
 
-  if (!publicKey) {
+  if (isUserLoading) {
+    return (
+      <div className="min-h-screen bg-gray-50 dark:bg-slate-900 pt-24 flex items-center justify-center">
+        <div className="animate-pulse">
+          <div className="w-16 h-16 bg-gray-200 dark:bg-slate-700 rounded-full mx-auto mb-4" />
+          <div className="h-4 bg-gray-200 dark:bg-slate-700 rounded w-48 mx-auto" />
+        </div>
+      </div>
+    )
+  }
+
+  if (!user) {
     return (
       <div className="min-h-screen bg-gray-50 dark:bg-slate-900 pt-24 flex items-center justify-center">
         <div className="text-center">
@@ -91,7 +114,10 @@ export default function MessagesPage() {
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-slate-900 pt-24">
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
-
+        <div className="mb-8">
+          <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Messages</h1>
+          <p className="text-gray-600 dark:text-gray-400 mt-2">Chat with creators and fans</p>
+        </div>
 
         {/* Search Bar */}
         <div className="mb-6">

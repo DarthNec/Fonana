@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { waitForTransactionConfirmation } from '@/lib/solana/validation'
+import jwt from 'jsonwebtoken'
+import { ENV } from '@/lib/constants/env'
 
 // Purchase a paid message
 export async function POST(
@@ -8,10 +10,19 @@ export async function POST(
   { params }: { params: { id: string } }
 ) {
   try {
-    const userWallet = request.headers.get('x-user-wallet')
+    // Проверяем JWT токен
+    const authHeader = request.headers.get('authorization')
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return NextResponse.json({ error: 'No token provided' }, { status: 401 })
+    }
+
+    const token = authHeader.split(' ')[1]
+    let decoded: any
     
-    if (!userWallet) {
-      return NextResponse.json({ error: 'Wallet not connected' }, { status: 401 })
+    try {
+      decoded = jwt.verify(token, ENV.NEXTAUTH_SECRET)
+    } catch (error) {
+      return NextResponse.json({ error: 'Invalid token' }, { status: 401 })
     }
     
     const messageId = params.id
@@ -23,7 +34,7 @@ export async function POST(
     
     // Get user
     const user = await prisma.user.findUnique({
-      where: { wallet: userWallet }
+      where: { id: decoded.userId }
     })
     
     if (!user) {

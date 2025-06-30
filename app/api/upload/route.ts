@@ -2,9 +2,22 @@ import { NextRequest, NextResponse } from 'next/server'
 import { writeFile, mkdir } from 'fs/promises'
 import path from 'path'
 import crypto from 'crypto'
+import jwt from 'jsonwebtoken'
+import { ENV } from '@/lib/constants/env'
 
 export async function POST(request: NextRequest) {
   try {
+    // Проверяем JWT токен (опционально для загрузки)
+    const authHeader = request.headers.get('authorization')
+    if (authHeader && authHeader.startsWith('Bearer ')) {
+      const token = authHeader.split(' ')[1]
+      try {
+        jwt.verify(token, ENV.NEXTAUTH_SECRET)
+      } catch (error) {
+        console.log('Invalid JWT token in upload, proceeding anyway')
+      }
+    }
+    
     const formData = await request.formData()
     const file = formData.get('file') as File
     const type = formData.get('type') as string // 'avatar', 'background', 'post', 'message'
