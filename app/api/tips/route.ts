@@ -144,15 +144,21 @@ export async function POST(request: NextRequest) {
     // Создаем запись о транзакции
     const transaction = await prisma.transaction.create({
       data: {
-        senderId: user.id,
-        receiverId: creatorId,
         fromWallet: userWallet,
         toWallet: creatorWallet,
         type: 'TIP',
         amount,
+        currency: 'SOL',
         status: 'CONFIRMED',
         txSignature,
-        confirmedAt: new Date()
+        confirmedAt: new Date(),
+        metadata: {
+          senderId: user.id,
+          receiverId: creatorId,
+          senderName: user.nickname || user.fullName,
+          creatorName: creator.nickname || creator.fullName,
+          conversationId
+        }
       }
     })
     

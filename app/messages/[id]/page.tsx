@@ -735,7 +735,7 @@ export default function ConversationPage() {
               </button>
             )}
             
-            {messages.map((message) => (
+            {messages.slice().reverse().map((message) => (
               <div
                 key={message.id}
                 className={`flex ${message.isOwn ? 'justify-end' : 'justify-start'} ${

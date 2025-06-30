@@ -270,6 +270,11 @@ export default function PurchaseModal({ post, onClose, onSuccess }: PurchaseModa
       }
       
       onClose()
+      
+      // Принудительная перезагрузка страницы для обновления контента
+      setTimeout(() => {
+        window.location.reload()
+      }, 1000)
 
     } catch (error) {
       console.error('Payment error:', error)

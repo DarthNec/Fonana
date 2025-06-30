@@ -83,10 +83,11 @@ export async function GET(
     // Форматируем сообщения
     const formattedMessages = messages.map((message: any) => ({
       ...message,
-      content: message.isPaid && message.purchases.length === 0 
+      content: message.isPaid && message.purchases.length === 0 && message.senderId !== user.id
         ? null 
         : message.content,
-      isPurchased: message.purchases.length > 0
+      isPurchased: message.purchases.length > 0,
+      isOwn: message.senderId === user.id
     }))
     
     return NextResponse.json({ messages: formattedMessages })
