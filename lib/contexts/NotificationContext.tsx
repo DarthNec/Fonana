@@ -289,12 +289,21 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
     }
 
     try {
+      // Получаем JWT токен
+      const token = await getJWTToken()
+      const headers: HeadersInit = {
+        'Content-Type': 'application/json'
+      }
+      
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`
+      } else if (user.wallet) {
+        headers['x-user-wallet'] = user.wallet
+      }
+
       const response = await fetch(`/api/user/notifications`, {
         method: 'DELETE',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-user-wallet': user.wallet || ''
-        },
+        headers,
         body: JSON.stringify({ notificationId })
       })
 
@@ -324,12 +333,21 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
     setUnreadCount(0)
 
     try {
+      // Получаем JWT токен
+      const token = await getJWTToken()
+      const headers: HeadersInit = {
+        'Content-Type': 'application/json'
+      }
+      
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`
+      } else if (user.wallet) {
+        headers['x-user-wallet'] = user.wallet
+      }
+
       const response = await fetch(`/api/user/notifications`, {
         method: 'DELETE',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-user-wallet': user.wallet || ''
-        },
+        headers,
         body: JSON.stringify({ clearAll: true })
       })
 
