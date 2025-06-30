@@ -126,11 +126,33 @@ export default function BottomNav() {
             const isItemActive = isActive(item.href)
             const Icon = isItemActive ? item.activeIcon : item.icon
             
+            // Для Menu используем button вместо Link
+            if (item.href === '#') {
+              return (
+                <button
+                  key={item.name}
+                  onClick={item.onClick}
+                  className={`flex flex-col items-center justify-center gap-0.5 relative w-full ${
+                    isItemActive ? 'text-purple-600 dark:text-purple-400' : 'text-gray-600 dark:text-slate-400'
+                  }`}
+                >
+                  <div className="relative">
+                    <Icon className="w-6 h-6" />
+                    {item.badge && (
+                      <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs w-4 h-4 rounded-full flex items-center justify-center">
+                        {item.badge > 9 ? '9+' : item.badge}
+                      </span>
+                    )}
+                  </div>
+                  <span className="text-xs">{item.name}</span>
+                </button>
+              )
+            }
+            
             return (
               <Link
                 key={item.name}
                 href={item.href}
-                onClick={item.onClick}
                 className={`flex flex-col items-center justify-center gap-0.5 relative ${
                   isItemActive ? 'text-purple-600 dark:text-purple-400' : 'text-gray-600 dark:text-slate-400'
                 }`}

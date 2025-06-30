@@ -234,11 +234,6 @@ export function useRealtimePosts({
     // Подписываемся на обновления ленты
     wsService.subscribeToFeed(user.id)
 
-    // Подписываемся на события для каждого поста
-    posts.forEach(post => {
-      wsService.subscribeToPost(post.id)
-    })
-
     // Обработчики событий
     wsService.on('post_liked', handlePostLiked)
     wsService.on('post_unliked', handlePostUnliked)
@@ -267,9 +262,6 @@ export function useRealtimePosts({
     // Отписываемся при размонтировании
     return () => {
       wsService.unsubscribeFromFeed(user.id)
-      posts.forEach(post => {
-        wsService.unsubscribeFromPost(post.id)
-      })
       wsService.off('post_liked', handlePostLiked)
       wsService.off('post_unliked', handlePostUnliked)
       wsService.off('post_created', handlePostCreated)
@@ -285,7 +277,6 @@ export function useRealtimePosts({
     }
   }, [
     user?.id, 
-    posts, 
     handlePostLiked, 
     handlePostUnliked, 
     handlePostCreated, 
@@ -296,12 +287,12 @@ export function useRealtimePosts({
     handleSubscriptionUpdated
   ])
 
-  // Уведомляем об изменениях
+  // Уведомляем об изменениях только если есть callback и посты действительно изменились
   useEffect(() => {
-    if (onPostsUpdate && updatedPosts !== posts) {
+    if (onPostsUpdate) {
       onPostsUpdate(updatedPosts)
     }
-  }, [updatedPosts, posts, onPostsUpdate])
+  }, [updatedPosts, onPostsUpdate])
 
   return {
     posts: updatedPosts,
