@@ -12,6 +12,18 @@ async function verifyToken(token) {
     console.log('🔐 Verifying token...');
     console.log('🔑 Token length:', token ? token.length : 0);
     
+    // DEBUG: Выводим первые и последние символы токена
+    if (token) {
+      console.log('🔑 Token preview:', `${token.substring(0, 50)}...${token.substring(token.length - 50)}`);
+      
+      // Проверяем, не закодирован ли токен в URL
+      const decodedToken = decodeURIComponent(token);
+      if (decodedToken !== token) {
+        console.log('🔑 Token was URL encoded, decoded length:', decodedToken.length);
+        token = decodedToken;
+      }
+    }
+    
     // Декодируем JWT токен без строгой проверки issuer/audience
     const decoded = jwt.verify(token, JWT_SECRET);
     
