@@ -23,6 +23,7 @@ import { MobileWalletConnect } from './MobileWalletConnect'
 import { useWallet } from '@solana/wallet-adapter-react'
 import { useUserContext } from '@/lib/contexts/UserContext'
 import SearchBar from './SearchBar'
+import { jwtManager } from '@/lib/utils/jwt'
 
   const navigation = [
     { name: 'Home', href: '/', icon: HomeIcon },
@@ -52,12 +53,15 @@ export function Navbar() {
   // Check for unread messages
   useEffect(() => {
     const checkUnreadMessages = async () => {
-      if (!publicKey) return
+      if (!user?.id) return
       
       try {
+        const token = await jwtManager.getToken()
+        if (!token) return
+
         const response = await fetch('/api/conversations', {
           headers: {
-            'x-user-wallet': publicKey.toString()
+            'Authorization': `Bearer ${token}`
           }
         })
         
@@ -73,13 +77,13 @@ export function Navbar() {
       }
     }
     
-    if (publicKey) {
+    if (user?.id) {
       checkUnreadMessages()
       // Check every 10 seconds
       const interval = setInterval(checkUnreadMessages, 10000)
       return () => clearInterval(interval)
     }
-  }, [publicKey])
+  }, [user])
 
   const isActive = (href: string) => pathname === href
 
