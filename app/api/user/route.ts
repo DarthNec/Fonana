@@ -50,7 +50,7 @@ export async function GET(request: NextRequest) {
       })
     } else if (nickname) {
       // Валидация nickname (защита от инъекций)
-      if (!/^[a-zA-Z0-9_-]+$/.test(nickname)) {
+      if (!/^[a-zA-Z0-9_.-]+$/.test(nickname)) {
         return NextResponse.json({ error: 'Invalid nickname format' }, { status: 400 })
       }
       
