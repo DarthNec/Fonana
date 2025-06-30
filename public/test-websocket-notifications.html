@@ -1,0 +1,409 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WebSocket & Notifications Test - Fonana</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #1a1a1a;
+            color: #fff;
+        }
+        .container {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+        .card {
+            background: #2a2a2a;
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+        }
+        h1, h2 {
+            margin-top: 0;
+        }
+        .status {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 14px;
+            font-weight: bold;
+        }
+        .status.connected {
+            background: #10b981;
+            color: white;
+        }
+        .status.disconnected {
+            background: #ef4444;
+            color: white;
+        }
+        .status.connecting {
+            background: #f59e0b;
+            color: white;
+        }
+        button {
+            background: #3b82f6;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 5px;
+        }
+        button:hover {
+            background: #2563eb;
+        }
+        .log {
+            background: #1a1a1a;
+            border: 1px solid #444;
+            border-radius: 8px;
+            padding: 15px;
+            height: 300px;
+            overflow-y: auto;
+            font-family: monospace;
+            font-size: 12px;
+        }
+        .log-entry {
+            margin-bottom: 5px;
+            padding: 3px 0;
+            border-bottom: 1px solid #333;
+        }
+        .log-entry.error {
+            color: #ef4444;
+        }
+        .log-entry.success {
+            color: #10b981;
+        }
+        .log-entry.info {
+            color: #3b82f6;
+        }
+        .log-entry.warning {
+            color: #f59e0b;
+        }
+    </style>
+</head>
+<body>
+    <h1>🔧 WebSocket & Notifications Test</h1>
+    
+    <div class="card" style="margin-bottom: 20px;">
+        <h3>Аутентификация</h3>
+        <div>
+            <input type="text" id="walletInput" placeholder="Введите адрес кошелька" style="width: 400px; padding: 8px;">
+            <button onclick="authenticate()">Аутентифицироваться</button>
+            <button onclick="checkJWT()">Проверить JWT</button>
+        </div>
+        <div id="authStatus" style="margin-top: 10px;">Не аутентифицирован</div>
+    </div>
+
+    <div class="container">
+        <div class="card">
+            <h2>WebSocket Status</h2>
+            <p>Connection: <span id="wsStatus" class="status disconnected">Disconnected</span></p>
+            <div>
+                <button onclick="connectWS()">Connect</button>
+                <button onclick="disconnectWS()">Disconnect</button>
+                <button onclick="sendPing()">Send Ping</button>
+            </div>
+            <h3>WebSocket Log</h3>
+            <div id="wsLog" class="log"></div>
+        </div>
+
+        <div class="card">
+            <h2>Notifications</h2>
+            <p>Unread: <span id="unreadCount" style="font-weight: bold; color: #3b82f6;">0</span></p>
+            <div>
+                <button onclick="loadNotifications()">Load Notifications</button>
+                <button onclick="testNotificationAPI()">Test API</button>
+                <button onclick="createTestNotification()">Create Test</button>
+            </div>
+            <h3>Notifications List</h3>
+            <div id="notificationsList" style="max-height: 400px; overflow-y: auto;">
+                <p style="text-align: center; color: #666;">Нет уведомлений</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let ws = null;
+        let jwtToken = null;
+        let userId = null;
+
+        window.onload = () => {
+            const wallet = localStorage.getItem('fonana_user_wallet');
+            if (wallet) {
+                document.getElementById('walletInput').value = wallet;
+                addLog('info', 'Wallet loaded: ' + wallet.substring(0, 8) + '...');
+            }
+            checkJWT();
+        };
+
+        async function authenticate() {
+            const wallet = document.getElementById('walletInput').value;
+            if (!wallet) {
+                alert('Введите адрес кошелька');
+                return;
+            }
+
+            try {
+                addLog('info', 'Authenticating...');
+                const response = await fetch('/api/auth/wallet', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ wallet })
+                });
+
+                if (!response.ok) {
+                    throw new Error('HTTP ' + response.status);
+                }
+
+                const data = await response.json();
+                jwtToken = data.token;
+                userId = data.user.id;
+                
+                localStorage.setItem('fonana_user_wallet', wallet);
+                localStorage.setItem('fonana_jwt_token', JSON.stringify({
+                    token: jwtToken,
+                    expiresAt: Date.now() + 30 * 24 * 60 * 60 * 1000,
+                    userId: userId,
+                    wallet: wallet
+                }));
+
+                document.getElementById('authStatus').innerHTML = '✅ Authenticated as <strong>' + (data.user.nickname || userId) + '</strong>';
+                addLog('success', 'Authenticated! User ID: ' + userId);
+            } catch (error) {
+                addLog('error', 'Authentication failed: ' + error.message);
+                document.getElementById('authStatus').textContent = '❌ Authentication failed';
+            }
+        }
+
+        async function checkJWT() {
+            const stored = localStorage.getItem('fonana_jwt_token');
+            if (!stored) {
+                addLog('warning', 'No JWT token in localStorage');
+                return;
+            }
+
+            try {
+                const data = JSON.parse(stored);
+                jwtToken = data.token;
+                userId = data.userId;
+                
+                if (data.expiresAt > Date.now()) {
+                    document.getElementById('authStatus').innerHTML = '✅ JWT Valid (User: ' + userId + ')';
+                    addLog('success', 'JWT token loaded from localStorage');
+                } else {
+                    addLog('warning', 'JWT token expired');
+                    document.getElementById('authStatus').textContent = '⚠️ JWT expired';
+                }
+            } catch (error) {
+                addLog('error', 'Failed to parse JWT: ' + error.message);
+            }
+        }
+
+        function connectWS() {
+            if (ws && ws.readyState === WebSocket.OPEN) {
+                addLog('warning', 'Already connected');
+                return;
+            }
+
+            if (!jwtToken) {
+                addLog('error', 'Please authenticate first');
+                return;
+            }
+
+            const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+            const wsUrl = protocol + '//' + window.location.host + '/ws?token=' + encodeURIComponent(jwtToken);
+            
+            addLog('info', 'Connecting to WebSocket...');
+            updateStatus('connecting');
+
+            try {
+                ws = new WebSocket(wsUrl);
+
+                ws.onopen = () => {
+                    updateStatus('connected');
+                    addLog('success', 'WebSocket connected!');
+                    
+                    if (userId) {
+                        ws.send(JSON.stringify({
+                            type: 'subscribe',
+                            channel: { type: 'notifications', userId }
+                        }));
+                        addLog('info', 'Subscribed to notifications');
+                    }
+                };
+
+                ws.onmessage = (event) => {
+                    try {
+                        const data = JSON.parse(event.data);
+                        addLog('info', 'Message received: ' + data.type);
+                        
+                        if (data.type === 'notification') {
+                            handleNewNotification(data.notification);
+                        }
+                    } catch (error) {
+                        addLog('error', 'Failed to parse message: ' + error.message);
+                    }
+                };
+
+                ws.onerror = (error) => {
+                    addLog('error', 'WebSocket error occurred');
+                    console.error('WebSocket error:', error);
+                };
+
+                ws.onclose = (event) => {
+                    updateStatus('disconnected');
+                    addLog('warning', 'WebSocket closed: ' + event.code + ' ' + (event.reason || 'No reason'));
+                };
+
+            } catch (error) {
+                addLog('error', 'Failed to create WebSocket: ' + error.message);
+                updateStatus('disconnected');
+            }
+        }
+
+        function disconnectWS() {
+            if (ws) {
+                ws.close();
+                ws = null;
+            }
+        }
+
+        function sendPing() {
+            if (!ws || ws.readyState !== WebSocket.OPEN) {
+                addLog('error', 'WebSocket not connected');
+                return;
+            }
+
+            ws.send(JSON.stringify({ type: 'ping' }));
+            addLog('info', 'Sent ping');
+        }
+
+        function updateStatus(status) {
+            const statusEl = document.getElementById('wsStatus');
+            statusEl.textContent = status.charAt(0).toUpperCase() + status.slice(1);
+            statusEl.className = 'status ' + status;
+        }
+
+        function addLog(type, message) {
+            const log = document.getElementById('wsLog');
+            const entry = document.createElement('div');
+            entry.className = 'log-entry ' + type;
+            entry.textContent = '[' + new Date().toLocaleTimeString() + '] ' + message;
+            log.appendChild(entry);
+            log.scrollTop = log.scrollHeight;
+        }
+
+        async function loadNotifications() {
+            if (!jwtToken) {
+                addLog('error', 'Please authenticate first');
+                return;
+            }
+
+            try {
+                addLog('info', 'Loading notifications...');
+                const response = await fetch('/api/user/notifications', {
+                    headers: {
+                        'Authorization': 'Bearer ' + jwtToken
+                    }
+                });
+
+                if (!response.ok) {
+                    throw new Error('HTTP ' + response.status);
+                }
+
+                const data = await response.json();
+                addLog('success', 'Loaded ' + data.notifications.length + ' notifications');
+                
+                displayNotifications(data.notifications);
+                document.getElementById('unreadCount').textContent = data.unreadCount;
+            } catch (error) {
+                addLog('error', 'Failed to load notifications: ' + error.message);
+            }
+        }
+
+        function displayNotifications(notifications) {
+            const list = document.getElementById('notificationsList');
+            list.innerHTML = '';
+
+            if (notifications.length === 0) {
+                list.innerHTML = '<p style="text-align: center; color: #666;">Нет уведомлений</p>';
+                return;
+            }
+
+            notifications.forEach(notif => {
+                const item = document.createElement('div');
+                item.style.cssText = 'background: #333; border: 1px solid #444; border-radius: 8px; padding: 10px; margin-bottom: 10px;';
+                if (!notif.isRead) {
+                    item.style.borderColor = '#3b82f6';
+                }
+                item.innerHTML = '<strong>' + notif.title + '</strong><br>' +
+                                '<small>' + notif.message + '</small><br>' +
+                                '<small style="color: #666;">ID: ' + notif.id + '</small>';
+                list.appendChild(item);
+            });
+        }
+
+        function handleNewNotification(notification) {
+            addLog('success', 'New notification: ' + notification.title);
+            
+            const unreadEl = document.getElementById('unreadCount');
+            const current = parseInt(unreadEl.textContent) || 0;
+            unreadEl.textContent = current + 1;
+            
+            loadNotifications();
+        }
+
+        async function testNotificationAPI() {
+            try {
+                addLog('info', 'Testing notification API...');
+                const response = await fetch('/api/user/notifications');
+                addLog(response.ok ? 'success' : 'error', 
+                    'API Response: ' + response.status + ' ' + response.statusText);
+            } catch (error) {
+                addLog('error', 'API test failed: ' + error.message);
+            }
+        }
+
+        async function createTestNotification() {
+            if (!userId || !jwtToken) {
+                addLog('error', 'Please authenticate first');
+                return;
+            }
+
+            try {
+                const response = await fetch('/api/user/notifications', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': 'Bearer ' + jwtToken
+                    },
+                    body: JSON.stringify({
+                        userId: userId,
+                        type: 'NEW_MESSAGE',
+                        title: 'Test Notification',
+                        message: 'Test message created at ' + new Date().toLocaleTimeString(),
+                        metadata: { test: true }
+                    })
+                });
+
+                if (!response.ok) {
+                    throw new Error('HTTP ' + response.status);
+                }
+
+                addLog('success', 'Test notification created');
+            } catch (error) {
+                addLog('error', 'Failed to create notification: ' + error.message);
+            }
+        }
+    </script>
+</body>
+</html>
