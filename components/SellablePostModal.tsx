@@ -19,6 +19,7 @@ import {
   formatSolAmount 
 } from '@/lib/solana/payments'
 import { useSolRate } from '@/lib/hooks/useSolRate'
+import { jwtManager } from '@/lib/utils/jwt'
 
 // Константа для базовой комиссии сети Solana (5000 lamports = 0.000005 SOL)
 const NETWORK_FEE = 0.000005
@@ -227,11 +228,16 @@ export default function SellablePostModal({ isOpen, onClose, post }: SellablePos
       }
 
       // Process payment on backend
+      const jwtToken = await jwtManager.getToken()
+      if (!jwtToken) {
+        throw new Error('Not authenticated')
+      }
+
       const response = await fetch(`/api/posts/${post.id}/buy`, {
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json',
-          'x-user-wallet': publicKey.toBase58()
+          'Authorization': `Bearer ${jwtToken}`
         },
         body: JSON.stringify({
           buyerWallet: publicKey.toString(),
