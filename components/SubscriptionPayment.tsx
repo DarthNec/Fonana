@@ -169,11 +169,14 @@ export function SubscriptionPayment({
       await new Promise(resolve => setTimeout(resolve, 5000))
 
       // Process payment on backend
+      const jwtToken = await (window as any).jwtManager?.getToken()
+      
       const response = await fetch('/api/subscriptions/process-payment', {
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json',
-          'x-user-wallet': publicKey.toBase58()
+          'Authorization': jwtToken ? `Bearer ${jwtToken}` : '',
+          'x-user-wallet': publicKey.toBase58() // Для обратной совместимости
         },
         body: JSON.stringify({
           creatorId,

@@ -481,8 +481,14 @@ export default function SubscribeModal({ creator, preferredTier, onClose, onSucc
       let errorMessage = 'Error processing subscription'
       
       if (error instanceof Error) {
-        if (error.message.includes('User rejected')) {
-          errorMessage = 'You cancelled the transaction'
+        // Обрабатываем ошибки кошелька Solana
+        if (error.message.includes('User rejected') || 
+            error.message.includes('user rejected') ||
+            error.name === 'WalletSendTransactionError') {
+          // Пользователь отменил транзакцию - это нормально
+          errorMessage = 'Transaction cancelled'
+          toast(errorMessage, { icon: '👋' })
+          return // Не показываем как ошибку
         } else if (error.message.includes('insufficient')) {
           errorMessage = 'Insufficient funds in wallet'
         } else if (error.message.includes('Transaction not confirmed')) {

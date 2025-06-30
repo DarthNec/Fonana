@@ -23,6 +23,7 @@ import { connection } from '@/lib/solana/connection'
 import { useSolRate } from '@/lib/hooks/useSolRate'
 import { useUserContext } from '@/lib/contexts/UserContext'
 import { refreshPostAccess } from '@/lib/utils/subscriptions'
+import { jwtManager } from '@/lib/utils/jwt'
 
 interface PurchaseModalProps {
   post: {
@@ -231,20 +232,23 @@ export default function PurchaseModal({ post, onClose, onSuccess }: PurchaseModa
       await new Promise(resolve => setTimeout(resolve, 8000))
 
       // Process payment on backend
-      const response = await fetch('/api/posts/process-payment', {
+      const jwtToken = await jwtManager.getToken()
+      if (!jwtToken) {
+        throw new Error('Not authenticated')
+      }
+
+      const response = await fetch(`/api/posts/${post.id}/buy`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${jwtToken}`
+        },
         body: JSON.stringify({
-          postId: post.id,
-          userId: user.id,
+          buyerWallet: publicKey.toString(),
+          txSignature: signature,
           price: actualPrice,
-          originalPrice: post.price,
-          currency: post.currency,
-          signature,
-          creatorId: post.creator.id,
           hasReferrer,
-          distribution,
-          flashSaleId: appliedFlashSaleId
+          distribution
         })
       })
 
@@ -291,8 +295,14 @@ export default function PurchaseModal({ post, onClose, onSuccess }: PurchaseModa
       let errorMessage = 'Произошла ошибка при оплате'
       
       if (error instanceof Error) {
-        if (error.message.includes('User rejected')) {
-          errorMessage = 'Вы отменили транзакцию'
+        // Обрабатываем ошибки кошелька Solana
+        if (error.message.includes('User rejected') || 
+            error.message.includes('user rejected') ||
+            error.name === 'WalletSendTransactionError') {
+          // Пользователь отменил транзакцию - это нормально
+          errorMessage = 'Транзакция отменена'
+          toast(errorMessage, { icon: '👋' })
+          return // Не показываем как ошибку
         } else if (error.message.includes('insufficient')) {
           errorMessage = 'Недостаточно средств на кошельке'
         } else if (error.message.includes('Transaction not confirmed')) {

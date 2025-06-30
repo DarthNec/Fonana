@@ -1,10 +1,11 @@
 'use client'
 
-import React from 'react'
+import React, { useState, useEffect } from 'react'
 import { UnifiedPost, PostAction, PostLayoutType, PostPageVariant } from '@/types/posts'
 import { PostGrid } from './PostGrid'
 import { PostList } from './PostList'
 import { PostNormalizer } from '@/services/posts/normalizer'
+import { useRealtimePosts } from '@/lib/hooks/useRealtimePosts'
 // import { PostMasonry } from './PostMasonry' // Будет добавлен позже
 
 export interface PostsContainerProps {
@@ -26,6 +27,12 @@ export interface PostsContainerProps {
   emptyMessage?: string
   /** Компонент для отображения при отсутствии постов */
   emptyComponent?: React.ReactNode
+  /** Включить real-time обновления */
+  enableRealtime?: boolean
+  /** Показывать уведомления о новых постах */
+  showNewPostsNotification?: boolean
+  /** Автоматически обновлять ленту */
+  autoUpdateFeed?: boolean
 }
 
 /**
@@ -41,26 +48,44 @@ export function PostsContainer({
   className,
   isLoading = false,
   emptyMessage = 'No posts yet',
-  emptyComponent
+  emptyComponent,
+  enableRealtime = true,
+  showNewPostsNotification = true,
+  autoUpdateFeed = false
 }: PostsContainerProps) {
-  // Нормализуем посты если они еще не нормализованы
-  let normalizedPosts: UnifiedPost[] = []
+  const [normalizedPosts, setNormalizedPosts] = useState<UnifiedPost[]>([])
   
-  try {
-    // Проверяем, являются ли посты уже нормализованными
-    const isNormalized = posts.length > 0 && posts[0].creator && posts[0].content && posts[0].access
-    
-    if (isNormalized) {
-      normalizedPosts = posts as UnifiedPost[]
-    } else {
-      // Нормализуем посты
-      normalizedPosts = PostNormalizer.normalizeMany(posts)
+  // Нормализуем посты
+  useEffect(() => {
+    try {
+      // Проверяем, являются ли посты уже нормализованными
+      const isNormalized = posts.length > 0 && posts[0].creator && posts[0].content && posts[0].access
+      
+      if (isNormalized) {
+        setNormalizedPosts(posts as UnifiedPost[])
+      } else {
+        // Нормализуем посты
+        setNormalizedPosts(PostNormalizer.normalizeMany(posts))
+      }
+    } catch (error) {
+      console.error('PostsContainer: Error normalizing posts:', error)
+      setNormalizedPosts([])
     }
-  } catch (error) {
-    console.error('PostsContainer: Error normalizing posts:', error)
-    // В случае ошибки показываем пустое состояние
-    normalizedPosts = []
-  }
+  }, [posts])
+  
+  // Используем real-time хук если включено
+  const realtimeData = enableRealtime ? useRealtimePosts({
+    posts: normalizedPosts,
+    showNewPostsNotification,
+    autoUpdateFeed,
+    onPostsUpdate: (updatedPosts) => {
+      // Обновляем локальное состояние при real-time обновлениях
+      setNormalizedPosts(updatedPosts)
+    }
+  }) : null
+  
+  // Используем посты из real-time хука если доступны
+  const displayPosts = realtimeData?.posts || normalizedPosts
 
   // Загрузка
   if (isLoading) {
@@ -75,7 +100,7 @@ export function PostsContainer({
   }
 
   // Нет постов
-  if (normalizedPosts.length === 0) {
+  if (displayPosts.length === 0) {
     if (emptyComponent) {
       return <>{emptyComponent}</>
     }
@@ -87,6 +112,21 @@ export function PostsContainer({
     )
   }
 
+  // Компонент для уведомления о новых постах
+  const NewPostsNotification = realtimeData && realtimeData.hasNewPosts ? (
+    <div className="sticky top-20 z-40 mb-4">
+      <button
+        onClick={realtimeData.loadPendingPosts}
+        className="w-full bg-gradient-to-r from-purple-600 to-pink-600 text-white py-3 px-6 rounded-full shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-300 flex items-center justify-center gap-2"
+      >
+        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+        </svg>
+        <span>{realtimeData.newPostsCount} new {realtimeData.newPostsCount === 1 ? 'post' : 'posts'} available</span>
+      </button>
+    </div>
+  ) : null
+
   // Выбор компонента layout
   const LayoutComponent = {
     list: PostList,
@@ -95,12 +135,14 @@ export function PostsContainer({
   }[layout]
 
   return (
-    <LayoutComponent
-      posts={normalizedPosts}
-      variant={variant}
-      showCreator={showCreator}
-      onAction={onAction}
-      className={className}
-    />
+    <div className={className}>
+      {NewPostsNotification}
+      <LayoutComponent
+        posts={displayPosts}
+        variant={variant}
+        showCreator={showCreator}
+        onAction={onAction}
+      />
+    </div>
   )
 } 
