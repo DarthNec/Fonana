@@ -34,6 +34,7 @@ import { useSolRate } from '@/lib/hooks/useSolRate'
 import { hasAccessToTier, normalizeTierName } from '@/lib/utils/access'
 import { TIER_HIERARCHY } from '@/lib/constants/tiers'
 import { formatPlanName } from '@/lib/utils/subscriptions'
+import { jwtManager } from '@/lib/utils/jwt'
 
 // Внутренний компонент, который использует данные создателя из контекста
 function CreatorPageContent() {
@@ -214,12 +215,19 @@ function CreatorPageContent() {
     if (!creator) return
 
     try {
+      // Get JWT token
+      const token = await jwtManager.getToken()
+      if (!token) {
+        toast.error('Not authenticated')
+        return
+      }
+
       // Create or get existing conversation
       const response = await fetch('/api/conversations', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'x-user-wallet': user.wallet
+          'Authorization': `Bearer ${token}`
         },
         body: JSON.stringify({
           participantId: creator.id
