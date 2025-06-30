@@ -28,6 +28,7 @@ import { useWalletModal } from '@solana/wallet-adapter-react-ui'
 import SolanaRateDisplay from '@/components/SolanaRateDisplay'
 import Avatar from '@/components/Avatar'
 import { MobileWalletConnect } from '@/components/MobileWalletConnect'
+import { jwtManager } from '@/lib/utils/jwt'
 
 export default function BottomNav() {
   const pathname = usePathname()
@@ -40,12 +41,15 @@ export default function BottomNav() {
   // Check for unread messages
   useEffect(() => {
     const checkUnreadMessages = async () => {
-      if (!user?.wallet) return
+      if (!user) return
       
       try {
+        const token = await jwtManager.getToken()
+        if (!token) return
+
         const response = await fetch('/api/conversations', {
           headers: {
-            'x-user-wallet': user.wallet
+            'Authorization': `Bearer ${token}`
           }
         })
         
@@ -61,13 +65,13 @@ export default function BottomNav() {
       }
     }
     
-    if (user?.wallet) {
+    if (user) {
       checkUnreadMessages()
       // Check every 10 seconds
       const interval = setInterval(checkUnreadMessages, 10000)
       return () => clearInterval(interval)
     }
-  }, [user?.wallet])
+  }, [user])
 
   const navItems = [
     {

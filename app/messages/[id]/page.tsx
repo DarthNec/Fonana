@@ -595,11 +595,16 @@ export default function ConversationPage() {
       await new Promise(resolve => setTimeout(resolve, 10000))
 
       // Save purchase
+      const jwtToken = await jwtManager.getToken()
+      if (!jwtToken) {
+        throw new Error('Not authenticated')
+      }
+
       const response = await fetch(`/api/messages/${message.id}/purchase`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'x-user-wallet': publicKey.toString()
+          'Authorization': `Bearer ${jwtToken}`
         },
         body: JSON.stringify({ 
           txSignature: signature,

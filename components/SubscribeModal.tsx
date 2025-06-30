@@ -21,6 +21,7 @@ import { isValidSolanaAddress } from '@/lib/solana/config'
 import { connection } from '@/lib/solana/connection'
 import { useSolRate } from '@/lib/hooks/useSolRate'
 import { refreshSubscriptionStatus } from '@/lib/utils/subscriptions'
+import { jwtManager } from '@/lib/utils/jwt'
 
 interface SubscriptionTier {
   id: string
@@ -419,11 +420,16 @@ export default function SubscribeModal({ creator, preferredTier, onClose, onSucc
       await new Promise(resolve => setTimeout(resolve, 5000))
 
       // Process payment on backend
+      const jwtToken = await jwtManager.getToken()
+      if (!jwtToken) {
+        throw new Error('Not authenticated')
+      }
+
       const response = await fetch('/api/subscriptions/process-payment', {
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json',
-          'x-user-wallet': publicKey.toBase58()
+          'Authorization': `Bearer ${jwtToken}`
         },
         body: JSON.stringify({
           creatorId: creator.id,
