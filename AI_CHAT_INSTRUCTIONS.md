@@ -1016,6 +1016,10 @@ node scripts/check-creator-balance.js
 node scripts/check-failed-transactions.js
 node scripts/fix-missing-transaction.js
 node scripts/check-price-discrepancy.js
+
+# Thumbnails management
+node scripts/check-thumbnails-status.js
+node scripts/fix-thumbnails-migration.js
 ```
 
 ## Recent Updates & Fixes
@@ -2287,3 +2291,16 @@ ssh -p 43988 root@69.10.59.234 "cd /var/www/fonana && node -e 'console.log(!!pro
   - События работают только в рамках одной вкладки
   - WebSocket сервер требует backend изменений для полной интеграции
 - **Docs**: COMPREHENSIVE_FEED_FIX_REPORT.md
+
+### Thumbnails Generation Fix (June 30, 2025) 🔧 COMPLETED
+- **Problem**: 404 errors on thumbnails with empty filenames (thumb_.webp)
+- **Root Cause**: getOptimizedImageUrls function failed on files without extensions
+- **Solution**:
+  - Fixed path generation logic with proper validation
+  - Added fallback handling in OptimizedImage component
+  - Created migration script for fixing existing broken thumbnails
+- **Scripts**:
+  - `check-thumbnails-status.js` - diagnostic tool
+  - `fix-thumbnails-migration.js` - migration tool
+- **Result**: ✅ Zero broken thumbnails in production
+- **Docs**: THUMBNAILS_FIX_REPORT.md
