@@ -11,6 +11,13 @@ export default function UserProfileShortcut() {
 
   useEffect(() => {
     if (username) {
+      // Skip processing if it's a file with extension
+      if (username.includes('.')) {
+        // This is likely a static file, not a username
+        notFound()
+        return
+      }
+      
       // Remove @ symbol if present, otherwise use as is
       const identifier = username.startsWith('@') ? username.substring(1) : username
       

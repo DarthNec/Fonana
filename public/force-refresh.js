@@ -1,7 +1,7 @@
 // Force refresh script for cached browsers
 (function() {
   // Версия приложения (обновляется при каждом деплое)
-  var currentVersion = 'v-1751221173000';
+  var currentVersion = 'v-1751254469000';
   var storageKey = 'fonana-app-version';
   
   try {

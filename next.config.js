@@ -98,6 +98,14 @@ const nextConfig = {
         ]
       }
     ]
+  },
+  async rewrites() {
+    return [
+      {
+        source: '/:file*.html',
+        destination: '/:file*.html',
+      }
+    ]
   }
 }
 

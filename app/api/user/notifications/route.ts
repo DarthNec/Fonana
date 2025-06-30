@@ -19,10 +19,7 @@ async function getUserFromRequest(req: NextRequest) {
   if (authHeader && authHeader.startsWith('Bearer ')) {
     const token = authHeader.substring(7)
     try {
-      const decoded = jwt.verify(token, JWT_SECRET, {
-        issuer: 'fonana.me',
-        audience: 'fonana-websocket'
-      }) as any
+      const decoded = jwt.verify(token, JWT_SECRET) as any
       
       if (decoded.userId) {
         const user = await prisma.user.findUnique({

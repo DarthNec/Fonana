@@ -60,7 +60,9 @@ export async function POST(req: NextRequest) {
         sub: user.id
       },
       jwtSecret,
-      { expiresIn: '30d' }
+      { 
+        expiresIn: '30d'
+      }
     );
 
     console.log('✅ JWT token created successfully');
