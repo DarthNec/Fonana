@@ -2259,3 +2259,16 @@ ssh -p 43988 root@69.10.59.234 "cd /var/www/fonana && node -e 'console.log(!!pro
 - **NEXTAUTH_SECRET** - ключ для JWT токенов (должен быть одинаковым везде!)
 - **NEXTAUTH_URL** - базовый URL приложения
 - **GITHUB_ID/GITHUB_SECRET** - OAuth авторизация
+
+### Messages & Tips Fix (June 30, 2025) 🔧 COMPLETED
+- **Problem 1**: Messages displayed in wrong order (new on top instead of bottom)
+- **Problem 2**: Sender couldn't see their own paid message content
+- **Problem 3**: Tips failed to record due to incorrect Transaction schema usage
+- **Solution**:
+  - Fixed message order with `.slice().reverse()` in chat UI
+  - Added sender check in API: `message.senderId !== user.id` 
+  - Moved tip sender/receiver data to metadata field
+- **Scripts**: 
+  - `check-post-images.js` - verify image paths in DB
+  - `check-post-purchases.js` - analyze post purchases
+- **Docs**: PAID_FUNCTIONALITY_FIX_REPORT.md
