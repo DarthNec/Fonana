@@ -39,8 +39,14 @@ export default function OptimizedImage({
 
   // Определяем, какое изображение показывать
   const imageSrc = src || '/placeholder-image.png'
-  const thumbSrc = thumbnail || src || '/placeholder-image.png'
-  const previewSrc = preview || thumbnail || src || '/placeholder-image.png'
+  // Проверяем на битые пути thumbnails
+  const isValidThumbnail = thumbnail && 
+    !thumbnail.includes('thumb_.') && 
+    !thumbnail.includes('thumb_/') &&
+    thumbnail !== 'thumb_'
+  
+  const thumbSrc = isValidThumbnail ? thumbnail : (src || '/placeholder-image.png')
+  const previewSrc = preview || (isValidThumbnail ? thumbnail : src) || '/placeholder-image.png'
 
   // Intersection Observer для lazy loading
   useEffect(() => {

@@ -16,15 +16,29 @@ function getOptimizedImageUrls(mediaUrl: string | null) {
   // Проверяем, что это изображение в нашей системе
   if (!mediaUrl.includes('/posts/images/') && !mediaUrl.includes('/posts/')) return null
   
-  const ext = mediaUrl.substring(mediaUrl.lastIndexOf('.'))
-  const fileName = mediaUrl.substring(mediaUrl.lastIndexOf('/') + 1, mediaUrl.lastIndexOf('.'))
-  const baseName = fileName.substring(0, fileName.lastIndexOf('.'))
-  const dirPath = mediaUrl.substring(0, mediaUrl.lastIndexOf('/'))
+  const lastSlashIndex = mediaUrl.lastIndexOf('/')
+  const lastDotIndex = mediaUrl.lastIndexOf('.')
+  
+  // Если нет слеша или точки, возвращаем null чтобы избежать генерации битых путей
+  if (lastSlashIndex === -1 || lastDotIndex === -1 || lastDotIndex <= lastSlashIndex) {
+    console.warn('[getOptimizedImageUrls] Invalid mediaUrl format:', mediaUrl)
+    return null
+  }
+  
+  const dirPath = mediaUrl.substring(0, lastSlashIndex)
+  const fileName = mediaUrl.substring(lastSlashIndex + 1)
+  const nameWithoutExt = fileName.substring(0, fileName.lastIndexOf('.'))
+  
+  // Если имя файла пустое, возвращаем null
+  if (!nameWithoutExt) {
+    console.warn('[getOptimizedImageUrls] Empty filename:', mediaUrl)
+    return null
+  }
   
   // Генерируем правильные пути к оптимизированным версиям
   return {
     original: mediaUrl,
-    thumb: `${dirPath}/thumb_${baseName}.webp`,
+    thumb: `${dirPath}/thumb_${nameWithoutExt}.webp`,
     preview: mediaUrl // Используем оригинал как preview пока
   }
 }
