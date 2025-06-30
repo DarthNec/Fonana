@@ -1,4 +1,17 @@
-require('dotenv').config();
+require('dotenv').config({ path: require('path').join(__dirname, '..', '.env') });
+
+// Проверяем загрузку переменных окружения
+console.log('🔍 Checking environment variables...');
+if (!process.env.DATABASE_URL) {
+  console.error('❌ DATABASE_URL not found! Check .env file');
+  process.exit(1);
+}
+if (!process.env.NEXTAUTH_SECRET) {
+  console.error('❌ NEXTAUTH_SECRET not found! Check .env file');
+  process.exit(1);
+}
+console.log('✅ Environment variables loaded');
+
 const { createWebSocketServer } = require('./src/server');
 const { initPrisma } = require('./src/db');
 const { initRedis } = require('./src/redis');
