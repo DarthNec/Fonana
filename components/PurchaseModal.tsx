@@ -24,6 +24,7 @@ import { useSolRate } from '@/lib/hooks/useSolRate'
 import { useUserContext } from '@/lib/contexts/UserContext'
 import { refreshPostAccess } from '@/lib/utils/subscriptions'
 import { jwtManager } from '@/lib/utils/jwt'
+import { safeToFixed, formatSolToUsd } from '@/lib/utils/format'
 
 interface PurchaseModalProps {
   post: {
@@ -391,7 +392,7 @@ export default function PurchaseModal({ post, onClose, onSuccess }: PurchaseModa
                     {formatSolAmount(displayPrice)}
                   </p>
                   <p className="text-sm text-gray-600 dark:text-gray-400">
-                    ≈ ${(displayPrice * solToUsdRate).toFixed(2)} USD
+                    ≈ {formatSolToUsd(displayPrice, solToUsdRate)}
                   </p>
                   <p className="text-sm text-gray-500 dark:text-gray-400 line-through">
                     {formatSolAmount(post.price)}
@@ -406,7 +407,7 @@ export default function PurchaseModal({ post, onClose, onSuccess }: PurchaseModa
                     {formatSolAmount(post.price)}
                   </p>
                   <p className="text-sm text-gray-600 dark:text-gray-400">
-                    ≈ ${(post.price * solToUsdRate).toFixed(2)} USD
+                    ≈ {formatSolToUsd(post.price, solToUsdRate)}
                   </p>
                 </>
               )}
@@ -432,7 +433,7 @@ export default function PurchaseModal({ post, onClose, onSuccess }: PurchaseModa
             <span className="text-gray-900 dark:text-white font-medium">
               {formatSolAmount(displayPrice * 0.9)}
               <span className="text-xs text-gray-500 dark:text-gray-400 ml-1">
-                (≈ ${(displayPrice * 0.9 * solToUsdRate).toFixed(2)})
+                (≈ {formatSolToUsd(displayPrice * 0.9, solToUsdRate)})
               </span>
             </span>
           </div>
@@ -441,7 +442,7 @@ export default function PurchaseModal({ post, onClose, onSuccess }: PurchaseModa
             <span className="text-gray-900 dark:text-white font-medium">
               {formatSolAmount(displayPrice * (hasReferrerDisplay ? 0.05 : 0.1))}
               <span className="text-xs text-gray-500 dark:text-gray-400 ml-1">
-                (≈ ${(displayPrice * (hasReferrerDisplay ? 0.05 : 0.1) * solToUsdRate).toFixed(2)})
+                (≈ {formatSolToUsd(displayPrice * (hasReferrerDisplay ? 0.05 : 0.1), solToUsdRate)})
               </span>
             </span>
           </div>
@@ -451,7 +452,7 @@ export default function PurchaseModal({ post, onClose, onSuccess }: PurchaseModa
               <span className="text-gray-900 dark:text-white font-medium">
                 {formatSolAmount(displayPrice * 0.05)}
                 <span className="text-xs text-gray-500 dark:text-gray-400 ml-1">
-                  (≈ ${(displayPrice * 0.05 * solToUsdRate).toFixed(2)})
+                  (≈ {formatSolToUsd(displayPrice * 0.05, solToUsdRate)})
                 </span>
               </span>
             </div>
@@ -462,7 +463,7 @@ export default function PurchaseModal({ post, onClose, onSuccess }: PurchaseModa
               <span>
                 {formatSolAmount(post.price - displayPrice)}
                 <span className="ml-1">
-                  (≈ ${((post.price - displayPrice) * solToUsdRate).toFixed(2)})
+                  (≈ {formatSolToUsd(post.price - displayPrice, solToUsdRate)})
                 </span>
               </span>
             </div>

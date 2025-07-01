@@ -33,6 +33,8 @@ import {
 import { isValidSolanaAddress } from '@/lib/solana/config'
 import { useSolRate } from '@/lib/hooks/useSolRate'
 import { jwtManager } from '@/lib/utils/jwt'
+import { refreshPostAccess } from '@/lib/utils/subscriptions'
+import { formatSolToUsd, safeToFixed } from '@/lib/utils/format'
 
 interface Message {
   id: string
@@ -758,7 +760,7 @@ export default function ConversationPage() {
                         {message.isOwn ? 'You' : message.metadata.senderName} sent {formatSolAmount(message.metadata.amount || 0)} SOL
                         {solRate && (
                           <span className="block text-xs opacity-80 mt-1">
-                            ≈ ${(message.metadata.amount! * solRate).toFixed(2)} USD
+                            ≈ {formatSolToUsd(message.metadata.amount, solRate)}
                           </span>
                         )}
                       </p>
@@ -805,7 +807,7 @@ export default function ConversationPage() {
                             <div className="text-right">
                               <p className="text-lg font-bold text-white">{message.price} SOL</p>
                               {solRate && (
-                                <p className="text-xs text-white/80">≈ ${(message.price! * solRate).toFixed(2)}</p>
+                                <p className="text-xs text-white/80">≈ {formatSolToUsd(message.price, solRate)}</p>
                               )}
                             </div>
                           </div>
@@ -1015,7 +1017,7 @@ export default function ConversationPage() {
                   <span className="text-sm text-purple-700 dark:text-purple-300">SOL</span>
                   {messagePrice && solRate && (
                     <span className="text-xs text-purple-600 dark:text-purple-400">
-                      ≈ ${(parseFloat(messagePrice) * solRate).toFixed(2)}
+                      ≈ {formatSolToUsd(parseFloat(messagePrice), solRate)}
                     </span>
                   )}
                   <button
