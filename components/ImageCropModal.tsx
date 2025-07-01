@@ -162,8 +162,11 @@ export default function ImageCropModal({ image, onCropComplete, onCancel }: Imag
     // ФИКС: проверяем что что-то нарисовано на canvas
     const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height)
     const isEmpty = imageData.data.every((pixel, index) => {
-      // Проверяем только каждый 4-й пиксель (альфа канал) или RGB значения
-      return index % 4 === 3 ? pixel === 255 : pixel === 255
+      // Проверяем только альфа канал - если все пиксели полностью прозрачны
+      if (index % 4 === 3) {
+        return pixel === 0
+      }
+      return true
     })
 
     if (isEmpty) {
@@ -279,7 +282,7 @@ export default function ImageCropModal({ image, onCropComplete, onCancel }: Imag
         </div>
 
         {/* Cropper - with grid */}
-        <div className={`${styles.cropContainer} relative bg-black flex-1`}>
+        <div className={`${styles.cropContainer} relative bg-black`}>
           {imageError ? (
             <div className="absolute inset-0 flex items-center justify-center text-white">
               <div className="text-center">
