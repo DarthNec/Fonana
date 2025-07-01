@@ -153,7 +153,7 @@ export function PostCard({
           />
         )}
 
-        {/* Post Menu for own posts (even when showCreator=false) */}
+        {/* Post Menu for own posts - show when not showing creator header */}
         {!showCreator && (
           <div className="flex justify-end mb-4">
             <PostMenu 

@@ -40,12 +40,8 @@ export function PostList({
 
   // Определяем стили обертки для разных вариантов
   const getWrapperStyles = () => {
-    switch (variant) {
-      case 'profile':
-        return 'px-0 sm:px-4'
-      default:
-        return ''
-    }
+    // Убираем специальные стили для профиля - используем единый стиль
+    return ''
   }
 
   const containerStyles = getContainerStyles()
