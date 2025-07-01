@@ -4,6 +4,9 @@ import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { ArrowRightIcon, SparklesIcon, UsersIcon, ShieldCheckIcon, CurrencyDollarIcon, PlayIcon, StarIcon } from '@heroicons/react/24/outline'
 import CreatorsExplorer from '@/components/CreatorsExplorer'
+import { useRouter } from 'next/navigation'
+import { useWallet } from '@solana/wallet-adapter-react'
+import { useUserContext } from '@/lib/contexts/UserContext'
 
 const features = [
   {
@@ -40,11 +43,54 @@ const stats = [
 ]
 
 export default function HomePage() {
+  const router = useRouter()
+  const { connected } = useWallet()
+  const { user } = useUserContext()
   const [mounted, setMounted] = useState(false)
+  const [showOffers, setShowOffers] = useState(false)
+  const [currentOffer, setCurrentOffer] = useState(0)
   
   useEffect(() => {
     setMounted(true)
   }, [])
+  
+  // Offers rotation
+  const offers = [
+    {
+      title: "Start earning today",
+      description: "Share exclusive content and get paid in crypto",
+      icon: "💰"
+    },
+    {
+      title: "Join the creator economy",
+      description: "Build your community and monetize your passion",
+      icon: "🚀"
+    },
+    {
+      title: "Unlock premium content",
+      description: "Subscribe to your favorite creators",
+      icon: "💎"
+    }
+  ]
+
+  useEffect(() => {
+    // Show offers after 3 seconds
+    const timer = setTimeout(() => {
+      setShowOffers(true)
+    }, 3000)
+
+    // Rotate offers every 5 seconds
+    const interval = setInterval(() => {
+      if (showOffers) {
+        setCurrentOffer((prev) => (prev + 1) % offers.length)
+      }
+    }, 5000)
+
+    return () => {
+      clearTimeout(timer)
+      clearInterval(interval)
+    }
+  }, [showOffers])
   
   // Предотвращаем проблемы с SSR на мобильных
   if (!mounted) {
@@ -56,14 +102,9 @@ export default function HomePage() {
   }
   
   return (
-    <div className="min-h-screen">
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900/10 to-slate-900 dark:from-black dark:via-purple-900/5 dark:to-black overflow-hidden">
       {/* Hero Section */}
-      <section className="relative min-h-screen flex items-center overflow-hidden">
-        {/* Background Effects */}
-        <div className="absolute inset-0 bg-gradient-to-br from-gray-50 via-purple-50/20 to-gray-50 dark:from-slate-900 dark:via-purple-900/20 dark:to-slate-900"></div>
-        <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-purple-500/10 dark:bg-purple-500/20 rounded-full blur-3xl animate-pulse"></div>
-        <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-blue-500/10 dark:bg-blue-500/20 rounded-full blur-3xl animate-pulse" style={{animationDelay: '1s'}}></div>
-        
+      <section className="relative min-h-screen flex items-center justify-center px-4 py-20">
         <div className="container mx-auto px-4 relative z-10">
           <div className="text-center max-w-5xl mx-auto">
             <div className="inline-flex items-center px-6 py-3 rounded-full bg-gradient-to-r from-purple-500/10 to-blue-500/10 border border-purple-500/20 backdrop-blur-sm mb-8">
@@ -73,20 +114,51 @@ export default function HomePage() {
               </span>
             </div>
             
-            <h1 className="text-6xl md:text-8xl font-black mb-8 leading-tight">
-              <span className="bg-gradient-to-r from-purple-600 to-pink-600 dark:from-purple-400 dark:to-pink-400 bg-clip-text text-transparent">
-                Web3 Creator
-              </span>
-              <br />
-              <span className="bg-gradient-to-r from-purple-600 via-pink-600 to-purple-600 dark:from-purple-400 dark:via-pink-400 dark:to-purple-400 bg-clip-text text-transparent animate-pulse">
-                Revolution
-              </span>
-            </h1>
-            
-            <p className="text-xl md:text-2xl text-gray-700 dark:text-slate-300 max-w-4xl mx-auto mb-12 leading-relaxed font-light">
-              Discover talented content creators earning cryptocurrency through exclusive materials and NFT subscriptions
-            </p>
-            
+            <div className={`transition-all duration-500 ${showOffers ? 'animate-fadeOut' : ''}`}>
+              <h1 className="text-6xl md:text-8xl font-black mb-8 leading-tight">
+                <span className="bg-gradient-to-r from-purple-600 to-pink-600 dark:from-purple-400 dark:to-pink-400 bg-clip-text text-transparent">
+                  Web3 Creator
+                </span>
+                <br />
+                <span className="bg-gradient-to-r from-purple-600 via-pink-600 to-purple-600 dark:from-purple-400 dark:via-pink-400 dark:to-purple-400 bg-clip-text text-transparent animate-pulse">
+                  Revolution
+                </span>
+              </h1>
+              
+              <p className="text-xl md:text-2xl text-gray-700 dark:text-slate-300 max-w-4xl mx-auto mb-12 leading-relaxed font-light">
+                Discover talented content creators earning cryptocurrency through exclusive materials and NFT subscriptions
+              </p>
+            </div>
+
+            {/* Offers section that replaces the main content */}
+            {showOffers && (
+              <div className="animate-fadeIn">
+                <div className="bg-gradient-to-r from-purple-600/10 to-pink-600/10 rounded-3xl p-8 md:p-12 backdrop-blur-md border border-purple-500/20 max-w-3xl mx-auto">
+                  <div className="text-5xl mb-4">{offers[currentOffer].icon}</div>
+                  <h2 className="text-3xl md:text-5xl font-bold mb-4 bg-gradient-to-r from-purple-600 to-pink-600 dark:from-purple-400 dark:to-pink-400 bg-clip-text text-transparent">
+                    {offers[currentOffer].title}
+                  </h2>
+                  <p className="text-lg md:text-xl text-gray-700 dark:text-slate-300 mb-8">
+                    {offers[currentOffer].description}
+                  </p>
+                  
+                  {/* Offer indicators */}
+                  <div className="flex justify-center gap-2 mb-8">
+                    {offers.map((_, index) => (
+                      <div
+                        key={index}
+                        className={`h-1.5 w-12 rounded-full transition-all duration-300 ${
+                          index === currentOffer 
+                            ? 'bg-gradient-to-r from-purple-600 to-pink-600' 
+                            : 'bg-gray-300 dark:bg-slate-700'
+                        }`}
+                      />
+                    ))}
+                  </div>
+                </div>
+              </div>
+            )}
+
             <div className="flex flex-col sm:flex-row gap-6 justify-center mb-20">
               <Link href="/creators" className="group">
                 <div className="bg-gradient-to-r from-purple-600 to-blue-600 text-white px-8 py-4 rounded-2xl font-semibold flex items-center justify-center transform group-hover:scale-105 transition-all duration-300 hover:shadow-xl hover:shadow-purple-500/25">

@@ -5,7 +5,7 @@ import { PlayIcon, PauseIcon } from '@heroicons/react/24/solid'
 import { isValidThumbnail } from '@/lib/utils/thumbnails'
 
 interface OptimizedImageProps {
-  src: string | null
+  src: string | null | undefined
   thumbnail?: string | null
   preview?: string | null
   alt: string
@@ -23,7 +23,7 @@ export default function OptimizedImage({
   type = 'image',
   onClick
 }: OptimizedImageProps) {
-  const [currentSrc, setCurrentSrc] = useState<string | null>(null)
+  const [currentSrc, setCurrentSrc] = useState<string | undefined>(undefined)
   const [isLoading, setIsLoading] = useState(true)
   const [isInView, setIsInView] = useState(false)
   const [showVideo, setShowVideo] = useState(false)
@@ -39,12 +39,12 @@ export default function OptimizedImage({
   const RETRY_DELAYS = [1000, 2000, 4000] // экспоненциальная задержка
 
   // Определяем, какое изображение показывать
-  const imageSrc = src || '/placeholder-image.png'
   // Используем централизованную проверку thumbnails
   const isValidThumb = isValidThumbnail(thumbnail)
   
-  const thumbSrc = isValidThumb && thumbnail ? thumbnail : (src || '/placeholder-image.png')
-  const previewSrc = preview || (isValidThumb && thumbnail ? thumbnail : src) || '/placeholder-image.png'
+  // Начинаем с оригинального изображения или thumbnail, плейсхолдер только при ошибке
+  const thumbSrc = isValidThumb && thumbnail ? thumbnail : src
+  const previewSrc = preview || (isValidThumb && thumbnail ? thumbnail : src)
 
   // Intersection Observer для lazy loading
   useEffect(() => {
@@ -79,15 +79,21 @@ export default function OptimizedImage({
   // Последовательная загрузка изображений
   useEffect(() => {
     if (!isInView) return
+    if (!thumbSrc) {
+      // Если нет никакого src, показываем плейсхолдер
+      setCurrentSrc('/placeholder-image.png')
+      setIsLoading(false)
+      return
+    }
 
     const loadImage = (attempt = 0) => {
       // Если нет preview, сразу показываем основное изображение
       if (!preview) {
-        setCurrentSrc(thumbSrc)
+        setCurrentSrc(thumbSrc || undefined)
         setIsLoading(true)
       } else {
         // Если есть preview, показываем его первым
-        setCurrentSrc(previewSrc)
+        setCurrentSrc(previewSrc || undefined)
         setIsLoading(true)
       }
 
@@ -96,7 +102,7 @@ export default function OptimizedImage({
       mainImage.src = thumbSrc
       
       mainImage.onload = () => {
-        setCurrentSrc(thumbSrc)
+        setCurrentSrc(thumbSrc || undefined)
         setIsLoading(false)
         setImageError(false)
         setRetryCount(0)
@@ -105,15 +111,16 @@ export default function OptimizedImage({
       mainImage.onerror = () => {
         console.warn(`Failed to load image: ${thumbSrc}, attempt ${attempt + 1}`)
         
-        if (attempt < MAX_RETRIES && thumbSrc !== '/placeholder-image.png') {
+        if (attempt < MAX_RETRIES) {
           // Retry с задержкой
           retryTimeoutRef.current = setTimeout(() => {
             setRetryCount(attempt + 1)
             loadImage(attempt + 1)
           }, RETRY_DELAYS[attempt])
         } else {
-          // После всех попыток показываем оригинал или плейсхолдер
-          setCurrentSrc(imageSrc)
+          // После всех попыток показываем плейсхолдер в зависимости от типа
+          const placeholder = type === 'video' ? '/placeholder-video-enhanced.png' : '/placeholder-image.png'
+          setCurrentSrc(placeholder)
           setIsLoading(false)
           setImageError(true)
         }
@@ -121,7 +128,7 @@ export default function OptimizedImage({
     }
 
     loadImage()
-  }, [isInView, preview, thumbSrc, previewSrc, imageSrc])
+  }, [isInView, preview, thumbSrc, previewSrc, type])
 
   const handleVideoClick = () => {
     if (!showVideo) {
@@ -155,7 +162,7 @@ export default function OptimizedImage({
           <>
             <img
               ref={imgRef}
-              src={currentSrc || previewSrc}
+              src={currentSrc || previewSrc || ''}
               alt={alt}
               className={`${className} ${isLoading ? 'blur-sm' : ''} transition-all duration-300`}
               loading="lazy"
@@ -208,7 +215,7 @@ export default function OptimizedImage({
           {/* Preview/Placeholder пока грузится основное изображение */}
           {isLoading && preview && (
             <img
-              src={previewSrc}
+              src={previewSrc || ''}
               alt={alt}
               className={`${className} blur-md`}
             />
@@ -217,7 +224,7 @@ export default function OptimizedImage({
           {/* Основное изображение */}
           <img
             ref={imgRef}
-            src={currentSrc || previewSrc}
+            src={currentSrc || previewSrc || ''}
             alt={alt}
             className={`${className} ${isLoading ? 'opacity-0' : 'opacity-100'} transition-opacity duration-300`}
             loading="lazy"

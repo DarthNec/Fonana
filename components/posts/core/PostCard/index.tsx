@@ -12,6 +12,7 @@ import { cn } from '@/lib/utils'
 import { 
   getPostCardBorderStyle, 
   getPostCardGlowStyle,
+  getPostCardBackgroundStyle,
   needsPayment,
   needsSubscription,
   needsTierUpgrade,
@@ -63,13 +64,15 @@ export function PostCard({
 
   // Стили для разных вариантов
   const getCardStyles = () => {
-    const baseStyles = 'relative bg-white dark:bg-slate-900 overflow-hidden transition-all duration-300'
+    const baseStyles = 'relative overflow-hidden transition-all duration-300'
     const borderStyles = getPostCardBorderStyle(post)
+    const backgroundStyles = getPostCardBackgroundStyle(post)
     
     switch (variant) {
       case 'full':
         return cn(
           baseStyles,
+          backgroundStyles || 'bg-white dark:bg-slate-900',
           'border-y sm:border border-gray-200 dark:border-slate-700/50',
           'rounded-none sm:rounded-3xl',
           borderStyles
@@ -77,6 +80,7 @@ export function PostCard({
       case 'compact':
         return cn(
           baseStyles,
+          backgroundStyles || 'bg-white dark:bg-slate-900',
           'border border-gray-200 dark:border-slate-700/50',
           'rounded-xl sm:rounded-2xl',
           borderStyles
@@ -84,6 +88,7 @@ export function PostCard({
       case 'minimal':
         return cn(
           baseStyles,
+          backgroundStyles || 'bg-white dark:bg-slate-900',
           'border border-gray-200 dark:border-slate-700/50',
           'rounded-lg',
           borderStyles

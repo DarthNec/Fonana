@@ -135,9 +135,9 @@ export default function ImageCropModal({ image, onCropComplete, onCancel }: Imag
 
   return (
     <div className="fixed inset-0 bg-black/85 backdrop-blur-sm z-[100] flex items-center justify-center p-0 sm:p-4 animate-fade-in" style={{ zIndex: 100 }}>
-      <div className="modal-content bg-white dark:bg-gradient-to-br dark:from-slate-800/95 dark:to-slate-900/95 backdrop-blur-xl rounded-none sm:rounded-3xl max-w-5xl w-full h-full sm:h-auto sm:max-h-[90vh] overflow-hidden flex flex-col border-0 sm:border border-gray-200 dark:border-slate-700/50 shadow-2xl animate-slideInUp">
+      <div className="modal-content bg-white dark:bg-slate-900 backdrop-blur-xl rounded-none sm:rounded-3xl max-w-5xl w-full h-full sm:h-auto sm:max-h-[90vh] overflow-hidden flex flex-col border-0 sm:border border-gray-200 dark:border-slate-700/50 shadow-2xl animate-slideInUp">
         {/* Header */}
-        <div className="p-4 sm:p-6 border-b border-gray-200 dark:border-slate-700/50 bg-gradient-to-r from-purple-600/5 to-pink-600/5 dark:from-purple-600/10 dark:to-pink-600/10">
+        <div className="p-4 sm:p-6 border-b border-gray-200 dark:border-slate-700/50">
           <div className="flex items-center justify-between">
             <div>
               <h3 className="text-xl sm:text-2xl font-bold bg-gradient-to-r from-purple-600 to-pink-600 dark:from-purple-400 dark:to-pink-400 bg-clip-text text-transparent">
@@ -150,15 +150,15 @@ export default function ImageCropModal({ image, onCropComplete, onCancel }: Imag
             </div>
             <button
               onClick={onCancel}
-              className="p-2 hover:bg-gray-100 dark:hover:bg-slate-700/50 rounded-xl transition-colors text-gray-600 dark:text-slate-400 hover:text-gray-900 dark:hover:text-white"
+              className="p-2 hover:bg-gray-100 dark:hover:bg-slate-800/50 rounded-xl transition-colors text-gray-600 dark:text-slate-400 hover:text-gray-900 dark:hover:text-white"
             >
               <XMarkIcon className="w-6 h-6" />
             </button>
           </div>
         </div>
 
-        {/* Aspect ratio selector - улучшенный дизайн */}
-        <div className="p-4 border-b border-gray-200 dark:border-slate-700/50 bg-gray-50 dark:bg-slate-800/30">
+        {/* Aspect ratio selector - modern design */}
+        <div className="p-4 border-b border-gray-200 dark:border-slate-700/50">
           <div className="flex gap-3 overflow-x-auto pb-2">
             {aspectRatios.map((ratio) => (
               <button
@@ -182,14 +182,14 @@ export default function ImageCropModal({ image, onCropComplete, onCancel }: Imag
               </button>
             ))}
           </div>
-          {/* Описание выбранного формата */}
+          {/* Description for selected format */}
           <p className="text-xs text-center text-gray-500 dark:text-slate-500 mt-3">
             {selectedRatio.description}
           </p>
         </div>
 
-        {/* Cropper - с добавлением сетки */}
-        <div className={`${styles.cropContainer} relative bg-black`}>
+        {/* Cropper - with grid */}
+        <div className={`${styles.cropContainer} relative bg-black flex-1`}>
           {imageError ? (
             <div className="absolute inset-0 flex items-center justify-center text-white">
               <div className="text-center">
@@ -219,12 +219,12 @@ export default function ImageCropModal({ image, onCropComplete, onCancel }: Imag
           )}
         </div>
 
-        {/* Zoom control - улучшенный дизайн */}
-        <div className="p-4 border-t border-gray-200 dark:border-slate-700/50 bg-gray-50 dark:bg-slate-800/30">
+        {/* Zoom control - modern design */}
+        <div className="p-4 border-t border-gray-200 dark:border-slate-700/50">
           <div className="flex items-center gap-4">
             <button
               onClick={() => setZoom(Math.max(1, zoom - 0.1))}
-              className="p-2 hover:bg-gray-200 dark:hover:bg-slate-700 rounded-lg transition-colors text-gray-600 dark:text-slate-400"
+              className="p-2.5 bg-gray-100 dark:bg-slate-800 hover:bg-gray-200 dark:hover:bg-slate-700 rounded-xl transition-all hover:scale-110 text-gray-600 dark:text-slate-400"
             >
               <MagnifyingGlassMinusIcon className="w-5 h-5" />
             </button>
@@ -240,14 +240,14 @@ export default function ImageCropModal({ image, onCropComplete, onCancel }: Imag
                 className="w-full h-2 bg-gray-200 dark:bg-slate-700 rounded-lg appearance-none cursor-pointer slider"
               />
               <div 
-                className="absolute top-1/2 -translate-y-1/2 h-2 bg-gradient-to-r from-purple-600 to-pink-600 rounded-lg pointer-events-none"
+                className="absolute top-1/2 -translate-y-1/2 h-2 bg-gradient-to-r from-purple-600 to-pink-600 rounded-lg pointer-events-none transition-all"
                 style={{ width: `${((zoom - 1) / 2) * 100}%` }}
               />
             </div>
             
             <button
               onClick={() => setZoom(Math.min(3, zoom + 0.1))}
-              className="p-2 hover:bg-gray-200 dark:hover:bg-slate-700 rounded-lg transition-colors text-gray-600 dark:text-slate-400"
+              className="p-2.5 bg-gray-100 dark:bg-slate-800 hover:bg-gray-200 dark:hover:bg-slate-700 rounded-xl transition-all hover:scale-110 text-gray-600 dark:text-slate-400"
             >
               <MagnifyingGlassPlusIcon className="w-5 h-5" />
             </button>
@@ -258,25 +258,25 @@ export default function ImageCropModal({ image, onCropComplete, onCancel }: Imag
           </div>
         </div>
 
-        {/* Actions - улучшенные кнопки */}
-        <div className="p-4 sm:p-6 border-t border-gray-200 dark:border-slate-700/50 flex justify-between items-center pb-20 sm:pb-6 bg-gradient-to-t from-gray-50 dark:from-slate-800/30">
+        {/* Actions - modern buttons */}
+        <div className="p-4 sm:p-6 border-t border-gray-200 dark:border-slate-700/50 flex justify-between items-center pb-24 sm:pb-6">
           <p className="text-xs text-gray-500 dark:text-slate-500 hidden sm:block">
-            Tip: Use pinch to zoom on mobile
+            💡 Tip: Use pinch to zoom on mobile devices
           </p>
-          <div className="flex gap-3 ml-auto">
+          <div className="flex gap-3 w-full sm:w-auto">
             <button
               onClick={onCancel}
-              className="px-6 py-3 text-gray-700 dark:text-slate-300 hover:text-gray-900 dark:hover:text-white bg-gray-100 dark:bg-slate-700/50 hover:bg-gray-200 dark:hover:bg-slate-600/50 rounded-xl font-medium transition-all border border-gray-200 dark:border-slate-600"
+              className="flex-1 sm:flex-none px-6 py-3 text-gray-700 dark:text-slate-300 hover:text-gray-900 dark:hover:text-white bg-gray-100 dark:bg-slate-800 hover:bg-gray-200 dark:hover:bg-slate-700 rounded-xl font-medium transition-all border border-gray-200 dark:border-slate-700"
             >
               Cancel
             </button>
             <button
               onClick={handleCropConfirm}
               disabled={isProcessing}
-              className="px-6 py-3 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white rounded-xl font-medium transition-all transform hover:scale-105 flex items-center gap-2 disabled:opacity-50 shadow-lg shadow-purple-500/25"
+              className="flex-1 sm:flex-none px-6 py-3 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white rounded-xl font-medium transition-all transform hover:scale-105 flex items-center justify-center gap-2 disabled:opacity-50 disabled:hover:scale-100 shadow-lg shadow-purple-500/25 min-w-[120px]"
             >
               <CheckIcon className="w-5 h-5" />
-              {isProcessing ? 'Processing...' : 'Apply Crop'}
+              {isProcessing ? 'Processing...' : 'Apply'}
             </button>
           </div>
         </div>

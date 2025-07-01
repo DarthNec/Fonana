@@ -48,7 +48,6 @@ export default function RevampedFeedPage() {
   const { user, isLoading: userLoading } = useUserContext()
   const [selectedCategory, setSelectedCategory] = useState('All')
   const [sortBy, setSortBy] = useState('latest')
-  const [showFilters, setShowFilters] = useState(false)
   const categoryScrollRef = useRef<HTMLDivElement>(null)
   
   // Модалки
@@ -177,13 +176,11 @@ export default function RevampedFeedPage() {
       <div className="container mx-auto px-0 sm:px-4 pt-16 sm:pt-20 pb-20 max-w-4xl">
         {/* Header с улучшенной мобильной версией */}
         <div className="sticky top-16 sm:top-20 z-30 bg-gray-50/95 dark:bg-slate-950/95 backdrop-blur-md border-b border-gray-200 dark:border-slate-800">
-
-
           {/* Categories - горизонтальный скролл на мобильных */}
           <div className="relative">
             <div 
               ref={categoryScrollRef}
-              className="flex gap-2 px-4 pb-3 overflow-x-auto scrollbar-hide scroll-smooth"
+              className="flex gap-2 px-4 pb-3 pt-3 overflow-x-auto scrollbar-hide scroll-smooth"
             >
               {categories.map((category) => (
                 <button
@@ -206,33 +203,24 @@ export default function RevampedFeedPage() {
             <div className="absolute right-0 top-0 bottom-0 w-8 bg-gradient-to-l from-gray-50 dark:from-slate-950 to-transparent pointer-events-none" />
           </div>
 
-          {/* Sort & Filter - компактная версия на мобильных */}
-          <div className="flex items-center justify-between px-4 pb-3 gap-2">
-            <div className="flex gap-2 overflow-x-auto scrollbar-hide">
-              {sortOptions.map((option) => (
-                <button
-                  key={option.value}
-                  onClick={() => setSortBy(option.value)}
-                  className={`
-                    flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium whitespace-nowrap transition-all
-                    ${sortBy === option.value
-                      ? 'bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300'
-                      : 'text-gray-600 dark:text-slate-400 hover:bg-gray-100 dark:hover:bg-slate-800'
-                    }
-                  `}
-                >
-                  <option.icon className="w-4 h-4" />
-                  <span className="hidden sm:inline">{option.label}</span>
-                </button>
-              ))}
-            </div>
-            
-            <button
-              onClick={() => setShowFilters(!showFilters)}
-              className="p-2 text-gray-600 dark:text-slate-400 hover:bg-gray-100 dark:hover:bg-slate-800 rounded-lg transition-colors"
-            >
-              <FunnelIcon className="w-5 h-5" />
-            </button>
+          {/* Sort options - упрощенная версия */}
+          <div className="flex gap-2 px-4 pb-3 overflow-x-auto scrollbar-hide">
+            {sortOptions.map((option) => (
+              <button
+                key={option.value}
+                onClick={() => setSortBy(option.value)}
+                className={`
+                  flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium whitespace-nowrap transition-all
+                  ${sortBy === option.value
+                    ? 'bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300'
+                    : 'text-gray-600 dark:text-slate-400 hover:bg-gray-100 dark:hover:bg-slate-800'
+                  }
+                `}
+              >
+                <option.icon className="w-4 h-4" />
+                <span>{option.label}</span>
+              </button>
+            ))}
           </div>
         </div>
 

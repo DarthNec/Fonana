@@ -288,10 +288,26 @@ export default function CreatePostModal({ onPostCreated, onClose }: CreatePostMo
       return
     }
 
-    if (!formData.title.trim() || !formData.content.trim()) {
-      console.log('Title:', formData.title)
-      console.log('Content:', formData.content)
-      toast.error('Fill in title and description')
+    if (!publicKey) {
+      toast.error('Please connect your wallet')
+      return
+    }
+
+    // Валидация только для текстовых постов
+    if (formData.type === 'text' && !formData.content.trim()) {
+      toast.error('Please enter content for text post')
+      return
+    }
+
+    // Для медиа контента проверяем наличие файла
+    if (formData.type !== 'text' && !formData.file) {
+      toast.error('Please select a file')
+      return
+    }
+
+    // Title необязателен для медиа, но если есть - должен быть не пустой
+    if (formData.title.trim() === '' && formData.type === 'text') {
+      toast.error('Please enter a title for text post')
       return
     }
 
@@ -449,9 +465,9 @@ export default function CreatePostModal({ onPostCreated, onClose }: CreatePostMo
   return (
     <>
       {/* Main Modal */}
-      <div className={`fixed inset-0 bg-black/85 backdrop-blur-sm z-50 flex items-start justify-center p-0 sm:p-4 overflow-y-auto animate-fade-in ${showCropModal ? 'pointer-events-none' : ''}`}>
-        <div className="modal-content bg-white dark:bg-gradient-to-br dark:from-slate-800/95 dark:to-slate-900/95 backdrop-blur-xl rounded-none sm:rounded-3xl max-w-4xl w-full my-0 sm:my-8 border-y sm:border border-gray-200 dark:border-slate-700/50 shadow-2xl min-h-screen sm:min-h-0 animate-slideInUp">
-          <form onSubmit={handleSubmit} className="p-4 sm:p-6 lg:p-8 space-y-4 sm:space-y-6 pb-20 sm:pb-6">
+      <div className={`fixed inset-0 bg-black/85 backdrop-blur-sm z-[100] flex items-start justify-center p-0 sm:p-4 overflow-y-auto animate-fade-in ${showCropModal ? 'pointer-events-none' : ''}`}>
+        <div className="modal-content bg-white dark:bg-slate-900 backdrop-blur-xl rounded-none sm:rounded-3xl max-w-4xl w-full my-0 sm:my-8 border-y sm:border border-gray-200 dark:border-slate-700/50 shadow-2xl min-h-screen sm:min-h-0 animate-slideInUp">
+          <form onSubmit={handleSubmit} className="p-4 sm:p-6 lg:p-8 space-y-4 sm:space-y-6 pb-24 md:pb-6">
           {/* Header */}
           <div className="flex items-center justify-between mb-4 sm:mb-6">
             <h2 className="text-xl sm:text-2xl font-bold bg-gradient-to-r from-purple-600 to-pink-600 dark:from-purple-400 dark:to-pink-400 bg-clip-text text-transparent">
@@ -650,32 +666,32 @@ export default function CreatePostModal({ onPostCreated, onClose }: CreatePostMo
               {/* Title */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-2">
-                  Title *
+                  Title {formData.type === 'text' ? '*' : '(optional)'}
                 </label>
                 <input
                   type="text"
                   value={formData.title}
                   onChange={(e) => setFormData(prev => ({ ...prev, title: e.target.value }))}
                   className="w-full px-4 py-2 bg-white dark:bg-slate-800/50 border border-gray-300 dark:border-slate-700 rounded-xl text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                  placeholder="Enter post title"
+                  placeholder={formData.type === 'text' ? "Enter post title" : "Add a catchy title (optional)"}
                   maxLength={100}
-                  required
+                  required={formData.type === 'text'}
                 />
               </div>
 
               {/* Description */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-2">
-                  Description *
+                  Description {formData.type === 'text' ? '*' : '(optional)'}
                 </label>
                 <textarea
                   value={formData.content}
                   onChange={(e) => setFormData(prev => ({ ...prev, content: e.target.value }))}
                   className="w-full px-4 py-2 bg-white dark:bg-slate-800/50 border border-gray-300 dark:border-slate-700 rounded-xl text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent resize-none"
                   rows={4}
-                  placeholder="Describe your content..."
+                  placeholder={formData.type === 'text' ? "Share your thoughts..." : "Add description (optional)"}
                   maxLength={2000}
-                  required
+                  required={formData.type === 'text'}
                 />
                 <p className="text-xs text-gray-500 dark:text-slate-600 mt-1">
                   {formData.content.length}/2000 characters
