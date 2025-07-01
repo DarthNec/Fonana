@@ -10,7 +10,7 @@ import { UsersIcon, DocumentTextIcon, HashtagIcon, MagnifyingGlassIcon, CheckBad
 import { useSolRate } from '@/lib/hooks/useSolRate'
 import SubscribeModal from '@/components/SubscribeModal'
 import PurchaseModal from '@/components/PurchaseModal'
-import EditPostModal from '@/components/EditPostModal'
+import CreatePostModal from '@/components/CreatePostModal'
 
 interface SearchResults {
   creators: any[]
@@ -324,10 +324,14 @@ export default function SearchPage() {
       )}
 
       {editModalData && (
-        <EditPostModal
-          isOpen={true}
-          post={editModalData}
+        <CreatePostModal
+          mode="edit"
+          postId={editModalData.id}
           onClose={() => {
+            setEditModalData(null)
+            performSearch(query, filters) // Refresh results
+          }}
+          onPostUpdated={() => {
             setEditModalData(null)
             performSearch(query, filters) // Refresh results
           }}

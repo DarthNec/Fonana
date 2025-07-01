@@ -30,16 +30,24 @@ const categories = [
 
 interface CreatePostModalProps {
   onPostCreated?: () => void
+  onPostUpdated?: () => void
   onClose?: () => void
+  mode?: 'create' | 'edit'
+  postId?: string
 }
 
-export default function CreatePostModal({ onPostCreated, onClose }: CreatePostModalProps) {
+export default function CreatePostModal({ onPostCreated, onPostUpdated, onClose, mode = 'create', postId }: CreatePostModalProps) {
   const { connected, publicKey } = useWallet()
   const { user } = useUserContext()
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [isUploading, setIsUploading] = useState(false)
   const [showCropModal, setShowCropModal] = useState(false)
   const [originalImage, setOriginalImage] = useState<string>('')
+  
+  // Состояния для режима редактирования
+  const [isLoadingPost, setIsLoadingPost] = useState(false)
+  const [postData, setPostData] = useState<any>(null)
+  const [hasInitialized, setHasInitialized] = useState(false)
   
   // Функция для определения категории по типу контента
   const getSmartCategory = (type: string): string => {
@@ -136,6 +144,90 @@ export default function CreatePostModal({ onPostCreated, onClose }: CreatePostMo
       }
     }
   }, [])
+
+  // Загрузка данных поста в режиме редактирования
+  const loadPostData = async (postId: string) => {
+    if (mode !== 'edit' || !postId) return
+    
+    setIsLoadingPost(true)
+    try {
+      const response = await fetch(`/api/posts/${postId}`)
+      if (!response.ok) {
+        throw new Error('Failed to load post')
+      }
+      
+      const data = await response.json()
+      setPostData(data.post)
+      console.log('[CreatePostModal] Post data loaded:', data.post)
+    } catch (error) {
+      console.error('[CreatePostModal] Error loading post:', error)
+      toast.error('Failed to load post data')
+    } finally {
+      setIsLoadingPost(false)
+    }
+  }
+
+  // Инициализация данных поста при открытии в режиме редактирования
+  useEffect(() => {
+    if (mode === 'edit' && postId && !hasInitialized) {
+      loadPostData(postId)
+    }
+  }, [mode, postId, hasInitialized])
+
+  // Заполнение формы данными поста
+  useEffect(() => {
+    if (mode === 'edit' && postData && !hasInitialized) {
+      console.log('[CreatePostModal] Initializing form with post data')
+      
+      // Определяем тип доступа из данных поста
+      let accessType: 'free' | 'subscribers' | 'premium' | 'paid' | 'vip' = 'free'
+      if (!postData.isLocked) {
+        accessType = 'free'
+      } else if (postData.price && postData.price > 0 && !postData.isSellable) {
+        accessType = 'paid'
+      } else if (postData.minSubscriptionTier === 'vip') {
+        accessType = 'vip'
+      } else if (postData.minSubscriptionTier === 'premium') {
+        accessType = 'premium'
+      } else if (postData.minSubscriptionTier === 'basic') {
+        accessType = 'subscribers'
+      } else {
+        accessType = 'subscribers'
+      }
+
+      setFormData({
+        title: postData.title || '',
+        content: postData.content || '',
+        category: postData.category || getSmartCategory(postData.type || 'text'),
+        tags: postData.tags || [],
+        currentTag: '',
+        file: null,
+        preview: postData.image || postData.mediaUrl || postData.thumbnail || '',
+        type: postData.type || 'text',
+        accessType,
+        price: postData.price || 0,
+        currency: postData.currency || 'SOL',
+        isSellable: postData.isSellable || false,
+        sellType: postData.sellType || 'FIXED_PRICE',
+        quantity: postData.quantity || 1,
+        auctionStartPrice: postData.auctionStartPrice || 0,
+        auctionStepPrice: postData.auctionStepPrice || 0.1,
+        auctionDuration: postData.auctionDuration || 24,
+        auctionDepositAmount: postData.auctionDepositAmount || 0.01,
+        imageAspectRatio: postData.imageAspectRatio || 'square'
+      })
+      
+      setHasInitialized(true)
+    }
+  }, [postData, mode, hasInitialized])
+
+  // Сброс hasInitialized при закрытии модалки
+  useEffect(() => {
+    if (!mode || mode === 'create') {
+      setHasInitialized(false)
+      setPostData(null)
+    }
+  }, [mode])
 
   const handleFileUpload = (file: File) => {
     // Determine content type based on file
@@ -364,7 +456,7 @@ export default function CreatePostModal({ onPostCreated, onClose }: CreatePostMo
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     
-    console.log('Starting form submission...')
+    console.log(`[CreatePostModal] Starting ${mode} submission...`)
     console.log('Connected:', connected)
     console.log('PublicKey:', publicKey?.toString())
     console.log('Form data:', formData)
@@ -379,14 +471,20 @@ export default function CreatePostModal({ onPostCreated, onClose }: CreatePostMo
       return
     }
 
+    // В режиме редактирования проверяем загрузку данных
+    if (mode === 'edit' && isLoadingPost) {
+      toast.error('Please wait for post data to load')
+      return
+    }
+
     // Валидация только для текстовых постов
     if (formData.type === 'text' && !formData.content.trim()) {
       toast.error('Please enter content for text post')
       return
     }
 
-    // Для медиа контента проверяем наличие файла
-    if (formData.type !== 'text' && !formData.file) {
+    // Для медиа контента проверяем наличие файла (только при создании)
+    if (mode === 'create' && formData.type !== 'text' && !formData.file) {
       toast.error('Please select a file')
       return
     }
@@ -440,7 +538,7 @@ export default function CreatePostModal({ onPostCreated, onClose }: CreatePostMo
       let mediaUrl = null
       let thumbnail = null
 
-      // Upload media file if present
+      // Upload media file if present (только для новых файлов)
       if (formData.file) {
         const uploadResult = await uploadMedia(formData.file)
         if (!uploadResult || !uploadResult.url) {
@@ -460,11 +558,15 @@ export default function CreatePostModal({ onPostCreated, onClose }: CreatePostMo
           // For images use optimized version or original
           thumbnail = uploadResult.thumbUrl || uploadResult.url
         }
+      } else if (mode === 'edit' && postData) {
+        // В режиме редактирования используем существующие медиа
+        mediaUrl = postData.mediaUrl
+        thumbnail = postData.thumbnail
       }
 
-      // Create post
-      const postData = {
-        creatorWallet: publicKey.toString(),
+      // Подготавливаем данные поста
+      const postDataToSend = {
+        userWallet: publicKey.toString(),
         title: formData.title,
         content: formData.content,
         type: formData.type,
@@ -473,9 +575,9 @@ export default function CreatePostModal({ onPostCreated, onClose }: CreatePostMo
         thumbnail,
         mediaUrl,
         isLocked: formData.accessType !== 'free',
-              accessType: formData.accessType, // Добавляем accessType для правильной валидации на бэкенде
-      // Единое поле price для всех типов постов с ценой
-      price: (formData.accessType === 'paid' || (formData.isSellable && formData.sellType === 'FIXED_PRICE')) ? formData.price : undefined,
+        accessType: formData.accessType,
+        // Единое поле price для всех типов постов с ценой
+        price: (formData.accessType === 'paid' || (formData.isSellable && formData.sellType === 'FIXED_PRICE')) ? formData.price : undefined,
         currency: (formData.accessType === 'paid' || (formData.isSellable && formData.sellType === 'FIXED_PRICE')) ? formData.currency : undefined,
         // Мапим accessType на minSubscriptionTier
         minSubscriptionTier: formData.accessType === 'vip' ? 'vip' : 
@@ -485,8 +587,8 @@ export default function CreatePostModal({ onPostCreated, onClose }: CreatePostMo
         // Добавляем формат изображения (только для изображений)
         imageAspectRatio: formData.type === 'image' ? formData.imageAspectRatio : undefined,
         // Новые поля для продаваемых постов
-                  isSellable: formData.isSellable,
-          sellType: formData.isSellable ? formData.sellType : undefined,
+        isSellable: formData.isSellable,
+        sellType: formData.isSellable ? formData.sellType : undefined,
         quantity: formData.isSellable ? formData.quantity : undefined,
         auctionStartPrice: formData.isSellable && formData.sellType === 'AUCTION' ? formData.auctionStartPrice : undefined,
         auctionStepPrice: formData.isSellable && formData.sellType === 'AUCTION' ? formData.auctionStepPrice : undefined,
@@ -494,13 +596,17 @@ export default function CreatePostModal({ onPostCreated, onClose }: CreatePostMo
         auctionDepositAmount: formData.isSellable && formData.sellType === 'AUCTION' ? formData.auctionDepositAmount : undefined
       }
 
-      console.log('Sending post data:', postData)
+      console.log(`[CreatePostModal] Sending ${mode} data:`, postDataToSend)
       
-      const bodyString = JSON.stringify(postData)
+      const bodyString = JSON.stringify(postDataToSend)
       console.log('JSON body:', bodyString)
 
-      const response = await fetch('/api/posts', {
-        method: 'POST',
+      // Выбираем метод и URL в зависимости от режима
+      const url = mode === 'edit' ? `/api/posts/${postId}` : '/api/posts'
+      const method = mode === 'edit' ? 'PUT' : 'POST'
+
+      const response = await fetch(url, {
+        method,
         headers: {
           'Content-Type': 'application/json',
         },
@@ -509,46 +615,51 @@ export default function CreatePostModal({ onPostCreated, onClose }: CreatePostMo
 
       if (!response.ok) {
         const error = await response.json()
-        throw new Error(error.error || 'Error creating post')
+        throw new Error(error.error || `Error ${mode === 'edit' ? 'updating' : 'creating'} post`)
       }
 
-      const { post } = await response.json()
-      console.log('Post created:', post)
+      const result = await response.json()
+      const post = result.post || result
+      console.log(`[CreatePostModal] Post ${mode === 'edit' ? 'updated' : 'created'}:`, post)
       
-      toast.success('Post created successfully!')
+      toast.success(`Post ${mode === 'edit' ? 'updated' : 'created'} successfully!`)
       
-      // Reset form
-      setFormData({
-        title: '',
-        content: '',
-        category: getSmartCategory('text'),
-        tags: [],
-        currentTag: '',
-        file: null,
-        preview: '',
-        type: 'text',
-        accessType: 'free',
-        price: 0,
-        currency: 'SOL',
-        isSellable: false,
-        sellType: 'FIXED_PRICE',
-        quantity: 1,
-        auctionStartPrice: 0,
-        auctionStepPrice: 0.1,
-        auctionDuration: 24,
-        auctionDepositAmount: 0.01,
-        imageAspectRatio: 'square'
-      })
+      // Reset form только при создании
+      if (mode === 'create') {
+        setFormData({
+          title: '',
+          content: '',
+          category: getSmartCategory('text'),
+          tags: [],
+          currentTag: '',
+          file: null,
+          preview: '',
+          type: 'text',
+          accessType: 'free',
+          price: 0,
+          currency: 'SOL',
+          isSellable: false,
+          sellType: 'FIXED_PRICE',
+          quantity: 1,
+          auctionStartPrice: 0,
+          auctionStepPrice: 0.1,
+          auctionDuration: 24,
+          auctionDepositAmount: 0.01,
+          imageAspectRatio: 'square'
+        })
+      }
 
       // Close modal and update
       if (onClose) onClose()
-      if (onPostCreated) {
+      if (mode === 'edit' && onPostUpdated) {
+        setTimeout(onPostUpdated, 500)
+      } else if (mode === 'create' && onPostCreated) {
         setTimeout(onPostCreated, 500)
       }
 
     } catch (error) {
-      console.error('Post creation error:', error)
-      toast.error(error instanceof Error ? error.message : 'Error creating post')
+      console.error(`[CreatePostModal] Post ${mode} error:`, error)
+      toast.error(error instanceof Error ? error.message : `Error ${mode === 'edit' ? 'updating' : 'creating'} post`)
     } finally {
       setIsUploading(false)
     }
@@ -558,13 +669,29 @@ export default function CreatePostModal({ onPostCreated, onClose }: CreatePostMo
     <>
       {/* Main Modal */}
       <div className={`fixed inset-0 bg-black/85 backdrop-blur-sm z-[100] flex items-start justify-center p-0 sm:p-4 overflow-y-auto animate-fade-in ${showCropModal ? 'pointer-events-none' : ''}`}>
-        <div className="modal-content bg-white dark:bg-slate-900 backdrop-blur-xl rounded-none sm:rounded-3xl max-w-4xl w-full my-0 sm:my-8 border-y sm:border border-gray-200 dark:border-slate-700/50 shadow-2xl min-h-screen sm:min-h-0 animate-slideInUp">
+        <div className="modal-content bg-white dark:bg-slate-900 backdrop-blur-xl rounded-none sm:rounded-3xl max-w-4xl w-full my-0 sm:my-8 border-y sm:border border-gray-200 dark:border-slate-700/50 shadow-2xl min-h-screen sm:min-h-0 animate-slideInUp relative">
           <form onSubmit={handleSubmit} className="p-3 sm:p-6 lg:p-8 space-y-4 sm:space-y-6">
+            {/* Loading overlay для режима редактирования */}
+            {mode === 'edit' && isLoadingPost && (
+              <div className="absolute inset-0 bg-white/80 dark:bg-slate-900/80 backdrop-blur-sm z-10 flex items-center justify-center rounded-none sm:rounded-3xl">
+                <div className="text-center">
+                  <div className="w-8 h-8 border-2 border-purple-500/30 border-t-purple-500 rounded-full animate-spin mx-auto mb-3"></div>
+                  <p className="text-gray-600 dark:text-slate-400">Loading post data...</p>
+                </div>
+              </div>
+            )}
           {/* Header */}
           <div className="flex items-center justify-between mb-4 sm:mb-6">
-            <h2 className="text-xl sm:text-2xl font-bold bg-gradient-to-r from-purple-600 to-pink-600 dark:from-purple-400 dark:to-pink-400 bg-clip-text text-transparent">
-              Create new post
-            </h2>
+            <div className="flex items-center gap-3">
+              <h2 className="text-xl sm:text-2xl font-bold bg-gradient-to-r from-purple-600 to-pink-600 dark:from-purple-400 dark:to-pink-400 bg-clip-text text-transparent">
+                {mode === 'edit' ? 'Edit post' : 'Create new post'}
+              </h2>
+              {mode === 'edit' && isLoadingPost && (
+                <div className="text-sm text-gray-500 dark:text-slate-400">
+                  Loading...
+                </div>
+              )}
+            </div>
             <button
               type="button"
               onClick={onClose}
@@ -1058,18 +1185,18 @@ export default function CreatePostModal({ onPostCreated, onClose }: CreatePostMo
           <div className="flex gap-3 pt-4 border-t border-gray-200 dark:border-slate-700/50 pb-safe sm:pb-0">
             <button
               type="submit"
-              disabled={isUploading || !connected}
+              disabled={isUploading || !connected || (mode === 'edit' && isLoadingPost)}
               className="flex-1 px-6 py-3 bg-gradient-to-r from-purple-500 to-pink-500 text-white font-medium rounded-xl hover:from-purple-600 hover:to-pink-600 transform hover:scale-105 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none flex items-center justify-center gap-2"
             >
               {isUploading ? (
                 <>
                   <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                  Publishing...
+                  {mode === 'edit' ? 'Saving...' : 'Publishing...'}
                 </>
               ) : (
                 <>
                   <LockClosedIcon className="w-5 h-5" />
-                  Publish
+                  {mode === 'edit' ? 'Save Changes' : 'Publish'}
                 </>
               )}
             </button>
