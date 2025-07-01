@@ -144,7 +144,27 @@ export default function RevampedFeedPage() {
         setShowEditModal(true)
         break
       case 'bid':
-        setSelectedPost(post)
+        // КРИТИЧЕСКИЙ ФИКС: правильно мапируем UnifiedPost для SellablePostModal
+        const sellablePost = {
+          id: post.id,
+          title: post.content.title,
+          price: post.access.price,
+          currency: post.access.currency,
+          sellType: post.commerce?.sellType,
+          quantity: post.commerce?.quantity,
+          auctionStartPrice: post.commerce?.auctionData?.startPrice,
+          auctionCurrentBid: post.commerce?.auctionData?.currentBid,
+          auctionEndAt: post.commerce?.auctionData?.endAt,
+          creator: {
+            id: post.creator.id,
+            name: post.creator.name,
+            username: post.creator.username,
+            avatar: post.creator.avatar,
+            isVerified: post.creator.isVerified
+          }
+        }
+        console.log('[Feed] Mapped sellable post:', sellablePost, 'from original:', post)
+        setSelectedPost(sellablePost)
         setShowSellableModal(true)
         break
       case 'like':

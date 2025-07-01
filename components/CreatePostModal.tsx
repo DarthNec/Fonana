@@ -158,29 +158,54 @@ export default function CreatePostModal({ onPostCreated, onClose }: CreatePostMo
       return
     }
 
-    const preview = URL.createObjectURL(file)
-    
-    // For images, open crop modal
+    // КРИТИЧЕСКИЙ ФИКС: улучшенная обработка загрузки изображений
     if (contentType === 'image') {
-      console.log('[CreatePostModal] Opening crop modal with preview:', preview)
-      setOriginalImage(preview)
-      setFormData(prev => ({
-        ...prev,
-        file,
-        type: contentType,
-        preview, // Also set preview for consistency
-        category: getSmartCategory(contentType) // Автоматически определяем категорию
-      }))
-      // Delay opening modal to ensure state is updated
-      setTimeout(() => setShowCropModal(true), 100)
+      console.log('[CreatePostModal] Processing image file:', file.name, 'size:', file.size)
+      
+      // Проверяем что это действительно изображение
+      if (!file.type.match(/^image\/(jpeg|jpg|png|gif|webp)$/i)) {
+        toast.error('Unsupported image format. Please use JPEG, PNG, GIF, or WebP.')
+        return
+      }
+
+      const reader = new FileReader()
+      reader.onload = (e) => {
+        const result = e.target?.result as string
+        if (!result) {
+          console.error('[CreatePostModal] Failed to read file')
+          toast.error('Failed to read image file')
+          return
+        }
+
+        console.log('[CreatePostModal] Image loaded successfully, opening crop modal')
+        setOriginalImage(result)
+        setFormData(prev => ({
+          ...prev,
+          file,
+          type: contentType,
+          preview: result,
+          category: getSmartCategory(contentType)
+        }))
+        
+        // Небольшая задержка для обновления состояния
+        setTimeout(() => setShowCropModal(true), 150)
+      }
+      
+      reader.onerror = (e) => {
+        console.error('[CreatePostModal] FileReader error:', e)
+        toast.error('Failed to read image file')
+      }
+      
+      reader.readAsDataURL(file)
     } else {
       // For video and audio, set directly
+      const preview = URL.createObjectURL(file)
       setFormData(prev => ({
         ...prev,
         file,
         type: contentType,
         preview,
-        category: getSmartCategory(contentType) // Автоматически определяем категорию
+        category: getSmartCategory(contentType)
       }))
     }
   }
@@ -188,8 +213,24 @@ export default function CreatePostModal({ onPostCreated, onClose }: CreatePostMo
   const handleCropComplete = async (croppedImage: string, aspectRatio?: number) => {
     // Convert cropped image URL to File
     try {
+      console.log('[CreatePostModal] Processing cropped image:', croppedImage)
+      
+      if (!croppedImage || !croppedImage.startsWith('blob:')) {
+        throw new Error('Invalid cropped image URL')
+      }
+
       const response = await fetch(croppedImage)
+      if (!response.ok) {
+        throw new Error(`Failed to fetch cropped image: ${response.status}`)
+      }
+
       const blob = await response.blob()
+      if (!blob || blob.size === 0) {
+        throw new Error('Empty image blob received')
+      }
+
+      console.log('[CreatePostModal] Cropped image blob size:', blob.size)
+
       const croppedFile = new File([blob], formData.file?.name || 'cropped-image.jpg', {
         type: 'image/jpeg'
       })
@@ -205,6 +246,8 @@ export default function CreatePostModal({ onPostCreated, onClose }: CreatePostMo
           imageAspectRatio = 'square' // Square
         }
       }
+
+      console.log('[CreatePostModal] Set aspect ratio:', imageAspectRatio, 'from ratio:', aspectRatio)
       
       setFormData(prev => ({
         ...prev,
@@ -214,9 +257,15 @@ export default function CreatePostModal({ onPostCreated, onClose }: CreatePostMo
       }))
       setShowCropModal(false)
       setOriginalImage('')
+      
+      toast.success('Image cropped successfully!')
     } catch (error) {
-      console.error('Error processing cropped image:', error)
-      toast.error('Error processing image')
+      console.error('[CreatePostModal] Error processing cropped image:', error)
+      toast.error(`Error processing image: ${error instanceof Error ? error.message : 'Unknown error'}`)
+      
+      // Закрываем модалку кропа но оставляем оригинальное изображение
+      setShowCropModal(false)
+      // Не очищаем originalImage, чтобы пользователь мог попробовать еще раз
     }
   }
 
