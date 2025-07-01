@@ -18,12 +18,13 @@ import {
   ArrowRightOnRectangleIcon,
   BellIcon,
   Cog6ToothIcon,
-  ChatBubbleLeftEllipsisIcon
+  ChatBubbleLeftEllipsisIcon,
+  MagnifyingGlassIcon
 } from '@heroicons/react/24/outline'
 import { MobileWalletConnect } from './MobileWalletConnect'
 import { useWallet } from '@solana/wallet-adapter-react'
 import { useUserContext } from '@/lib/contexts/UserContext'
-import SearchBar from './SearchBar'
+import SearchModal from './SearchModal'
 import { jwtManager } from '@/lib/utils/jwt'
 import { toast } from 'react-hot-toast'
 
@@ -41,6 +42,7 @@ export function Navbar() {
   const [isScrolled, setIsScrolled] = useState(false)
   const [unreadMessages, setUnreadMessages] = useState(0)
   const [showCreateModal, setShowCreateModal] = useState(false)
+  const [showSearchModal, setShowSearchModal] = useState(false)
   const { connected, disconnect, publicKey } = useWallet()
   const { user } = useUserContext()
   const pathname = usePathname()
@@ -167,19 +169,19 @@ export function Navbar() {
                   )
                 ))}
               </div>
-
-              {/* Search Bar - делаем больше для десктопа */}
-              <div className="ml-8 flex-1 max-w-xl">
-                <SearchBar 
-                  className="w-full"
-                  placeholder="Поиск..."
-                  showFilters={false}
-                />
-              </div>
             </div>
 
             {/* Desktop Actions - адаптируем для планшетов */}
             <div className="hidden md:flex items-center gap-2 lg:gap-4">
+              {/* Search Button */}
+              <button
+                onClick={() => setShowSearchModal(true)}
+                className="p-3 hover:bg-gray-100 dark:hover:bg-slate-800/50 rounded-2xl transition-all duration-300 text-gray-600 dark:text-slate-400 hover:text-gray-900 dark:hover:text-white"
+                title="Search (Cmd+K)"
+              >
+                <MagnifyingGlassIcon className="w-5 h-5" />
+              </button>
+
               {/* Solana Rate Display - теперь всегда */}
               <SolanaRateDisplay />
 
@@ -283,12 +285,17 @@ export function Navbar() {
           {isOpen && (
             <div className="md:hidden absolute top-full left-0 right-0 bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl border-b border-gray-200 dark:border-slate-700/50">
               <div className="p-4 space-y-2">
-                {/* Search Bar */}
-                <SearchBar 
-                  className="mb-4"
-                  placeholder="Поиск..."
-                  showFilters={false}
-                />
+                {/* Search Button for mobile */}
+                <button
+                  onClick={() => {
+                    setShowSearchModal(true)
+                    setIsOpen(false)
+                  }}
+                  className="w-full flex items-center gap-3 px-4 py-3 rounded-2xl font-semibold transition-all duration-300 text-gray-600 dark:text-slate-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-slate-800/50 text-left"
+                >
+                  <MagnifyingGlassIcon className="w-5 h-5" />
+                  Search
+                </button>
                 
                 {navigation.map((item) => (
                   item.isAction ? (
@@ -363,6 +370,12 @@ export function Navbar() {
           }}
         />
       )}
+
+      {/* Search Modal */}
+      <SearchModal 
+        isOpen={showSearchModal}
+        onClose={() => setShowSearchModal(false)}
+      />
     </>
   )
 } 

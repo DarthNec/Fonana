@@ -13,7 +13,7 @@ import toast from 'react-hot-toast'
 import { useRouter } from 'next/navigation'
 import { getProfileLink } from '@/lib/utils/links'
 
-const categories = ['All', 'Art', 'Music', 'Gaming', 'Lifestyle', 'Fitness', 'Tech', 'DeFi', 'NFT', 'Trading', 'GameFi', 'Blockchain', 'Intimate']
+const categories = ['All', 'Art', 'Music', 'Gaming', 'Lifestyle', 'Fitness', 'Tech', 'DeFi', 'NFT', 'Trading', 'GameFi', 'Blockchain', 'Intimate', 'Education', 'Comedy']
 
 interface Creator {
   id: string
@@ -41,8 +41,9 @@ export default function CreatorsExplorer() {
   const [subscribedCreatorIds, setSubscribedCreatorIds] = useState<string[]>([])
   const [hiddenCreatorIds, setHiddenCreatorIds] = useState<string[]>([])
   const { publicKey } = useWallet()
-  const [activeTab, setActiveTab] = useState<'subscriptions' | 'recommendations' | 'all'>('subscriptions')
+  const [activeTab, setActiveTab] = useState<'recommendations' | 'subscriptions' | 'all'>('recommendations')
   const router = useRouter()
+  const [showInfoBlocks, setShowInfoBlocks] = useState(true)
 
   // Load creators list
   useEffect(() => {
@@ -64,6 +65,15 @@ export default function CreatorsExplorer() {
       setActiveTab('recommendations')
     }
   }, [publicKey, subscribedCreatorIds])
+
+  useEffect(() => {
+    // Hide info blocks after 3 seconds
+    const timer = setTimeout(() => {
+      setShowInfoBlocks(false)
+    }, 3000)
+
+    return () => clearTimeout(timer)
+  }, [])
 
   const fetchCreators = async () => {
     try {
@@ -478,21 +488,21 @@ export default function CreatorsExplorer() {
 
         {/* Tab Content Title */}
         {activeTab === 'subscriptions' && filteredCreators.length > 0 && (
-          <div className="text-center mb-8 animate-fadeIn">
+          <div className={`text-center mb-8 transition-all duration-500 ${!showInfoBlocks ? 'animate-fadeOut' : ''}`}>
             <h3 className="text-2xl font-bold text-gray-900 dark:text-white">Your subscriptions</h3>
             <p className="text-gray-600 dark:text-slate-400 mt-2">Creators you are subscribed to</p>
           </div>
         )}
 
         {activeTab === 'recommendations' && (
-          <div className="text-center mb-8 animate-fadeIn">
+          <div className={`text-center mb-8 transition-all duration-500 ${!showInfoBlocks ? 'animate-fadeOut' : ''}`}>
             <h3 className="text-2xl font-bold text-gray-900 dark:text-white">Discover creators</h3>
             <p className="text-gray-600 dark:text-slate-400 mt-2">Creators that might interest you</p>
           </div>
         )}
 
         {activeTab === 'all' && (
-          <div className="text-center mb-8 animate-fadeIn">
+          <div className={`text-center mb-8 transition-all duration-500 ${!showInfoBlocks ? 'animate-fadeOut' : ''}`}>
             <h3 className="text-2xl font-bold text-gray-900 dark:text-white">All creators</h3>
             <p className="text-gray-600 dark:text-slate-400 mt-2">
               {selectedCategory === 'All' 

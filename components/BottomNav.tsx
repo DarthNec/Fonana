@@ -32,6 +32,7 @@ import { jwtManager } from '@/lib/utils/jwt'
 import CreatePostModal from '@/components/CreatePostModal'
 import { toast } from 'react-hot-toast'
 import { useRouter } from 'next/navigation'
+import SearchModal from '@/components/SearchModal'
 
 export default function BottomNav() {
   const pathname = usePathname()
@@ -41,6 +42,7 @@ export default function BottomNav() {
   const [unreadMessages, setUnreadMessages] = useState(0)
   const [isMenuOpen, setIsMenuOpen] = useState(false)
   const [showCreateModal, setShowCreateModal] = useState(false)
+  const [showSearchModal, setShowSearchModal] = useState(false)
   const router = useRouter()
 
   // Check for unread messages
@@ -86,11 +88,11 @@ export default function BottomNav() {
       activeIcon: HomeSolidIcon
     },
     {
-      name: 'Menu',
+      name: 'Search',
       href: '#',
-      icon: Bars3Icon,
-      activeIcon: Bars3SolidIcon,
-      onClick: () => setIsMenuOpen(true)
+      icon: MagnifyingGlassIcon,
+      activeIcon: MagnifyingGlassIcon,
+      onClick: () => setShowSearchModal(true)
     },
     {
       name: 'Create',
@@ -289,6 +291,12 @@ export default function BottomNav() {
           }}
         />
       )}
+
+      {/* Search Modal */}
+      <SearchModal 
+        isOpen={showSearchModal}
+        onClose={() => setShowSearchModal(false)}
+      />
     </>
   )
 } 

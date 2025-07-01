@@ -159,6 +159,46 @@ export function getActionButtonText(post: UnifiedPost): string {
 }
 
 /**
+ * Получает стиль фона карточки на основе тира доступа
+ */
+export function getPostCardBackgroundStyle(post: UnifiedPost): string {
+  const accessType = getPostAccessType(post.access, post.commerce)
+  const tierInfo = getTierInfo(post.access)
+  
+  // Free posts - no special background
+  if (!post.access.isLocked || accessType === 'free') {
+    return ''
+  }
+  
+  // Paid posts - golden gradient
+  if (accessType === 'paid') {
+    return 'bg-gradient-to-br from-yellow-50/50 to-orange-50/30 dark:from-yellow-900/10 dark:to-orange-900/5'
+  }
+  
+  // Sellable posts - special gradient
+  if (accessType === 'sellable') {
+    return 'bg-gradient-to-br from-orange-50/50 to-red-50/30 dark:from-orange-900/10 dark:to-red-900/5'
+  }
+  
+  // Tier-based posts
+  if (tierInfo?.required) {
+    switch (tierInfo.required.color) {
+      case 'blue':
+        return 'bg-gradient-to-br from-blue-50/50 to-cyan-50/30 dark:from-blue-900/10 dark:to-cyan-900/5'
+      case 'purple':
+        return 'bg-gradient-to-br from-purple-50/50 to-pink-50/30 dark:from-purple-900/10 dark:to-pink-900/5'
+      case 'gold':
+        return 'bg-gradient-to-br from-yellow-50/50 to-amber-50/30 dark:from-yellow-900/10 dark:to-amber-900/5'
+      default:
+        return 'bg-gradient-to-br from-gray-50/50 to-slate-50/30 dark:from-gray-900/10 dark:to-slate-900/5'
+    }
+  }
+  
+  // Default subscription posts
+  return 'bg-gradient-to-br from-green-50/50 to-emerald-50/30 dark:from-green-900/10 dark:to-emerald-900/5'
+}
+
+/**
  * Определяет стиль границы карточки на основе типа доступа
  */
 export function getPostCardBorderStyle(post: UnifiedPost): string {
