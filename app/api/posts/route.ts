@@ -288,14 +288,31 @@ export async function POST(request: NextRequest) {
       sellPrice: body.sellPrice
     })
     
-    if (!body.creatorWallet || !body.title || !body.content || !body.type) {
-      console.log('Missing fields:', {
+    // Проверяем обязательные поля
+    if (!body.creatorWallet || !body.type) {
+      console.log('Missing required fields:', {
         creatorWallet: !!body.creatorWallet,
-        title: !!body.title,
-        content: !!body.content,
         type: !!body.type
       })
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
+    }
+    
+    // Для текстовых постов title и content обязательны
+    if (body.type === 'text' && (!body.title || !body.content)) {
+      console.log('Text post missing required fields:', {
+        title: !!body.title,
+        content: !!body.content
+      })
+      return NextResponse.json({ error: 'Title and content are required for text posts' }, { status: 400 })
+    }
+    
+    // Для медиа-постов нужен либо mediaUrl, либо он будет загружен
+    if (body.type !== 'text' && !body.mediaUrl && !body.thumbnail) {
+      console.log('Media post missing media:', {
+        mediaUrl: !!body.mediaUrl,
+        thumbnail: !!body.thumbnail
+      })
+      return NextResponse.json({ error: 'Media URL is required for media posts' }, { status: 400 })
     }
     
     // Проверяем, что для платных постов указана цена

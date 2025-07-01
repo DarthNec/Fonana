@@ -60,7 +60,7 @@ export default function CreatePostModal({ onPostCreated, onClose }: CreatePostMo
   const [formData, setFormData] = useState({
     title: '',
     content: '',
-    category: '', // Пустая категория по умолчанию
+    category: getSmartCategory('text'), // Устанавливаем категорию по умолчанию для текстовых постов
     tags: [] as string[],
     currentTag: '',
     file: null as File | null,
@@ -397,6 +397,12 @@ export default function CreatePostModal({ onPostCreated, onClose }: CreatePostMo
       return
     }
 
+    // Валидация категории - обязательное поле
+    if (!formData.category) {
+      toast.error('Please select a category')
+      return
+    }
+
     if (formData.accessType === 'paid' && (!formData.price || formData.price <= 0)) {
       toast.error('Specify price for paid content')
       return
@@ -515,7 +521,7 @@ export default function CreatePostModal({ onPostCreated, onClose }: CreatePostMo
       setFormData({
         title: '',
         content: '',
-        category: '',
+        category: getSmartCategory('text'),
         tags: [],
         currentTag: '',
         file: null,
