@@ -132,12 +132,10 @@ export function PostHeader({
       </div>
 
       {/* Post Menu */}
-      {variant === 'full' && (
-        <PostMenu 
-          post={post}
-          onAction={onAction}
-        />
-      )}
+      <PostMenu 
+        post={post}
+        onAction={onAction}
+      />
     </div>
   )
 } 

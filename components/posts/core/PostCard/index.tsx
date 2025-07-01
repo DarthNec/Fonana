@@ -8,6 +8,7 @@ import { PostActions } from '../PostActions'
 import { PostTierBadge } from '../PostTierBadge'
 import { PostFlashSale } from '../PostFlashSale'
 import { CommentsSection } from '../CommentsSection'
+import { PostMenu } from '../PostMenu'
 import { cn } from '@/lib/utils'
 import { 
   getPostCardBorderStyle, 
@@ -150,6 +151,16 @@ export function PostCard({
             variant={variant}
             onAction={onAction}
           />
+        )}
+
+        {/* Post Menu for own posts (even when showCreator=false) */}
+        {!showCreator && (
+          <div className="flex justify-end mb-4">
+            <PostMenu 
+              post={post}
+              onAction={onAction}
+            />
+          </div>
         )}
 
         {/* Content */}
