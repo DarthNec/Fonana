@@ -1,7 +1,8 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import PostCard from '@/components/PostCard'
+import { PostCard } from '@/components/posts/core/PostCard'
+import { PostNormalizer } from '@/services/posts/normalizer'
 import { useUserContext } from '@/lib/contexts/UserContext'
 import { PlusIcon } from '@heroicons/react/24/outline'
 import Link from 'next/link'

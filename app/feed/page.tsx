@@ -1,15 +1,17 @@
 'use client'
 
-import { useState, useEffect, useRef, useMemo } from 'react'
-import Link from 'next/link'
+import { useState, useEffect, useRef, useMemo, useCallback } from 'react'
 import { useUserContext } from '@/lib/contexts/UserContext'
-import { useUnifiedPosts } from '@/lib/hooks/useUnifiedPosts'
+import { useOptimizedPosts } from '@/lib/hooks/useOptimizedPosts'
+import { useOptimizedRealtimePosts } from '@/lib/hooks/useOptimizedRealtimePosts'
 import { PostsContainer } from '@/components/posts/layouts/PostsContainer'
 import { UnifiedPost, PostAction } from '@/types/posts'
+import CreatePostModal from '@/components/CreatePostModal'
 import SubscribeModal from '@/components/SubscribeModal'
 import PurchaseModal from '@/components/PurchaseModal'
 import EditPostModal from '@/components/EditPostModal'
 import SellablePostModal from '@/components/SellablePostModal'
+import FloatingActionButton from '@/components/ui/FloatingActionButton'
 import { hasAccessToTier } from '@/lib/utils/access'
 import { 
   SparklesIcon, 
@@ -20,10 +22,14 @@ import {
   PlusIcon,
   HeartIcon,
   ChatBubbleLeftIcon,
-  ArrowTrendingUpIcon
+  ArrowTrendingUpIcon,
+  PhotoIcon,
+  VideoCameraIcon,
+  DocumentTextIcon
 } from '@heroicons/react/24/outline'
 import { toast } from 'react-hot-toast'
 import SearchBar from '@/components/SearchBar'
+import { useInView } from 'react-intersection-observer'
 
 const categories = [
   'All', 'Art', 'Music', 'Gaming', 'Lifestyle', 'Fitness', 
@@ -31,287 +37,227 @@ const categories = [
   'Blockchain', 'Intimate', 'Education', 'Comedy'
 ]
 
-export default function FeedPage() {
-  const { user } = useUserContext()
+const sortOptions = [
+  { value: 'latest', label: 'Latest', icon: ClockIcon },
+  { value: 'popular', label: 'Popular', icon: FireIcon },
+  { value: 'trending', label: 'Trending', icon: ArrowTrendingUpIcon },
+  { value: 'subscribed', label: 'Following', icon: UsersIcon }
+]
+
+export default function RevampedFeedPage() {
+  const { user, isLoading: userLoading } = useUserContext()
   const [selectedCategory, setSelectedCategory] = useState('All')
-  const [sortBy, setSortBy] = useState<'latest' | 'popular' | 'trending' | 'most-liked' | 'most-commented' | 'following' | 'my-posts'>('latest')
-  const scrollPositionRef = useRef(0)
+  const [sortBy, setSortBy] = useState('latest')
+  const [showFilters, setShowFilters] = useState(false)
+  const categoryScrollRef = useRef<HTMLDivElement>(null)
   
-  // Используем унифицированный хук для загрузки постов
-  const { posts, isLoading, refresh, handleAction } = useUnifiedPosts({
-    variant: 'feed'
-  })
-  
-  // Состояние для модалок
+  // Модалки
+  const [showCreateModal, setShowCreateModal] = useState(false)
   const [showSubscribeModal, setShowSubscribeModal] = useState(false)
   const [showPurchaseModal, setShowPurchaseModal] = useState(false)
-  const [showSellableModal, setShowSellableModal] = useState(false)
-  const [selectedCreator, setSelectedCreator] = useState<any>(null)
-  const [selectedPost, setSelectedPost] = useState<any>(null)
-  const [selectedSellablePost, setSelectedSellablePost] = useState<any>(null)
-  const [preferredTier, setPreferredTier] = useState<'basic' | 'premium' | 'vip'>('basic')
-  
-  // Состояние для редактирования
   const [showEditModal, setShowEditModal] = useState(false)
-  const [editingPost, setEditingPost] = useState<any>(null)
+  const [showSellableModal, setShowSellableModal] = useState(false)
+  const [selectedPost, setSelectedPost] = useState<any>(null)
+  const [selectedCreator, setSelectedCreator] = useState<any>(null)
+
+  // Quick create menu для мобильных
+  const [showQuickCreate, setShowQuickCreate] = useState(false)
+
+  // Оптимизированная загрузка постов с пагинацией
+  const {
+    posts,
+    isLoading,
+    error,
+    hasMore,
+    isLoadingMore,
+    loadMore,
+    refresh,
+    handleAction
+  } = useOptimizedPosts({
+    category: selectedCategory === 'All' ? undefined : selectedCategory,
+    variant: 'feed',
+    pageSize: 20
+  })
+
+  // Real-time обновления
+  const {
+    posts: realtimePosts,
+    newPostsCount,
+    hasNewPosts,
+    loadPendingPosts
+  } = useOptimizedRealtimePosts({
+    posts
+  })
+
+  // Infinite scroll
+  const { ref: loadMoreRef, inView } = useInView({
+    threshold: 0.1,
+    rootMargin: '100px'
+  })
 
   useEffect(() => {
-    // Очищаем сохраненный wallet при отключении
-    if (!user?.wallet) {
-      localStorage.removeItem('fonana_user_wallet')
+    if (inView && hasMore && !isLoadingMore) {
+      loadMore()
     }
-  }, [user?.wallet])
+  }, [inView, hasMore, isLoadingMore, loadMore])
 
-  // Перезагрузка постов при фокусе окна
-  useEffect(() => {
-    const handleFocus = () => {
-      setTimeout(() => {
-        if (!user || user.wallet) {
-          refresh()
-        }
-      }, 100)
-    }
-    
-    const handlePostsUpdated = () => {
-      refresh()
-    }
-    
-    window.addEventListener('focus', handleFocus)
-    window.addEventListener('postsUpdated', handlePostsUpdated)
-    
-    return () => {
-      window.removeEventListener('focus', handleFocus)
-      window.removeEventListener('postsUpdated', handlePostsUpdated)
-    }
-  }, [user, refresh])
-
-  // Обработка действий с постами
-  const handlePostAction = async (action: PostAction) => {
-    switch (action.type) {
-      case 'subscribe':
-        const post = posts.find(p => p.id === action.postId)
-        if (post) {
-          const tier = post.access.tier || 'basic'
-          handleSubscribeClick(post.creator, tier as 'basic' | 'premium' | 'vip')
-        }
-        break
-        
-      case 'purchase':
-        const purchasePost = posts.find(p => p.id === action.postId)
-        if (purchasePost) {
-          if (purchasePost.commerce?.isSellable) {
-            handleSellableClick(purchasePost)
-          } else {
-            handlePurchaseClick(purchasePost)
-          }
-        }
-        break
-        
-      case 'edit':
-        const editPost = posts.find(p => p.id === action.postId)
-        if (editPost) {
-          handleEditClick(editPost)
-        }
-        break
-        
-      default:
-        // Остальные действия обрабатываются хуком
-        await handleAction(action)
-    }
-  }
-
-  const handleSubscribeClick = (creatorData: any, tier: 'basic' | 'premium' | 'vip' = 'basic') => {
-    setSelectedCreator(creatorData)
-    setPreferredTier(tier)
-    setShowSubscribeModal(true)
-  }
-
-  const handlePurchaseClick = (postData: UnifiedPost) => {
-    setSelectedPost({
-      id: postData.id,
-      title: postData.content.title,
-      content: postData.content.text,
-      price: postData.access.price,
-      currency: postData.access.currency,
-      flashSale: postData.commerce?.flashSale,
-      creator: {
-        id: postData.creator.id,
-        name: postData.creator.name,
-        username: postData.creator.username,
-        avatar: postData.creator.avatar,
-        isVerified: postData.creator.isVerified
-      }
-    })
-    setShowPurchaseModal(true)
-  }
-  
-  const handleSellableClick = (postData: UnifiedPost) => {
-    setSelectedSellablePost({
-      id: postData.id,
-      title: postData.content.title,
-      content: postData.content.text,
-      type: postData.media.type,
-      mediaUrl: postData.media.url,
-      thumbnail: postData.media.thumbnail,
-      price: postData.access.price,
-      currency: postData.access.currency,
-      sellType: postData.commerce?.sellType,
-      quantity: postData.commerce?.quantity,
-      auctionStatus: postData.commerce?.auctionData?.status,
-      auctionStartPrice: postData.commerce?.auctionData?.startPrice,
-      auctionCurrentBid: postData.commerce?.auctionData?.currentBid,
-      auctionEndAt: postData.commerce?.auctionData?.endAt,
-      soldAt: postData.commerce?.soldAt,
-      soldTo: postData.commerce?.soldTo,
-      soldPrice: postData.commerce?.soldPrice
-    })
-    setShowSellableModal(true)
-  }
-  
-  const handleEditClick = (postData: UnifiedPost) => {
-    console.log('[Feed] handleEditClick called with post:', postData.id)
-    setEditingPost({
-      id: postData.id,
-      title: postData.content.title,
-      content: postData.content.text,
-      category: postData.content.category,
-      type: postData.media.type,
-      mediaUrl: postData.media.url,
-      thumbnail: postData.media.thumbnail,
-      isLocked: postData.access.isLocked,
-      price: postData.access.price,
-      currency: postData.access.currency,
-      minSubscriptionTier: postData.access.tier,
-      tags: postData.content.tags,
-      imageAspectRatio: postData.media.aspectRatio
-    })
-    setShowEditModal(true)
-  }
-
-  // Фильтрация и сортировка постов
+  // Фильтрация и сортировка
   const filteredAndSortedPosts = useMemo(() => {
-    let filtered = posts.filter(post => {
-      // Фильтр по категории
-      const categoryMatch = selectedCategory === 'All' || post.content.category === selectedCategory
-      
-      // Фильтр "Мои посты"
-      const myPostsMatch = sortBy !== 'my-posts' || (user && post.creator.id === user.id)
-      
-      return categoryMatch && myPostsMatch
-    })
+    let filtered = [...realtimePosts]
+
+    // Фильтр по подпискам - пока пропускаем, так как subscriptions не доступны в User типе
+    // TODO: Добавить поддержку фильтрации по подпискам когда будет доступно
 
     // Сортировка
-    const sorted = [...filtered].sort((a, b) => {
-      switch (sortBy) {
-        case 'latest':
-          return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-          
-        case 'popular':
-          return (b.engagement.likes + b.engagement.comments) - (a.engagement.likes + a.engagement.comments)
-          
-        case 'trending':
-          const ageA = Date.now() - new Date(a.createdAt).getTime()
-          const ageB = Date.now() - new Date(b.createdAt).getTime()
-          const scoreA = (a.engagement.likes + a.engagement.comments) / Math.max(ageA / (1000 * 60 * 60), 1)
-          const scoreB = (b.engagement.likes + b.engagement.comments) / Math.max(ageB / (1000 * 60 * 60), 1)
-          return scoreB - scoreA
-          
-        case 'most-liked':
-          return b.engagement.likes - a.engagement.likes
-          
-        case 'most-commented':
-          return b.engagement.comments - a.engagement.comments
-          
-        default:
-          return 0
-      }
-    })
+    switch (sortBy) {
+      case 'popular':
+        filtered.sort((a, b) => (b.engagement.likes + b.engagement.comments) - (a.engagement.likes + a.engagement.comments))
+        break
+      case 'trending':
+        // Trending = likes + comments в последние 24 часа
+        const dayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000)
+        filtered = filtered.filter(post => new Date(post.createdAt) > dayAgo)
+        filtered.sort((a, b) => (b.engagement.likes + b.engagement.comments) - (a.engagement.likes + a.engagement.comments))
+        break
+      default:
+        // latest - уже отсортировано по дате
+        break
+    }
 
-    return sorted
-  }, [posts, selectedCategory, sortBy, user])
+    return filtered
+  }, [realtimePosts, sortBy])
 
-  const sortOptions = [
-    { id: 'latest', label: 'Latest', icon: ClockIcon },
-    { id: 'popular', label: 'Popular', icon: FireIcon },
-    { id: 'trending', label: 'Trending', icon: ArrowTrendingUpIcon },
-    { id: 'most-liked', label: 'Most Liked', icon: HeartIcon },
-    { id: 'most-commented', label: 'Most Discussed', icon: ChatBubbleLeftIcon },
-    { id: 'following', label: 'Following', icon: UsersIcon },
-    ...(user ? [{ id: 'my-posts', label: 'My Posts', icon: SparklesIcon }] : [])
+  // Обработка действий с постами
+  const handlePostAction = useCallback((action: PostAction) => {
+    const post = filteredAndSortedPosts.find(p => p.id === action.postId)
+    if (!post) return
+
+    switch (action.type) {
+      case 'subscribe':
+        setSelectedCreator(post.creator)
+        setShowSubscribeModal(true)
+        break
+      case 'purchase':
+        setSelectedPost(post)
+        setShowPurchaseModal(true)
+        break
+      case 'edit':
+        setSelectedPost(post)
+        setShowEditModal(true)
+        break
+      case 'bid':
+        setSelectedPost(post)
+        setShowSellableModal(true)
+        break
+      case 'like':
+      case 'unlike':
+        // Обрабатываем через handleAction от useOptimizedPosts
+        handleAction(action)
+        break
+    }
+  }, [filteredAndSortedPosts, handleAction])
+
+  // Quick create content types
+  const quickCreateOptions = [
+    { type: 'image', label: 'Photo', icon: PhotoIcon, color: 'from-green-500 to-emerald-500' },
+    { type: 'video', label: 'Video', icon: VideoCameraIcon, color: 'from-purple-500 to-pink-500' },
+    { type: 'text', label: 'Text', icon: DocumentTextIcon, color: 'from-blue-500 to-cyan-500' }
   ]
 
+  // Обработка создания поста
+  const handlePostCreated = () => {
+    setShowCreateModal(false)
+    setShowQuickCreate(false)
+    toast.success('Пост успешно создан!')
+    refresh()
+  }
+
   return (
-    <div className="min-h-screen bg-white dark:bg-slate-900 pt-16 sm:pt-20">
-      <div className="max-w-2xl mx-auto px-0 sm:px-4 py-0 sm:py-8">
-        {/* Header - Create button only */}
-        <div className="flex items-center justify-end mb-4 sm:mb-6 px-4 sm:px-0">
-          <Link
-            href="/create"
-            className="px-4 sm:px-6 py-2.5 sm:py-3 bg-gradient-to-r from-purple-600 to-pink-600 text-white font-bold text-sm sm:text-base rounded-xl hover:from-purple-700 hover:to-pink-700 transform hover:scale-105 transition-all duration-300 hover:shadow-xl hover:shadow-purple-500/25 flex items-center gap-2"
-          >
-            <PlusIcon className="w-4 sm:w-5 h-4 sm:h-5" />
-            <span className="hidden sm:inline">Create</span>
-          </Link>
-        </div>
+    <div className="min-h-screen bg-gray-50 dark:bg-slate-950">
+      <div className="container mx-auto px-0 sm:px-4 pt-16 sm:pt-20 pb-20 max-w-4xl">
+        {/* Header с улучшенной мобильной версией */}
+        <div className="sticky top-16 sm:top-20 z-30 bg-gray-50/95 dark:bg-slate-950/95 backdrop-blur-md border-b border-gray-200 dark:border-slate-800">
+          {/* Search Bar - адаптивная */}
+          <div className="px-4 py-3 sm:py-4">
+            <SearchBar 
+              className="w-full" 
+              placeholder="Поиск постов и создателей..."
+            />
+          </div>
 
-        {/* Search Bar */}
-        <div className="mb-4 sm:mb-6 px-4 sm:px-0">
-          <SearchBar 
-            placeholder="Поиск по постам и создателям..."
-            showFilters={true}
-            className="max-w-2xl mx-auto"
-          />
-        </div>
-
-        {/* Filters and Sort */}
-        <div className="mb-4 sm:mb-6 space-y-4">
-          {/* Sort Options */}
-          <div className="px-4 sm:px-0 overflow-x-auto">
-            <div className="flex items-center gap-2 pb-2 mb-2 sm:mb-4">
-              {sortOptions.map((option) => (
+          {/* Categories - горизонтальный скролл на мобильных */}
+          <div className="relative">
+            <div 
+              ref={categoryScrollRef}
+              className="flex gap-2 px-4 pb-3 overflow-x-auto scrollbar-hide scroll-smooth"
+            >
+              {categories.map((category) => (
                 <button
-                  key={option.id}
-                  onClick={() => setSortBy(option.id as any)}
-                  className={`flex-shrink-0 px-3 sm:px-4 py-2 rounded-lg font-medium transition-all flex items-center gap-1.5 text-xs sm:text-sm ${
-                    sortBy === option.id
-                      ? 'bg-gradient-to-r from-purple-500 to-pink-500 text-white shadow-lg shadow-purple-500/25'
-                      : 'bg-gray-100 dark:bg-slate-800/50 text-gray-600 dark:text-slate-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-200 dark:hover:bg-slate-700/50'
-                  }`}
+                  key={category}
+                  onClick={() => setSelectedCategory(category)}
+                  className={`
+                    px-4 py-2 rounded-full font-medium whitespace-nowrap transition-all
+                    ${selectedCategory === category
+                      ? 'bg-gradient-to-r from-purple-600 to-pink-600 text-white shadow-md'
+                      : 'bg-white dark:bg-slate-800 text-gray-700 dark:text-slate-300 hover:bg-gray-100 dark:hover:bg-slate-700'
+                    }
+                  `}
                 >
-                  <option.icon className="w-3.5 sm:w-4 h-3.5 sm:h-4" />
-                  <span className="whitespace-nowrap">{option.label}</span>
+                  {category}
                 </button>
               ))}
             </div>
+            
+            {/* Gradient для индикации скролла */}
+            <div className="absolute right-0 top-0 bottom-0 w-8 bg-gradient-to-l from-gray-50 dark:from-slate-950 to-transparent pointer-events-none" />
           </div>
 
-          {/* Category Filter */}
-          <div className="flex flex-col gap-3 px-4 sm:px-0">
-            <div className="flex items-center gap-2 text-gray-600 dark:text-slate-400 text-sm">
-              <FunnelIcon className="w-4 h-4" />
-              <span className="font-medium">Categories</span>
+          {/* Sort & Filter - компактная версия на мобильных */}
+          <div className="flex items-center justify-between px-4 pb-3 gap-2">
+            <div className="flex gap-2 overflow-x-auto scrollbar-hide">
+              {sortOptions.map((option) => (
+                <button
+                  key={option.value}
+                  onClick={() => setSortBy(option.value)}
+                  className={`
+                    flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium whitespace-nowrap transition-all
+                    ${sortBy === option.value
+                      ? 'bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300'
+                      : 'text-gray-600 dark:text-slate-400 hover:bg-gray-100 dark:hover:bg-slate-800'
+                    }
+                  `}
+                >
+                  <option.icon className="w-4 h-4" />
+                  <span className="hidden sm:inline">{option.label}</span>
+                </button>
+              ))}
             </div>
-            <div className="overflow-x-auto -mx-4 sm:mx-0 px-4 sm:px-0">
-              <div className="flex gap-2 pb-2">
-                {categories.map((category) => (
-                  <button
-                    key={category}
-                    onClick={() => setSelectedCategory(category)}
-                    className={`flex-shrink-0 px-3 py-1.5 text-xs sm:text-sm rounded-full transition-all ${
-                      selectedCategory === category
-                        ? 'bg-purple-500/20 text-purple-700 dark:text-purple-300 border border-purple-500/50'
-                        : 'bg-gray-100 dark:bg-slate-800/50 text-gray-600 dark:text-slate-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-200 dark:hover:bg-slate-700/50'
-                    }`}
-                  >
-                    {category}
-                  </button>
-                ))}
-              </div>
-            </div>
+            
+            <button
+              onClick={() => setShowFilters(!showFilters)}
+              className="p-2 text-gray-600 dark:text-slate-400 hover:bg-gray-100 dark:hover:bg-slate-800 rounded-lg transition-colors"
+            >
+              <FunnelIcon className="w-5 h-5" />
+            </button>
           </div>
         </div>
 
-        {/* Posts Container - используем унифицированную систему */}
+        {/* New Posts Notification - улучшенный дизайн */}
+        {hasNewPosts && (
+          <div className="sticky top-48 z-40 px-4 mb-4">
+            <button
+              onClick={loadPendingPosts}
+              className="w-full bg-gradient-to-r from-purple-600 to-pink-600 text-white py-3 px-6 rounded-full shadow-lg hover:shadow-xl transform hover:scale-[1.02] transition-all duration-300 flex items-center justify-center gap-2"
+            >
+              <svg className="w-5 h-5 animate-spin" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+              </svg>
+              <span>{newPostsCount} {newPostsCount === 1 ? 'новый пост' : 'новых постов'}</span>
+            </button>
+          </div>
+        )}
+
+        {/* Posts Container с улучшенной мобильной версией */}
         <PostsContainer
           posts={filteredAndSortedPosts}
           layout="list"
@@ -319,71 +265,132 @@ export default function FeedPage() {
           showCreator={true}
           onAction={handlePostAction}
           isLoading={isLoading}
+          enableRealtime={false} // Мы уже используем real-time хук
           emptyComponent={
             <div className="text-center py-20 px-4">
               <SparklesIcon className="w-16 h-16 text-gray-400 dark:text-slate-600 mx-auto mb-4" />
-              <h3 className="text-xl font-bold text-gray-700 dark:text-slate-300 mb-2">No posts yet</h3>
-              <p className="text-gray-600 dark:text-slate-400 mb-6">Be the first to create content!</p>
-              <Link
-                href="/create"
+              <h3 className="text-xl font-bold text-gray-700 dark:text-slate-300 mb-2">Нет постов</h3>
+              <p className="text-gray-600 dark:text-slate-400 mb-6">Будьте первым, кто создаст контент!</p>
+              <button
+                onClick={() => setShowCreateModal(true)}
                 className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-purple-600 to-pink-600 text-white font-bold rounded-xl hover:from-purple-700 hover:to-pink-700 transform hover:scale-105 transition-all duration-300"
               >
                 <PlusIcon className="w-5 h-5" />
-                Create first post
-              </Link>
+                Создать первый пост
+              </button>
             </div>
           }
         />
 
-        {/* Load More */}
-        {filteredAndSortedPosts.length > 0 && (
-          <div className="text-center mt-8 sm:mt-12">
-            <button className="px-8 py-3 bg-gray-100 dark:bg-slate-800/50 hover:bg-gray-200 dark:hover:bg-slate-700/50 text-gray-700 dark:text-slate-300 hover:text-gray-900 dark:hover:text-white rounded-xl font-medium transition-all">
-              Load more
-            </button>
+        {/* Infinite scroll trigger */}
+        {hasMore && (
+          <div ref={loadMoreRef} className="flex justify-center py-8">
+            {isLoadingMore ? (
+              <div className="flex items-center gap-3">
+                <div className="w-8 h-8 border-3 border-purple-500/30 border-t-purple-500 rounded-full animate-spin"></div>
+                <span className="text-gray-600 dark:text-slate-400">Загружаем посты...</span>
+              </div>
+            ) : (
+              <div className="text-gray-500 dark:text-slate-500 text-sm">
+                Прокрутите для загрузки
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* End of feed */}
+        {!hasMore && filteredAndSortedPosts.length > 0 && (
+          <div className="text-center py-8">
+            <p className="text-gray-500 dark:text-slate-500">
+              Вы просмотрели все посты ✨
+            </p>
           </div>
         )}
       </div>
 
-      {/* Modals moved outside */}
+      {/* Floating Action Button с улучшенным поведением */}
+      <FloatingActionButton
+        onClick={() => setShowQuickCreate(true)}
+        label="Создать пост"
+        hideOnScroll={true}
+        offset={{ bottom: 80, right: 20 }}
+      />
+
+      {/* Quick Create Menu для мобильных */}
+      {showQuickCreate && (
+        <div 
+          className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center p-0 sm:p-4"
+          onClick={() => setShowQuickCreate(false)}
+        >
+          <div 
+            className="bg-white dark:bg-slate-900 rounded-t-3xl sm:rounded-3xl w-full sm:max-w-sm p-6 pb-8 sm:pb-6 space-y-4"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between mb-2">
+              <h3 className="text-lg font-bold text-gray-900 dark:text-white">
+                Создать контент
+              </h3>
+              <button
+                onClick={() => setShowQuickCreate(false)}
+                className="p-2 hover:bg-gray-100 dark:hover:bg-slate-800 rounded-lg transition-colors"
+              >
+                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+
+            <div className="grid grid-cols-3 gap-3">
+              {quickCreateOptions.map((option) => (
+                <button
+                  key={option.type}
+                  onClick={() => {
+                    setShowQuickCreate(false)
+                    setShowCreateModal(true)
+                  }}
+                  className="flex flex-col items-center gap-2 p-4 rounded-2xl bg-gray-50 dark:bg-slate-800 hover:bg-gray-100 dark:hover:bg-slate-700 transition-all group"
+                >
+                  <div className={`w-12 h-12 bg-gradient-to-r ${option.color} rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform`}>
+                    <option.icon className="w-6 h-6 text-white" />
+                  </div>
+                  <span className="text-sm font-medium text-gray-700 dark:text-slate-300">
+                    {option.label}
+                  </span>
+                </button>
+              ))}
+            </div>
+
+            <button
+              onClick={() => {
+                setShowQuickCreate(false)
+                setShowCreateModal(true)
+              }}
+              className="w-full py-3 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white font-medium rounded-xl transition-all"
+            >
+              Расширенное создание
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Модалки */}
+      {showCreateModal && (
+        <CreatePostModal
+          onClose={() => setShowCreateModal(false)}
+          onPostCreated={handlePostCreated}
+        />
+      )}
+
       {showSubscribeModal && selectedCreator && (
         <SubscribeModal
           creator={selectedCreator}
-          preferredTier={preferredTier}
-          onClose={() => setShowSubscribeModal(false)}
-          onSuccess={(data) => {
+          onClose={() => {
             setShowSubscribeModal(false)
-            
-            // Оптимистичное обновление для подписки
-            if (data?.subscription) {
-              const newTier = data.subscription.plan?.toLowerCase() || 'basic'
-              
-              // Обновляем посты локально
-              const updatedPosts = posts.map(post => {
-                if (post.creator.id === selectedCreator.id) {
-                  const hasAccess = hasAccessToTier(newTier, post.access.tier)
-                  return {
-                    ...post,
-                    access: {
-                      ...post.access,
-                      hasSubscription: true,
-                      userTier: newTier,
-                      isLocked: post.access.isLocked && !hasAccess && !post.access.price
-                    }
-                  }
-                }
-                return post
-              })
-              
-              // Это обновит UI мгновенно (нужно добавить setPosts в хук)
-              // События subscription-updated обработаются автоматически через хук
-            }
-            
-            // Проверяем с сервера через небольшую задержку
-            setTimeout(() => {
-              console.log('[Feed] Checking posts after subscription')
-              refresh()
-            }, 2000)
+            setSelectedCreator(null)
+          }}
+          onSuccess={() => {
+            refresh()
+            toast.success('Подписка оформлена!')
           }}
         />
       )}
@@ -391,50 +398,39 @@ export default function FeedPage() {
       {showPurchaseModal && selectedPost && (
         <PurchaseModal
           post={selectedPost}
-          onClose={() => setShowPurchaseModal(false)}
-          onSuccess={(data) => {
+          onClose={() => {
             setShowPurchaseModal(false)
-            
-            // Оптимистичное обновление для покупки
-            if (data?.postId) {
-              // События post-purchased обработаются автоматически через хук
-              // Дополнительно можно обновить UI здесь если нужно
-            }
-            
-            // Затем проверяем с сервера
-            setTimeout(() => {
-              refresh()
-            }, 1000)
+            setSelectedPost(null)
+          }}
+          onSuccess={() => {
+            refresh()
+            toast.success('Контент куплен!')
           }}
         />
       )}
 
-      {showSellableModal && selectedSellablePost && (
-        <SellablePostModal
-          isOpen={showSellableModal}
-          post={selectedSellablePost}
-          onClose={() => setShowSellableModal(false)}
-        />
-      )}
-
-      {/* Edit Modal */}
-      {showEditModal && editingPost && (
+      {showEditModal && selectedPost && (
         <EditPostModal
+          post={selectedPost}
           isOpen={showEditModal}
           onClose={() => {
-            console.log('[Feed] Closing edit modal')
             setShowEditModal(false)
-            setEditingPost(null)
+            setSelectedPost(null)
           }}
-          post={editingPost}
           onPostUpdated={() => {
-            console.log('[Feed] Post updated, reloading posts')
-            setShowEditModal(false)
-            setEditingPost(null)
-            // Обновляем посты с задержкой
-            setTimeout(() => {
-              refresh()
-            }, 500)
+            refresh()
+            toast.success('Пост обновлен!')
+          }}
+        />
+      )}
+
+      {showSellableModal && selectedPost && (
+        <SellablePostModal
+          post={selectedPost}
+          isOpen={showSellableModal}
+          onClose={() => {
+            setShowSellableModal(false)
+            setSelectedPost(null)
           }}
         />
       )}

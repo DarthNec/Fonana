@@ -136,6 +136,8 @@ export type PostActionType =
   | 'bid'
   | 'edit'
   | 'delete'
+  | 'bookmark'
+  | 'report'
 
 /**
  * Действие с постом

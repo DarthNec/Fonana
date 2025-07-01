@@ -28,11 +28,11 @@ export function PostList({
   const getContainerStyles = () => {
     switch (variant) {
       case 'feed':
-        return 'space-y-0 sm:space-y-8'
+        return 'space-y-0 sm:space-y-6'
       case 'profile':
         return 'space-y-0 sm:space-y-6'
       case 'creator':
-        return 'max-w-2xl mx-auto space-y-0 sm:space-y-8'
+        return 'max-w-2xl mx-auto space-y-0 sm:space-y-6'
       default:
         return 'space-y-0 sm:space-y-6'
     }

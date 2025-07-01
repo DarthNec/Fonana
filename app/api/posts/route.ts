@@ -3,45 +3,12 @@ import { getPosts, createPost, getPostsByCreator, getUserByWallet } from '@/lib/
 import { prisma } from '@/lib/prisma'
 import { hasAccessToTier, checkPostAccess, normalizeTierName } from '@/lib/utils/access'
 import { TIER_HIERARCHY } from '@/lib/constants/tiers'
+import { generateOptimizedImageUrls, getSafeThumbnail, fixPostThumbnails } from '@/lib/utils/thumbnails'
 
 // WebSocket события
 import { notifyNewPost, sendNotification } from '@/lib/services/websocket-client'
 
 export const dynamic = 'force-dynamic'
-
-// Функция для генерации путей к оптимизированным изображениям
-function getOptimizedImageUrls(mediaUrl: string | null) {
-  if (!mediaUrl) return null
-  
-  // Проверяем, что это изображение в нашей системе
-  if (!mediaUrl.includes('/posts/images/') && !mediaUrl.includes('/posts/')) return null
-  
-  const lastSlashIndex = mediaUrl.lastIndexOf('/')
-  const lastDotIndex = mediaUrl.lastIndexOf('.')
-  
-  // Если нет слеша или точки, возвращаем null чтобы избежать генерации битых путей
-  if (lastSlashIndex === -1 || lastDotIndex === -1 || lastDotIndex <= lastSlashIndex) {
-    console.warn('[getOptimizedImageUrls] Invalid mediaUrl format:', mediaUrl)
-    return null
-  }
-  
-  const dirPath = mediaUrl.substring(0, lastSlashIndex)
-  const fileName = mediaUrl.substring(lastSlashIndex + 1)
-  const nameWithoutExt = fileName.substring(0, fileName.lastIndexOf('.'))
-  
-  // Если имя файла пустое, возвращаем null
-  if (!nameWithoutExt) {
-    console.warn('[getOptimizedImageUrls] Empty filename:', mediaUrl)
-    return null
-  }
-  
-  // Генерируем правильные пути к оптимизированным версиям
-  return {
-    original: mediaUrl,
-    thumb: `${dirPath}/thumb_${nameWithoutExt}.webp`,
-    preview: mediaUrl // Используем оригинал как preview пока
-  }
-}
 
 
 
@@ -51,16 +18,27 @@ export async function GET(req: Request) {
     const { searchParams } = new URL(req.url)
     const userWallet = searchParams.get('userWallet')
     const creatorId = searchParams.get('creatorId')
-    const limit = searchParams.get('limit') ? parseInt(searchParams.get('limit')!) : undefined
+    const page = searchParams.get('page') ? parseInt(searchParams.get('page')!) : 1
+    const limit = searchParams.get('limit') ? parseInt(searchParams.get('limit')!) : 20
+    const category = searchParams.get('category')
 
-    console.log('[API/posts] Request params:', { userWallet, creatorId, limit })
+    console.log('[API/posts] Request params:', { userWallet, creatorId, page, limit, category })
 
-    let where = {}
+    // Построение условий фильтрации
+    let where: any = {}
     
     // If creatorId is specified, filter by creator
     if (creatorId) {
-      where = { creatorId }
+      where.creatorId = creatorId
     }
+    
+    // If category is specified, filter by category
+    if (category && category !== 'All') {
+      where.category = category
+    }
+
+    // Подсчет общего количества постов
+    const totalCount = await prisma.post.count({ where })
 
     const posts = await prisma.post.findMany({
       where,
@@ -119,6 +97,7 @@ export async function GET(req: Request) {
       orderBy: {
         createdAt: 'desc',
       },
+      skip: (page - 1) * limit,
       take: limit,
     })
 
@@ -210,7 +189,7 @@ export async function GET(req: Request) {
       console.log(`[API/posts] Post "${post.title}" (ID: ${post.id}) - locked: ${post.isLocked}, tier: ${post.minSubscriptionTier}, userTier: ${userSubscriptionPlan}, subscribed: ${isSubscribed}, purchased: ${hasPurchased}, shouldHide: ${shouldHideContent}`)
 
       // Получаем оптимизированные версии изображений
-      const optimizedImages = getOptimizedImageUrls(post.mediaUrl)
+      const optimizedImages = generateOptimizedImageUrls(post.mediaUrl, post.type)
       
       return {
         ...post,
@@ -230,7 +209,7 @@ export async function GET(req: Request) {
         content: (shouldHideContent && !isCreatorPost) ? '' : post.content,
         // Всегда возвращаем оригинальные пути для редактирования
         mediaUrl: post.mediaUrl,
-        thumbnail: optimizedImages?.thumb || post.thumbnail,
+        thumbnail: getSafeThumbnail(optimizedImages?.thumb || post.thumbnail, post.mediaUrl, post.type),
         preview: optimizedImages?.preview,
         shouldHideContent: shouldHideContent && !isCreatorPost, // Автор всегда видит свой контент
         // Добавляем информацию о тирах
@@ -263,10 +242,16 @@ export async function GET(req: Request) {
       }
     })
 
-    console.log('[API/posts] Returning', formattedPosts.length, 'posts')
+    console.log('[API/posts] Returning', formattedPosts.length, 'posts out of', totalCount, 'total')
     
     // Добавляем заголовки для предотвращения кеширования
-    const response = NextResponse.json({ posts: formattedPosts })
+    const response = NextResponse.json({ 
+      posts: formattedPosts,
+      totalCount,
+      page,
+      pageSize: limit,
+      hasMore: page * limit < totalCount
+    })
     response.headers.set('Cache-Control', 'no-cache, no-store, must-revalidate')
     response.headers.set('Pragma', 'no-cache')
     response.headers.set('Expires', '0')
