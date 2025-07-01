@@ -254,8 +254,8 @@ export default function EditPostModal({ isOpen, onClose, post, onPostUpdated }: 
 
     try {
       // Upload media if new file selected
-      let mediaUrl = removeExistingMedia ? null : (post.mediaUrl || post.thumbnail)
-      let thumbnail = removeExistingMedia ? null : (post.thumbnail || post.mediaUrl)
+      let mediaUrl = removeExistingMedia ? null : post.mediaUrl
+      let thumbnail = removeExistingMedia ? null : post.thumbnail
       
       if (mediaFile) {
         const formData = new FormData()

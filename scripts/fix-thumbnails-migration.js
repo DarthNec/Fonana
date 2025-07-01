@@ -1,7 +1,6 @@
 #!/usr/bin/env node
 
 const { PrismaClient } = require('@prisma/client')
-const fs = require('fs').promises
 const path = require('path')
 
 const prisma = new PrismaClient()
@@ -13,38 +12,58 @@ const colors = {
   green: '\x1b[32m',
   yellow: '\x1b[33m',
   blue: '\x1b[34m',
-  cyan: '\x1b[36m'
+  cyan: '\x1b[36m',
+  magenta: '\x1b[35m'
 }
 
-async function checkFileExists(filePath) {
-  try {
-    await fs.access(filePath)
-    return true
-  } catch {
+/**
+ * Проверяет валидность thumbnail пути
+ */
+function isValidThumbnail(thumbnail) {
+  if (!thumbnail) return false
+  
+  // Проверяем на битые пути
+  if (thumbnail.includes('thumb_.')) return false
+  if (thumbnail.includes('thumb_/')) return false
+  if (thumbnail === 'thumb_') return false
+  if (thumbnail.endsWith('thumb_')) return false
+  if (thumbnail.includes('thumb__')) return false
+  if (thumbnail.includes('//')) return false
+  
+  // Проверяем на пустое имя файла после thumb_
+  const thumbMatch = thumbnail.match(/thumb_([^/]+)\.(webp|jpg|png|gif)/)
+  if (thumbMatch && (!thumbMatch[1] || thumbMatch[1].length === 0)) {
     return false
   }
+  
+  return true
 }
 
-function extractValidThumbnail(mediaUrl) {
+/**
+ * Генерирует правильный путь к thumbnail
+ */
+function generateThumbnailPath(mediaUrl, type) {
   if (!mediaUrl) return null
   
-  // Проверяем, что это изображение в нашей системе
-  if (!mediaUrl.includes('/posts/images/') && !mediaUrl.includes('/posts/')) return null
+  // Для видео и аудио используем placeholder
+  if (type === 'video') return '/placeholder-video-enhanced.png'
+  if (type === 'audio') return '/placeholder-audio.png'
   
-  const lastSlashIndex = mediaUrl.lastIndexOf('/')
-  const lastDotIndex = mediaUrl.lastIndexOf('.')
+  // Для изображений генерируем thumb путь
+  const lastSlash = mediaUrl.lastIndexOf('/')
+  const lastDot = mediaUrl.lastIndexOf('.')
   
-  // Если нет слеша или точки, возвращаем null
-  if (lastSlashIndex === -1 || lastDotIndex === -1 || lastDotIndex <= lastSlashIndex) {
+  if (lastSlash === -1 || lastDot === -1 || lastDot <= lastSlash) {
+    console.warn(`Invalid mediaUrl format: ${mediaUrl}`)
     return null
   }
   
-  const dirPath = mediaUrl.substring(0, lastSlashIndex)
-  const fileName = mediaUrl.substring(lastSlashIndex + 1)
+  const dirPath = mediaUrl.substring(0, lastSlash)
+  const fileName = mediaUrl.substring(lastSlash + 1)
   const nameWithoutExt = fileName.substring(0, fileName.lastIndexOf('.'))
   
-  // Если имя файла пустое, возвращаем null
-  if (!nameWithoutExt) {
+  if (!nameWithoutExt || nameWithoutExt.trim() === '') {
+    console.warn(`Empty filename in: ${mediaUrl}`)
     return null
   }
   
@@ -52,171 +71,168 @@ function extractValidThumbnail(mediaUrl) {
 }
 
 async function main() {
-  console.log(`${colors.cyan}=== Fonana Thumbnails Migration Script ===${colors.reset}\n`)
+  console.log(`${colors.cyan}=== Fonana Thumbnails Migration ===${colors.reset}\n`)
 
   try {
-    // Получаем все посты
-    const posts = await prisma.post.findMany({
+    // Находим все посты с битыми thumbnails
+    const brokenPosts = await prisma.post.findMany({
+      where: {
+        OR: [
+          { thumbnail: { contains: 'thumb_.' } },
+          { thumbnail: { contains: 'thumb_/' } },
+          { thumbnail: 'thumb_' },
+          { thumbnail: { endsWith: 'thumb_' } },
+          { thumbnail: { contains: 'thumb__' } },
+          { thumbnail: { contains: '//' } },
+        ]
+      },
       select: {
         id: true,
         title: true,
-        mediaUrl: true,
         thumbnail: true,
+        mediaUrl: true,
         type: true
       }
     })
 
-    console.log(`${colors.blue}Found ${posts.length} posts to check${colors.reset}\n`)
+    // Находим изображения без thumbnails
+    const imagesWithoutThumbnails = await prisma.post.findMany({
+      where: {
+        type: 'image',
+        thumbnail: null,
+        mediaUrl: { not: null }
+      },
+      select: {
+        id: true,
+        title: true,
+        mediaUrl: true,
+        type: true
+      }
+    })
 
-    let stats = {
-      total: posts.length,
-      imagesChecked: 0,
-      videosChecked: 0,
-      brokenThumbnails: 0,
-      fixedThumbnails: 0,
-      noMediaUrl: 0,
-      errors: 0
+    console.log(`Found ${colors.red}${brokenPosts.length}${colors.reset} posts with broken thumbnails`)
+    console.log(`Found ${colors.yellow}${imagesWithoutThumbnails.length}${colors.reset} images without thumbnails\n`)
+
+    if (brokenPosts.length === 0 && imagesWithoutThumbnails.length === 0) {
+      console.log(`${colors.green}✅ No issues to fix!${colors.reset}`)
+      return
     }
 
-    const brokenPosts = []
-    const fixedPosts = []
+    // Запрашиваем подтверждение
+    console.log(`${colors.yellow}This will update ${brokenPosts.length + imagesWithoutThumbnails.length} posts.${colors.reset}`)
+    console.log('Press Ctrl+C to cancel or Enter to continue...')
+    
+    await new Promise(resolve => {
+      process.stdin.once('data', resolve)
+    })
 
-    for (const post of posts) {
-      // Пропускаем посты без медиа
-      if (!post.mediaUrl) {
-        stats.noMediaUrl++
-        continue
-      }
+    let fixedCount = 0
+    let failedCount = 0
 
-      // Проверяем только изображения
-      if (post.type === 'image') {
-        stats.imagesChecked++
+    // Исправляем битые thumbnails
+    console.log(`\n${colors.cyan}Fixing broken thumbnails...${colors.reset}`)
+    for (const post of brokenPosts) {
+      try {
+        const newThumbnail = generateThumbnailPath(post.mediaUrl, post.type)
         
-        // Проверяем текущий thumbnail
-        if (post.thumbnail) {
-          // Проверяем на битые пути (thumb_.webp, thumb_.jpg, etc)
-          if (post.thumbnail.includes('thumb_.') || post.thumbnail.includes('thumb_/')) {
-            console.log(`${colors.red}❌ Broken thumbnail found: Post "${post.title}" (ID: ${post.id})${colors.reset}`)
-            console.log(`   Current: ${post.thumbnail}`)
-            stats.brokenThumbnails++
-            brokenPosts.push({
-              id: post.id,
-              title: post.title,
-              thumbnail: post.thumbnail,
-              mediaUrl: post.mediaUrl
-            })
-            
-            // Пытаемся исправить
-            const validThumbnail = extractValidThumbnail(post.mediaUrl)
-            if (validThumbnail) {
-              console.log(`   ${colors.green}✓ Fixed to: ${validThumbnail}${colors.reset}`)
-              
-              // Обновляем в базе
-              await prisma.post.update({
-                where: { id: post.id },
-                data: { thumbnail: validThumbnail }
-              })
-              
-              stats.fixedThumbnails++
-              fixedPosts.push({
-                id: post.id,
-                title: post.title,
-                oldThumbnail: post.thumbnail,
-                newThumbnail: validThumbnail
-              })
-            } else {
-              console.log(`   ${colors.yellow}⚠ Could not generate valid thumbnail${colors.reset}`)
-              
-              // Очищаем битый thumbnail
-              await prisma.post.update({
-                where: { id: post.id },
-                data: { thumbnail: null }
-              })
-            }
-          } else {
-            // Проверяем существование файла thumbnail
-            const publicPath = `/var/www/fonana/public${post.thumbnail}`
-            const exists = await checkFileExists(publicPath)
-            
-            if (!exists && !post.thumbnail.includes('placeholder')) {
-              console.log(`${colors.yellow}⚠ Missing thumbnail file: Post "${post.title}" (ID: ${post.id})${colors.reset}`)
-              console.log(`   Path: ${post.thumbnail}`)
-              
-              // Генерируем новый путь
-              const validThumbnail = extractValidThumbnail(post.mediaUrl)
-              if (validThumbnail && validThumbnail !== post.thumbnail) {
-                console.log(`   ${colors.green}✓ Updated to: ${validThumbnail}${colors.reset}`)
-                
-                await prisma.post.update({
-                  where: { id: post.id },
-                  data: { thumbnail: validThumbnail }
-                })
-                
-                stats.fixedThumbnails++
-              }
-            }
-          }
-        } else if (post.mediaUrl) {
-          // Если нет thumbnail, но есть mediaUrl для изображения
-          const validThumbnail = extractValidThumbnail(post.mediaUrl)
-          if (validThumbnail) {
-            console.log(`${colors.blue}ℹ Adding thumbnail for: Post "${post.title}" (ID: ${post.id})${colors.reset}`)
-            console.log(`   New: ${validThumbnail}`)
-            
-            await prisma.post.update({
-              where: { id: post.id },
-              data: { thumbnail: validThumbnail }
-            })
-            
-            stats.fixedThumbnails++
-          }
-        }
-      } else if (post.type === 'video') {
-        stats.videosChecked++
-        
-        // Для видео проверяем только битые пути
-        if (post.thumbnail && (post.thumbnail.includes('thumb_.') || post.thumbnail.includes('thumb_/'))) {
-          console.log(`${colors.red}❌ Broken video thumbnail: Post "${post.title}" (ID: ${post.id})${colors.reset}`)
-          console.log(`   Current: ${post.thumbnail}`)
-          
-          // Устанавливаем placeholder для видео
+        if (newThumbnail && isValidThumbnail(newThumbnail)) {
           await prisma.post.update({
             where: { id: post.id },
-            data: { thumbnail: '/placeholder-video-enhanced.png' }
+            data: { thumbnail: newThumbnail }
           })
+          console.log(`${colors.green}✓${colors.reset} Fixed: "${post.title}" (${post.id})`)
+          console.log(`  Old: ${colors.red}${post.thumbnail}${colors.reset}`)
+          console.log(`  New: ${colors.green}${newThumbnail}${colors.reset}`)
+          fixedCount++
+        } else {
+          // Если не можем сгенерировать валидный thumbnail, используем placeholder
+          const placeholder = post.type === 'video' ? '/placeholder-video-enhanced.png' : 
+                            post.type === 'audio' ? '/placeholder-audio.png' : 
+                            '/placeholder-image.png'
           
-          stats.fixedThumbnails++
+          await prisma.post.update({
+            where: { id: post.id },
+            data: { thumbnail: placeholder }
+          })
+          console.log(`${colors.yellow}⚠${colors.reset} Used placeholder for: "${post.title}" (${post.id})`)
+          fixedCount++
         }
+      } catch (error) {
+        console.error(`${colors.red}✗${colors.reset} Failed to fix post ${post.id}: ${error.message}`)
+        failedCount++
+      }
+    }
+
+    // Добавляем thumbnails для изображений без них
+    console.log(`\n${colors.cyan}Adding thumbnails to images...${colors.reset}`)
+    for (const post of imagesWithoutThumbnails) {
+      try {
+        const newThumbnail = generateThumbnailPath(post.mediaUrl, 'image')
+        
+        if (newThumbnail && isValidThumbnail(newThumbnail)) {
+          await prisma.post.update({
+            where: { id: post.id },
+            data: { thumbnail: newThumbnail }
+          })
+          console.log(`${colors.green}✓${colors.reset} Added thumbnail for: "${post.title}" (${post.id})`)
+          console.log(`  Thumbnail: ${colors.green}${newThumbnail}${colors.reset}`)
+          fixedCount++
+        } else {
+          // Используем оригинал как thumbnail если не можем сгенерировать
+          await prisma.post.update({
+            where: { id: post.id },
+            data: { thumbnail: post.mediaUrl }
+          })
+          console.log(`${colors.yellow}⚠${colors.reset} Used original as thumbnail for: "${post.title}" (${post.id})`)
+          fixedCount++
+        }
+      } catch (error) {
+        console.error(`${colors.red}✗${colors.reset} Failed to add thumbnail for post ${post.id}: ${error.message}`)
+        failedCount++
       }
     }
 
     // Итоговая статистика
-    console.log(`\n${colors.cyan}=== Migration Summary ===${colors.reset}`)
-    console.log(`Total posts: ${stats.total}`)
-    console.log(`Images checked: ${stats.imagesChecked}`)
-    console.log(`Videos checked: ${stats.videosChecked}`)
-    console.log(`Posts without media: ${stats.noMediaUrl}`)
-    console.log(`${colors.red}Broken thumbnails found: ${stats.brokenThumbnails}${colors.reset}`)
-    console.log(`${colors.green}Thumbnails fixed: ${stats.fixedThumbnails}${colors.reset}`)
-    
-    if (brokenPosts.length > 0) {
-      console.log(`\n${colors.yellow}=== Broken Posts Details ===${colors.reset}`)
-      console.log(JSON.stringify(brokenPosts, null, 2))
-    }
-    
-    if (fixedPosts.length > 0) {
-      console.log(`\n${colors.green}=== Fixed Posts Details ===${colors.reset}`)
-      console.log(JSON.stringify(fixedPosts, null, 2))
+    console.log(`\n${colors.cyan}=== Migration Complete ===${colors.reset}`)
+    console.log(`${colors.green}Successfully fixed: ${fixedCount} posts${colors.reset}`)
+    if (failedCount > 0) {
+      console.log(`${colors.red}Failed: ${failedCount} posts${colors.reset}`)
     }
 
-    console.log(`\n${colors.green}✅ Migration completed successfully!${colors.reset}`)
+    // Проверяем остались ли проблемы
+    const remainingBroken = await prisma.post.count({
+      where: {
+        OR: [
+          { thumbnail: { contains: 'thumb_.' } },
+          { thumbnail: { contains: 'thumb_/' } },
+          { thumbnail: 'thumb_' },
+          { thumbnail: { endsWith: 'thumb_' } },
+          { thumbnail: { contains: 'thumb__' } },
+          { thumbnail: { contains: '//' } },
+        ]
+      }
+    })
+
+    if (remainingBroken > 0) {
+      console.log(`\n${colors.yellow}⚠ Warning: ${remainingBroken} posts still have broken thumbnails${colors.reset}`)
+      console.log('These may require manual intervention.')
+    } else {
+      console.log(`\n${colors.green}✅ All thumbnail issues have been resolved!${colors.reset}`)
+    }
 
   } catch (error) {
-    console.error(`${colors.red}Error during migration:${colors.reset}`, error)
+    console.error(`${colors.red}Error:${colors.reset}`, error)
     process.exit(1)
   } finally {
     await prisma.$disconnect()
   }
 }
+
+// Обработка сигналов для корректного завершения
+process.on('SIGINT', async () => {
+  console.log('\n\nMigration cancelled by user')
+  await prisma.$disconnect()
+  process.exit(0)
+})
 
 main().catch(console.error) 

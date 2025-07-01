@@ -2,7 +2,8 @@
 
 import { useUserContext } from '@/lib/contexts/UserContext'
 import { UserIcon } from '@heroicons/react/24/outline'
-import PostCard from '@/components/PostCard'
+import { PostCard } from '@/components/posts/core/PostCard'
+import { PostNormalizer } from '@/services/posts/normalizer'
 
 export default function AvatarDemoPage() {
   const { user } = useUserContext()
@@ -99,7 +100,10 @@ export default function AvatarDemoPage() {
           <p className="text-slate-400 mb-4">
             Комментарии теперь встроены в PostCard. Нажмите на кнопку комментариев под постом, чтобы увидеть их.
           </p>
-          <PostCard {...mockPost} showCreator={true} />
+          <PostCard 
+            post={PostNormalizer.normalize(mockPost)}
+            showCreator={true} 
+          />
         </div>
       </div>
     </div>

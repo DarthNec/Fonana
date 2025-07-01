@@ -2,14 +2,15 @@
 
 import React from 'react'
 import Link from 'next/link'
-import { PostCreator, PostCardVariant } from '@/types/posts'
+import { PostCreator, PostCardVariant, UnifiedPost, PostAction } from '@/types/posts'
 import { cn } from '@/lib/utils'
+import { PostMenu } from '../PostMenu'
 
 export interface PostHeaderProps {
-  creator: PostCreator
-  createdAt: string
+  post: UnifiedPost
   variant?: PostCardVariant
   className?: string
+  onAction?: (action: PostAction) => void
 }
 
 /**
@@ -40,11 +41,12 @@ function formatRelativeTime(dateString: string): string {
  * Заголовок поста с информацией о создателе
  */
 export function PostHeader({ 
-  creator, 
-  createdAt, 
+  post,
   variant = 'full',
-  className 
+  className,
+  onAction
 }: PostHeaderProps) {
+  const { creator, createdAt } = post
   const getAvatarSize = () => {
     switch (variant) {
       case 'minimal': return 'w-8 h-8'
@@ -129,13 +131,12 @@ export function PostHeader({
         </div>
       </div>
 
-      {/* Menu Button (optional) */}
+      {/* Post Menu */}
       {variant === 'full' && (
-        <button className="p-2 hover:bg-gray-100 dark:hover:bg-slate-800 rounded-lg transition-colors">
-          <svg className="w-5 h-5 text-gray-500 dark:text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z" />
-          </svg>
-        </button>
+        <PostMenu 
+          post={post}
+          onAction={onAction}
+        />
       )}
     </div>
   )

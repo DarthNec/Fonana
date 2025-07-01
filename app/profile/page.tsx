@@ -36,6 +36,8 @@ import { useTheme } from '@/lib/contexts/ThemeContext'
 import { isValidNickname, isReservedNickname } from '@/lib/utils/links'
 import { LinkIcon, CheckCircleIcon, XCircleIcon } from '@heroicons/react/24/outline'
 import Link from 'next/link'
+import CreatePostModal from '@/components/CreatePostModal'
+import FloatingActionButton from '@/components/ui/FloatingActionButton'
 
 interface UserProfile {
   id: string
@@ -68,6 +70,7 @@ function MyPostsSection() {
   const [loading, setLoading] = useState(true)
   const [selectedPost, setSelectedPost] = useState<any>(null)
   const [isEditModalOpen, setIsEditModalOpen] = useState(false)
+  const [showCreateModal, setShowCreateModal] = useState(false)
 
   useEffect(() => {
     if (user?.id) {
@@ -127,13 +130,13 @@ function MyPostsSection() {
           <DocumentTextIcon className="w-16 h-16 text-gray-400 dark:text-slate-600 mx-auto mb-4" />
           <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2">No posts yet</h3>
           <p className="text-gray-600 dark:text-slate-400 mb-4">Create your first post and start earning!</p>
-          <Link 
-            href="/create"
+          <button
+            onClick={() => setShowCreateModal(true)}
             className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white rounded-xl font-medium transition-all duration-300 hover:scale-105"
           >
             <PlusIcon className="w-5 h-5" />
             Create Post
-          </Link>
+          </button>
         </div>
       </div>
     )
@@ -152,14 +155,14 @@ function MyPostsSection() {
               My Posts ({posts.length})
             </h2>
             
-            <Link 
-              href="/create"
+            <button
+              onClick={() => setShowCreateModal(true)}
               className="inline-flex items-center gap-1 sm:gap-2 px-3 sm:px-6 py-2 sm:py-3 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white rounded-lg sm:rounded-xl font-medium transition-all duration-300 hover:scale-105 text-sm sm:text-base"
             >
               <PlusIcon className="w-4 h-4 sm:w-5 sm:h-5" />
               <span className="hidden sm:inline">Create Post</span>
               <span className="sm:hidden">New</span>
-            </Link>
+            </button>
           </div>
 
           {/* Stats */}
@@ -204,6 +207,18 @@ function MyPostsSection() {
           onClose={() => setIsEditModalOpen(false)}
           post={selectedPost}
           onPostUpdated={handlePostUpdated}
+        />
+      )}
+
+      {/* Create Post Modal */}
+      {showCreateModal && (
+        <CreatePostModal
+          onClose={() => setShowCreateModal(false)}
+          onPostCreated={() => {
+            setShowCreateModal(false)
+            fetchUserPosts()
+            toast.success('Post created successfully!')
+          }}
         />
       )}
     </>

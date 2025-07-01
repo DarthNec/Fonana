@@ -141,9 +141,9 @@ export function PostCard({
         {/* Header */}
         {showCreator && (
           <PostHeader 
-            creator={post.creator} 
-            createdAt={post.createdAt}
+            post={post}
             variant={variant}
+            onAction={onAction}
           />
         )}
 
