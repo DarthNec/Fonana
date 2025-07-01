@@ -11,6 +11,7 @@ import {
   InformationCircleIcon
 } from '@heroicons/react/24/outline'
 import styles from './ImageCropModal.module.css'
+import { toast } from 'react-hot-toast'
 
 interface ImageCropModalProps {
   image: string
@@ -179,11 +180,25 @@ export default function ImageCropModal({ image, onCropComplete, onCancel }: Imag
 
   const handleCropConfirm = async () => {
     try {
+      // КРИТИЧЕСКИЙ ФИКС: дополнительная валидация перед кропом
+      if (!image || imageError) {
+        console.error('[ImageCropModal] Cannot crop - image not loaded or has error')
+        toast.error('Изображение не загружено. Попробуйте еще раз.')
+        return
+      }
+      
+      if (!croppedAreaPixels) {
+        console.error('[ImageCropModal] Cannot crop - no crop area defined')
+        toast.error('Пожалуйста, выберите область для обрезки')
+        return
+      }
+      
       setIsProcessing(true)
       const croppedImage = await getCroppedImg(image, croppedAreaPixels)
       onCropComplete(croppedImage, selectedRatio.value)
     } catch (error) {
       console.error('Error cropping image:', error)
+      toast.error('Ошибка при обработке изображения. Попробуйте другое изображение.')
     } finally {
       setIsProcessing(false)
     }

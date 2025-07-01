@@ -194,8 +194,8 @@ export default function CreatePostModal({ onPostCreated, onClose }: CreatePostMo
           category: getSmartCategory(contentType)
         }))
         
-        // Небольшая задержка для обновления состояния
-        setTimeout(() => setShowCropModal(true), 150)
+        // Открываем модалку кропа сразу без задержки
+        setShowCropModal(true)
       }
       
       reader.onerror = (e) => {
