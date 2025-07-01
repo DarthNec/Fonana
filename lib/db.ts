@@ -259,8 +259,8 @@ export async function deleteUser(wallet: string) {
 
 // Functions for working with posts
 export async function createPost(creatorWallet: string, data: {
-  title: string
-  content: string
+  title?: string
+  content?: string
   type: string
   category?: string
   thumbnail?: string
@@ -332,8 +332,8 @@ export async function createPost(creatorWallet: string, data: {
   const post = await prisma.post.create({
     data: {
       creatorId: creator.id,
-      title: data.title,
-      content: data.content,
+      title: data.title || '',
+      content: data.content || '',
       type: data.type,
       category: data.category,
       thumbnail: data.thumbnail,
