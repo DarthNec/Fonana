@@ -1,13 +1,5 @@
 import React from 'react'
-
-// Статический импорт версии для правильной работы в production
-let APP_VERSION = 'dev'
-try {
-  const { APP_VERSION: VERSION } = require('@/lib/version')
-  APP_VERSION = VERSION
-} catch {
-  // В режиме разработки файл может не существовать
-}
+import { APP_VERSION } from '@/lib/version'
 
 export default function Footer() {
   return (

@@ -33,8 +33,12 @@ class ServiceWorkerManager {
         }
       }
       
-      // Регистрируем Service Worker
-      this.registration = await navigator.serviceWorker.register('/sw.js', {
+      // Получаем версию приложения
+      const versionResponse = await fetch('/api/version');
+      const { version } = await versionResponse.json();
+      
+      // Регистрируем Service Worker с версией
+      this.registration = await navigator.serviceWorker.register(`/sw.js?v=${version}`, {
         scope: '/',
         updateViaCache: 'none' // Всегда проверять обновления
       });
