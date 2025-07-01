@@ -1,30 +1,62 @@
 // Force refresh script for cached browsers
-(function() {
-  // Версия приложения (обновляется при каждом деплое)
-  var currentVersion = 'v-1751344960000';
-  var storageKey = 'fonana-app-version';
+(async function() {
+  console.log('[Force Refresh] Checking version...');
   
   try {
-    var storedVersion = localStorage.getItem(storageKey);
+    // Получаем текущую версию с сервера
+    const response = await fetch('/api/version', {
+      cache: 'no-cache',
+      headers: {
+        'Cache-Control': 'no-cache',
+        'Pragma': 'no-cache'
+      }
+    });
     
-    // Если версия отличается или отсутствует - принудительно обновляем
-    if (!storedVersion || storedVersion !== currentVersion) {
-      localStorage.setItem(storageKey, currentVersion);
+    if (!response.ok) {
+      console.error('[Force Refresh] Failed to fetch version');
+      return;
+    }
+    
+    const { version } = await response.json();
+    const storedVersion = localStorage.getItem('fonana-version');
+    
+    console.log('[Force Refresh] Server version:', version);
+    console.log('[Force Refresh] Stored version:', storedVersion);
+    
+    // Если версия изменилась
+    if (storedVersion && storedVersion !== version) {
+      console.log('[Force Refresh] Version mismatch, clearing caches...');
       
-      // Очищаем весь кеш
+      // Очищаем все кеши
       if ('caches' in window) {
-        caches.keys().then(function(names) {
-          names.forEach(function(name) {
-            caches.delete(name);
-          });
-        });
+        const names = await caches.keys();
+        await Promise.all(names.map(name => {
+          console.log('[Force Refresh] Deleting cache:', name);
+          return caches.delete(name);
+        }));
       }
       
-      // Принудительная перезагрузка с сервера
+      // Отменяем регистрацию SW
+      if ('serviceWorker' in navigator) {
+        const registration = await navigator.serviceWorker.getRegistration();
+        if (registration) {
+          console.log('[Force Refresh] Unregistering service worker...');
+          await registration.unregister();
+        }
+      }
+      
+      // Сохраняем новую версию
+      localStorage.setItem('fonana-version', version);
+      
+      // Перезагружаем страницу
+      console.log('[Force Refresh] Reloading page...');
       window.location.reload(true);
+    } else {
+      // Сохраняем версию если её не было
+      localStorage.setItem('fonana-version', version);
+      console.log('[Force Refresh] Version is up to date');
     }
   } catch (e) {
-    // Если localStorage недоступен, просто перезагружаем
-    window.location.reload(true);
+    console.error('[Force Refresh] Error:', e);
   }
 })(); 

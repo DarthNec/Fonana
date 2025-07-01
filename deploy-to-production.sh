@@ -10,17 +10,28 @@ set -e
 
 echo "🚀 Starting Fonana deployment..."
 
+# Generate version info locally
+VERSION=$(date +%Y%m%d-%H%M%S)
+COMMIT=$(git rev-parse --short HEAD)
+
+# Generate version file locally BEFORE build
+echo "📝 Generating version file: $VERSION-$COMMIT"
+echo "// This file is auto-generated during deployment" > lib/version.ts
+echo "export const APP_VERSION = '$VERSION-$COMMIT'" >> lib/version.ts
+echo "export const version = '$VERSION-$COMMIT'" >> lib/version.ts
+echo "export const buildDate = new Date().toISOString()" >> lib/version.ts
+
 # Update cache version locally
 echo "🔄 Updating cache version..."
 ./scripts/update-cache-version.sh
 
+# Commit version changes
+git add lib/version.ts public/force-refresh.js app/layout.tsx
+git commit -m "chore: update version to $VERSION-$COMMIT" || true
+
 # Push to GitHub
 echo "📤 Pushing to GitHub..."
 git push origin main
-
-# Get version info for later
-VERSION=$(date +%Y%m%d-%H%M%S)
-COMMIT=$(git rev-parse --short HEAD)
 
 # Main deployment - everything in one SSH session
 echo "🚀 Deploying to production server..."
@@ -84,19 +95,26 @@ find /root/.pm2/logs -name '*.log' -size +100M -delete 2>/dev/null || true
 echo "🔄 Pulling latest code..."
 git pull origin main
 
-# Step 7: Install dependencies
+# Step 7: Generate version file BEFORE build
+# Version was already generated locally, just pull it
+
+# Update Service Worker version
+SW_VERSION="v6-$(date +%Y%m%d)"
+sed -i "s|const SW_VERSION = '.*'|const SW_VERSION = '$SW_VERSION'|g" public/sw.js || true
+
+# Step 8: Install dependencies
 echo "📦 Installing dependencies..."
 npm ci
 
-# Step 8: Run database migrations
+# Step 9: Run database migrations
 echo "🗄️  Running database migrations..."
 npx prisma migrate deploy
 
-# Step 9: Generate Prisma Client
+# Step 10: Generate Prisma Client
 echo "🔧 Generating Prisma Client..."
 npx prisma generate
 
-# Step 10: Build application
+# Step 11: Build application
 echo "🔨 Building application..."
 npm run build
 
@@ -138,10 +156,6 @@ ps aux | grep -E 'node.*/var/www/fonana' | grep -v grep | grep -v ssh || echo "N
 echo ""
 echo "✅ Server deployment completed successfully!"
 DEPLOY_SCRIPT
-
-# Generate version file after deployment
-echo "📝 Generating version information..."
-ssh -p 43988 root@69.10.59.234 "cd /var/www/fonana && echo 'export const APP_VERSION = \"$VERSION-$COMMIT\";' > lib/version.ts"
 
 # Final check from outside
 echo ""
