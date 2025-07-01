@@ -83,7 +83,17 @@ export default function ImageCropModal({ image, onCropComplete, onCancel }: Imag
   ): Promise<string> => {
     if (!pixelCrop) return imageSrc
 
+    console.log('[ImageCropModal] Starting crop with:', { imageSrc, pixelCrop })
+
+    // КРИТИЧЕСКИЙ ФИКС: дополнительная валидация параметров кропа
+    if (pixelCrop.width <= 0 || pixelCrop.height <= 0) {
+      console.error('[ImageCropModal] Invalid crop dimensions:', pixelCrop)
+      throw new Error('Invalid crop dimensions')
+    }
+
     const image = await createImage(imageSrc)
+    console.log('[ImageCropModal] Image loaded:', image.width, 'x', image.height)
+    
     const canvas = document.createElement('canvas')
     const ctx = canvas.getContext('2d')
 
@@ -91,30 +101,79 @@ export default function ImageCropModal({ image, onCropComplete, onCancel }: Imag
       throw new Error('No 2d context')
     }
 
-    canvas.width = pixelCrop.width
-    canvas.height = pixelCrop.height
+    // ФИКС: убедимся что размеры canvas корректны
+    const cropWidth = Math.floor(pixelCrop.width)
+    const cropHeight = Math.floor(pixelCrop.height)
+    
+    if (cropWidth <= 0 || cropHeight <= 0) {
+      console.error('[ImageCropModal] Invalid canvas dimensions:', cropWidth, cropHeight)
+      throw new Error('Invalid canvas dimensions')
+    }
+
+    canvas.width = cropWidth
+    canvas.height = cropHeight
+
+    console.log('[ImageCropModal] Canvas size:', canvas.width, 'x', canvas.height)
+
+    // ФИКС: проверяем что координаты кропа не выходят за границы изображения
+    const sourceX = Math.max(0, Math.floor(pixelCrop.x))
+    const sourceY = Math.max(0, Math.floor(pixelCrop.y))
+    const sourceWidth = Math.min(cropWidth, image.width - sourceX)
+    const sourceHeight = Math.min(cropHeight, image.height - sourceY)
+
+    console.log('[ImageCropModal] Drawing from:', { sourceX, sourceY, sourceWidth, sourceHeight }, 'to canvas')
+
+    // Очищаем canvas перед рисованием
+    ctx.clearRect(0, 0, canvas.width, canvas.height)
+    
+    // Заполняем белым фоном на случай прозрачности
+    ctx.fillStyle = '#FFFFFF'
+    ctx.fillRect(0, 0, canvas.width, canvas.height)
 
     ctx.drawImage(
       image,
-      pixelCrop.x,
-      pixelCrop.y,
-      pixelCrop.width,
-      pixelCrop.height,
+      sourceX,
+      sourceY,
+      sourceWidth,
+      sourceHeight,
       0,
       0,
-      pixelCrop.width,
-      pixelCrop.height
+      canvas.width,
+      canvas.height
     )
+
+    // ФИКС: проверяем что что-то нарисовано на canvas
+    const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height)
+    const isEmpty = imageData.data.every((pixel, index) => {
+      // Проверяем только каждый 4-й пиксель (альфа канал) или RGB значения
+      return index % 4 === 3 ? pixel === 255 : pixel === 255
+    })
+
+    if (isEmpty) {
+      console.error('[ImageCropModal] Canvas appears to be empty after drawing')
+      // Не выбрасываем ошибку, попытаемся сохранить как есть
+    }
 
     return new Promise((resolve, reject) => {
       canvas.toBlob(blob => {
         if (!blob) {
-          reject(new Error('Canvas is empty'))
+          console.error('[ImageCropModal] Failed to create blob from canvas')
+          // Попытаемся создать fallback изображение
+          canvas.toBlob(fallbackBlob => {
+            if (!fallbackBlob) {
+              reject(new Error('Canvas is empty - unable to create image'))
+              return
+            }
+            const croppedImageUrl = URL.createObjectURL(fallbackBlob)
+            console.log('[ImageCropModal] Created fallback blob URL:', croppedImageUrl)
+            resolve(croppedImageUrl)
+          }, 'image/png', 0.9)
           return
         }
         const croppedImageUrl = URL.createObjectURL(blob)
+        console.log('[ImageCropModal] Successfully created blob URL:', croppedImageUrl)
         resolve(croppedImageUrl)
-      }, 'image/jpeg')
+      }, 'image/jpeg', 0.9)
     })
   }
 
