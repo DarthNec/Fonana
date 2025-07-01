@@ -81,12 +81,13 @@ export function useDynamicPrice(amountInSol: number): UseDynamicPriceResult {
 }
 
 // Хелпер для форматирования SOL
-export function formatSolAmount(amount: number): string {
-  if (amount === 0) return '0 SOL'
-  if (amount < 0.001) return '<0.001 SOL'
-  if (amount < 1) return `${amount.toFixed(3)} SOL`
-  if (amount < 10) return `${amount.toFixed(2)} SOL`
-  return `${amount.toFixed(1)} SOL`
+export function formatSolAmount(amount: number | null | undefined): string {
+  const safeAmount = Number(amount) || 0
+  if (safeAmount === 0) return '0 SOL'
+  if (safeAmount < 0.001) return '<0.001 SOL'
+  if (safeAmount < 1) return `${safeAmount.toFixed(3)} SOL`
+  if (safeAmount < 10) return `${safeAmount.toFixed(2)} SOL`
+  return `${safeAmount.toFixed(1)} SOL`
 }
 
 // Хелпер для форматирования USD

@@ -177,7 +177,7 @@ export function solToLamports(sol: number): number {
 
 // Format SOL amount for display
 export function formatSolAmount(amount: number): string {
-  return `${amount.toFixed(4)} SOL`
+  return `${(Number(amount) || 0).toFixed(4)} SOL`
 }
 
 export async function createPostPurchaseTransaction(

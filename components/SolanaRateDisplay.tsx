@@ -1,6 +1,7 @@
 'use client'
 
 import { useSolRate } from '@/lib/hooks/useSolRate'
+import { safeToFixed } from '@/lib/utils/format'
 
 export default function SolanaRateDisplay() {
   const { rate, isLoading } = useSolRate()
@@ -18,7 +19,7 @@ export default function SolanaRateDisplay() {
         {isLoading ? (
           <span className="animate-pulse">SOL</span>
         ) : (
-          <>SOL ${rate.toFixed(2)}</>
+          <>SOL ${safeToFixed(rate, 2)}</>
         )}
       </span>
     </div>

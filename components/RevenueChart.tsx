@@ -176,18 +176,18 @@ export default function RevenueChart({}: RevenueChartProps) {
     csvData.push(['Доходы по периодам'])
     csvData.push(['Дата', 'Доход (SOL)', 'Доход (USD)'])
     Object.entries(analytics.revenue.byPeriod).forEach(([date, amount]) => {
-      csvData.push([date, amount.toFixed(4), (amount * solRate).toFixed(2)])
+      csvData.push([date, safeToFixed(amount, 4), safeToFixed(amount * solRate, 2)])
     })
     
     csvData.push([])
     csvData.push(['Доходы по источникам'])
     csvData.push(['Источник', 'Доход (SOL)', 'Доход (USD)', 'Количество'])
-    csvData.push(['Подписки - Basic', analytics.revenue.bySource.subscriptions.byTier.basic.revenue.toFixed(4), (analytics.revenue.bySource.subscriptions.byTier.basic.revenue * solRate).toFixed(2), analytics.revenue.bySource.subscriptions.byTier.basic.count])
-    csvData.push(['Подписки - Premium', analytics.revenue.bySource.subscriptions.byTier.premium.revenue.toFixed(4), (analytics.revenue.bySource.subscriptions.byTier.premium.revenue * solRate).toFixed(2), analytics.revenue.bySource.subscriptions.byTier.premium.count])
-    csvData.push(['Подписки - VIP', analytics.revenue.bySource.subscriptions.byTier.vip.revenue.toFixed(4), (analytics.revenue.bySource.subscriptions.byTier.vip.revenue * solRate).toFixed(2), analytics.revenue.bySource.subscriptions.byTier.vip.count])
-    csvData.push(['Платные посты', analytics.revenue.bySource.posts.total.toFixed(4), (analytics.revenue.bySource.posts.total * solRate).toFixed(2), analytics.revenue.bySource.posts.count])
-    csvData.push(['PPV сообщения', analytics.revenue.bySource.messages.ppv.total.toFixed(4), (analytics.revenue.bySource.messages.ppv.total * solRate).toFixed(2), analytics.revenue.bySource.messages.ppv.count])
-    csvData.push(['Чаевые', analytics.revenue.bySource.messages.tips.total.toFixed(4), (analytics.revenue.bySource.messages.tips.total * solRate).toFixed(2), analytics.revenue.bySource.messages.tips.count])
+    csvData.push(['Подписки - Basic', safeToFixed(analytics.revenue.bySource.subscriptions.byTier.basic.revenue, 4), safeToFixed(analytics.revenue.bySource.subscriptions.byTier.basic.revenue * solRate, 2), analytics.revenue.bySource.subscriptions.byTier.basic.count])
+    csvData.push(['Подписки - Premium', safeToFixed(analytics.revenue.bySource.subscriptions.byTier.premium.revenue, 4), safeToFixed(analytics.revenue.bySource.subscriptions.byTier.premium.revenue * solRate, 2), analytics.revenue.bySource.subscriptions.byTier.premium.count])
+    csvData.push(['Подписки - VIP', safeToFixed(analytics.revenue.bySource.subscriptions.byTier.vip.revenue, 4), safeToFixed(analytics.revenue.bySource.subscriptions.byTier.vip.revenue * solRate, 2), analytics.revenue.bySource.subscriptions.byTier.vip.count])
+    csvData.push(['Платные посты', safeToFixed(analytics.revenue.bySource.posts.total, 4), safeToFixed(analytics.revenue.bySource.posts.total * solRate, 2), analytics.revenue.bySource.posts.count])
+    csvData.push(['PPV сообщения', safeToFixed(analytics.revenue.bySource.messages.ppv.total, 4), safeToFixed(analytics.revenue.bySource.messages.ppv.total * solRate, 2), analytics.revenue.bySource.messages.ppv.count])
+    csvData.push(['Чаевые', safeToFixed(analytics.revenue.bySource.messages.tips.total, 4), safeToFixed(analytics.revenue.bySource.messages.tips.total * solRate, 2), analytics.revenue.bySource.messages.tips.count])
     
     csvData.push([])
     csvData.push(['Все подписчики'])
@@ -195,11 +195,11 @@ export default function RevenueChart({}: RevenueChartProps) {
     analytics.allSubscribers.forEach(item => {
       csvData.push([
         item.user.fullName || item.user.nickname || 'Anonymous',
-        item.totalSpent.toFixed(4),
-        item.breakdown.subscriptions.toFixed(4),
-        item.breakdown.posts.toFixed(4),
-        item.breakdown.messages.toFixed(4),
-        item.breakdown.tips.toFixed(4),
+        safeToFixed(item.totalSpent, 4),
+        safeToFixed(item.breakdown.subscriptions, 4),
+        safeToFixed(item.breakdown.posts, 4),
+        safeToFixed(item.breakdown.messages, 4),
+        safeToFixed(item.breakdown.tips, 4),
         item.transactions
       ])
     })
@@ -280,7 +280,7 @@ export default function RevenueChart({}: RevenueChartProps) {
         callbacks: {
           label: (context: any) => {
             const value = context.parsed.y
-            return `${value.toFixed(4)} SOL (≈ $${(value * solRate).toFixed(2)} USD)`
+            return `${safeToFixed(value, 4)} SOL (≈ $${safeToFixed(value * solRate, 2)} USD)`
           }
         }
       }
@@ -403,8 +403,8 @@ export default function RevenueChart({}: RevenueChartProps) {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-purple-100 text-sm">Текущий период</p>
-                <p className="text-2xl font-bold">{analytics.revenue.current.toFixed(4)} SOL</p>
-                <p className="text-purple-200 text-xs">≈ ${(analytics.revenue.current * solRate).toFixed(2)} USD</p>
+                <p className="text-2xl font-bold">{safeToFixed(analytics.revenue.current, 4)} SOL</p>
+                <p className="text-purple-200 text-xs">≈ ${safeToFixed(analytics.revenue.current * solRate, 2)} USD</p>
               </div>
               <CurrencyDollarIcon className="w-8 h-8 text-purple-200" />
             </div>
@@ -412,12 +412,12 @@ export default function RevenueChart({}: RevenueChartProps) {
               {analytics.revenue.growth > 0 ? (
                 <>
                   <ArrowUpIcon className="w-4 h-4 text-green-300 mr-1" />
-                  <span className="text-green-300 text-sm font-medium">+{analytics.revenue.growth.toFixed(1)}%</span>
+                  <span className="text-green-300 text-sm font-medium">+{safeToFixed(analytics.revenue.growth, 1)}%</span>
                 </>
               ) : analytics.revenue.growth < 0 ? (
                 <>
                   <ArrowDownIcon className="w-4 h-4 text-red-300 mr-1" />
-                  <span className="text-red-300 text-sm font-medium">{analytics.revenue.growth.toFixed(1)}%</span>
+                  <span className="text-red-300 text-sm font-medium">{safeToFixed(analytics.revenue.growth, 1)}%</span>
                 </>
               ) : (
                 <span className="text-purple-200 text-sm">0%</span>
@@ -440,7 +440,7 @@ export default function RevenueChart({}: RevenueChartProps) {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-emerald-100 text-sm">Вовлеченность</p>
-                <p className="text-2xl font-bold">{analytics.engagement.engagementRate.toFixed(1)}%</p>
+                <p className="text-2xl font-bold">{safeToFixed(analytics.engagement.engagementRate, 1)}%</p>
                 <p className="text-emerald-200 text-xs">{analytics.engagement.totalViews} просмотров</p>
               </div>
               <ChartBarIcon className="w-8 h-8 text-emerald-200" />
@@ -473,7 +473,7 @@ export default function RevenueChart({}: RevenueChartProps) {
                     callbacks: {
                       label: (context: any) => {
                         const value = context.parsed
-                        return `${context.label}: ${value.toFixed(4)} SOL`
+                        return `${context.label}: ${safeToFixed(value, 4)} SOL`
                       }
                     }
                   }
@@ -489,28 +489,28 @@ export default function RevenueChart({}: RevenueChartProps) {
                 <UsersIcon className="w-4 h-4 text-blue-500" />
                 <span className="text-sm font-medium">Подписки</span>
               </div>
-              <span className="text-sm font-bold">{analytics.revenue.bySource.subscriptions.total.toFixed(4)} SOL</span>
+              <span className="text-sm font-bold">{safeToFixed(analytics.revenue.bySource.subscriptions.total, 4)} SOL</span>
             </div>
             <div className="flex items-center justify-between p-2 bg-gray-50 dark:bg-slate-700/50 rounded-lg">
               <div className="flex items-center gap-2">
                 <DocumentTextIcon className="w-4 h-4 text-purple-500" />
                 <span className="text-sm font-medium">Платные посты</span>
               </div>
-              <span className="text-sm font-bold">{analytics.revenue.bySource.posts.total.toFixed(4)} SOL</span>
+              <span className="text-sm font-bold">{safeToFixed(analytics.revenue.bySource.posts.total, 4)} SOL</span>
             </div>
             <div className="flex items-center justify-between p-2 bg-gray-50 dark:bg-slate-700/50 rounded-lg">
               <div className="flex items-center gap-2">
                 <ChatBubbleLeftEllipsisIcon className="w-4 h-4 text-yellow-500" />
                 <span className="text-sm font-medium">PPV сообщения</span>
               </div>
-              <span className="text-sm font-bold">{analytics.revenue.bySource.messages.ppv.total.toFixed(4)} SOL</span>
+              <span className="text-sm font-bold">{safeToFixed(analytics.revenue.bySource.messages.ppv.total, 4)} SOL</span>
             </div>
             <div className="flex items-center justify-between p-2 bg-gray-50 dark:bg-slate-700/50 rounded-lg">
               <div className="flex items-center gap-2">
                 <GiftIcon className="w-4 h-4 text-emerald-500" />
                 <span className="text-sm font-medium">Чаевые</span>
               </div>
-              <span className="text-sm font-bold">{analytics.revenue.bySource.messages.tips.total.toFixed(4)} SOL</span>
+              <span className="text-sm font-bold">{safeToFixed(analytics.revenue.bySource.messages.tips.total, 4)} SOL</span>
             </div>
           </div>
         </div>
@@ -534,9 +534,9 @@ export default function RevenueChart({}: RevenueChartProps) {
                         const value = context.parsed.y
                         const label = context.dataset.label
                         if (label === 'Доход') {
-                          return `${label}: ${value.toFixed(4)} SOL`
+                          return `${label}: ${safeToFixed(value, 4)} SOL`
                         } else {
-                          return `${label}: ${(value * 100).toFixed(1)}%`
+                          return `${label}: ${safeToFixed(value * 100, 1)}%`
                         }
                       }
                     }
@@ -560,7 +560,7 @@ export default function RevenueChart({}: RevenueChartProps) {
                 <div key={tier} className="flex items-center justify-between p-2 bg-gray-50 dark:bg-slate-700/50 rounded-lg">
                   <span className="text-sm font-medium capitalize">{tier}</span>
                   <div className="flex items-center gap-4 text-xs">
-                    <span>{tierData.revenue.toFixed(4)} SOL</span>
+                    <span>{safeToFixed(tierData.revenue, 4)} SOL</span>
                     <span className="text-gray-500 dark:text-slate-500">{tierData.count} подписок</span>
                   </div>
                 </div>
@@ -583,7 +583,7 @@ export default function RevenueChart({}: RevenueChartProps) {
                   <div className="flex-1">
                     <p className="text-sm font-medium text-gray-900 dark:text-white truncate">{item.post.title}</p>
                     <p className="text-xs text-gray-500 dark:text-slate-500">
-                      {item.revenue.toFixed(4)} SOL • {item.purchases} покупок
+                      {safeToFixed(item.revenue, 4)} SOL • {item.purchases} покупок
                     </p>
                   </div>
                 </div>
@@ -607,7 +607,7 @@ export default function RevenueChart({}: RevenueChartProps) {
                       {item.user.fullName || item.user.nickname || 'Anonymous'}
                     </p>
                     <p className="text-xs text-gray-500 dark:text-slate-500">
-                      {item.totalSpent.toFixed(4)} SOL • {item.transactions} транзакций
+                      {safeToFixed(item.totalSpent, 4)} SOL • {item.transactions} транзакций
                     </p>
                   </div>
                 </div>
@@ -711,23 +711,23 @@ export default function RevenueChart({}: RevenueChartProps) {
                     </td>
                     <td className="py-3 text-right">
                       <p className="text-sm font-bold text-gray-900 dark:text-white">
-                        {item.totalSpent.toFixed(4)}
+                        {safeToFixed(item.totalSpent, 4)}
                       </p>
                       <p className="text-xs text-gray-500 dark:text-slate-500">
-                        ≈ ${(item.totalSpent * solRate).toFixed(2)}
+                        ≈ ${safeToFixed(item.totalSpent * solRate, 2)}
                       </p>
                     </td>
                     <td className="py-3 text-right text-sm text-gray-600 dark:text-slate-400">
-                      {item.breakdown.subscriptions > 0 ? item.breakdown.subscriptions.toFixed(4) : '-'}
+                      {item.breakdown.subscriptions > 0 ? safeToFixed(item.breakdown.subscriptions, 4) : '-'}
                     </td>
                     <td className="py-3 text-right text-sm text-gray-600 dark:text-slate-400">
-                      {item.breakdown.posts > 0 ? item.breakdown.posts.toFixed(4) : '-'}
+                      {item.breakdown.posts > 0 ? safeToFixed(item.breakdown.posts, 4) : '-'}
                     </td>
                     <td className="py-3 text-right text-sm text-gray-600 dark:text-slate-400">
-                      {item.breakdown.messages > 0 ? item.breakdown.messages.toFixed(4) : '-'}
+                      {item.breakdown.messages > 0 ? safeToFixed(item.breakdown.messages, 4) : '-'}
                     </td>
                     <td className="py-3 text-right text-sm text-gray-600 dark:text-slate-400">
-                      {item.breakdown.tips > 0 ? item.breakdown.tips.toFixed(4) : '-'}
+                      {item.breakdown.tips > 0 ? safeToFixed(item.breakdown.tips, 4) : '-'}
                     </td>
                     <td className="py-3 text-right">
                       {item.lastActivity && (
