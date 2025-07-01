@@ -68,10 +68,7 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <head>
-        {/* Force refresh script for version management */}
-        <script src="/force-refresh.js?v=1751403435000" />
-        {/* Force Service Worker update */}
-        <script src="/force-update-sw.js?v=1751398579000" />
+        {/* УДАЛЕНЫ СКРИПТЫ ОБНОВЛЕНИЯ - ОСТАНОВКА БЕСКОНЕЧНОГО ЛУПА */}
         {referrer && (
           <meta name="x-fonana-referrer" content={referrer} />
         )}
