@@ -216,21 +216,21 @@ const TIER_HIERARCHY = {
 - **НЕ корректировать план автоматически** по цене
 
 ## 🎨 UI Kit Components (FINALIZED)
-- **Core**: `components/ui/` - централизованная библиотека
-- **Status**: ✅ ПОЛНОСТЬЮ ЗАВЕРШЕНО - UI Kit + Mobile-First
-- **Components**: Button, Input, Modal, Card, FloatingActionButton, BottomSheet
-- **PostCard System**: Модульная архитектура в `components/posts/core/`
+- **Core**: `components/ui/` и `components/posts/core/PostCard` — централизованная библиотека
+- **Status**: ✅ ПОЛНОСТЬЮ ЗАВЕРШЕНО — UI Kit + Mobile-First + ЕДИНЫЙ PostCard
+- **Components**: Button, Input, Modal, Card, FloatingActionButton, BottomSheet, **PostCard**
+- **PostCard**: Используется во всех разделах (фид, профиль, поиск, дашборд, черновики). Нет локальных вариаций типа `ProfilePostCard`, `MyPostCard`, `SearchPostCard` и т.п. Меню управления (⋯) всегда отображается для своих постов, стиль карточки стандартизирован.
 - **Mobile-First**: Edge-to-edge дизайн, touch-оптимизированные элементы
 
 ### Usage
 ```typescript
-import { Button, Modal, FloatingActionButton, BottomSheet } from '@/components/ui'
-import { PostMenu } from '@/components/posts/core/PostMenu'
+import { PostCard } from '@/components/posts/core/PostCard'
 
-<FloatingActionButton
-  onClick={() => setShowCreateModal(true)}
-  label="Create Post"
-  hideOnScroll={true}
+<PostCard
+  post={post}
+  variant="full" // или compact, minimal
+  showCreator={true}
+  onAction={handlePostAction}
 />
 ```
 
