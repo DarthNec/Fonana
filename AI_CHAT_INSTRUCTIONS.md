@@ -1014,6 +1014,30 @@ grep -r "websocket-server/src" app/api/
 - Использовать `lib/services/websocket-client.ts` для WebSocket событий
 - WebSocket сервер должен быть отдельным процессом
 
+### 12. TypeError: Cannot read properties of undefined (reading 'toFixed')
+**Problem**: Ошибка при покупке постов после UI/UX рефакторинга
+- **Symptoms**:
+  - Крах приложения при попытке купить некоторые посты
+  - Ошибка в консоли: `TypeError: Cannot read properties of undefined (reading 'toFixed')`
+  - Покупка невозможна для постов без цены
+- **Cause**: Использование toFixed без проверки на undefined
+
+**Solution**:
+```typescript
+// ❌ Неправильно
+{price.toFixed(2)}
+
+// ✅ Правильно
+{(price || 0).toFixed(2)}
+{(price ?? 0).toFixed(2)}
+{price ? price.toFixed(2) : '0.00'}
+```
+
+**Prevention**:
+- Всегда проверять числовые значения перед вызовом toFixed
+- Использовать централизованные функции форматирования
+- Добавлять fallback значения для optional полей
+
 ## Diagnostic Scripts (Available)
 ```bash
 # General health check
@@ -1070,6 +1094,16 @@ node scripts/fix-thumbnails-migration.js
 ```
 
 ## Recent Updates & Fixes
+
+### Critical toFixed Bug Fix (June 30, 2025) 🐛 COMPLETED
+- **Problem**: `TypeError: Cannot read properties of undefined (reading 'toFixed')` при покупке постов
+- **Root Cause**: После UI/UX рефакторинга в PostLocked использовался toFixed без проверки на undefined
+- **Solution**:
+  - Добавлена защита `(finalPrice || 0).toFixed(2)` в PostLocked
+  - Исправлена функция getActionButtonText в postHelpers
+  - Добавлены fallback значения для currency
+- **Result**: ✅ Покупка постов работает корректно, ошибки toFixed устранены
+- **Docs**: PAID_POSTS_TOFIXED_BUG_ANALYSIS.md, PAID_POSTS_TOFIXED_BUG_FIX_REPORT.md
 
 ### Feed Optimization & UI/UX Refactoring (December 31, 2024) 🚀 COMPLETED
 - **Phase 1 - Feed Optimization**: ✅ COMPLETED
