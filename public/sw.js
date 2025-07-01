@@ -1,8 +1,8 @@
-// Service Worker для Fonana PWA v8
-// Auto-updated: 20250701-visible-changes
-const SW_VERSION = 'v8-20250701-visible';
-const CACHE_NAME = 'fonana-v8';
-const RUNTIME_CACHE = 'fonana-runtime-v8';
+// Service Worker для Fonana PWA v9
+// Auto-updated: 20250701-mobile-ux-fix
+const SW_VERSION = 'v9-20250701-mobile-ux';
+const CACHE_NAME = 'fonana-v9';
+const RUNTIME_CACHE = 'fonana-runtime-v9';
 
 // Ресурсы для предварительного кеширования
 const urlsToCache = [
@@ -240,7 +240,7 @@ self.addEventListener('fetch', event => {
 // Обработка сообщений от клиента
 self.addEventListener('message', event => {
   if (event.data && event.data.type === 'SKIP_WAITING') {
-    console.log('[SW] Received SKIP_WAITING');
+    console.log('[SW] Received SKIP_WAITING, activating new service worker');
     self.skipWaiting();
   }
   

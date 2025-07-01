@@ -21,8 +21,9 @@ export async function GET(req: Request) {
     const page = searchParams.get('page') ? parseInt(searchParams.get('page')!) : 1
     const limit = searchParams.get('limit') ? parseInt(searchParams.get('limit')!) : 20
     const category = searchParams.get('category')
+    const sortBy = searchParams.get('sortBy') || 'latest'
 
-    console.log('[API/posts] Request params:', { userWallet, creatorId, page, limit, category })
+    console.log('[API/posts] Request params:', { userWallet, creatorId, page, limit, category, sortBy })
 
     // Построение условий фильтрации
     let where: any = {}
@@ -39,6 +40,29 @@ export async function GET(req: Request) {
 
     // Подсчет общего количества постов
     const totalCount = await prisma.post.count({ where })
+
+    // Определяем сортировку на основе sortBy
+    let orderBy: any[] = []
+    switch (sortBy) {
+      case 'popular':
+        orderBy = [
+          { likesCount: 'desc' },
+          { commentsCount: 'desc' },
+          { createdAt: 'desc' }
+        ]
+        break
+      case 'trending':
+        orderBy = [
+          { viewsCount: 'desc' },
+          { likesCount: 'desc' },
+          { createdAt: 'desc' }
+        ]
+        break
+      case 'latest':
+      default:
+        orderBy = [{ createdAt: 'desc' }]
+        break
+    }
 
     const posts = await prisma.post.findMany({
       where,
@@ -94,9 +118,7 @@ export async function GET(req: Request) {
           }
         }
       },
-      orderBy: {
-        createdAt: 'desc',
-      },
+      orderBy,
       skip: (page - 1) * limit,
       take: limit,
     })

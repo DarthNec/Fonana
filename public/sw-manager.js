@@ -3,6 +3,8 @@ class ServiceWorkerManager {
   constructor() {
     this.registration = null;
     this.updateAvailable = false;
+    this.updatePromptShown = false; // Флаг для отслеживания показанных уведомлений
+    this.refreshing = false; // Флаг для предотвращения множественных перезагрузок
   }
 
   async init() {
@@ -53,17 +55,17 @@ class ServiceWorkerManager {
         this.handleUpdateFound();
       });
 
-      // Проверяем состояние
+      // Проверяем состояние - НЕ показываем уведомление сразу
       if (this.registration.waiting) {
-        this.promptUpdate();
+        console.log('[SW Manager] Found waiting service worker, but not prompting immediately');
+        // Уведомление будет показано только при statechange
       }
 
-      // Обработка обновлений
-      let refreshing = false;
+      // Обработка обновлений с правильной логикой
       navigator.serviceWorker.addEventListener('controllerchange', () => {
-        if (!refreshing) {
+        if (!this.refreshing) {
           console.log('[SW Manager] New service worker activated, reloading page...');
-          refreshing = true;
+          this.refreshing = true;
           window.location.reload();
         }
       });
@@ -118,27 +120,67 @@ class ServiceWorkerManager {
     console.log('[SW Manager] New Service Worker found');
 
     newWorker.addEventListener('statechange', () => {
+      console.log('[SW Manager] Service Worker state changed to:', newWorker.state);
+      
       if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
         this.updateAvailable = true;
-        this.promptUpdate();
+        // Показываем уведомление только если еще не показывали
+        if (!this.updatePromptShown) {
+          this.promptUpdate();
+        }
       }
     });
   }
 
   promptUpdate() {
-    console.log('[SW Manager] Update available');
+    // Проверяем, не показывали ли уже уведомление
+    if (this.updatePromptShown) {
+      console.log('[SW Manager] Update prompt already shown, skipping');
+      return;
+    }
+
+    // Проверяем, есть ли waiting service worker
+    if (!this.registration || !this.registration.waiting) {
+      console.log('[SW Manager] No waiting service worker, skipping prompt');
+      return;
+    }
+
+    console.log('[SW Manager] Update available, showing prompt');
+    this.updatePromptShown = true; // Устанавливаем флаг ДО показа уведомления
     
     // Показываем уведомление пользователю
     if (confirm('Доступно обновление сайта. Обновить сейчас?')) {
       this.skipWaiting();
+    } else {
+      // Если пользователь отказался, сбрасываем флаг через некоторое время
+      // чтобы можно было показать уведомление позже
+      setTimeout(() => {
+        this.updatePromptShown = false;
+        console.log('[SW Manager] Update prompt flag reset');
+      }, 60000); // 1 минута
     }
   }
 
   skipWaiting() {
-    if (!this.registration || !this.registration.waiting) return;
+    if (!this.registration || !this.registration.waiting) {
+      console.log('[SW Manager] No waiting service worker to skip');
+      return;
+    }
 
+    console.log('[SW Manager] Sending SKIP_WAITING message');
+    
     // Отправляем сообщение Service Worker
     this.registration.waiting.postMessage({ type: 'SKIP_WAITING' });
+    
+    // Слушаем изменение состояния waiting service worker
+    this.registration.waiting.addEventListener('statechange', (event) => {
+      console.log('[SW Manager] Waiting SW state changed to:', event.target.state);
+      
+      if (event.target.state === 'activated') {
+        console.log('[SW Manager] Waiting SW activated, page will reload');
+        // Страница перезагрузится автоматически через controllerchange
+      }
+    });
   }
 
   async clearCache() {

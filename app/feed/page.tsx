@@ -48,7 +48,7 @@ const sortOptions = [
 export default function RevampedFeedPage() {
   const { user, isLoading: userLoading } = useUserContext()
   const [selectedCategory, setSelectedCategory] = useState('All')
-  const [sortBy, setSortBy] = useState('latest')
+  const [sortBy, setSortBy] = useState<'latest' | 'popular' | 'trending' | 'subscribed'>('latest')
   const categoryScrollRef = useRef<HTMLDivElement>(null)
   
   // Модалки
@@ -73,6 +73,7 @@ export default function RevampedFeedPage() {
   } = useOptimizedPosts({
     category: selectedCategory === 'All' ? undefined : selectedCategory,
     variant: 'feed',
+    sortBy: sortBy,
     pageSize: 20
   })
 
@@ -103,28 +104,10 @@ export default function RevampedFeedPage() {
     refresh(true)
   }, [selectedCategory, sortBy])
 
-  // Фильтрация и сортировка
+  // Посты уже отсортированы на сервере в зависимости от sortBy
   const filteredAndSortedPosts = useMemo(() => {
-    let filtered = [...realtimePosts]
-
-    // Сортировка
-    switch (sortBy) {
-      case 'popular':
-        filtered.sort((a, b) => (b.engagement.likes + b.engagement.comments) - (a.engagement.likes + a.engagement.comments))
-        break
-      case 'trending':
-        // Trending = likes + comments в последние 24 часа
-        const dayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000)
-        filtered = filtered.filter(post => new Date(post.createdAt) > dayAgo)
-        filtered.sort((a, b) => (b.engagement.likes + b.engagement.comments) - (a.engagement.likes + a.engagement.comments))
-        break
-      default:
-        // latest - уже отсортировано по дате
-        break
-    }
-
-    return filtered
-  }, [realtimePosts, sortBy])
+    return [...realtimePosts]
+  }, [realtimePosts])
 
   // Обработка действий с постами
   const handlePostAction = useCallback((action: PostAction) => {
@@ -269,7 +252,7 @@ export default function RevampedFeedPage() {
             {sortOptions.map((option) => (
               <button
                 key={option.value}
-                onClick={() => setSortBy(option.value as any)}
+                onClick={() => setSortBy(option.value as 'latest' | 'popular' | 'trending' | 'subscribed')}
                 className={`
                   flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-all whitespace-nowrap
                   ${sortBy === option.value

@@ -174,7 +174,7 @@ export default function UserSubscriptions() {
             return (
               <div
                 key={subscription.id}
-                className="bg-gray-50 dark:bg-slate-700/30 rounded-xl sm:rounded-2xl p-4 sm:p-6 hover:bg-gray-100 dark:hover:bg-slate-700/50 transition-all duration-300"
+                className="bg-gray-50 dark:bg-slate-700/30 rounded-xl sm:rounded-2xl p-3 sm:p-6 hover:bg-gray-100 dark:hover:bg-slate-700/50 transition-all duration-300"
               >
                 <div className="flex items-start gap-3 sm:gap-4">
                   {/* Avatar */}

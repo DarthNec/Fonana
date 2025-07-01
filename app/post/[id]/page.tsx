@@ -382,7 +382,7 @@ export default function PostPage() {
               </span>
             </h2>
 
-            <div className="bg-slate-700/30 backdrop-blur-sm border border-slate-600/50 rounded-2xl p-4 sm:p-6 mb-6 sm:mb-8">
+            <div className="bg-slate-700/30 backdrop-blur-sm border border-slate-600/50 rounded-2xl p-3 sm:p-6 mb-6 sm:mb-8">
               <div className="flex gap-3 sm:gap-4 items-start">
                 <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl sm:rounded-2xl overflow-hidden flex-shrink-0">
                   {user ? (
