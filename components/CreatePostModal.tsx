@@ -177,7 +177,14 @@ export default function CreatePostModal({ onPostCreated, onClose }: CreatePostMo
           return
         }
 
-        console.log('[CreatePostModal] Image loaded successfully, opening crop modal')
+        // КРИТИЧЕСКИЙ ФИКС: логируем только размер файла, не base64 содержимое
+        console.log('[CreatePostModal] Image loaded successfully:', {
+          fileName: file.name,
+          fileSize: file.size,
+          base64Length: result.length,
+          openingCrop: true
+        })
+        
         setOriginalImage(result)
         setFormData(prev => ({
           ...prev,
@@ -213,7 +220,13 @@ export default function CreatePostModal({ onPostCreated, onClose }: CreatePostMo
   const handleCropComplete = async (croppedImage: string, aspectRatio?: number) => {
     // Convert cropped image URL to File
     try {
-      console.log('[CreatePostModal] Processing cropped image:', croppedImage)
+      // КРИТИЧЕСКИЙ ФИКС: логируем только метаданные, не blob URL
+      console.log('[CreatePostModal] Processing cropped image:', {
+        hasImage: !!croppedImage,
+        isBlob: croppedImage?.startsWith('blob:'),
+        aspectRatio,
+        originalFileName: formData.file?.name
+      })
       
       if (!croppedImage || !croppedImage.startsWith('blob:')) {
         throw new Error('Invalid cropped image URL')
@@ -229,7 +242,11 @@ export default function CreatePostModal({ onPostCreated, onClose }: CreatePostMo
         throw new Error('Empty image blob received')
       }
 
-      console.log('[CreatePostModal] Cropped image blob size:', blob.size)
+      console.log('[CreatePostModal] Cropped image processed:', {
+        blobSize: blob.size,
+        blobType: blob.type,
+        originalSize: formData.file?.size
+      })
 
       const croppedFile = new File([blob], formData.file?.name || 'cropped-image.jpg', {
         type: 'image/jpeg'

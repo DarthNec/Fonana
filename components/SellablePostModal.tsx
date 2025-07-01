@@ -161,16 +161,35 @@ export default function SellablePostModal({ isOpen, onClose, post }: SellablePos
 
       // КРИТИЧЕСКАЯ ВАЛИДАЦИЯ: проверяем сумму перед передачей в платежные функции
       const cleanAmount = Number(currentPrice)
+      
+      console.log('[SellablePostModal] Payment validation check:', {
+        currentPrice,
+        cleanAmount,
+        isFinite: Number.isFinite(cleanAmount),
+        isNaN: isNaN(cleanAmount),
+        postPriceRaw: post.price,
+        postTitle: post.title
+      })
+      
       if (!Number.isFinite(cleanAmount) || isNaN(cleanAmount) || cleanAmount <= 0) {
-        console.error('[SellablePostModal] Invalid payment amount:', {
+        console.error('[SellablePostModal] CRITICAL: Invalid payment amount detected:', {
           currentPrice,
           cleanAmount,
-          post: post,
+          type: typeof currentPrice,
+          postId: post.id,
           postPrice: post.price,
           auctionCurrentBid: post.auctionCurrentBid,
-          auctionStartPrice: post.auctionStartPrice
+          auctionStartPrice: post.auctionStartPrice,
+          getPrice: getPrice()
         })
-        toast.error("Ошибка: сумма оплаты некорректна")
+        toast.error("Ошибка: сумма оплаты некорректна. Попробуйте перезагрузить страницу.")
+        return
+      }
+      
+      // Дополнительная проверка минимальной суммы
+      if (cleanAmount < 0.001) {
+        console.error('[SellablePostModal] Amount too small:', cleanAmount)
+        toast.error("Минимальная сумма: 0.001 SOL")
         return
       }
 
