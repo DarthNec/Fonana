@@ -30,7 +30,7 @@ const categories = [
 
 interface CreatePostModalProps {
   onPostCreated?: () => void
-  onPostUpdated?: () => void
+  onPostUpdated?: (updatedPost?: any) => void
   onClose?: () => void
   mode?: 'create' | 'edit'
   postId?: string
@@ -652,7 +652,8 @@ export default function CreatePostModal({ onPostCreated, onPostUpdated, onClose,
       // Close modal and update
       if (onClose) onClose()
       if (mode === 'edit' && onPostUpdated) {
-        setTimeout(onPostUpdated, 500)
+        // Передаем обновленный пост в callback
+        setTimeout(() => onPostUpdated(post), 500)
       } else if (mode === 'create' && onPostCreated) {
         setTimeout(onPostCreated, 500)
       }

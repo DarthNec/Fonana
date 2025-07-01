@@ -107,10 +107,21 @@ function MyPostsSection() {
     setIsEditModalOpen(true)
   }
 
-  const handlePostUpdated = () => {
+  const handlePostUpdated = (updatedPost?: any) => {
     setIsEditModalOpen(false)
     setSelectedPost(null)
-    fetchUserPosts()
+    
+    // Если получили обновленный пост, обновляем его в списке
+    if (updatedPost) {
+      setPosts(prevPosts => 
+        prevPosts.map(post => 
+          post.id === updatedPost.id ? updatedPost : post
+        )
+      )
+    } else {
+      // Иначе перезагружаем все посты
+      fetchUserPosts()
+    }
   }
 
   if (loading) {
@@ -231,25 +242,8 @@ export default function ProfilePage() {
   const { theme: currentTheme, setTheme } = useTheme()
   const [activeTab, setActiveTab] = useState<'profile' | 'creator' | 'subscriptions' | 'posts'>('profile')
   const [showCreateModal, setShowCreateModal] = useState(false)
-
-  // Проверка для неавторизованных пользователей
-  if (!user || !user.wallet) {
-    return (
-      <div className="min-h-screen bg-gray-50 dark:bg-slate-900 pt-24 flex items-center justify-center">
-        <div className="text-center max-w-md mx-auto px-4">
-          <WalletIcon className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-          <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">
-            Connect Your Wallet
-          </h2>
-          <p className="text-gray-600 dark:text-slate-400 mb-6">
-            Please connect your wallet to access your profile
-          </p>
-          <MobileWalletConnect className="w-full" />
-        </div>
-      </div>
-    )
-  }
   
+  // ВСЕ ХУКИ ДОЛЖНЫ БЫТЬ ВЫЗВАНЫ ДО УСЛОВНЫХ RETURN
   const [formData, setFormData] = useState<UserProfile>({
     id: user?.id || '',
     name: user?.fullName || '',
@@ -291,6 +285,24 @@ export default function ProfilePage() {
     totalEarned: 0,
     memberSince: new Date()
   })
+
+  // Проверка для неавторизованных пользователей - ПОСЛЕ всех хуков
+  if (!user || !user.wallet) {
+    return (
+      <div className="min-h-screen bg-gray-50 dark:bg-slate-900 pt-24 flex items-center justify-center">
+        <div className="text-center max-w-md mx-auto px-4">
+          <WalletIcon className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+          <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">
+            Connect Your Wallet
+          </h2>
+          <p className="text-gray-600 dark:text-slate-400 mb-6">
+            Please connect your wallet to access your profile
+          </p>
+          <MobileWalletConnect className="w-full" />
+        </div>
+      </div>
+    )
+  }
 
   useEffect(() => {
     if (user) {
