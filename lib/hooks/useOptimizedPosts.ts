@@ -131,8 +131,28 @@ export function useOptimizedPosts(options: UseOptimizedPostsOptions = {}): UseOp
       const rawPosts = data.posts || []
       const totalCount = data.totalCount || 0
 
+      // КРИТИЧЕСКИЙ ФИКС: добавляем логирование для отладки
+      console.log('[useOptimizedPosts] Raw posts sample:', rawPosts.slice(0, 2).map((p: any) => ({
+        id: p.id,
+        title: p.title,
+        price: p.price,
+        access: p.access,
+        commerce: p.commerce,
+        isPremium: p.isPremium,
+        minSubscriptionTier: p.minSubscriptionTier,
+        isSellable: p.isSellable
+      })))
+
       // Нормализация постов
       const normalizedPosts = PostNormalizer.normalizeMany(rawPosts)
+      
+      // КРИТИЧЕСКИЙ ФИКС: логируем результат нормализации
+      console.log('[useOptimizedPosts] Normalized posts sample:', normalizedPosts.slice(0, 2).map((p: UnifiedPost) => ({
+        id: p.id,
+        title: p.content?.title,
+        access: p.access,
+        commerce: p.commerce
+      })))
       
       if (append) {
         // Добавляем к существующим, исключая дубликаты

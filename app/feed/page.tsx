@@ -144,62 +144,26 @@ export default function RevampedFeedPage() {
         setShowEditModal(true)
         break
       case 'bid':
-        // КРИТИЧЕСКИЙ ФИКС: многоуровневая валидация цены для SellablePostModal
+        // КРИТИЧЕСКИЙ ФИКС: после нормализации цена ВСЕГДА в access.price
+        const normalizedPrice = post.access?.price
         
-        // Попытка 1: Цена из access
-        let finalPrice: number | null = null
-        const accessPrice = post.access?.price
-        
-        if (accessPrice !== undefined && accessPrice !== null) {
-          const accessPriceNum = Number(accessPrice)
-          if (Number.isFinite(accessPriceNum) && accessPriceNum > 0) {
-            finalPrice = accessPriceNum
-          }
-        }
-        
-        // Попытка 2: Для продаваемых постов с фиксированной ценой
-        if (finalPrice === null && post.commerce?.isSellable && post.commerce?.sellType === 'FIXED_PRICE') {
-          // Для продаваемых постов цена может быть в access.price
-          console.log('[Feed] Checking fixed price sellable post')
-          if (accessPrice !== undefined && accessPrice !== null) {
-            const priceNum = Number(accessPrice)
-            if (Number.isFinite(priceNum) && priceNum > 0) {
-              finalPrice = priceNum
-            }
-          }
-        }
-        
-        // Попытка 3: Цена аукциона
-        if (finalPrice === null && post.commerce?.sellType === 'AUCTION') {
-          const auctionPrice = post.commerce.auctionData?.currentBid || post.commerce.auctionData?.startPrice
-          if (auctionPrice !== undefined && auctionPrice !== null) {
-            const auctionPriceNum = Number(auctionPrice)
-            if (Number.isFinite(auctionPriceNum) && auctionPriceNum > 0) {
-              finalPrice = auctionPriceNum
-            }
-          }
-        }
-        
-        // Финальная проверка - цена должна быть найдена
-        if (finalPrice === null || finalPrice <= 0) {
+        // Валидация цены
+        if (normalizedPrice === undefined || normalizedPrice === null || normalizedPrice <= 0) {
           console.error('[Feed] No valid price found for sellable post:', {
             postId: post.id,
             postTitle: post.content?.title,
             accessPrice: post.access?.price,
-            commerceIsSellable: post.commerce?.isSellable,
-            auctionCurrentBid: post.commerce?.auctionData?.currentBid,
-            auctionStartPrice: post.commerce?.auctionData?.startPrice,
-            sellType: post.commerce?.sellType
+            commerce: post.commerce
           })
-          toast.error('Ошибка: цена поста не найдена или некорректна')
+          toast.error('Ошибка: цена поста не найдена')
           return
         }
         
         const sellablePost = {
           id: post.id,
           title: post.content.title,
-          price: finalPrice, // Используем валидированную цену
-          currency: post.access?.currency || 'SOL',  // Валюта только из access
+          price: normalizedPrice, // Используем нормализованную цену
+          currency: post.access?.currency || 'SOL',
           sellType: post.commerce?.sellType,
           quantity: post.commerce?.quantity || 1,
           auctionStartPrice: post.commerce?.auctionData?.startPrice,
@@ -214,15 +178,7 @@ export default function RevampedFeedPage() {
           }
         }
         
-        // КРИТИЧЕСКИЙ ФИКС: безопасное логирование без base64 изображений
-        console.log('[Feed] Mapped sellable post:', {
-          id: sellablePost.id,
-          title: sellablePost.title,
-          price: sellablePost.price,
-          currency: sellablePost.currency,
-          sellType: sellablePost.sellType,
-          creator: sellablePost.creator.username
-        })
+        console.log('[Feed] Opening sellable modal with price:', normalizedPrice)
         
         setSelectedPost(sellablePost)
         setShowSellableModal(true)
