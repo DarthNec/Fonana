@@ -30,13 +30,12 @@ import SubscriptionTiersSettings from '@/components/SubscriptionTiersSettings'
 import UserSubscriptions from '@/components/UserSubscriptions'
 import Avatar from '@/components/Avatar'
 import { PostsContainer } from '@/components/posts/layouts/PostsContainer'
-import EditPostModal from '@/components/EditPostModal'
+import CreatePostModal from '@/components/CreatePostModal'
 import toast from 'react-hot-toast'
 import { useTheme } from '@/lib/contexts/ThemeContext'
 import { isValidNickname, isReservedNickname } from '@/lib/utils/links'
 import { LinkIcon, CheckCircleIcon, XCircleIcon } from '@heroicons/react/24/outline'
 import Link from 'next/link'
-import CreatePostModal from '@/components/CreatePostModal'
 import FloatingActionButton from '@/components/ui/FloatingActionButton'
 import { MobileWalletConnect } from '@/components/MobileWalletConnect'
 
@@ -203,10 +202,10 @@ function MyPostsSection() {
 
       {/* Edit Post Modal */}
       {isEditModalOpen && selectedPost && (
-        <EditPostModal
-          isOpen={isEditModalOpen}
+        <CreatePostModal
+          mode="edit"
+          postId={selectedPost.id}
           onClose={() => setIsEditModalOpen(false)}
-          post={selectedPost}
           onPostUpdated={handlePostUpdated}
         />
       )}

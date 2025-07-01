@@ -9,7 +9,6 @@ import { UnifiedPost, PostAction } from '@/types/posts'
 import CreatePostModal from '@/components/CreatePostModal'
 import SubscribeModal from '@/components/SubscribeModal'
 import PurchaseModal from '@/components/PurchaseModal'
-import EditPostModal from '@/components/EditPostModal'
 import SellablePostModal from '@/components/SellablePostModal'
 import FloatingActionButton from '@/components/ui/FloatingActionButton'
 import { hasAccessToTier } from '@/lib/utils/access'
@@ -351,13 +350,13 @@ export default function RevampedFeedPage() {
       )}
 
       {showEditModal && selectedPost && (
-        <EditPostModal
-          isOpen={showEditModal}
+        <CreatePostModal
+          mode="edit"
+          postId={selectedPost.id}
           onClose={() => {
             setShowEditModal(false)
             setSelectedPost(null)
           }}
-          post={selectedPost}
           onPostUpdated={() => {
             setShowEditModal(false)
             setSelectedPost(null)

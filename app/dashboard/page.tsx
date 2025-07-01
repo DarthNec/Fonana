@@ -47,6 +47,7 @@ export default function DashboardPage() {
   const { publicKey } = useWallet()
   const { rate: solRate } = useSolRate()
   const [showCreateModal, setShowCreateModal] = useState(false)
+  const [editingPostId, setEditingPostId] = useState<string | null>(null)
   const [isLoadingStats, setIsLoadingStats] = useState(true)
   const [stats, setStats] = useState<DashboardStats>({
     totalViews: 0,
@@ -123,8 +124,9 @@ export default function DashboardPage() {
     // В дашборде мы можем обрабатывать специфичные действия
     switch (action.type) {
       case 'edit':
-        // Перенаправляем на страницу редактирования или открываем модалку
-        window.location.href = `/post/${action.postId}/edit`
+        // Открываем модалку редактирования
+        setEditingPostId(action.postId)
+        setShowCreateModal(true)
         break
       default:
         // Остальные действия обрабатываются хуком
@@ -379,8 +381,17 @@ export default function DashboardPage() {
       {/* Modals */}
       {showCreateModal && (
         <CreatePostModal
-          onClose={() => setShowCreateModal(false)}
+          mode={editingPostId ? 'edit' : 'create'}
+          postId={editingPostId || undefined}
+          onClose={() => {
+            setShowCreateModal(false)
+            setEditingPostId(null)
+          }}
           onPostCreated={handlePostCreated}
+          onPostUpdated={() => {
+            handlePostCreated()
+            setEditingPostId(null)
+          }}
         />
       )}
     </div>

@@ -8,7 +8,7 @@ import { PostsContainer } from '@/components/posts/layouts/PostsContainer'
 import { UnifiedPost, PostAction } from '@/types/posts'
 import SubscribeModal from '@/components/SubscribeModal'
 import PurchaseModal from '@/components/PurchaseModal'
-import EditPostModal from '@/components/EditPostModal'
+import CreatePostModal from '@/components/CreatePostModal'
 import SellablePostModal from '@/components/SellablePostModal'
 import { hasAccessToTier } from '@/lib/utils/access'
 import { 
@@ -419,14 +419,14 @@ export default function FeedPage() {
 
       {/* Edit Modal */}
       {showEditModal && editingPost && (
-        <EditPostModal
-          isOpen={showEditModal}
+        <CreatePostModal
+          mode="edit"
+          postId={editingPost.id}
           onClose={() => {
             console.log('[Feed] Closing edit modal')
             setShowEditModal(false)
             setEditingPost(null)
           }}
-          post={editingPost}
           onPostUpdated={() => {
             console.log('[Feed] Post updated, reloading posts')
             setShowEditModal(false)
