@@ -84,7 +84,7 @@ export function PostLocked({
       if (post.commerce?.isSellable) {
         onAction({ type: 'bid', postId: post.id })
       } else {
-        onAction({ type: 'purchase', postId: post.id })
+      onAction({ type: 'purchase', postId: post.id })
       }
     } else if (needsSub || needsUpgrade) {
       onAction({ type: 'subscribe', postId: post.id })
