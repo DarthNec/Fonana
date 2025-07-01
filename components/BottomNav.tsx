@@ -108,13 +108,6 @@ export default function BottomNav() {
       }
     },
     {
-      name: 'Messages',
-      href: '/messages',
-      icon: ChatBubbleLeftEllipsisIcon,
-      activeIcon: ChatBubbleLeftEllipsisSolidIcon,
-      badge: unreadMessages > 0 ? unreadMessages : null
-    },
-    {
       name: 'Profile',
       href: '/profile',
       icon: UserIcon,
@@ -135,7 +128,7 @@ export default function BottomNav() {
   return (
     <>
       <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl border-t border-gray-200/50 dark:border-slate-700/30 z-50 bottom-safe shadow-lg">
-        <div className="grid grid-cols-5 h-14">
+        <div className="grid grid-cols-4 h-14">
           {navItems.map((item) => {
             const isItemActive = isActive(item.href)
             const Icon = isItemActive ? item.activeIcon : item.icon
@@ -152,11 +145,6 @@ export default function BottomNav() {
                 >
                   <div className="relative">
                     <Icon className="w-6 h-6" />
-                    {item.badge && (
-                      <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs w-4 h-4 rounded-full flex items-center justify-center">
-                        {item.badge > 9 ? '9+' : item.badge}
-                      </span>
-                    )}
                   </div>
                   <span className="text-xs">{item.name}</span>
                 </button>
@@ -164,23 +152,27 @@ export default function BottomNav() {
             }
             
             return (
-              <Link
-                key={item.name}
-                href={item.href}
-                className={`flex flex-col items-center justify-center gap-0.5 relative ${
-                  isItemActive ? 'text-purple-600 dark:text-purple-400' : 'text-gray-600 dark:text-slate-400'
-                }`}
-              >
-                <div className="relative">
-                  <Icon className="w-6 h-6" />
-                  {item.badge && (
-                    <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs w-4 h-4 rounded-full flex items-center justify-center">
-                      {item.badge > 9 ? '9+' : item.badge}
-                    </span>
-                  )}
-                </div>
-                <span className="text-xs">{item.name}</span>
-              </Link>
+              <div key={item.name} className="relative">
+                <Link
+                  href={item.href}
+                  className={`flex flex-col items-center justify-center gap-0.5 relative ${
+                    isItemActive ? 'text-purple-600 dark:text-purple-400' : 'text-gray-600 dark:text-slate-400'
+                  }`}
+                >
+                  <div className="relative">
+                    <Icon className="w-6 h-6" />
+                  </div>
+                  <span className="text-xs">{item.name}</span>
+                </Link>
+                {/* Menu button overlay for Profile */}
+                {item.name === 'Profile' && (
+                  <button
+                    onClick={() => setIsMenuOpen(true)}
+                    className="absolute top-0 right-0 w-3 h-3 bg-purple-500 rounded-full opacity-60 hover:opacity-100 transition-opacity"
+                    title="Menu"
+                  />
+                )}
+              </div>
             )
           })}
         </div>
@@ -238,12 +230,35 @@ export default function BottomNav() {
               {/* Menu Items */}
               <div className="space-y-2">
                 <Link
+                  href="/messages"
+                  onClick={() => setIsMenuOpen(false)}
+                  className="flex items-center gap-4 p-4 hover:bg-gray-50 dark:hover:bg-slate-800/50 rounded-2xl transition-colors"
+                >
+                  <ChatBubbleLeftEllipsisIcon className="w-6 h-6 text-gray-600 dark:text-slate-400" />
+                  <span className="text-gray-900 dark:text-white font-medium">Messages</span>
+                  {unreadMessages > 0 && (
+                    <span className="ml-auto bg-red-500 text-white text-xs w-5 h-5 rounded-full flex items-center justify-center">
+                      {unreadMessages > 9 ? '9+' : unreadMessages}
+                    </span>
+                  )}
+                </Link>
+
+                <Link
                   href="/search"
                   onClick={() => setIsMenuOpen(false)}
                   className="flex items-center gap-4 p-4 hover:bg-gray-50 dark:hover:bg-slate-800/50 rounded-2xl transition-colors"
                 >
                   <MagnifyingGlassIcon className="w-6 h-6 text-gray-600 dark:text-slate-400" />
                   <span className="text-gray-900 dark:text-white font-medium">Search</span>
+                </Link>
+
+                <Link
+                  href="/profile"
+                  onClick={() => setIsMenuOpen(false)}
+                  className="flex items-center gap-4 p-4 hover:bg-gray-50 dark:hover:bg-slate-800/50 rounded-2xl transition-colors"
+                >
+                  <UserIcon className="w-6 h-6 text-gray-600 dark:text-slate-400" />
+                  <span className="text-gray-900 dark:text-white font-medium">Profile</span>
                 </Link>
 
                 {user?.isCreator && (
