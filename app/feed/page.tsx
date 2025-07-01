@@ -28,6 +28,7 @@ import {
   DocumentTextIcon
 } from '@heroicons/react/24/outline'
 import { toast } from 'react-hot-toast'
+import Link from 'next/link'
 
 import { useInView } from 'react-intersection-observer'
 
@@ -194,6 +195,33 @@ export default function RevampedFeedPage() {
   return (
     <div className="min-h-screen bg-white dark:bg-slate-900 pt-16 sm:pt-20">
       <div className="max-w-2xl mx-auto px-0 sm:px-4 pb-20">
+        {/* НОВЫЙ БАННЕР ОБ ОБНОВЛЕНИИ */}
+        <div className="mb-6 mx-4 sm:mx-0">
+          <div className="bg-gradient-to-r from-red-600 via-orange-500 to-yellow-500 p-1 rounded-2xl animate-pulse">
+            <div className="bg-white dark:bg-slate-900 rounded-xl p-4 sm:p-6">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="text-3xl animate-bounce">🚀</div>
+                  <div>
+                    <h3 className="text-lg sm:text-xl font-bold text-gray-900 dark:text-white">
+                      Сайт обновлен! v20250701
+                    </h3>
+                    <p className="text-sm text-gray-600 dark:text-gray-400">
+                      Исправлены цены постов и загрузка изображений
+                    </p>
+                  </div>
+                </div>
+                <Link 
+                  href="/version-check"
+                  className="px-4 py-2 bg-gradient-to-r from-red-600 to-orange-600 text-white rounded-xl font-bold hover:shadow-lg transform hover:scale-105 transition-all"
+                >
+                  Подробнее
+                </Link>
+              </div>
+            </div>
+          </div>
+        </div>
+
         {/* Banner для новых постов */}
         {hasNewPosts && (
           <div className="mb-4 px-4 sm:px-0">
