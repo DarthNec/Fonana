@@ -47,11 +47,21 @@ export default function HomePage() {
   const { connected } = useWallet()
   const { user } = useUserContext()
   const [mounted, setMounted] = useState(false)
+  const [showInfoBlock, setShowInfoBlock] = useState(true)
   const [showOffers, setShowOffers] = useState(false)
   const [currentOffer, setCurrentOffer] = useState(0)
   
   useEffect(() => {
     setMounted(true)
+  }, [])
+  
+  // Hide info block after 4 seconds
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setShowInfoBlock(false)
+    }, 4000)
+
+    return () => clearTimeout(timer)
   }, [])
   
   // Offers rotation
@@ -114,7 +124,7 @@ export default function HomePage() {
               </span>
             </div>
             
-            <div className={`transition-all duration-500 ${showOffers ? 'animate-fadeOut' : ''}`}>
+            <div className={`transition-all duration-500 ${!showInfoBlock ? 'animate-fadeOut' : ''}`}>
               <h1 className="text-6xl md:text-8xl font-black mb-8 leading-tight">
                 <span className="bg-gradient-to-r from-purple-600 to-pink-600 dark:from-purple-400 dark:to-pink-400 bg-clip-text text-transparent">
                   Web3 Creator
