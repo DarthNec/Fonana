@@ -95,7 +95,7 @@ const BottomSheet: React.FC<BottomSheetProps> = ({
       {/* Backdrop */}
       <div
         className={cn(
-          'fixed inset-0 z-50 bg-black/60 backdrop-blur-sm transition-opacity duration-300',
+          'fixed inset-0 z-50 bg-black/85 backdrop-blur-sm transition-opacity duration-300',
           isOpen && isAnimating ? 'opacity-100' : 'opacity-0 pointer-events-none'
         )}
         onClick={handleBackdropClick}

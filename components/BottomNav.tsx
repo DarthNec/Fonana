@@ -29,6 +29,9 @@ import SolanaRateDisplay from '@/components/SolanaRateDisplay'
 import Avatar from '@/components/Avatar'
 import { MobileWalletConnect } from '@/components/MobileWalletConnect'
 import { jwtManager } from '@/lib/utils/jwt'
+import CreatePostModal from '@/components/CreatePostModal'
+import { toast } from 'react-hot-toast'
+import { useRouter } from 'next/navigation'
 
 export default function BottomNav() {
   const pathname = usePathname()
@@ -37,6 +40,8 @@ export default function BottomNav() {
   const { setVisible } = useWalletModal()
   const [unreadMessages, setUnreadMessages] = useState(0)
   const [isMenuOpen, setIsMenuOpen] = useState(false)
+  const [showCreateModal, setShowCreateModal] = useState(false)
+  const router = useRouter()
 
   // Check for unread messages
   useEffect(() => {
@@ -89,9 +94,16 @@ export default function BottomNav() {
     },
     {
       name: 'Create',
-      href: '/create',
+      href: '#',
       icon: PlusCircleIcon,
-      activeIcon: PlusCircleSolidIcon
+      activeIcon: PlusCircleSolidIcon,
+      onClick: () => {
+        if (!publicKey) {
+          toast.error('Подключите кошелек для создания поста')
+          return
+        }
+        setShowCreateModal(true)
+      }
     },
     {
       name: 'Messages',
@@ -126,7 +138,7 @@ export default function BottomNav() {
             const isItemActive = isActive(item.href)
             const Icon = isItemActive ? item.activeIcon : item.icon
             
-            // Для Menu используем button вместо Link
+            // Для Menu и Create используем button вместо Link
             if (item.href === '#') {
               return (
                 <button
@@ -264,6 +276,18 @@ export default function BottomNav() {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Create Post Modal */}
+      {showCreateModal && (
+        <CreatePostModal 
+          onClose={() => setShowCreateModal(false)}
+          onPostCreated={() => {
+            setShowCreateModal(false)
+            toast.success('Пост успешно создан!')
+            router.push('/feed')
+          }}
+        />
       )}
     </>
   )

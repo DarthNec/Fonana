@@ -41,10 +41,26 @@ export default function CreatePostModal({ onPostCreated, onClose }: CreatePostMo
   const [showCropModal, setShowCropModal] = useState(false)
   const [originalImage, setOriginalImage] = useState<string>('')
   
+  // Функция для определения категории по типу контента
+  const getSmartCategory = (type: string): string => {
+    switch (type) {
+      case 'video':
+        return 'Music' // Большинство видео - музыкальные клипы
+      case 'audio':
+        return 'Music'
+      case 'image':
+        return 'Art' // Изображения чаще всего арт
+      case 'text':
+        return 'Lifestyle' // Текстовые посты обычно лайфстайл
+      default:
+        return 'Lifestyle'
+    }
+  }
+  
   const [formData, setFormData] = useState({
     title: '',
     content: '',
-    category: 'Art',
+    category: 'Lifestyle', // Более универсальная категория по умолчанию
     tags: [] as string[],
     currentTag: '',
     file: null as File | null,
@@ -152,7 +168,8 @@ export default function CreatePostModal({ onPostCreated, onClose }: CreatePostMo
         ...prev,
         file,
         type: contentType,
-        preview // Also set preview for consistency
+        preview, // Also set preview for consistency
+        category: getSmartCategory(contentType) // Автоматически определяем категорию
       }))
       // Delay opening modal to ensure state is updated
       setTimeout(() => setShowCropModal(true), 100)
@@ -162,7 +179,8 @@ export default function CreatePostModal({ onPostCreated, onClose }: CreatePostMo
         ...prev,
         file,
         type: contentType,
-        preview
+        preview,
+        category: getSmartCategory(contentType) // Автоматически определяем категорию
       }))
     }
   }
@@ -395,7 +413,7 @@ export default function CreatePostModal({ onPostCreated, onClose }: CreatePostMo
       setFormData({
         title: '',
         content: '',
-        category: 'Art',
+        category: 'Lifestyle',
         tags: [],
         currentTag: '',
         file: null,
@@ -431,8 +449,8 @@ export default function CreatePostModal({ onPostCreated, onClose }: CreatePostMo
   return (
     <>
       {/* Main Modal */}
-      <div className={`fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-start justify-center p-0 sm:p-4 overflow-y-auto ${showCropModal ? 'pointer-events-none' : ''}`}>
-        <div className="modal-content bg-white dark:bg-gradient-to-br dark:from-slate-800/95 dark:to-slate-900/95 backdrop-blur-xl rounded-none sm:rounded-3xl max-w-4xl w-full my-0 sm:my-8 border-y sm:border border-gray-200 dark:border-slate-700/50 shadow-2xl min-h-screen sm:min-h-0">
+      <div className={`fixed inset-0 bg-black/85 backdrop-blur-sm z-50 flex items-start justify-center p-0 sm:p-4 overflow-y-auto animate-fade-in ${showCropModal ? 'pointer-events-none' : ''}`}>
+        <div className="modal-content bg-white dark:bg-gradient-to-br dark:from-slate-800/95 dark:to-slate-900/95 backdrop-blur-xl rounded-none sm:rounded-3xl max-w-4xl w-full my-0 sm:my-8 border-y sm:border border-gray-200 dark:border-slate-700/50 shadow-2xl min-h-screen sm:min-h-0 animate-slideInUp">
           <form onSubmit={handleSubmit} className="p-4 sm:p-6 lg:p-8 space-y-4 sm:space-y-6 pb-20 sm:pb-6">
           {/* Header */}
           <div className="flex items-center justify-between mb-4 sm:mb-6">
@@ -461,7 +479,12 @@ export default function CreatePostModal({ onPostCreated, onClose }: CreatePostMo
                     <button
                       key={type.id}
                       type="button"
-                      onClick={() => setFormData(prev => ({ ...prev, type: type.id as any }))}
+                      onClick={() => setFormData(prev => ({ 
+                        ...prev, 
+                        type: type.id as any,
+                        // Автоматически меняем категорию при смене типа
+                        category: getSmartCategory(type.id)
+                      }))}
                       className={`p-3 rounded-xl border-2 transition-all flex items-center gap-2 ${
                         formData.type === type.id
                           ? 'border-purple-500 bg-purple-500/10'

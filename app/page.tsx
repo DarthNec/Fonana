@@ -96,7 +96,7 @@ export default function HomePage() {
                 </div>
               </Link>
               
-              <Link href="/create" className="group">
+              <Link href="/feed" className="group">
                 <div className="bg-gradient-to-r from-pink-500 to-violet-600 text-white px-8 py-4 rounded-2xl font-semibold transform group-hover:scale-105 transition-all duration-300 hover:shadow-xl hover:shadow-pink-500/25">
                   Start creating
                 </div>
@@ -205,7 +205,7 @@ export default function HomePage() {
                 Join thousands of creators already earning cryptocurrency through decentralized content creation
               </p>
               <div className="flex flex-col sm:flex-row gap-6 justify-center">
-                <Link href="/create" className="group">
+                <Link href="/feed" className="group">
                   <div className="bg-gradient-to-r from-purple-600 to-pink-600 text-white px-8 py-4 rounded-2xl font-bold flex items-center justify-center transform group-hover:scale-105 transition-all duration-300 hover:shadow-xl hover:shadow-purple-500/25">
                     <SparklesIcon className="w-6 h-6 mr-3" />
                     Start creating today

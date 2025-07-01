@@ -28,7 +28,7 @@ import {
   DocumentTextIcon
 } from '@heroicons/react/24/outline'
 import { toast } from 'react-hot-toast'
-import SearchBar from '@/components/SearchBar'
+
 import { useInView } from 'react-intersection-observer'
 
 const categories = [
@@ -177,13 +177,7 @@ export default function RevampedFeedPage() {
       <div className="container mx-auto px-0 sm:px-4 pt-16 sm:pt-20 pb-20 max-w-4xl">
         {/* Header с улучшенной мобильной версией */}
         <div className="sticky top-16 sm:top-20 z-30 bg-gray-50/95 dark:bg-slate-950/95 backdrop-blur-md border-b border-gray-200 dark:border-slate-800">
-          {/* Search Bar - адаптивная */}
-          <div className="px-4 py-3 sm:py-4">
-            <SearchBar 
-              className="w-full" 
-              placeholder="Поиск постов и создателей..."
-            />
-          </div>
+
 
           {/* Categories - горизонтальный скролл на мобильных */}
           <div className="relative">

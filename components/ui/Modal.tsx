@@ -108,7 +108,7 @@ const Modal: React.FC<ModalProps> = ({
     <div className="fixed inset-0 z-50 flex items-center justify-center p-0 sm:p-4">
       {/* Backdrop */}
       <div
-        className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+        className="absolute inset-0 bg-black/85 backdrop-blur-sm animate-fade-in"
         onClick={closeOnOverlayClick ? onClose : undefined}
         aria-hidden="true"
       />
@@ -131,6 +131,7 @@ const Modal: React.FC<ModalProps> = ({
           'max-h-screen sm:max-h-[90vh]',
           'overflow-hidden',
           'flex flex-col',
+          'animate-slideInUp',
           sizeClasses[size],
           size === 'full' && 'sm:mx-4 sm:h-auto',
           className
