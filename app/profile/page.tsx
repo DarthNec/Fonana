@@ -230,6 +230,7 @@ export default function ProfilePage() {
   const { disconnect } = useWallet()
   const { theme: currentTheme, setTheme } = useTheme()
   const [activeTab, setActiveTab] = useState<'profile' | 'creator' | 'subscriptions' | 'posts'>('profile')
+  const [showCreateModal, setShowCreateModal] = useState(false)
   
   const [formData, setFormData] = useState<UserProfile>({
     id: user?.id || '',
@@ -1115,6 +1116,31 @@ export default function ProfilePage() {
            </div>
          </div>
        )}
+      
+      {/* Floating Action Button для быстрого создания контента */}
+      {activeTab === 'posts' && (
+        <FloatingActionButton
+          onClick={() => setShowCreateModal(true)}
+          label="Create Post"
+          hideOnScroll={true}
+          offset={{ bottom: 80, right: 20 }}
+        />
+      )}
+      
+      {/* Create Post Modal - глобальная для всей страницы */}
+      {showCreateModal && (
+        <CreatePostModal
+          onClose={() => setShowCreateModal(false)}
+          onPostCreated={() => {
+            setShowCreateModal(false)
+            // Trigger refresh of posts
+            if (activeTab === 'posts') {
+              window.location.reload() // Simple refresh for now
+            }
+            toast.success('Post created successfully!')
+          }}
+        />
+      )}
     </div>
   )
 } 

@@ -7,7 +7,7 @@ import Avatar from './Avatar'
 import { CheckBadgeIcon, PlayIcon, UserPlusIcon, HeartIcon, UsersIcon, SparklesIcon, Squares2X2Icon } from '@heroicons/react/24/outline'
 import { HeartIcon as HeartSolidIcon } from '@heroicons/react/24/solid'
 import SubscribeModal from './SubscribeModal'
-import SearchBar from './SearchBar'
+
 import { useWallet } from '@solana/wallet-adapter-react'
 import toast from 'react-hot-toast'
 import { useRouter } from 'next/navigation'
@@ -398,14 +398,7 @@ export default function CreatorsExplorer() {
       <div className="container mx-auto px-4">
 
 
-        {/* Search Bar */}
-        <div className="mb-8">
-          <SearchBar 
-            placeholder="Поиск создателей..."
-            showFilters={true}
-            className="max-w-2xl mx-auto"
-          />
-        </div>
+
 
         {/* Top Tabs */}
         <div className="mb-8 px-4 sm:px-0">
@@ -485,21 +478,21 @@ export default function CreatorsExplorer() {
 
         {/* Tab Content Title */}
         {activeTab === 'subscriptions' && filteredCreators.length > 0 && (
-          <div className="text-center mb-8">
+          <div className="text-center mb-8 animate-fadeIn">
             <h3 className="text-2xl font-bold text-gray-900 dark:text-white">Your subscriptions</h3>
             <p className="text-gray-600 dark:text-slate-400 mt-2">Creators you are subscribed to</p>
           </div>
         )}
 
         {activeTab === 'recommendations' && (
-          <div className="text-center mb-8">
-            <h3 className="text-2xl font-bold text-gray-900 dark:text-white">Recommendations for you</h3>
+          <div className="text-center mb-8 animate-fadeIn">
+            <h3 className="text-2xl font-bold text-gray-900 dark:text-white">Discover creators</h3>
             <p className="text-gray-600 dark:text-slate-400 mt-2">Creators that might interest you</p>
           </div>
         )}
 
         {activeTab === 'all' && (
-          <div className="text-center mb-8">
+          <div className="text-center mb-8 animate-fadeIn">
             <h3 className="text-2xl font-bold text-gray-900 dark:text-white">All creators</h3>
             <p className="text-gray-600 dark:text-slate-400 mt-2">
               {selectedCategory === 'All' 
