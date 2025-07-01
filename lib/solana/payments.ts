@@ -76,8 +76,21 @@ export function calculatePaymentDistribution(
   hasReferrer: boolean,
   referrerWallet?: string
 ): PaymentDistribution {
+  // КРИТИЧЕСКАЯ ПРОВЕРКА: валидация totalAmount на NaN, Infinity, null
+  const cleanTotalAmount = Number(totalAmount)
+  if (!Number.isFinite(cleanTotalAmount) || isNaN(cleanTotalAmount) || cleanTotalAmount <= 0) {
+    console.error('[calculatePaymentDistribution] Invalid totalAmount:', {
+      totalAmount,
+      cleanTotalAmount,
+      type: typeof totalAmount,
+      isNaN: isNaN(totalAmount),
+      isFinite: Number.isFinite(totalAmount)
+    })
+    throw new Error(`Некорректная сумма платежа: ${totalAmount}. Сумма должна быть положительным числом.`)
+  }
+  
   // Проверка минимальной суммы
-  if (totalAmount < SOLANA_CONFIG.MIN_PAYMENT_AMOUNT) {
+  if (cleanTotalAmount < SOLANA_CONFIG.MIN_PAYMENT_AMOUNT) {
     throw new Error(`Минимальная сумма платежа: ${SOLANA_CONFIG.MIN_PAYMENT_AMOUNT} SOL`)
   }
 
@@ -87,11 +100,11 @@ export function calculatePaymentDistribution(
 
   return {
     creatorWallet,
-    creatorAmount: totalAmount * creatorPercent,
-    platformAmount: totalAmount * platformFeePercent,
+    creatorAmount: cleanTotalAmount * creatorPercent,
+    platformAmount: cleanTotalAmount * platformFeePercent,
     referrerWallet: hasReferrer ? referrerWallet : undefined,
-    referrerAmount: hasReferrer ? totalAmount * referrerFeePercent : undefined,
-    totalAmount
+    referrerAmount: hasReferrer ? cleanTotalAmount * referrerFeePercent : undefined,
+    totalAmount: cleanTotalAmount
   }
 }
 
@@ -221,7 +234,20 @@ export async function createPostPurchaseTransaction(
   
   // Проверяем, нужна ли рента для создания аккаунта создателя
   const creatorRent = await getAccountRentIfNeeded(connection, creatorPubkey)
-  const creatorTransferAmount = Math.floor((distribution.creatorAmount + (creatorRent / LAMPORTS_PER_SOL)) * LAMPORTS_PER_SOL)
+  const creatorAmountToTransfer = distribution.creatorAmount + (creatorRent / LAMPORTS_PER_SOL)
+  
+  // КРИТИЧЕСКАЯ ПРОВЕРКА: убеждаемся что сумма валидна перед конвертацией в lamports
+  if (!Number.isFinite(creatorAmountToTransfer) || isNaN(creatorAmountToTransfer) || creatorAmountToTransfer < 0) {
+    console.error('[createPostPurchaseTransaction] Invalid creatorAmountToTransfer:', {
+      creatorAmount: distribution.creatorAmount,
+      creatorRent,
+      creatorAmountToTransfer,
+      distribution
+    })
+    throw new Error(`Некорректная сумма для перевода создателю: ${creatorAmountToTransfer}`)
+  }
+  
+  const creatorTransferAmount = Math.floor(creatorAmountToTransfer * LAMPORTS_PER_SOL)
   
   transaction.add(
     SystemProgram.transfer({
@@ -233,6 +259,16 @@ export async function createPostPurchaseTransaction(
 
   // Transfer to platform
   const platformPubkey = new PublicKey(PLATFORM_WALLET)
+  
+  // КРИТИЧЕСКАЯ ПРОВЕРКА: убеждаемся что сумма для платформы валидна
+  if (!Number.isFinite(distribution.platformAmount) || isNaN(distribution.platformAmount) || distribution.platformAmount < 0) {
+    console.error('[createPostPurchaseTransaction] Invalid platformAmount:', {
+      platformAmount: distribution.platformAmount,
+      distribution
+    })
+    throw new Error(`Некорректная сумма для платформы: ${distribution.platformAmount}`)
+  }
+  
   const platformTransferAmount = Math.floor(distribution.platformAmount * LAMPORTS_PER_SOL)
   
   transaction.add(
@@ -255,7 +291,20 @@ export async function createPostPurchaseTransaction(
     
     // Проверяем, нужна ли рента для создания аккаунта реферера
     const referrerRent = await getAccountRentIfNeeded(connection, referrerPubkey)
-    const referrerTransferAmount = Math.floor((distribution.referrerAmount + (referrerRent / LAMPORTS_PER_SOL)) * LAMPORTS_PER_SOL)
+    const referrerAmountToTransfer = distribution.referrerAmount! + (referrerRent / LAMPORTS_PER_SOL)
+    
+    // КРИТИЧЕСКАЯ ПРОВЕРКА: убеждаемся что сумма для реферера валидна
+    if (!Number.isFinite(referrerAmountToTransfer) || isNaN(referrerAmountToTransfer) || referrerAmountToTransfer < 0) {
+      console.error('[createPostPurchaseTransaction] Invalid referrerAmountToTransfer:', {
+        referrerAmount: distribution.referrerAmount,
+        referrerRent,
+        referrerAmountToTransfer,
+        distribution
+      })
+      throw new Error(`Некорректная сумма для реферера: ${referrerAmountToTransfer}`)
+    }
+    
+    const referrerTransferAmount = Math.floor(referrerAmountToTransfer * LAMPORTS_PER_SOL)
     
     transaction.add(
       SystemProgram.transfer({
@@ -306,16 +355,39 @@ export async function createTipTransaction(
   
   const creatorPubkey = new PublicKey(creatorWallet)
   
+  // КРИТИЧЕСКАЯ ПРОВЕРКА: валидация amount на NaN перед операциями
+  const cleanAmount = Number(amount)
+  if (!Number.isFinite(cleanAmount) || isNaN(cleanAmount) || cleanAmount <= 0) {
+    console.error('[createTipTransaction] Invalid amount:', {
+      amount,
+      cleanAmount,
+      type: typeof amount
+    })
+    throw new Error(`Некорректная сумма чаевых: ${amount}`)
+  }
+  
   // Проверяем, нужна ли рента для создания аккаунта (как в работающих покупках)
   const creatorRent = await getAccountRentIfNeeded(connection, creatorPubkey)
+  const tipAmountToTransfer = cleanAmount + (creatorRent / LAMPORTS_PER_SOL)
+  
+  // КРИТИЧЕСКАЯ ПРОВЕРКА: убеждаемся что сумма валидна перед конвертацией в lamports
+  if (!Number.isFinite(tipAmountToTransfer) || isNaN(tipAmountToTransfer) || tipAmountToTransfer < 0) {
+    console.error('[createTipTransaction] Invalid tipAmountToTransfer:', {
+      cleanAmount,
+      creatorRent,
+      tipAmountToTransfer
+    })
+    throw new Error(`Некорректная сумма для перевода чаевых: ${tipAmountToTransfer}`)
+  }
+  
   // Используем точно такую же формулу как в createPostPurchaseTransaction
-  const transferAmount = Math.floor((amount + (creatorRent / LAMPORTS_PER_SOL)) * LAMPORTS_PER_SOL)
+  const transferAmount = Math.floor(tipAmountToTransfer * LAMPORTS_PER_SOL)
   
   console.log('Adding tip transfer:', {
     from: payerPublicKey.toBase58(),
     to: creatorWallet,
-    amount: amount,
-    amountInLamports: Math.floor(amount * LAMPORTS_PER_SOL),
+    amount: cleanAmount,
+    amountInLamports: Math.floor(cleanAmount * LAMPORTS_PER_SOL),
     rentIfNeeded: creatorRent,
     rentInSOL: creatorRent / LAMPORTS_PER_SOL,
     totalLamports: transferAmount
