@@ -157,9 +157,16 @@ export default function RevampedFeedPage() {
           }
         }
         
-        // Попытка 2: Проверяем что это продаваемый пост
-        if (finalPrice === null && post.commerce?.isSellable) {
-          console.log('[Feed] Post is sellable but no price in access, checking auction data')
+        // Попытка 2: Для продаваемых постов с фиксированной ценой
+        if (finalPrice === null && post.commerce?.isSellable && post.commerce?.sellType === 'FIXED_PRICE') {
+          // Для продаваемых постов цена может быть в access.price
+          console.log('[Feed] Checking fixed price sellable post')
+          if (accessPrice !== undefined && accessPrice !== null) {
+            const priceNum = Number(accessPrice)
+            if (Number.isFinite(priceNum) && priceNum > 0) {
+              finalPrice = priceNum
+            }
+          }
         }
         
         // Попытка 3: Цена аукциона

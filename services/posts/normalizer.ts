@@ -103,10 +103,22 @@ export class PostNormalizer {
       tier = 'vip'
     }
 
+    // КРИТИЧЕСКИЙ ФИКС: для продаваемых постов берем цену из правильного источника
+    let price = rawPost.price
+    
+    // Для аукционов берем текущую ставку или стартовую цену
+    if (rawPost.isSellable && rawPost.sellType === 'AUCTION') {
+      if (rawPost.auctionCurrentBid !== undefined && rawPost.auctionCurrentBid !== null) {
+        price = rawPost.auctionCurrentBid
+      } else if (rawPost.auctionStartPrice !== undefined && rawPost.auctionStartPrice !== null) {
+        price = rawPost.auctionStartPrice
+      }
+    }
+
     return {
       isLocked: rawPost.isLocked || false,
       tier,
-      price: rawPost.price,
+      price,
       currency: rawPost.currency || 'SOL',
       isPurchased: rawPost.hasPurchased || rawPost.isPurchased || false,
       isSubscribed: rawPost.isSubscribed || false,

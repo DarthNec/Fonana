@@ -1,8 +1,8 @@
-// Service Worker для Fonana PWA v6
+// Service Worker для Fonana PWA v7
 // Auto-updated: 20250701
-const SW_VERSION = 'v6-20250701';
-const CACHE_NAME = 'fonana-v6';
-const RUNTIME_CACHE = 'fonana-runtime-v6';
+const SW_VERSION = 'v7-20250701-fix';
+const CACHE_NAME = 'fonana-v7';
+const RUNTIME_CACHE = 'fonana-runtime-v7';
 
 // Ресурсы для предварительного кеширования
 const urlsToCache = [

@@ -1,4 +1,5 @@
 // Force refresh script for cached browsers
+// Updated: 2025-07-01
 (async function() {
   console.log('[Force Refresh] Checking version...');
   
