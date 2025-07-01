@@ -144,14 +144,29 @@ export default function RevampedFeedPage() {
         setShowEditModal(true)
         break
       case 'bid':
-        // КРИТИЧЕСКИЙ ФИКС: правильно мапируем UnifiedPost для SellablePostModal
+        // КРИТИЧЕСКИЙ ФИКС: правильно мапируем UnifiedPost для SellablePostModal с валидацией цены
+        const rawPrice = post.access?.price || 0  // Цена только из access, не из commerce
+        const validatedPrice = Number(rawPrice) || 0
+        
+        if (!Number.isFinite(validatedPrice) || validatedPrice <= 0) {
+          console.error('[Feed] Invalid price for sellable post:', {
+            postId: post.id,
+            accessPrice: post.access?.price,
+            validatedPrice,
+            hasCommerce: !!post.commerce,
+            isSellable: post.commerce?.isSellable
+          })
+          toast.error('Ошибка: некорректная цена поста')
+          return
+        }
+        
         const sellablePost = {
           id: post.id,
           title: post.content.title,
-          price: post.access.price,
-          currency: post.access.currency,
+          price: validatedPrice, // Используем валидированную цену
+          currency: post.access?.currency || 'SOL',  // Валюта только из access
           sellType: post.commerce?.sellType,
-          quantity: post.commerce?.quantity,
+          quantity: post.commerce?.quantity || 1,
           auctionStartPrice: post.commerce?.auctionData?.startPrice,
           auctionCurrentBid: post.commerce?.auctionData?.currentBid,
           auctionEndAt: post.commerce?.auctionData?.endAt,
@@ -163,7 +178,17 @@ export default function RevampedFeedPage() {
             isVerified: post.creator.isVerified
           }
         }
-        console.log('[Feed] Mapped sellable post:', sellablePost, 'from original:', post)
+        
+        // КРИТИЧЕСКИЙ ФИКС: безопасное логирование без base64 изображений
+        console.log('[Feed] Mapped sellable post:', {
+          id: sellablePost.id,
+          title: sellablePost.title,
+          price: sellablePost.price,
+          currency: sellablePost.currency,
+          sellType: sellablePost.sellType,
+          creator: sellablePost.creator.username
+        })
+        
         setSelectedPost(sellablePost)
         setShowSellableModal(true)
         break
