@@ -231,6 +231,8 @@ export function useRealtimePosts({
   useEffect(() => {
     if (!user?.id) return
 
+    console.log('[WS] initializing socket for user:', user.id)
+
     // Подписываемся на обновления ленты
     wsService.subscribeToFeed(user.id)
 
@@ -275,17 +277,7 @@ export function useRealtimePosts({
       window.removeEventListener('subscription-updated', handleWindowSubscriptionUpdated)
       window.removeEventListener('post-deleted', handleWindowPostDeleted)
     }
-  }, [
-    user?.id, 
-    handlePostLiked, 
-    handlePostUnliked, 
-    handlePostCreated, 
-    handlePostDeleted,
-    handleCommentAdded,
-    handleCommentDeleted,
-    handlePostPurchased,
-    handleSubscriptionUpdated
-  ])
+  }, [user?.id]) // Убираем callback функции из зависимостей
 
   // Уведомляем об изменениях только если есть callback и посты действительно изменились
   useEffect(() => {
