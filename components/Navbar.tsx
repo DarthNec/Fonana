@@ -19,7 +19,8 @@ import {
   BellIcon,
   Cog6ToothIcon,
   ChatBubbleLeftEllipsisIcon,
-  MagnifyingGlassIcon
+  MagnifyingGlassIcon,
+  RocketLaunchIcon
 } from '@heroicons/react/24/outline'
 import { MobileWalletConnect } from './MobileWalletConnect'
 import { useWallet } from '@solana/wallet-adapter-react'
@@ -33,6 +34,7 @@ const navigation = [
   { name: 'Creators', href: '/creators', icon: UsersIcon },
   { name: 'Feed', href: '/feed', icon: HomeIcon },
   { name: 'Messages', href: '/messages', icon: ChatBubbleLeftEllipsisIcon, hasIndicator: true },
+  { name: 'VERSION 🔥', href: '/version-check', icon: RocketLaunchIcon, isNew: true },
   { name: 'Create', href: '#', icon: PlusIcon, isAction: true },
 ]
 
@@ -153,7 +155,9 @@ export function Navbar() {
                       key={item.name}
                       href={item.href}
                       className={`relative flex items-center gap-2 px-6 py-3 rounded-2xl font-semibold transition-all duration-300 transform hover:scale-105 ${
-                        isActive(item.href)
+                        item.isNew 
+                          ? 'bg-gradient-to-r from-red-600 to-orange-600 text-white shadow-lg shadow-red-500/25 animate-pulse'
+                          : isActive(item.href)
                           ? 'bg-gradient-to-r from-purple-600 to-pink-600 text-white shadow-lg shadow-purple-500/25'
                           : 'text-gray-600 dark:text-slate-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-slate-800/50'
                       }`}
@@ -313,7 +317,9 @@ export function Navbar() {
                       href={item.href}
                       onClick={() => setIsOpen(false)}
                       className={`relative flex items-center gap-3 px-4 py-3 rounded-2xl font-semibold transition-all duration-300 ${
-                        isActive(item.href)
+                        item.isNew
+                          ? 'bg-gradient-to-r from-red-600 to-orange-600 text-white animate-pulse'
+                          : isActive(item.href)
                           ? 'bg-gradient-to-r from-purple-600 to-pink-600 text-white'
                           : 'text-gray-600 dark:text-slate-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-slate-800/50'
                       }`}
