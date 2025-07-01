@@ -382,7 +382,7 @@ export default function EditPostModal({ isOpen, onClose, post, onPostUpdated }: 
       
       <div className="fixed inset-0 flex items-center justify-center p-4">
         <Dialog.Panel className="mx-auto max-w-2xl w-full bg-white dark:bg-slate-800 rounded-3xl shadow-2xl max-h-[90vh] flex flex-col">
-          <div className="flex items-center justify-between p-4 sm:p-6 border-b border-gray-200 dark:border-slate-700">
+          <div className="flex items-center justify-between p-3 sm:p-6 border-b border-gray-200 dark:border-slate-700">
             <Dialog.Title className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white">
               Edit Post
             </Dialog.Title>
@@ -394,7 +394,7 @@ export default function EditPostModal({ isOpen, onClose, post, onPostUpdated }: 
             </button>
           </div>
 
-          <div className="p-4 sm:p-6 flex-1 overflow-y-auto">
+          <div className="p-3 sm:p-6 flex-1 overflow-y-auto">
             {/* Title */}
             <div className="mb-4 sm:mb-6">
               <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-2">
@@ -595,7 +595,7 @@ export default function EditPostModal({ isOpen, onClose, post, onPostUpdated }: 
           </div>
 
           {/* Actions - Fixed at bottom */}
-          <div className="flex gap-2 sm:gap-3 p-4 sm:p-6 border-t border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 rounded-b-3xl">
+          <div className="flex gap-2 sm:gap-3 p-3 sm:p-6 border-t border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 rounded-b-3xl">
             <button
               onClick={handleClose}
               disabled={isSubmitting}

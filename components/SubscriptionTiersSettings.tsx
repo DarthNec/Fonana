@@ -318,7 +318,7 @@ export default function SubscriptionTiersSettings() {
 
       {/* Recommendations */}
       {showRecommendations && (
-        <div className="mb-4 sm:mb-8 p-4 sm:p-6 bg-purple-50 dark:bg-purple-500/10 border border-purple-200 dark:border-purple-500/20 rounded-xl sm:rounded-2xl">
+        <div className="mb-4 sm:mb-8 p-3 sm:p-6 bg-purple-50 dark:bg-purple-500/10 border border-purple-200 dark:border-purple-500/20 rounded-xl sm:rounded-2xl">
           <h3 className="text-base sm:text-lg font-semibold text-purple-700 dark:text-purple-300 mb-2 sm:mb-4">
             Recommended settings for your content type
           </h3>
@@ -353,7 +353,7 @@ export default function SubscriptionTiersSettings() {
         {tiers.map((tier) => (
           <div
             key={tier.id}
-            className={`border rounded-xl sm:rounded-2xl p-4 sm:p-6 transition-all duration-300 ${
+            className={`border rounded-xl sm:rounded-2xl p-3 sm:p-6 transition-all duration-300 ${
               tier.enabled 
                 ? 'border-gray-200 dark:border-slate-600/50 bg-gray-50 dark:bg-slate-700/30' 
                 : 'border-gray-300 dark:border-slate-700/30 bg-gray-100 dark:bg-slate-800/30 opacity-60'

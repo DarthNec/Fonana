@@ -13,6 +13,7 @@ interface UseOptimizedPostsOptions {
   category?: string
   pageSize?: number
   variant?: 'feed' | 'profile' | 'creator' | 'search' | 'dashboard'
+  sortBy?: 'latest' | 'popular' | 'trending' | 'subscribed'
   enableCache?: boolean
   cacheKey?: string
 }
@@ -65,7 +66,7 @@ export function useOptimizedPosts(options: UseOptimizedPostsOptions = {}): UseOp
   
   // Параметры
   const pageSize = options.pageSize || 20
-  const cacheKey = options.cacheKey || `posts_${options.variant}_${options.creatorId || 'all'}_${options.category || 'all'}`
+  const cacheKey = options.cacheKey || `posts_${options.variant}_${options.creatorId || 'all'}_${options.category || 'all'}_${options.sortBy || 'latest'}`
   const enableCache = options.enableCache !== false
 
   // Синхронизируем ref с состоянием
@@ -120,8 +121,19 @@ export function useOptimizedPosts(options: UseOptimizedPostsOptions = {}): UseOp
       params.append('limit', pageSize.toString())
       if (publicKey) params.append('userWallet', publicKey.toBase58())
       if (user?.id) params.append('userId', user.id)
+      
+      // Выбираем правильный endpoint в зависимости от типа сортировки
+      let endpoint = '/api/posts'
+      if (options.sortBy === 'subscribed') {
+        endpoint = '/api/posts/following'
+      }
+      
+      // Передаем sortBy для всех типов сортировки
+      if (options.sortBy) {
+        params.append('sortBy', options.sortBy)
+      }
 
-      const response = await fetch(`/api/posts?${params}`, {
+      const response = await fetch(`${endpoint}?${params}`, {
         signal: abortControllerRef.current.signal
       })
       
@@ -189,7 +201,7 @@ export function useOptimizedPosts(options: UseOptimizedPostsOptions = {}): UseOp
       setIsLoadingMore(false)
       loadingRef.current = false
     }
-  }, [options.creatorId, options.category, pageSize, publicKey, user?.id, cacheKey, enableCache])
+  }, [options.creatorId, options.category, options.sortBy, pageSize, publicKey, user?.id, cacheKey, enableCache])
 
   // Debounced версия fetchPosts
   const debouncedFetchPosts = useMemo(

@@ -142,7 +142,7 @@ export function PostCard({
       )}
 
       {/* Card Content */}
-      <div className={variant === 'minimal' ? 'p-3' : 'p-4 sm:p-6'}>
+      <div className={variant === 'minimal' ? 'p-3' : 'p-3 sm:p-6'}>
         {/* Header */}
         {showCreator && (
           <PostHeader 

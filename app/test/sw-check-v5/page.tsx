@@ -1,79 +1,113 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useState, useEffect } from 'react'
 
 export default function ServiceWorkerCheckV5() {
-  const [swVersion, setSwVersion] = useState<string>('Not detected')
-  const [swStatus, setSwStatus] = useState<string>('Checking...')
-  const [cacheNames, setCacheNames] = useState<string[]>([])
-  const [testResults, setTestResults] = useState<{ [key: string]: string }>({})
+  const [swStatus, setSwStatus] = useState('Checking...')
+  const [swVersion, setSwVersion] = useState('Unknown')
+  const [updateAvailable, setUpdateAvailable] = useState(false)
+  const [logs, setLogs] = useState<string[]>([])
+
+  const addLog = (message: string) => {
+    const timestamp = new Date().toLocaleTimeString()
+    setLogs(prev => [...prev.slice(-19), `[${timestamp}] ${message}`]) // Keep last 20 logs
+  }
 
   useEffect(() => {
-    checkServiceWorker()
+    checkSWStatus()
+    setupLogging()
   }, [])
 
-  const checkServiceWorker = async () => {
-    if ('serviceWorker' in navigator) {
-      try {
-        const registration = await navigator.serviceWorker.getRegistration()
-        
-        if (registration) {
-          if (registration.active) {
-            setSwStatus('Active')
-            
-            // Проверяем кеши
-            const names = await caches.keys()
-            setCacheNames(names)
-            
-            // Определяем версию по имени кеша
-            const v5Cache = names.find(name => name.includes('v5') || name.includes('fonana-v5'))
-            if (v5Cache) {
-              setSwVersion('v5 ✅')
-            } else {
-              setSwVersion('Not v5 ❌')
-            }
-          } else if (registration.installing) {
-            setSwStatus('Installing...')
-          } else if (registration.waiting) {
-            setSwStatus('Waiting to activate')
-          }
-        } else {
-          setSwStatus('Not registered')
-        }
-      } catch (error) {
-        setSwStatus('Error: ' + error)
-      }
-    } else {
+  const checkSWStatus = async () => {
+    if (!('serviceWorker' in navigator)) {
       setSwStatus('Not supported')
+      return
+    }
+
+    try {
+      const registration = await navigator.serviceWorker.getRegistration()
+      if (registration) {
+        if (registration.active) {
+          setSwStatus('Active')
+          // Определяем версию по кешам
+          const cacheNames = await caches.keys()
+          if (cacheNames.includes('fonana-v9')) {
+            setSwVersion('v9 (latest)')
+          } else if (cacheNames.includes('fonana-v8')) {
+            setSwVersion('v8 (outdated)')
+          } else {
+            setSwVersion('Unknown')
+          }
+        } else if (registration.installing) {
+          setSwStatus('Installing')
+        } else if (registration.waiting) {
+          setSwStatus('Waiting to activate')
+          setUpdateAvailable(true)
+        } else {
+          setSwStatus('Registered but not active')
+        }
+      } else {
+        setSwStatus('Not registered')
+      }
+    } catch (error) {
+      setSwStatus('Error')
+      addLog(`Error checking status: ${error}`)
     }
   }
 
-  const testImagePath = async () => {
-    try {
-      const response = await fetch('/posts/images/test.png')
-      setTestResults(prev => ({
-        ...prev,
-        '/posts/ path': response.ok ? '✅ Direct fetch (not cached by SW)' : '❌ Failed to fetch'
-      }))
-    } catch (error) {
-      setTestResults(prev => ({
-        ...prev,
-        '/posts/ path': '❌ Error: ' + error
-      }))
+  const setupLogging = () => {
+    // Перехватываем console.log для отображения в UI
+    const originalLog = console.log
+    console.log = (...args) => {
+      originalLog.apply(console, args)
+      if (args[0] && typeof args[0] === 'string' && args[0].includes('[SW')) {
+        addLog(args.join(' '))
+      }
     }
   }
 
   const forceUpdateSW = async () => {
     if ('serviceWorker' in navigator) {
       try {
+        addLog('Checking for updates...')
         const registration = await navigator.serviceWorker.getRegistration()
         if (registration) {
           await registration.update()
-          setSwStatus('Update triggered, reloading...')
-          setTimeout(() => window.location.reload(), 1000)
+          addLog('Update check completed')
+          
+          if (registration.waiting) {
+            addLog('New version available!')
+            setUpdateAvailable(true)
+            setSwStatus('Update available')
+          } else {
+            addLog('Already on latest version')
+            setUpdateAvailable(false)
+          }
         }
       } catch (error) {
-        console.error('SW update error:', error)
+        addLog(`Update error: ${error}`)
+      }
+    }
+  }
+
+  const testUpdatePrompt = async () => {
+    if ('serviceWorker' in navigator) {
+      try {
+        addLog('Testing update prompt...')
+        const registration = await navigator.serviceWorker.getRegistration()
+        if (registration && registration.waiting) {
+          addLog('Simulating update prompt...')
+          // Симулируем показ уведомления об обновлении
+          if (typeof window !== 'undefined' && (window as any).swManager) {
+            (window as any).swManager.promptUpdate()
+          } else {
+            addLog('SW Manager not available')
+          }
+        } else {
+          addLog('No waiting service worker found')
+        }
+      } catch (error) {
+        addLog(`Test error: ${error}`)
       }
     }
   }
@@ -81,94 +115,152 @@ export default function ServiceWorkerCheckV5() {
   const unregisterSW = async () => {
     if ('serviceWorker' in navigator) {
       try {
+        addLog('Unregistering Service Worker...')
         const registration = await navigator.serviceWorker.getRegistration()
         if (registration) {
           await registration.unregister()
           // Очищаем все кеши
           const names = await caches.keys()
           await Promise.all(names.map(name => caches.delete(name)))
-          setSwStatus('Unregistered, reloading...')
-          setTimeout(() => window.location.reload(), 1000)
+          addLog('Service Worker unregistered and caches cleared')
+          setSwStatus('Unregistered')
+          setUpdateAvailable(false)
         }
       } catch (error) {
-        console.error('SW unregister error:', error)
+        addLog(`Unregister error: ${error}`)
       }
     }
   }
 
+  const clearCaches = async () => {
+    try {
+      addLog('Clearing all caches...')
+      const cacheNames = await caches.keys()
+      await Promise.all(cacheNames.map(name => caches.delete(name)))
+      addLog(`Cleared ${cacheNames.length} caches`)
+      checkSWStatus()
+    } catch (error) {
+      addLog(`Clear cache error: ${error}`)
+    }
+  }
+
+  const reloadPage = () => {
+    addLog('Reloading page...')
+    window.location.reload()
+  }
+
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 py-8">
-      <div className="max-w-4xl mx-auto px-4">
-        <h1 className="text-3xl font-bold mb-8 text-gray-900 dark:text-white">
-          Service Worker v5 Check
-        </h1>
-
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6 mb-6">
-          <h2 className="text-xl font-semibold mb-4 text-gray-900 dark:text-white">
-            Status
-          </h2>
-          <div className="space-y-2">
-            <p className="text-gray-700 dark:text-gray-300">
-              <span className="font-medium">Status:</span> {swStatus}
-            </p>
-            <p className="text-gray-700 dark:text-gray-300">
-              <span className="font-medium">Version:</span> {swVersion}
-            </p>
+    <div className="min-h-screen p-4 bg-gray-900 text-white">
+      <div className="max-w-4xl mx-auto">
+        <h1 className="text-3xl font-bold mb-8">Service Worker Check v5 - Update Loop Fix</h1>
+        
+        {/* Status */}
+        <div className="bg-gray-800 rounded-lg p-6 mb-6">
+          <h2 className="text-xl font-semibold mb-4">Service Worker Status</h2>
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <span className="text-gray-400">Status:</span>
+              <span className={`ml-2 font-semibold ${
+                swStatus === 'Active' ? 'text-green-500' : 
+                swStatus === 'Update available' ? 'text-yellow-500' :
+                swStatus === 'Not registered' ? 'text-red-500' : 
+                'text-blue-500'
+              }`}>
+                {swStatus}
+              </span>
+            </div>
+            <div>
+              <span className="text-gray-400">Version:</span>
+              <span className="ml-2 font-semibold text-blue-400">{swVersion}</span>
+            </div>
           </div>
-        </div>
-
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6 mb-6">
-          <h2 className="text-xl font-semibold mb-4 text-gray-900 dark:text-white">
-            Cache Names
-          </h2>
-          {cacheNames.length > 0 ? (
-            <ul className="list-disc list-inside text-gray-700 dark:text-gray-300">
-              {cacheNames.map((name, index) => (
-                <li key={index} className={name.includes('v5') ? 'text-green-600' : ''}>
-                  {name} {name.includes('v5') ? '✅' : ''}
-                </li>
-              ))}
-            </ul>
-          ) : (
-            <p className="text-gray-500">No caches found</p>
+          {updateAvailable && (
+            <div className="mt-4 p-3 bg-yellow-600/20 border border-yellow-500/30 rounded">
+              <span className="text-yellow-400">⚠️ Update available - waiting for user confirmation</span>
+            </div>
           )}
         </div>
 
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6 mb-6">
-          <h2 className="text-xl font-semibold mb-4 text-gray-900 dark:text-white">
-            Path Tests
-          </h2>
-          <button
-            onClick={testImagePath}
-            className="mb-4 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
-          >
-            Test /posts/ Path Exclusion
-          </button>
-          {Object.entries(testResults).map(([test, result]) => (
-            <p key={test} className="text-gray-700 dark:text-gray-300 mb-2">
-              <span className="font-medium">{test}:</span> {result}
-            </p>
-          ))}
-        </div>
-
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
-          <h2 className="text-xl font-semibold mb-4 text-gray-900 dark:text-white">
-            Actions
-          </h2>
-          <div className="space-x-4">
+        {/* Actions */}
+        <div className="bg-gray-800 rounded-lg p-6 mb-6">
+          <h2 className="text-xl font-semibold mb-4">Actions</h2>
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+            <button
+              onClick={checkSWStatus}
+              className="px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors"
+            >
+              Check Status
+            </button>
             <button
               onClick={forceUpdateSW}
-              className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700"
+              className="px-4 py-2 bg-purple-600 hover:bg-purple-700 rounded-lg transition-colors"
             >
-              Force Update SW
+              Check Updates
+            </button>
+            <button
+              onClick={testUpdatePrompt}
+              className="px-4 py-2 bg-yellow-600 hover:bg-yellow-700 rounded-lg transition-colors"
+            >
+              Test Update Prompt
+            </button>
+            <button
+              onClick={clearCaches}
+              className="px-4 py-2 bg-orange-600 hover:bg-orange-700 rounded-lg transition-colors"
+            >
+              Clear Caches
             </button>
             <button
               onClick={unregisterSW}
-              className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700"
+              className="px-4 py-2 bg-red-600 hover:bg-red-700 rounded-lg transition-colors"
             >
-              Unregister & Clear All
+              Unregister SW
+            </button>
+            <button
+              onClick={reloadPage}
+              className="px-4 py-2 bg-gray-600 hover:bg-gray-700 rounded-lg transition-colors"
+            >
+              Reload Page
             </button>
           </div>
+        </div>
+
+        {/* Debug Info */}
+        <div className="bg-gray-800 rounded-lg p-6 mb-6">
+          <h2 className="text-xl font-semibold mb-4">Debug Information</h2>
+          <div className="bg-gray-900 p-4 rounded font-mono text-sm space-y-2">
+            <div>• SW Manager: {typeof window !== 'undefined' && (window as any).swManager ? 'Available' : 'Not available'}</div>
+            <div>• Service Worker Support: {'serviceWorker' in navigator ? 'Yes' : 'No'}</div>
+            <div>• Cache API Support: {'caches' in window ? 'Yes' : 'No'}</div>
+            <div>• User Agent: {typeof navigator !== 'undefined' ? navigator.userAgent.substring(0, 50) + '...' : 'Unknown'}</div>
+          </div>
+        </div>
+
+        {/* Logs */}
+        <div className="bg-gray-800 rounded-lg p-6">
+          <h2 className="text-xl font-semibold mb-4">Service Worker Logs</h2>
+          <div className="bg-gray-900 p-4 rounded font-mono text-sm max-h-60 overflow-y-auto">
+            {logs.length > 0 ? (
+              logs.map((log, index) => (
+                <div key={index} className="text-gray-400 mb-1">
+                  {log}
+                </div>
+              ))
+            ) : (
+              <div className="text-gray-500">No logs yet. Try checking for updates.</div>
+            )}
+          </div>
+        </div>
+
+        {/* Instructions */}
+        <div className="mt-8 text-gray-400 text-sm">
+          <h3 className="font-semibold mb-2">Testing Update Loop Fix:</h3>
+          <ol className="list-decimal list-inside space-y-1">
+            <li>Click "Check Updates" to trigger update check</li>
+            <li>If update is available, click "Test Update Prompt"</li>
+            <li>Confirm or decline the update dialog</li>
+            <li>Verify that the prompt doesn't appear again immediately</li>
+            <li>Check logs to see the update flow</li>
+          </ol>
         </div>
       </div>
     </div>

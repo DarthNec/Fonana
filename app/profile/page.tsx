@@ -38,6 +38,7 @@ import { LinkIcon, CheckCircleIcon, XCircleIcon } from '@heroicons/react/24/outl
 import Link from 'next/link'
 import CreatePostModal from '@/components/CreatePostModal'
 import FloatingActionButton from '@/components/ui/FloatingActionButton'
+import { MobileWalletConnect } from '@/components/MobileWalletConnect'
 
 interface UserProfile {
   id: string
@@ -231,6 +232,24 @@ export default function ProfilePage() {
   const { theme: currentTheme, setTheme } = useTheme()
   const [activeTab, setActiveTab] = useState<'profile' | 'creator' | 'subscriptions' | 'posts'>('profile')
   const [showCreateModal, setShowCreateModal] = useState(false)
+
+  // Проверка для неавторизованных пользователей
+  if (!user || !user.wallet) {
+    return (
+      <div className="min-h-screen bg-gray-50 dark:bg-slate-900 pt-24 flex items-center justify-center">
+        <div className="text-center max-w-md mx-auto px-4">
+          <WalletIcon className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+          <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">
+            Connect Your Wallet
+          </h2>
+          <p className="text-gray-600 dark:text-slate-400 mb-6">
+            Please connect your wallet to access your profile
+          </p>
+          <MobileWalletConnect className="w-full" />
+        </div>
+      </div>
+    )
+  }
   
   const [formData, setFormData] = useState<UserProfile>({
     id: user?.id || '',
@@ -585,7 +604,7 @@ export default function ProfilePage() {
       <div className="relative z-10 px-0 sm:px-4 lg:px-8 mx-auto max-w-7xl">
         {/* Header with Tabs - без заголовка страницы */}
         <div className="bg-white dark:bg-slate-800/50 backdrop-blur-xl border-y sm:border border-gray-200 dark:border-slate-700/50 rounded-none sm:rounded-3xl overflow-hidden">
-          <div className="p-4 sm:p-6 border-b border-gray-200 dark:border-slate-700/50">
+          <div className="p-3 sm:p-6 border-b border-gray-200 dark:border-slate-700/50">
             {/* Tabs */}
             <div className="flex items-center justify-center gap-1 overflow-x-auto">
               <div className="flex bg-gray-100 dark:bg-slate-700/30 rounded-xl p-1">

@@ -230,7 +230,7 @@ export default function ImageCropModal({ image, onCropComplete, onCancel }: Imag
     <div className="fixed inset-0 bg-black/85 backdrop-blur-sm z-[100] flex items-center justify-center p-0 sm:p-4 animate-fade-in" style={{ zIndex: 100 }}>
       <div className="modal-content bg-white dark:bg-slate-900 backdrop-blur-xl rounded-none sm:rounded-3xl max-w-5xl w-full h-full sm:h-auto sm:max-h-[90vh] overflow-hidden flex flex-col border-0 sm:border border-gray-200 dark:border-slate-700/50 shadow-2xl animate-slideInUp">
         {/* Header */}
-        <div className="p-4 sm:p-6 border-b border-gray-200 dark:border-slate-700/50">
+        <div className="p-3 sm:p-6 border-b border-gray-200 dark:border-slate-700/50">
           <div className="flex items-center justify-between">
             <div>
               <h3 className="text-xl sm:text-2xl font-bold bg-gradient-to-r from-purple-600 to-pink-600 dark:from-purple-400 dark:to-pink-400 bg-clip-text text-transparent">
@@ -352,7 +352,7 @@ export default function ImageCropModal({ image, onCropComplete, onCancel }: Imag
         </div>
 
         {/* Actions - modern buttons */}
-        <div className="p-4 sm:p-6 border-t border-gray-200 dark:border-slate-700/50 flex justify-between items-center pb-24 sm:pb-6">
+        <div className="p-3 sm:p-6 border-t border-gray-200 dark:border-slate-700/50 flex justify-between items-center pb-24 sm:pb-6">
           <p className="text-xs text-gray-500 dark:text-slate-500 hidden sm:block">
             💡 Tip: Use pinch to zoom on mobile devices
           </p>

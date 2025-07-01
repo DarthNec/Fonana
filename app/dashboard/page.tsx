@@ -267,7 +267,7 @@ export default function DashboardPage() {
 
               {/* Revenue Sources Summary */}
               <div className="mb-4 sm:mb-12">
-                <div className="bg-white dark:bg-slate-800/50 backdrop-blur-xl border-y sm:border border-gray-200 dark:border-slate-700/50 rounded-none sm:rounded-3xl p-4 sm:p-6 shadow-lg">
+                <div className="bg-white dark:bg-slate-800/50 backdrop-blur-xl border-y sm:border border-gray-200 dark:border-slate-700/50 rounded-none sm:rounded-3xl p-3 sm:p-6 shadow-lg">
                   <h2 className="text-base sm:text-xl font-bold text-gray-900 dark:text-white mb-3 sm:mb-6">
                     Источники дохода
                   </h2>
