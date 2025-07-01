@@ -63,21 +63,67 @@ export default function SellablePostModal({ isOpen, onClose, post }: SellablePos
   
   const isAuction = post.sellType === 'AUCTION'
 
-  // Безопасное получение цены с дефолтными значениями и проверкой на NaN
+  // КРИТИЧЕСКИ БЕЗОПАСНОЕ получение цены с множественными проверками
   const getPrice = () => {
-    if (isAuction) {
-      const auctionPrice = Number(post.auctionCurrentBid) || Number(post.auctionStartPrice) || 0
-      return Number.isFinite(auctionPrice) ? auctionPrice : 0
+    try {
+      if (isAuction) {
+        // Для аукциона: берем текущую ставку или стартовую цену
+        const currentBid = post.auctionCurrentBid
+        const startPrice = post.auctionStartPrice
+        
+        if (currentBid !== undefined && currentBid !== null) {
+          const bidValue = Number(currentBid)
+          if (Number.isFinite(bidValue) && bidValue > 0) {
+            return bidValue
+          }
+        }
+        
+        if (startPrice !== undefined && startPrice !== null) {
+          const startValue = Number(startPrice)
+          if (Number.isFinite(startValue) && startValue > 0) {
+            return startValue
+          }
+        }
+        
+        console.warn('[SellablePostModal] Auction has no valid prices:', { currentBid, startPrice })
+        return 0.001 // Минимальная цена для аукциона
+      }
+      
+      // Для обычной покупки: берем цену поста
+      const postPrice = post.price
+      if (postPrice !== undefined && postPrice !== null) {
+        const priceValue = Number(postPrice)
+        if (Number.isFinite(priceValue) && priceValue > 0) {
+          return priceValue
+        }
+      }
+      
+      console.warn('[SellablePostModal] Post has no valid price:', { price: post.price })
+      return 0.001 // Минимальная цена для покупки
+      
+    } catch (error) {
+      console.error('[SellablePostModal] Error getting price:', error, 'post:', post)
+      return 0.001 // Fallback на минимальную цену
     }
-    const postPrice = Number(post.price) || 0
-    return Number.isFinite(postPrice) ? postPrice : 0
   }
   
   const currentPrice = getPrice()
   
-  // КРИТИЧЕСКАЯ ПРОВЕРКА: убедимся что цена валидна перед любыми операциями
-  if (!Number.isFinite(currentPrice) || currentPrice < 0) {
-    console.error('[SellablePostModal] Invalid currentPrice:', currentPrice, 'from post:', post)
+  // КРИТИЧЕСКАЯ ФИНАЛЬНАЯ ПРОВЕРКА: убедимся что цена ВСЕГДА валидна
+  if (!Number.isFinite(currentPrice) || currentPrice <= 0) {
+    console.error('[SellablePostModal] CRITICAL: Invalid currentPrice detected after getPrice():', {
+      currentPrice,
+      type: typeof currentPrice,
+      isFinite: Number.isFinite(currentPrice),
+      post: {
+        id: post.id,
+        title: post.title,
+        price: post.price,
+        sellType: post.sellType,
+        auctionCurrentBid: post.auctionCurrentBid,
+        auctionStartPrice: post.auctionStartPrice
+      }
+    })
   }
   const bidStep = 0.01 // Фиксированный шаг для аукциона
   const minBid = currentPrice + bidStep
@@ -159,34 +205,70 @@ export default function SellablePostModal({ isOpen, onClose, post }: SellablePos
       const referrerWallet = creatorData.creator.referrer?.solanaWallet || creatorData.creator.referrer?.wallet
       const hasReferrer = creatorData.creator.referrerId && referrerWallet && isValidSolanaAddress(referrerWallet)
 
-      // КРИТИЧЕСКАЯ ВАЛИДАЦИЯ: проверяем сумму перед передачей в платежные функции
-      const cleanAmount = Number(currentPrice)
+      // КРИТИЧЕСКАЯ МУЛЬТИУРОВНЕВАЯ ВАЛИДАЦИЯ: проверяем сумму перед передачей в платежные функции
       
-      console.log('[SellablePostModal] Payment validation check:', {
-        currentPrice,
-        cleanAmount,
-        isFinite: Number.isFinite(cleanAmount),
-        isNaN: isNaN(cleanAmount),
-        postPriceRaw: post.price,
-        postTitle: post.title
-      })
-      
-      if (!Number.isFinite(cleanAmount) || isNaN(cleanAmount) || cleanAmount <= 0) {
-        console.error('[SellablePostModal] CRITICAL: Invalid payment amount detected:', {
+      // Уровень 1: Проверка currentPrice
+      if (currentPrice === undefined || currentPrice === null) {
+        console.error('[SellablePostModal] CRITICAL: currentPrice is null/undefined:', {
           currentPrice,
-          cleanAmount,
+          type: typeof currentPrice,
+          postId: post.id,
+          postTitle: post.title
+        })
+        toast.error("Критическая ошибка: цена поста не определена")
+        return
+      }
+      
+      // Уровень 2: Конвертация в число с дополнительными проверками
+      let cleanAmount: number
+      try {
+        cleanAmount = Number(currentPrice)
+        
+        // Проверяем результат конвертации
+        if (cleanAmount === undefined || cleanAmount === null) {
+          throw new Error(`Number() returned ${cleanAmount}`)
+        }
+        
+        // Проверяем на NaN
+        if (Number.isNaN(cleanAmount)) {
+          throw new Error(`Number() returned NaN from ${currentPrice}`)
+        }
+        
+        // Проверяем на конечность
+        if (!Number.isFinite(cleanAmount)) {
+          throw new Error(`Number() returned infinite value from ${currentPrice}`)
+        }
+        
+        // Проверяем что это положительное число
+        if (cleanAmount <= 0) {
+          throw new Error(`Number() returned non-positive value: ${cleanAmount}`)
+        }
+        
+      } catch (conversionError) {
+        console.error('[SellablePostModal] CRITICAL: Number conversion failed:', {
+          error: conversionError,
+          currentPrice,
           type: typeof currentPrice,
           postId: post.id,
           postPrice: post.price,
           auctionCurrentBid: post.auctionCurrentBid,
-          auctionStartPrice: post.auctionStartPrice,
-          getPrice: getPrice()
+          auctionStartPrice: post.auctionStartPrice
         })
-        toast.error("Ошибка: сумма оплаты некорректна. Попробуйте перезагрузить страницу.")
+        toast.error("Критическая ошибка конвертации цены. Перезагрузите страницу.")
         return
       }
       
-      // Дополнительная проверка минимальной суммы
+      // Уровень 3: Финальная валидация cleanAmount
+      console.log('[SellablePostModal] Payment validation passed:', {
+        currentPrice,
+        cleanAmount,
+        type: typeof cleanAmount,
+        isFinite: Number.isFinite(cleanAmount),
+        isNaN: Number.isNaN(cleanAmount),
+        postTitle: post.title
+      })
+      
+      // Проверка минимальной суммы
       if (cleanAmount < 0.001) {
         console.error('[SellablePostModal] Amount too small:', cleanAmount)
         toast.error("Минимальная сумма: 0.001 SOL")
