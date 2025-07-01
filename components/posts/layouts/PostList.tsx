@@ -15,7 +15,7 @@ export interface PostListProps {
 
 /**
  * Компонент для отображения постов в виде вертикального списка
- * Используется в Feed, Profile, Creator pages
+ * Унифицированная версия для всех страниц (Feed, Profile, Creator)
  */
 export function PostList({ 
   posts, 
@@ -24,31 +24,11 @@ export function PostList({
   onAction,
   className 
 }: PostListProps) {
-  // Определяем стили spacing для разных вариантов
-  const getContainerStyles = () => {
-    switch (variant) {
-      case 'feed':
-        return 'space-y-0 sm:space-y-6'
-      case 'profile':
-        return 'space-y-0 sm:space-y-6'
-      case 'creator':
-        return 'max-w-2xl mx-auto space-y-0 sm:space-y-6'
-      default:
-        return 'space-y-0 sm:space-y-6'
-    }
-  }
-
-  // Определяем стили обертки для разных вариантов
-  const getWrapperStyles = () => {
-    // Убираем специальные стили для профиля - используем единый стиль
-    return ''
-  }
-
-  const containerStyles = getContainerStyles()
-  const wrapperStyles = getWrapperStyles()
+  // Унифицированные стили для всех вариантов
+  const containerStyles = 'space-y-0 sm:space-y-6'
 
   return (
-    <div className={cn(wrapperStyles, className)}>
+    <div className={cn(className)}>
       <div className={containerStyles}>
         {posts.map(post => (
           <PostCard

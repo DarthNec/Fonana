@@ -75,11 +75,16 @@ function MyPostsSection() {
   useEffect(() => {
     if (user?.id) {
       fetchUserPosts()
+    } else {
+      // Если пользователь не загружен, сбрасываем состояние
+      setPosts([])
+      setLoading(false)
     }
   }, [user?.id])
 
   const fetchUserPosts = async () => {
     try {
+      setLoading(true)
       // Добавляем userWallet в запрос, чтобы API мог определить что это автор
       const params = new URLSearchParams()
       
@@ -97,6 +102,7 @@ function MyPostsSection() {
     } catch (error) {
       console.error('Error fetching posts:', error)
       toast.error('Failed to load posts')
+      setPosts([]) // Устанавливаем пустой массив при ошибке
     } finally {
       setLoading(false)
     }
@@ -155,11 +161,10 @@ function MyPostsSection() {
 
   return (
     <>
-      <div className="space-y-0 sm:space-y-6">
-        {/* Header */}
-        <div className="bg-white dark:bg-slate-800/50 backdrop-blur-xl border-y sm:border border-gray-200 dark:border-slate-700/50 rounded-none sm:rounded-3xl p-4 sm:p-8 shadow-lg">
-          <div className="flex items-center justify-between mb-4 sm:mb-6">
-            <h2 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white flex items-center gap-2 sm:gap-3">
+      {/* Header */}
+      <div className="bg-white dark:bg-slate-800/50 backdrop-blur-xl border-y sm:border border-gray-200 dark:border-slate-700/50 rounded-none sm:rounded-3xl p-4 sm:p-8 shadow-lg mb-6">
+        <div className="flex items-center justify-between mb-4 sm:mb-6">
+                      <h2 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white flex items-center gap-2 sm:gap-3">
               <div className="w-6 h-6 sm:w-8 sm:h-8 bg-gradient-to-r from-purple-400 to-pink-400 rounded-lg flex items-center justify-center">
                 <DocumentTextIcon className="w-4 h-4 sm:w-5 sm:h-5 text-white" />
               </div>
@@ -197,11 +202,11 @@ function MyPostsSection() {
           </div>
         </div>
 
-        {/* Posts Container - унифицированный компонент */}
+        {/* Posts Container - унифицированный компонент с layout как в фиде */}
         <PostsContainer
           posts={posts}
           layout="list"
-          variant="profile"
+          variant="feed"
           showCreator={false}
           onAction={(action) => {
             if (action.type === 'edit') {
@@ -209,7 +214,6 @@ function MyPostsSection() {
             }
           }}
         />
-      </div>
 
       {/* Edit Post Modal */}
       {isEditModalOpen && selectedPost && (
@@ -1069,7 +1073,7 @@ export default function ProfilePage() {
           </div>
         ) : (
           /* My Posts Tab */
-          <div className="max-w-5xl mx-auto">
+          <div className="max-w-2xl mx-auto px-0 sm:px-4">
             <MyPostsSection />
           </div>
         )}
