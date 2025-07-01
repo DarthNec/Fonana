@@ -73,16 +73,16 @@ export function PostsContainer({
     }
   }, [posts])
   
-  // Используем real-time хук если включено
-  const realtimeData = enableRealtime ? useRealtimePosts({
+  // Используем real-time хук всегда, но с условной логикой внутри
+  const realtimeData = useRealtimePosts({
     posts: normalizedPosts,
-    showNewPostsNotification,
-    autoUpdateFeed,
+    showNewPostsNotification: enableRealtime ? showNewPostsNotification : false,
+    autoUpdateFeed: enableRealtime ? autoUpdateFeed : false,
     // Убираем onPostsUpdate чтобы избежать бесконечного цикла
-  }) : null
+  })
   
-  // Используем посты из real-time хука если доступны
-  const displayPosts = realtimeData?.posts || normalizedPosts
+  // Используем посты из real-time хука если включено, иначе используем нормализованные
+  const displayPosts = enableRealtime ? realtimeData.posts : normalizedPosts
 
   // Загрузка
   if (isLoading) {
@@ -110,7 +110,7 @@ export function PostsContainer({
   }
 
   // Компонент для уведомления о новых постах
-  const NewPostsNotification = realtimeData && realtimeData.hasNewPosts ? (
+  const NewPostsNotification = enableRealtime && realtimeData.hasNewPosts ? (
     <div className="sticky top-20 z-40 mb-4">
       <button
         onClick={realtimeData.loadPendingPosts}
