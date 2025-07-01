@@ -64,8 +64,7 @@ pm2/
 # Build files
 dist/
 
-# Version file (auto-generated on deploy)
-/lib/version.ts
+# Version file now tracked (generated before build)
 
 # AI Assistant instructions (local only)
 AI_CHAT_INSTRUCTIONS.md
