@@ -88,7 +88,7 @@ export async function validateTransaction(
         Math.abs(totalTransferred - expectedAmount) > tolerance) {
       return {
         isValid: false,
-        error: `Amount mismatch: expected ${expectedAmount}${totalRentAdded > 0 ? ` (+ ${totalRentAdded.toFixed(8)} rent)` : ''}, got ${totalTransferred}`,
+        error: `Amount mismatch: expected ${expectedAmount}${totalRentAdded > 0 ? ` (+ ${(Number(totalRentAdded) || 0).toFixed(8)} rent)` : ''}, got ${totalTransferred}`,
         details: {
           signature,
           amount: totalTransferred,

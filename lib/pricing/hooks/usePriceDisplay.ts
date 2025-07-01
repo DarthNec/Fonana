@@ -33,26 +33,28 @@ export function usePriceDisplay(
   } = options
 
   // Форматирование SOL
-  const formatSol = (amount: number): string => {
+  const formatSol = (amount: number | null | undefined): string => {
+    const safeAmount = Number(amount) || 0
     switch (format) {
       case 'compact':
-        return amount < 1 ? `${amount.toFixed(3)}` : `${amount.toFixed(2)}`
+        return safeAmount < 1 ? `${safeAmount.toFixed(3)}` : `${safeAmount.toFixed(2)}`
       case 'short':
-        return `${amount} SOL`
+        return `${safeAmount} SOL`
       default:
-        return `${amount} SOL`
+        return `${safeAmount} SOL`
     }
   }
 
   // Форматирование USD
-  const formatUsd = (amount: number): string => {
+  const formatUsd = (amount: number | null | undefined): string => {
+    const safeAmount = Number(amount) || 0
     switch (format) {
       case 'compact':
-        return `$${amount.toFixed(0)}`
+        return `$${safeAmount.toFixed(0)}`
       case 'short':
-        return `$${amount.toFixed(2)}`
+        return `$${safeAmount.toFixed(2)}`
       default:
-        return amount.toLocaleString('en-US', {
+        return safeAmount.toLocaleString('en-US', {
           style: 'currency',
           currency: 'USD'
         })
@@ -117,8 +119,8 @@ export function useSolanaRate() {
 
   return {
     rate: prices.SOL_USD,
-    display: `1 SOL = $${prices.SOL_USD.toFixed(2)}`,
-    shortDisplay: `$${prices.SOL_USD.toFixed(0)}`,
+    display: `1 SOL = $${(Number(prices.SOL_USD) || 0).toFixed(2)}`,
+    shortDisplay: `$${(Number(prices.SOL_USD) || 0).toFixed(0)}`,
     isLoading,
     error
   }

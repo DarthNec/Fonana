@@ -21,6 +21,7 @@ import {
 import { useSolRate } from '@/lib/hooks/useSolRate'
 import { jwtManager } from '@/lib/utils/jwt'
 import { useUserContext } from '@/lib/contexts/UserContext'
+import { safeToFixed, formatSolToUsd } from '@/lib/utils/format'
 
 // Константа для базовой комиссии сети Solana (5000 lamports = 0.000005 SOL)
 const NETWORK_FEE = 0.000005
@@ -320,7 +321,7 @@ export default function SellablePostModal({ isOpen, onClose, post }: SellablePos
     }
 
     if (bid < minBid) {
-      toast.error(`Минимальная ставка: ${minBid.toFixed(2)} SOL`)
+      toast.error(`Минимальная ставка: ${safeToFixed(minBid, 2)} SOL`)
       return
     }
 
@@ -390,13 +391,13 @@ export default function SellablePostModal({ isOpen, onClose, post }: SellablePos
                     Current bid
                   </div>
                   <div className="text-3xl font-bold text-yellow-600 dark:text-yellow-400 mb-2">
-                    {currentPrice.toFixed(2)} SOL
+                    {safeToFixed(currentPrice, 2)} SOL
                   </div>
                   <div className="text-sm text-gray-600 dark:text-slate-400">
-                    ≈ ${(currentPrice * solToUsdRate).toFixed(2)} USD
+                    {formatSolToUsd(currentPrice, solToUsdRate)}
                   </div>
                   <div className="text-xs text-gray-500 dark:text-slate-500">
-                    + Network fee: ~{dynamicNetworkFee.toFixed(6)} SOL
+                    + Network fee: ~{safeToFixed(dynamicNetworkFee, 6)} SOL
                   </div>
                   {post.auctionEndAt && (
                     <div className="flex items-center justify-center gap-2 text-sm text-gray-600 dark:text-slate-400 mt-2">
@@ -408,7 +409,7 @@ export default function SellablePostModal({ isOpen, onClose, post }: SellablePos
                     * Network fee applies to each bid
                   </div>
                   <div className="flex items-center gap-2 mt-2">
-                    <span className="text-xs text-purple-600 dark:text-purple-300">Курс SOL/USD: {isRateLoading ? '...' : `$${solToUsdRate.toFixed(2)}`}</span>
+                    <span className="text-xs text-purple-600 dark:text-purple-300">Курс SOL/USD: {isRateLoading ? '...' : `$${safeToFixed(solToUsdRate, 2)}`}</span>
                     <span className="text-xs text-gray-400">(курс обновляется автоматически)</span>
                   </div>
                 </div>
@@ -421,25 +422,25 @@ export default function SellablePostModal({ isOpen, onClose, post }: SellablePos
                     <div className="flex justify-between items-center">
                       <span className="text-sm text-gray-600 dark:text-slate-400">Item price:</span>
                       <span className="text-lg font-semibold text-gray-900 dark:text-white">
-                        {(currentPrice || 0).toFixed(2)} {currency}
+                        {safeToFixed(currentPrice, 2)} {currency}
                       </span>
                     </div>
                     <div className="flex justify-between items-center">
                       <span className="text-sm text-gray-600 dark:text-slate-400">Network fee:</span>
                       <span className="text-sm text-gray-600 dark:text-slate-400">
-                        ~{(dynamicNetworkFee || 0).toFixed(6)} SOL
+                        ~{safeToFixed(dynamicNetworkFee, 6)} SOL
                       </span>
                     </div>
                     <div className="flex justify-between items-center">
                       <span className="text-sm text-gray-600 dark:text-slate-400">In USD:</span>
                       <span className="text-sm text-gray-600 dark:text-slate-400">
-                        ≈ ${((currentPrice || 0) * (solToUsdRate || 135)).toFixed(2)} USD
+                        {formatSolToUsd(currentPrice, solToUsdRate)}
                       </span>
                     </div>
                     <div className="flex justify-between items-center pt-2 border-t border-yellow-500/20">
                       <span className="text-sm font-semibold text-gray-900 dark:text-white">Total:</span>
                       <span className="text-2xl font-bold text-yellow-600 dark:text-yellow-400">
-                        {((currentPrice || 0) + (dynamicNetworkFee || 0)).toFixed(6)} SOL
+                        {safeToFixed((Number(currentPrice) || 0) + (Number(dynamicNetworkFee) || 0), 6)} SOL
                       </span>
                     </div>
                   </div>
@@ -468,10 +469,10 @@ export default function SellablePostModal({ isOpen, onClose, post }: SellablePos
                 <input
                   type="number"
                   step="0.1"
-                  min={(currentPrice + 0.1).toFixed(2)}
+                  min={safeToFixed(Number(currentPrice) + 0.1, 2)}
                   value={bidAmount}
                   onChange={(e) => setBidAmount(e.target.value)}
-                  placeholder={`Minimum ${(currentPrice + 0.1).toFixed(2)}`}
+                  placeholder={`Minimum ${safeToFixed(Number(currentPrice) + 0.1, 2)}`}
                   className="w-full px-4 py-3 bg-white dark:bg-slate-800 border border-gray-300 dark:border-slate-600 rounded-xl text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-slate-400 focus:ring-2 focus:ring-yellow-500 focus:border-transparent"
                 />
               </div>
@@ -507,7 +508,7 @@ export default function SellablePostModal({ isOpen, onClose, post }: SellablePos
               ) : (
                 <>
                   <CurrencyDollarIcon className="w-5 h-5" />
-                  Buy for {((currentPrice || 0) + (dynamicNetworkFee || 0)).toFixed(4)} {currency}
+                  Buy for {safeToFixed((Number(currentPrice) || 0) + (Number(dynamicNetworkFee) || 0), 4)} {currency}
                 </>
               )}
             </button>

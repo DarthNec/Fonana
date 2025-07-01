@@ -14,6 +14,7 @@ import {
 import { useSolRate } from '@/lib/hooks/useSolRate'
 import { cn } from '@/lib/utils'
 import { TIER_INFO } from '@/lib/constants/tiers'
+import { safeToFixed, formatSolToUsd } from '@/lib/utils/format'
 
 export interface PostLockedProps {
   post: UnifiedPost
@@ -148,11 +149,11 @@ export function PostLocked({
         {needsPay && (finalPrice || finalPrice === 0) && (
           <div className="mb-4">
             <div className="text-2xl font-bold text-white">
-              {(finalPrice || 0).toFixed(2)} {post.access.currency || 'SOL'}
+              {safeToFixed(finalPrice, 2)} {post.access.currency || 'SOL'}
             </div>
-            {solRate && post.access.currency === 'SOL' && (
+            {post.access.currency === 'SOL' && (
               <div className="text-sm text-white/70">
-                ≈ ${((finalPrice || 0) * solRate).toFixed(2)} USD
+                {formatSolToUsd(finalPrice, solRate)}
               </div>
             )}
             {post.commerce?.flashSale && (
