@@ -25,8 +25,8 @@ echo "export const buildDate = new Date().toISOString()" >> lib/version.ts
 echo "🔄 Updating cache version..."
 ./scripts/update-cache-version.sh
 
-# Commit version changes
-git add lib/version.ts public/force-refresh.js app/layout.tsx
+# Commit version changes (без force-refresh.js - файл удален)
+git add lib/version.ts app/layout.tsx
 git commit -m "chore: update version to $VERSION-$COMMIT" || true
 
 # Push to GitHub
@@ -98,8 +98,8 @@ git pull origin main
 # Step 7: Generate version file BEFORE build
 # Version was already generated locally, just pull it
 
-# Update Service Worker version
-SW_VERSION="v6-$(date +%Y%m%d)"
+# Update Service Worker version (упрощенная версия без автоматических обновлений)
+SW_VERSION="v7-simple-$(date +%Y%m%d)"
 sed -i "s|const SW_VERSION = '.*'|const SW_VERSION = '$SW_VERSION'|g" public/sw.js || true
 
 # Step 8: Install dependencies
