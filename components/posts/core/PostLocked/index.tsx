@@ -9,7 +9,8 @@ import {
   getTierInfo,
   calculatePriceWithDiscount,
   getActionButtonText,
-  formatPrice
+  formatPrice,
+  isPostSold
 } from '@/components/posts/utils/postHelpers'
 import { useSolRate } from '@/lib/hooks/useSolRate'
 import { cn } from '@/lib/utils'
@@ -39,6 +40,10 @@ export function PostLocked({
   const needsSub = needsSubscription(post)
   const needsUpgrade = needsTierUpgrade(post)
   const tierInfo = getTierInfo(post.access)
+  
+  // КРИТИЧЕСКИЙ ФИКС: добавляем проверку для продаваемых постов
+  const isSellable = post.commerce?.isSellable && !isPostSold(post.commerce)
+  const needsPrice = needsPay || isSellable
 
   // Стили для разных вариантов
   const getContainerHeight = () => {
@@ -75,7 +80,12 @@ export function PostLocked({
     if (!onAction) return
 
     if (needsPay || post.commerce?.isSellable) {
-      onAction({ type: 'purchase', postId: post.id })
+      // Для продаваемых постов отправляем действие 'bid'
+      if (post.commerce?.isSellable) {
+        onAction({ type: 'bid', postId: post.id })
+      } else {
+        onAction({ type: 'purchase', postId: post.id })
+      }
     } else if (needsSub || needsUpgrade) {
       onAction({ type: 'subscribe', postId: post.id })
     }
@@ -85,6 +95,19 @@ export function PostLocked({
   const finalPrice = post.commerce?.flashSale && post.access.price
     ? calculatePriceWithDiscount(post.access.price, post.commerce.flashSale)
     : post.access.price
+
+  // КРИТИЧЕСКИЙ ФИКС: логирование для отладки
+  if (needsPrice && (finalPrice === undefined || finalPrice === null)) {
+    console.error('[PostLocked] No price available:', {
+      postId: post.id,
+      accessPrice: post.access.price,
+      finalPrice,
+      commerce: post.commerce,
+      needsPay,
+      isSellable,
+      needsPrice
+    })
+  }
 
   const buttonText = getActionButtonText(post)
 
@@ -129,24 +152,24 @@ export function PostLocked({
 
         {/* Lock message */}
         <h4 className="text-white font-semibold text-lg sm:text-xl mb-2">
-          {needsPay ? 'Премиум контент' :
+          {isSellable ? 'Эксклюзивный товар' :
+           needsPay ? 'Премиум контент' :
            needsUpgrade ? `Доступно с ${tierInfo?.required.name} подпиской` :
            needsSub ? 'Контент для подписчиков' :
-           post.commerce?.isSellable ? 'Эксклюзивный товар' :
            'Контент недоступен'}
         </h4>
         
         {/* Descriptive message */}
         <p className="text-white/80 text-sm mb-4 max-w-sm">
-          {needsPay ? 'Приобретите доступ к этому эксклюзивному контенту' :
+          {isSellable ? 'Уникальный товар доступен для покупки' :
+           needsPay ? 'Приобретите доступ к этому эксклюзивному контенту' :
            needsUpgrade ? `Обновите подписку, чтобы получить доступ к ${tierInfo?.required.name} контенту` :
            needsSub ? 'Подпишитесь на создателя для просмотра' :
-           post.commerce?.isSellable ? 'Уникальный товар доступен для покупки' :
            'Этот контент имеет ограниченный доступ'}
         </p>
 
         {/* Price or tier info */}
-        {needsPay && (finalPrice || finalPrice === 0) && (
+        {needsPrice && (finalPrice || finalPrice === 0) && (
           <div className="mb-4">
             <div className="text-2xl font-bold text-white">
               {safeToFixed(finalPrice, 2)} {post.access.currency || 'SOL'}

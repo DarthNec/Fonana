@@ -137,7 +137,33 @@ export default function RevampedFeedPage() {
         setShowSubscribeModal(true)
         break
       case 'purchase':
-        setSelectedPost(post)
+        // Для обычных платных постов формируем правильную структуру для PurchaseModal
+        const purchasePost = {
+          id: post.id,
+          title: post.content.title,
+          price: post.access?.price || 0, // Берем цену из access
+          currency: post.access?.currency || 'SOL',
+          creator: {
+            id: post.creator.id,
+            name: post.creator.name,
+            username: post.creator.username,
+            avatar: post.creator.avatar,
+            isVerified: post.creator.isVerified
+          },
+          flashSale: post.commerce?.flashSale ? {
+            id: post.commerce.flashSale.id,
+            discount: post.commerce.flashSale.discount,
+            endAt: post.commerce.flashSale.endAt,
+            maxRedemptions: post.commerce.flashSale.maxRedemptions,
+            usedCount: post.commerce.flashSale.usedCount,
+            remainingRedemptions: post.commerce.flashSale.remainingRedemptions,
+            timeLeft: post.commerce.flashSale.timeLeft
+          } : undefined
+        }
+        
+        console.log('[Feed] Opening purchase modal with price:', purchasePost.price)
+        
+        setSelectedPost(purchasePost)
         setShowPurchaseModal(true)
         break
       case 'edit':
