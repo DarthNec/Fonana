@@ -11,8 +11,12 @@ export default function UserProfileShortcut() {
 
   useEffect(() => {
     if (username) {
-      // Skip processing if it's a file with extension
-      if (username.includes('.')) {
+      // Skip processing if it's a file with extension or known static files
+      if (username.includes('.') || 
+          username === 'force-update-sw.js' || 
+          username === 'force-refresh.js' ||
+          username === 'sw.js' ||
+          username === 'manifest.json') {
         // This is likely a static file, not a username
         notFound()
         return
