@@ -60,7 +60,7 @@ export default function CreatePostModal({ onPostCreated, onClose }: CreatePostMo
   const [formData, setFormData] = useState({
     title: '',
     content: '',
-    category: 'Lifestyle', // Более универсальная категория по умолчанию
+    category: '', // Пустая категория по умолчанию
     tags: [] as string[],
     currentTag: '',
     file: null as File | null,
@@ -429,7 +429,7 @@ export default function CreatePostModal({ onPostCreated, onClose }: CreatePostMo
       setFormData({
         title: '',
         content: '',
-        category: 'Lifestyle',
+        category: '',
         tags: [],
         currentTag: '',
         file: null,
@@ -485,39 +485,30 @@ export default function CreatePostModal({ onPostCreated, onClose }: CreatePostMo
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {/* Left column */}
             <div className="space-y-6">
-              {/* Content type selection */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-3">
-                  Content type
-                </label>
-                <div className="grid grid-cols-2 gap-3">
-                  {contentTypes.map((type) => (
-                    <button
-                      key={type.id}
-                      type="button"
-                      onClick={() => setFormData(prev => ({ 
-                        ...prev, 
-                        type: type.id as any,
-                        // Автоматически меняем категорию при смене типа
-                        category: getSmartCategory(type.id)
-                      }))}
-                      className={`p-3 rounded-xl border-2 transition-all flex items-center gap-2 ${
-                        formData.type === type.id
-                          ? 'border-purple-500 bg-purple-500/10'
-                          : 'border-gray-200 dark:border-slate-700 hover:border-gray-300 dark:hover:border-slate-600 bg-gray-50 dark:bg-slate-800/50'
-                      }`}
-                    >
-                      <type.icon className={`w-5 h-5 ${formData.type === type.id ? type.color : 'text-gray-600 dark:text-slate-400'}`} />
-                      <span className={`text-sm font-medium ${formData.type === type.id ? 'text-gray-900 dark:text-white' : 'text-gray-600 dark:text-slate-400'}`}>
-                        {type.label}
-                      </span>
-                    </button>
-                  ))}
+              {/* Content type info - automatically detected */}
+              {formData.type !== 'text' && formData.file && (
+                <div className="bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-800 rounded-xl p-4">
+                  <div className="flex items-center gap-3">
+                    {formData.type === 'image' && <PhotoIcon className="w-5 h-5 text-purple-600 dark:text-purple-400" />}
+                    {formData.type === 'video' && <VideoCameraIcon className="w-5 h-5 text-purple-600 dark:text-purple-400" />}
+                    {formData.type === 'audio' && <MusicalNoteIcon className="w-5 h-5 text-purple-600 dark:text-purple-400" />}
+                    <div>
+                      <p className="text-sm font-medium text-purple-900 dark:text-purple-200">
+                        {formData.type === 'image' ? 'Image' : formData.type === 'video' ? 'Video' : 'Audio'} content detected
+                      </p>
+                      <p className="text-xs text-purple-700 dark:text-purple-300">
+                        {formData.file.name}
+                      </p>
+                    </div>
+                  </div>
                 </div>
-              </div>
+              )}
 
-              {/* File upload (if not text) */}
-              {formData.type !== 'text' && (
+              {/* File upload - always shown */}
+              <div className="space-y-4">
+                <label className="block text-sm font-medium text-gray-700 dark:text-slate-300">
+                  Upload media (optional)
+                </label>
                 <div
                   onDrop={handleDrop}
                   onDragOver={(e) => e.preventDefault()}
@@ -580,7 +571,7 @@ export default function CreatePostModal({ onPostCreated, onClose }: CreatePostMo
                     className="hidden"
                   />
                 </div>
-              )}
+              </div>
 
               {/* Crop button for images */}
               {formData.type === 'image' && formData.preview && (
@@ -608,7 +599,11 @@ export default function CreatePostModal({ onPostCreated, onClose }: CreatePostMo
                   value={formData.category}
                   onChange={(e) => setFormData(prev => ({ ...prev, category: e.target.value }))}
                   className="w-full px-4 py-2 bg-white dark:bg-slate-800/50 border border-gray-300 dark:border-slate-700 rounded-xl text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent font-sans"
+                  required
                 >
+                  <option value="" className="bg-white dark:bg-slate-800 text-gray-500 dark:text-slate-400 font-sans">
+                    Select category
+                  </option>
                   {categories.map((category) => (
                     <option key={category} value={category} className="bg-white dark:bg-slate-800 text-gray-900 dark:text-white font-sans">
                       {category}
