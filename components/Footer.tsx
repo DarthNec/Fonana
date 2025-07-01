@@ -1,12 +1,10 @@
 import React from 'react'
 
-// Эта версия будет автоматически обновляться при деплое
+// Статический импорт версии для правильной работы в production
 let APP_VERSION = 'dev'
-
 try {
-  // Пытаемся импортировать версию, если файл существует
-  const versionModule = require('@/lib/version')
-  APP_VERSION = versionModule.APP_VERSION
+  const { APP_VERSION: VERSION } = require('@/lib/version')
+  APP_VERSION = VERSION
 } catch {
   // В режиме разработки файл может не существовать
 }
