@@ -1095,6 +1095,21 @@ node scripts/fix-thumbnails-migration.js
 
 ## Recent Updates & Fixes
 
+### Service Worker & Version System Fix (July 1, 2025) 🚀 COMPLETED
+- **Problem**: После деплоя пользователи видели старую версию приложения даже после очистки кеша
+- **Root Cause**: 
+  - Версия генерировалась ПОСЛЕ сборки
+  - Footer использовал динамический require() который кешировался
+  - Service Worker не обновлялся автоматически
+- **Solution**:
+  - Версия генерируется ДО сборки в deploy скрипте
+  - Footer использует статический импорт
+  - Создан `/api/version` endpoint
+  - force-refresh.js проверяет версию через API
+  - Service Worker v6 с автообновлением
+- **Result**: ✅ Пользователи автоматически получают новые версии без ручной очистки кеша
+- **Docs**: SERVICE_WORKER_VERSION_ISSUE_ANALYSIS.md, SERVICE_WORKER_VERSION_FIX_SOLUTION.md, SERVICE_WORKER_VERSION_FIX_REPORT.md
+
 ### Critical toFixed Bug Fix (June 30, 2025) 🐛 COMPLETED
 - **Problem**: `TypeError: Cannot read properties of undefined (reading 'toFixed')` при покупке постов
 - **Root Cause**: После UI/UX рефакторинга в PostLocked использовался toFixed без проверки на undefined
