@@ -57,21 +57,28 @@ export default function SellablePostModal({ isOpen, onClose, post }: SellablePos
   const [timeLeft, setTimeLeft] = useState('')
   const { rate: solToUsdRate = 135, isLoading: isRateLoading } = useSolRate()
   
-  const price = post.price || 0
+  const price = Number(post.price) || 0
   const currency = post.currency || 'SOL'
   const quantity = post.quantity || 1
   
   const isAuction = post.sellType === 'AUCTION'
 
-  // Безопасное получение цены с дефолтными значениями
+  // Безопасное получение цены с дефолтными значениями и проверкой на NaN
   const getPrice = () => {
     if (isAuction) {
-      return post.auctionCurrentBid || post.auctionStartPrice || 0
+      const auctionPrice = Number(post.auctionCurrentBid) || Number(post.auctionStartPrice) || 0
+      return Number.isFinite(auctionPrice) ? auctionPrice : 0
     }
-    return post.price || 0
+    const postPrice = Number(post.price) || 0
+    return Number.isFinite(postPrice) ? postPrice : 0
   }
   
   const currentPrice = getPrice()
+  
+  // КРИТИЧЕСКАЯ ПРОВЕРКА: убедимся что цена валидна перед любыми операциями
+  if (!Number.isFinite(currentPrice) || currentPrice < 0) {
+    console.error('[SellablePostModal] Invalid currentPrice:', currentPrice, 'from post:', post)
+  }
   const bidStep = 0.01 // Фиксированный шаг для аукциона
   const minBid = currentPrice + bidStep
   
@@ -152,9 +159,24 @@ export default function SellablePostModal({ isOpen, onClose, post }: SellablePos
       const referrerWallet = creatorData.creator.referrer?.solanaWallet || creatorData.creator.referrer?.wallet
       const hasReferrer = creatorData.creator.referrerId && referrerWallet && isValidSolanaAddress(referrerWallet)
 
+      // КРИТИЧЕСКАЯ ВАЛИДАЦИЯ: проверяем сумму перед передачей в платежные функции
+      const cleanAmount = Number(currentPrice)
+      if (!Number.isFinite(cleanAmount) || isNaN(cleanAmount) || cleanAmount <= 0) {
+        console.error('[SellablePostModal] Invalid payment amount:', {
+          currentPrice,
+          cleanAmount,
+          post: post,
+          postPrice: post.price,
+          auctionCurrentBid: post.auctionCurrentBid,
+          auctionStartPrice: post.auctionStartPrice
+        })
+        toast.error("Ошибка: сумма оплаты некорректна")
+        return
+      }
+
       // Calculate payment distribution
       const distribution = calculatePaymentDistribution(
-        currentPrice,
+        cleanAmount,
         creatorWallet,
         hasReferrer,
         referrerWallet
