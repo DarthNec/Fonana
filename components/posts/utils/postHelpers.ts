@@ -131,18 +131,18 @@ export function getActionButtonText(post: UnifiedPost): string {
     }
     if (commerce.flashSale) {
       const discountedPrice = calculatePriceWithDiscount(access.price || 0, commerce.flashSale)
-      return `Buy for ${discountedPrice.toFixed(2)} ${access.currency} (${commerce.flashSale.discount}% OFF)`
+      return `Buy for ${(discountedPrice || 0).toFixed(2)} ${access.currency || 'SOL'} (${commerce.flashSale.discount}% OFF)`
     }
-    return `Buy for ${access.price} ${access.currency}`
+    return `Buy for ${access.price || 0} ${access.currency || 'SOL'}`
   }
   
   // Платные посты
   if (needsPayment(post)) {
     if (commerce?.flashSale) {
       const discountedPrice = calculatePriceWithDiscount(access.price || 0, commerce.flashSale)
-      return `Unlock for ${discountedPrice.toFixed(2)} ${access.currency} (${commerce.flashSale.discount}% OFF)`
+      return `Unlock for ${(discountedPrice || 0).toFixed(2)} ${access.currency || 'SOL'} (${commerce.flashSale.discount}% OFF)`
     }
-    return `Unlock for ${access.price} ${access.currency}`
+    return `Unlock for ${access.price || 0} ${access.currency || 'SOL'}`
   }
   
   // Посты по подписке

@@ -8,7 +8,8 @@ import {
   needsTierUpgrade,
   getTierInfo,
   calculatePriceWithDiscount,
-  getActionButtonText
+  getActionButtonText,
+  formatPrice
 } from '@/components/posts/utils/postHelpers'
 import { useSolRate } from '@/lib/hooks/useSolRate'
 import { cn } from '@/lib/utils'
@@ -144,14 +145,14 @@ export function PostLocked({
         </p>
 
         {/* Price or tier info */}
-        {needsPay && finalPrice && (
+        {needsPay && (finalPrice || finalPrice === 0) && (
           <div className="mb-4">
             <div className="text-2xl font-bold text-white">
-              {finalPrice.toFixed(2)} {post.access.currency}
+              {(finalPrice || 0).toFixed(2)} {post.access.currency || 'SOL'}
             </div>
             {solRate && post.access.currency === 'SOL' && (
               <div className="text-sm text-white/70">
-                ≈ ${(finalPrice * solRate).toFixed(2)} USD
+                ≈ ${((finalPrice || 0) * solRate).toFixed(2)} USD
               </div>
             )}
             {post.commerce?.flashSale && (
