@@ -129,20 +129,41 @@ export function getActionButtonText(post: UnifiedPost): string {
     if (commerce.sellType === 'AUCTION') {
       return 'Place Bid'
     }
-    if (commerce.flashSale) {
-      const discountedPrice = calculatePriceWithDiscount(access.price || 0, commerce.flashSale)
-      return `Buy for ${(discountedPrice || 0).toFixed(2)} ${access.currency || 'SOL'} (${commerce.flashSale.discount}% OFF)`
+    
+    // КРИТИЧЕСКИЙ ФИКС: проверяем наличие цены перед использованием
+    const price = access.price
+    if (price === undefined || price === null) {
+      console.error('[getActionButtonText] No price for sellable post:', {
+        postId: post.id,
+        accessPrice: access.price,
+        commerce: commerce
+      })
+      return 'Price not available'
     }
-    return `Buy for ${access.price || 0} ${access.currency || 'SOL'}`
+    
+    if (commerce.flashSale) {
+      const discountedPrice = calculatePriceWithDiscount(price, commerce.flashSale)
+      return `Buy for ${discountedPrice.toFixed(2)} ${access.currency || 'SOL'} (${commerce.flashSale.discount}% OFF)`
+    }
+    return `Buy for ${price.toFixed(2)} ${access.currency || 'SOL'}`
   }
   
   // Платные посты
   if (needsPayment(post)) {
-    if (commerce?.flashSale) {
-      const discountedPrice = calculatePriceWithDiscount(access.price || 0, commerce.flashSale)
-      return `Unlock for ${(discountedPrice || 0).toFixed(2)} ${access.currency || 'SOL'} (${commerce.flashSale.discount}% OFF)`
+    const price = access.price
+    if (price === undefined || price === null) {
+      console.error('[getActionButtonText] No price for paid post:', {
+        postId: post.id,
+        accessPrice: access.price
+      })
+      return 'Price not available'
     }
-    return `Unlock for ${access.price || 0} ${access.currency || 'SOL'}`
+    
+    if (commerce?.flashSale) {
+      const discountedPrice = calculatePriceWithDiscount(price, commerce.flashSale)
+      return `Unlock for ${discountedPrice.toFixed(2)} ${access.currency || 'SOL'} (${commerce.flashSale.discount}% OFF)`
+    }
+    return `Unlock for ${price.toFixed(2)} ${access.currency || 'SOL'}`
   }
   
   // Посты по подписке

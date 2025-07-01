@@ -177,13 +177,30 @@ export default function CreatePostModal({ onPostCreated, onClose }: CreatePostMo
           return
         }
 
-        // КРИТИЧЕСКИЙ ФИКС: логируем только размер файла, не base64 содержимое
+        // КРИТИЧЕСКИЙ ФИКС: проверяем что base64 строка валидна
+        if (!result.startsWith('data:image/')) {
+          console.error('[CreatePostModal] Invalid image data URL format')
+          toast.error('Invalid image format')
+          return
+        }
+
+        // Проверяем размер base64 строки
+        const base64Size = result.length
+        const estimatedMB = (base64Size * 0.75) / (1024 * 1024) // примерный размер в MB
+        
         console.log('[CreatePostModal] Image loaded successfully:', {
           fileName: file.name,
           fileSize: file.size,
-          base64Length: result.length,
+          base64Length: base64Size,
+          estimatedMB: estimatedMB.toFixed(2),
+          dataUrlPrefix: result.substring(0, 50), // только начало для проверки формата
           openingCrop: true
         })
+        
+        // Если изображение слишком большое, предупреждаем
+        if (estimatedMB > 5) {
+          console.warn('[CreatePostModal] Large image detected, may cause performance issues')
+        }
         
         setOriginalImage(result)
         setFormData(prev => ({
@@ -194,8 +211,11 @@ export default function CreatePostModal({ onPostCreated, onClose }: CreatePostMo
           category: getSmartCategory(contentType)
         }))
         
-        // Открываем модалку кропа сразу без задержки
-        setShowCropModal(true)
+        // Открываем модалку кропа с небольшой задержкой для гарантии что state обновился
+        setTimeout(() => {
+          console.log('[CreatePostModal] Opening crop modal with image')
+          setShowCropModal(true)
+        }, 100)
       }
       
       reader.onerror = (e) => {

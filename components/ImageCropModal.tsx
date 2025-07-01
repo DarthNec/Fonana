@@ -48,15 +48,31 @@ export default function ImageCropModal({ image, onCropComplete, onCancel }: Imag
       return
     }
 
+    // КРИТИЧЕСКИЙ ФИКС: проверяем формат изображения
+    if (!image.startsWith('data:image/') && !image.startsWith('blob:') && !image.startsWith('http')) {
+      console.error('[ImageCropModal] Invalid image format:', image.substring(0, 50))
+      setImageError(true)
+      toast.error('Invalid image format')
+      return
+    }
+
     // Create a test image to verify the URL works
     const testImg = new Image()
     testImg.onload = () => {
-      console.log('[ImageCropModal] Test image loaded successfully')
+      console.log('[ImageCropModal] Test image loaded successfully:', {
+        width: testImg.width,
+        height: testImg.height,
+        src: testImg.src.substring(0, 50)
+      })
       setImageError(false)
     }
-    testImg.onerror = () => {
-      console.error('[ImageCropModal] Test image failed to load:', image)
+    testImg.onerror = (e) => {
+      console.error('[ImageCropModal] Test image failed to load:', {
+        error: e,
+        imageSrc: image.substring(0, 50)
+      })
       setImageError(true)
+      toast.error('Failed to load image. Please try another image.')
     }
     testImg.src = image
   }, [image])
@@ -281,7 +297,7 @@ export default function ImageCropModal({ image, onCropComplete, onCancel }: Imag
               onCropComplete={onCropCompleteHandler}
               onZoomChange={setZoom}
               onMediaLoaded={() => {
-                console.log('[ImageCropModal] Image loaded successfully')
+                console.log('[ImageCropModal] Image loaded successfully in Cropper')
                 setImageError(false)
               }}
               showGrid={true}
