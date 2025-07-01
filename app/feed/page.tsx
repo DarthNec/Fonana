@@ -144,26 +144,54 @@ export default function RevampedFeedPage() {
         setShowEditModal(true)
         break
       case 'bid':
-        // КРИТИЧЕСКИЙ ФИКС: правильно мапируем UnifiedPost для SellablePostModal с валидацией цены
-        const rawPrice = post.access?.price || 0  // Цена только из access, не из commerce
-        const validatedPrice = Number(rawPrice) || 0
+        // КРИТИЧЕСКИЙ ФИКС: многоуровневая валидация цены для SellablePostModal
         
-        if (!Number.isFinite(validatedPrice) || validatedPrice <= 0) {
-          console.error('[Feed] Invalid price for sellable post:', {
+        // Попытка 1: Цена из access
+        let finalPrice: number | null = null
+        const accessPrice = post.access?.price
+        
+        if (accessPrice !== undefined && accessPrice !== null) {
+          const accessPriceNum = Number(accessPrice)
+          if (Number.isFinite(accessPriceNum) && accessPriceNum > 0) {
+            finalPrice = accessPriceNum
+          }
+        }
+        
+        // Попытка 2: Проверяем что это продаваемый пост
+        if (finalPrice === null && post.commerce?.isSellable) {
+          console.log('[Feed] Post is sellable but no price in access, checking auction data')
+        }
+        
+        // Попытка 3: Цена аукциона
+        if (finalPrice === null && post.commerce?.sellType === 'AUCTION') {
+          const auctionPrice = post.commerce.auctionData?.currentBid || post.commerce.auctionData?.startPrice
+          if (auctionPrice !== undefined && auctionPrice !== null) {
+            const auctionPriceNum = Number(auctionPrice)
+            if (Number.isFinite(auctionPriceNum) && auctionPriceNum > 0) {
+              finalPrice = auctionPriceNum
+            }
+          }
+        }
+        
+        // Финальная проверка - цена должна быть найдена
+        if (finalPrice === null || finalPrice <= 0) {
+          console.error('[Feed] No valid price found for sellable post:', {
             postId: post.id,
+            postTitle: post.content?.title,
             accessPrice: post.access?.price,
-            validatedPrice,
-            hasCommerce: !!post.commerce,
-            isSellable: post.commerce?.isSellable
+            commerceIsSellable: post.commerce?.isSellable,
+            auctionCurrentBid: post.commerce?.auctionData?.currentBid,
+            auctionStartPrice: post.commerce?.auctionData?.startPrice,
+            sellType: post.commerce?.sellType
           })
-          toast.error('Ошибка: некорректная цена поста')
+          toast.error('Ошибка: цена поста не найдена или некорректна')
           return
         }
         
         const sellablePost = {
           id: post.id,
           title: post.content.title,
-          price: validatedPrice, // Используем валидированную цену
+          price: finalPrice, // Используем валидированную цену
           currency: post.access?.currency || 'SOL',  // Валюта только из access
           sellType: post.commerce?.sellType,
           quantity: post.commerce?.quantity || 1,
