@@ -467,7 +467,7 @@ export default function CreatePostModal({ onPostCreated, onClose }: CreatePostMo
       {/* Main Modal */}
       <div className={`fixed inset-0 bg-black/85 backdrop-blur-sm z-[100] flex items-start justify-center p-0 sm:p-4 overflow-y-auto animate-fade-in ${showCropModal ? 'pointer-events-none' : ''}`}>
         <div className="modal-content bg-white dark:bg-slate-900 backdrop-blur-xl rounded-none sm:rounded-3xl max-w-4xl w-full my-0 sm:my-8 border-y sm:border border-gray-200 dark:border-slate-700/50 shadow-2xl min-h-screen sm:min-h-0 animate-slideInUp">
-          <form onSubmit={handleSubmit} className="p-4 sm:p-6 lg:p-8 space-y-4 sm:space-y-6 pb-24 md:pb-6">
+          <form onSubmit={handleSubmit} className="p-4 sm:p-6 lg:p-8 space-y-4 sm:space-y-6">
           {/* Header */}
           <div className="flex items-center justify-between mb-4 sm:mb-6">
             <h2 className="text-xl sm:text-2xl font-bold bg-gradient-to-r from-purple-600 to-pink-600 dark:from-purple-400 dark:to-pink-400 bg-clip-text text-transparent">
@@ -968,7 +968,7 @@ export default function CreatePostModal({ onPostCreated, onClose }: CreatePostMo
           </div>
 
           {/* Buttons */}
-          <div className="flex gap-3 pt-4 border-t border-gray-200 dark:border-slate-700/50">
+          <div className="flex gap-3 pt-4 border-t border-gray-200 dark:border-slate-700/50 pb-safe sm:pb-0">
             <button
               type="submit"
               disabled={isUploading || !connected}

@@ -30,7 +30,12 @@ export function PostMenu({ post, onAction, className }: PostMenuProps) {
   const menuRef = useRef<HTMLDivElement>(null)
   
   // Проверяем, является ли пользователь автором
-  const isCreator = user?.id && user.id === post.creator.id
+  // Убеждаемся, что все данные существуют
+  const isCreator = Boolean(
+    user?.id && 
+    post?.creator?.id && 
+    user.id === post.creator.id
+  )
   
   // Закрытие меню при клике вне
   useEffect(() => {

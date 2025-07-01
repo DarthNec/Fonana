@@ -41,6 +41,7 @@ export default function MessagesPage() {
   const [conversations, setConversations] = useState<Conversation[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState('')
+  const [showSearch, setShowSearch] = useState(false)
 
   useEffect(() => {
     if (user && !isUserLoading) {
@@ -86,7 +87,7 @@ export default function MessagesPage() {
 
   if (isUserLoading) {
     return (
-      <div className="min-h-screen bg-gray-50 dark:bg-slate-900 pt-24 flex items-center justify-center">
+      <div className="min-h-screen bg-white dark:bg-slate-900 pt-24 flex items-center justify-center">
         <div className="animate-pulse">
           <div className="w-16 h-16 bg-gray-200 dark:bg-slate-700 rounded-full mx-auto mb-4" />
           <div className="h-4 bg-gray-200 dark:bg-slate-700 rounded w-48 mx-auto" />
@@ -97,7 +98,7 @@ export default function MessagesPage() {
 
   if (!user) {
     return (
-      <div className="min-h-screen bg-gray-50 dark:bg-slate-900 pt-24 flex items-center justify-center">
+      <div className="min-h-screen bg-white dark:bg-slate-900 pt-24 flex items-center justify-center">
         <div className="text-center">
           <ChatBubbleLeftEllipsisIcon className="w-16 h-16 text-gray-400 mx-auto mb-4" />
           <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">
@@ -112,30 +113,39 @@ export default function MessagesPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-slate-900 pt-24">
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Messages</h1>
-          <p className="text-gray-600 dark:text-gray-400 mt-2">Chat with creators and fans</p>
-        </div>
-
-        {/* Search Bar */}
-        <div className="mb-6">
-          <div className="relative">
-            <MagnifyingGlassIcon className="absolute left-4 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
-            <input
-              type="text"
-              placeholder="Search conversations..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-12 pr-4 py-3 bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-            />
+    <div className="min-h-screen bg-white dark:bg-slate-900 pt-20 pb-20">
+      <div className="max-w-2xl mx-auto px-0 sm:px-4">
+        {/* Compact header with search */}
+        <div className="mb-4 px-4 sm:px-0">
+          <div className="flex items-center justify-between mb-2">
+            <h1 className="text-xl font-bold text-gray-900 dark:text-white">Messages</h1>
+            <button
+              onClick={() => setShowSearch(!showSearch)}
+              className="p-2 hover:bg-gray-100 dark:hover:bg-slate-800 rounded-xl transition-colors"
+              aria-label="Toggle search"
+            >
+              <MagnifyingGlassIcon className="w-5 h-5 text-gray-600 dark:text-slate-400" />
+            </button>
           </div>
+          
+          {/* Collapsible search input */}
+          {showSearch && (
+            <div className="animate-fade-in">
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Search conversations..."
+                className="w-full px-4 py-2 bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent text-sm"
+                autoFocus
+              />
+            </div>
+          )}
         </div>
 
         {/* Conversations List */}
         {isLoading ? (
-          <div className="space-y-4">
+          <div className="space-y-4 px-4 sm:px-0">
             {[1, 2, 3].map(i => (
               <div key={i} className="animate-pulse">
                 <div className="bg-white dark:bg-slate-800 rounded-xl p-4">
@@ -151,12 +161,12 @@ export default function MessagesPage() {
             ))}
           </div>
         ) : filteredConversations.length > 0 ? (
-          <div className="space-y-4">
+          <div className="space-y-2 sm:space-y-3">
             {filteredConversations.map(conv => (
               <Link
                 key={conv.id}
                 href={`/messages/${conv.id}`}
-                className="block bg-white dark:bg-slate-800 rounded-xl p-4 hover:shadow-lg transition-shadow border border-gray-200 dark:border-slate-700"
+                className="block bg-white dark:bg-slate-800/50 hover:bg-gray-50 dark:hover:bg-slate-800 rounded-none sm:rounded-xl p-4 transition-all border-b sm:border-0 border-gray-100 dark:border-slate-700/50 mx-0 sm:mx-0"
               >
                 <div className="flex items-center gap-4">
                   <div className="relative">
@@ -202,6 +212,16 @@ export default function MessagesPage() {
                 </div>
               </Link>
             ))}
+          </div>
+        ) : searchQuery ? (
+          <div className="text-center py-12">
+            <MagnifyingGlassIcon className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+            <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">
+              No results found
+            </h2>
+            <p className="text-gray-600 dark:text-gray-400">
+              Try searching with a different term
+            </p>
           </div>
         ) : (
           <div className="text-center py-12">

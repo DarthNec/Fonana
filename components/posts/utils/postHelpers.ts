@@ -106,11 +106,12 @@ export function calculatePriceWithDiscount(price: number, flashSale?: PostCommer
 /**
  * Форматирует цену для отображения
  */
-export function formatPrice(price: number, currency: string = 'SOL', solRate?: number): string {
-  const formattedPrice = price.toFixed(2)
+export function formatPrice(price: number | null | undefined, currency: string = 'SOL', solRate?: number): string {
+  const safePrice = price || 0
+  const formattedPrice = safePrice.toFixed(2)
   
   if (currency === 'SOL' && solRate) {
-    const usdPrice = (price * solRate).toFixed(2)
+    const usdPrice = (safePrice * solRate).toFixed(2)
     return `${formattedPrice} SOL (≈ $${usdPrice})`
   }
   
