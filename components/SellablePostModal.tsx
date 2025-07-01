@@ -20,6 +20,7 @@ import {
 } from '@/lib/solana/payments'
 import { useSolRate } from '@/lib/hooks/useSolRate'
 import { jwtManager } from '@/lib/utils/jwt'
+import { useUserContext } from '@/lib/contexts/UserContext'
 
 // Константа для базовой комиссии сети Solana (5000 lamports = 0.000005 SOL)
 const NETWORK_FEE = 0.000005
@@ -49,10 +50,11 @@ interface SellablePostModalProps {
 
 export default function SellablePostModal({ isOpen, onClose, post }: SellablePostModalProps) {
   const { connected, publicKey, sendTransaction } = useWallet()
+  const { user } = useUserContext()
   const [isProcessing, setIsProcessing] = useState(false)
   const [bidAmount, setBidAmount] = useState('')
   const [timeLeft, setTimeLeft] = useState('')
-  const [dynamicNetworkFee, setDynamicNetworkFee] = useState(NETWORK_FEE)
+  const { rate: solToUsdRate = 135, isLoading: isRateLoading } = useSolRate()
   
   const price = post.price || 0
   const currency = post.currency || 'SOL'
@@ -60,7 +62,22 @@ export default function SellablePostModal({ isOpen, onClose, post }: SellablePos
   
   const isAuction = post.sellType === 'AUCTION'
 
-  const { rate: solToUsdRate, isLoading: isRateLoading } = useSolRate()
+  // Безопасное получение цены с дефолтными значениями
+  const getPrice = () => {
+    if (isAuction) {
+      return post.auctionCurrentBid || post.auctionStartPrice || 0
+    }
+    return post.price || 0
+  }
+  
+  const currentPrice = getPrice()
+  const bidStep = 0.01 // Фиксированный шаг для аукциона
+  const minBid = currentPrice + bidStep
+  
+  // Динамическая комиссия сети
+  const dynamicNetworkFee = currentPrice > 1 
+    ? NETWORK_FEE * 2 // Увеличенная комиссия для больших сумм
+    : NETWORK_FEE
 
   // Обновляем таймер для аукциона
   useEffect(() => {
@@ -136,7 +153,7 @@ export default function SellablePostModal({ isOpen, onClose, post }: SellablePos
 
       // Calculate payment distribution
       const distribution = calculatePaymentDistribution(
-        price,
+        currentPrice,
         creatorWallet,
         hasReferrer,
         referrerWallet
@@ -242,7 +259,7 @@ export default function SellablePostModal({ isOpen, onClose, post }: SellablePos
         body: JSON.stringify({
           buyerWallet: publicKey.toString(),
           txSignature: signature,
-          price,
+          price: currentPrice,
           hasReferrer,
           distribution
         })
@@ -302,7 +319,6 @@ export default function SellablePostModal({ isOpen, onClose, post }: SellablePos
       return
     }
 
-    const minBid = (post.auctionCurrentBid || post.auctionStartPrice || 0) + 0.1
     if (bid < minBid) {
       toast.error(`Минимальная ставка: ${minBid.toFixed(2)} SOL`)
       return
@@ -313,10 +329,6 @@ export default function SellablePostModal({ isOpen, onClose, post }: SellablePos
   }
 
   if (!isOpen) return null
-
-  const currentPrice = isAuction 
-    ? (post.auctionCurrentBid || post.auctionStartPrice || 0)
-    : price
 
   return (
     <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
@@ -409,25 +421,25 @@ export default function SellablePostModal({ isOpen, onClose, post }: SellablePos
                     <div className="flex justify-between items-center">
                       <span className="text-sm text-gray-600 dark:text-slate-400">Item price:</span>
                       <span className="text-lg font-semibold text-gray-900 dark:text-white">
-                        {currentPrice.toFixed(2)} {currency}
+                        {(currentPrice || 0).toFixed(2)} {currency}
                       </span>
                     </div>
                     <div className="flex justify-between items-center">
                       <span className="text-sm text-gray-600 dark:text-slate-400">Network fee:</span>
                       <span className="text-sm text-gray-600 dark:text-slate-400">
-                        ~{dynamicNetworkFee.toFixed(6)} SOL
+                        ~{(dynamicNetworkFee || 0).toFixed(6)} SOL
                       </span>
                     </div>
                     <div className="flex justify-between items-center">
                       <span className="text-sm text-gray-600 dark:text-slate-400">In USD:</span>
                       <span className="text-sm text-gray-600 dark:text-slate-400">
-                        ≈ ${(currentPrice * solToUsdRate).toFixed(2)} USD
+                        ≈ ${((currentPrice || 0) * (solToUsdRate || 135)).toFixed(2)} USD
                       </span>
                     </div>
                     <div className="flex justify-between items-center pt-2 border-t border-yellow-500/20">
                       <span className="text-sm font-semibold text-gray-900 dark:text-white">Total:</span>
                       <span className="text-2xl font-bold text-yellow-600 dark:text-yellow-400">
-                        {(currentPrice + dynamicNetworkFee).toFixed(6)} SOL
+                        {((currentPrice || 0) + (dynamicNetworkFee || 0)).toFixed(6)} SOL
                       </span>
                     </div>
                   </div>
@@ -495,7 +507,7 @@ export default function SellablePostModal({ isOpen, onClose, post }: SellablePos
               ) : (
                 <>
                   <CurrencyDollarIcon className="w-5 h-5" />
-                  Buy for {(currentPrice + dynamicNetworkFee).toFixed(4)} {currency}
+                  Buy for {((currentPrice || 0) + (dynamicNetworkFee || 0)).toFixed(4)} {currency}
                 </>
               )}
             </button>
