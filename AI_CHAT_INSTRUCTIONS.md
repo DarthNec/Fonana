@@ -1014,29 +1014,40 @@ grep -r "websocket-server/src" app/api/
 - Использовать `lib/services/websocket-client.ts` для WebSocket событий
 - WebSocket сервер должен быть отдельным процессом
 
-### 12. TypeError: Cannot read properties of undefined (reading 'toFixed')
-**Problem**: Ошибка при покупке постов после UI/UX рефакторинга
+### 12. TypeError: Cannot read properties of undefined (reading 'toFixed') [[memory:3674918339032729224]]
+**Problem**: Ошибка при покупке постов когда solRate или price undefined
 - **Symptoms**:
-  - Крах приложения при попытке купить некоторые посты
+  - Крах приложения при попытке купить платные посты
   - Ошибка в консоли: `TypeError: Cannot read properties of undefined (reading 'toFixed')`
-  - Покупка невозможна для постов без цены
+  - Покупка невозможна когда курс SOL/USD не загружен
 - **Cause**: Использование toFixed без проверки на undefined
 
 **Solution**:
 ```typescript
 // ❌ Неправильно
 {price.toFixed(2)}
+{(price * solRate).toFixed(2)}
 
-// ✅ Правильно
-{(price || 0).toFixed(2)}
-{(price ?? 0).toFixed(2)}
-{price ? price.toFixed(2) : '0.00'}
+// ✅ Правильно - использовать безопасные функции
+import { safeToFixed, formatSolAmount, formatSolToUsd } from '@/lib/utils/format'
+
+{safeToFixed(price, 2)}
+{formatSolAmount(price)}
+{formatSolToUsd(price, solRate)}
 ```
 
+**Safe Functions** (lib/utils/format.ts):
+- `safeToFixed(value, decimals)` - безопасный toFixed
+- `formatSolAmount(amount)` - форматирование SOL
+- `formatSolToUsd(amount, rate)` - конвертация в USD с fallback
+- `formatUsdAmount(amount)` - форматирование USD
+- `formatPercent(value)` - форматирование процентов
+
 **Prevention**:
-- Всегда проверять числовые значения перед вызовом toFixed
-- Использовать централизованные функции форматирования
-- Добавлять fallback значения для optional полей
+- Всегда использовать безопасные функции из lib/utils/format.ts
+- Не вызывать toFixed напрямую на переменных
+- При работе с числами использовать Number(value) || 0
+- Тестировать с undefined/null значениями
 
 ## Diagnostic Scripts (Available)
 ```bash

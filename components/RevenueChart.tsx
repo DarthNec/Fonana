@@ -35,6 +35,7 @@ import {
 import toast from 'react-hot-toast'
 import { useSolRate } from '@/lib/hooks/useSolRate'
 import { useCreatorData } from '@/lib/hooks/useCreatorData'
+import { safeToFixed, formatSolToUsd, formatPercent, formatSolAmount } from '@/lib/utils/format'
 
 ChartJS.register(
   CategoryScale,
