@@ -89,8 +89,8 @@ self.addEventListener('install', event => {
       })
       .then(() => {
         console.log('[SW] Installation complete');
-        // Принудительно активируем новую версию
-        return self.skipWaiting();
+        // НЕ принудительно активируем - ждем команды от клиента
+        console.log('[SW] Waiting for client to activate new version');
       })
       .catch(err => {
         console.error('[SW] Installation failed:', err);
@@ -241,7 +241,11 @@ self.addEventListener('fetch', event => {
 self.addEventListener('message', event => {
   if (event.data && event.data.type === 'SKIP_WAITING') {
     console.log('[SW] Received SKIP_WAITING, activating new service worker');
-    self.skipWaiting();
+    self.skipWaiting().then(() => {
+      console.log('[SW] skipWaiting completed, service worker will activate');
+    }).catch(err => {
+      console.error('[SW] skipWaiting failed:', err);
+    });
   }
   
   if (event.data && event.data.type === 'CLEAR_CACHE') {

@@ -5,6 +5,7 @@ class ServiceWorkerManager {
     this.updateAvailable = false;
     this.updatePromptShown = false; // Флаг для отслеживания показанных уведомлений
     this.refreshing = false; // Флаг для предотвращения множественных перезагрузок
+    this.sessionPromptShown = false; // Флаг для текущей сессии
   }
 
   async init() {
@@ -124,8 +125,8 @@ class ServiceWorkerManager {
       
       if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
         this.updateAvailable = true;
-        // Показываем уведомление только если еще не показывали
-        if (!this.updatePromptShown) {
+        // Показываем уведомление только если еще не показывали в этой сессии
+        if (!this.updatePromptShown && !this.sessionPromptShown) {
           this.promptUpdate();
         }
       }
@@ -134,7 +135,7 @@ class ServiceWorkerManager {
 
   promptUpdate() {
     // Проверяем, не показывали ли уже уведомление
-    if (this.updatePromptShown) {
+    if (this.updatePromptShown || this.sessionPromptShown) {
       console.log('[SW Manager] Update prompt already shown, skipping');
       return;
     }
@@ -147,6 +148,7 @@ class ServiceWorkerManager {
 
     console.log('[SW Manager] Update available, showing prompt');
     this.updatePromptShown = true; // Устанавливаем флаг ДО показа уведомления
+    this.sessionPromptShown = true; // Флаг для текущей сессии
     
     // Показываем уведомление пользователю
     if (confirm('Доступно обновление сайта. Обновить сейчас?')) {
@@ -158,6 +160,13 @@ class ServiceWorkerManager {
         this.updatePromptShown = false;
         console.log('[SW Manager] Update prompt flag reset');
       }, 60000); // 1 минута
+      
+      // Сессионный флаг сбрасываем только при перезагрузке страницы
+      // или через более длительное время
+      setTimeout(() => {
+        this.sessionPromptShown = false;
+        console.log('[SW Manager] Session prompt flag reset');
+      }, 300000); // 5 минут
     }
   }
 

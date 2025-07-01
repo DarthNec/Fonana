@@ -7,6 +7,7 @@ export default function ServiceWorkerCheckV5() {
   const [swVersion, setSwVersion] = useState('Unknown')
   const [updateAvailable, setUpdateAvailable] = useState(false)
   const [logs, setLogs] = useState<string[]>([])
+  const [promptShown, setPromptShown] = useState(false)
 
   const addLog = (message: string) => {
     const timestamp = new Date().toLocaleTimeString()
@@ -16,7 +17,17 @@ export default function ServiceWorkerCheckV5() {
   useEffect(() => {
     checkSWStatus()
     setupLogging()
+    checkPromptStatus()
   }, [])
+
+  const checkPromptStatus = () => {
+    // Проверяем флаги в sessionStorage
+    const sessionFlag = sessionStorage.getItem('updatePromptShown')
+    if (sessionFlag) {
+      setPromptShown(true)
+      addLog('Session prompt flag found in storage')
+    }
+  }
 
   const checkSWStatus = async () => {
     if (!('serviceWorker' in navigator)) {
@@ -60,7 +71,7 @@ export default function ServiceWorkerCheckV5() {
     const originalLog = console.log
     console.log = (...args) => {
       originalLog.apply(console, args)
-      if (args[0] && typeof args[0] === 'string' && args[0].includes('[SW')) {
+      if (args[0] && typeof args[0] === 'string' && (args[0].includes('[SW') || args[0].includes('[Force Update]'))) {
         addLog(args.join(' '))
       }
     }
@@ -109,6 +120,26 @@ export default function ServiceWorkerCheckV5() {
       } catch (error) {
         addLog(`Test error: ${error}`)
       }
+    }
+  }
+
+  const clearPromptFlags = () => {
+    try {
+      addLog('Clearing prompt flags...')
+      sessionStorage.removeItem('updatePromptShown')
+      setPromptShown(false)
+      
+      // Сбрасываем флаги в SW Manager если доступен
+      if (typeof window !== 'undefined' && (window as any).swManager) {
+        const swManager = (window as any).swManager
+        swManager.updatePromptShown = false
+        swManager.sessionPromptShown = false
+        addLog('SW Manager flags cleared')
+      }
+      
+      addLog('All prompt flags cleared')
+    } catch (error) {
+      addLog(`Clear flags error: ${error}`)
     }
   }
 
@@ -179,12 +210,17 @@ export default function ServiceWorkerCheckV5() {
               <span className="text-yellow-400">⚠️ Update available - waiting for user confirmation</span>
             </div>
           )}
+          {promptShown && (
+            <div className="mt-4 p-3 bg-blue-600/20 border border-blue-500/30 rounded">
+              <span className="text-blue-400">ℹ️ Update prompt already shown in this session</span>
+            </div>
+          )}
         </div>
 
         {/* Actions */}
         <div className="bg-gray-800 rounded-lg p-6 mb-6">
           <h2 className="text-xl font-semibold mb-4">Actions</h2>
-          <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             <button
               onClick={checkSWStatus}
               className="px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors"
@@ -202,6 +238,12 @@ export default function ServiceWorkerCheckV5() {
               className="px-4 py-2 bg-yellow-600 hover:bg-yellow-700 rounded-lg transition-colors"
             >
               Test Update Prompt
+            </button>
+            <button
+              onClick={clearPromptFlags}
+              className="px-4 py-2 bg-green-600 hover:bg-green-700 rounded-lg transition-colors"
+            >
+              Clear Prompt Flags
             </button>
             <button
               onClick={clearCaches}
@@ -231,6 +273,7 @@ export default function ServiceWorkerCheckV5() {
             <div>• SW Manager: {typeof window !== 'undefined' && (window as any).swManager ? 'Available' : 'Not available'}</div>
             <div>• Service Worker Support: {'serviceWorker' in navigator ? 'Yes' : 'No'}</div>
             <div>• Cache API Support: {'caches' in window ? 'Yes' : 'No'}</div>
+            <div>• Session Storage: {typeof sessionStorage !== 'undefined' ? 'Available' : 'Not available'}</div>
             <div>• User Agent: {typeof navigator !== 'undefined' ? navigator.userAgent.substring(0, 50) + '...' : 'Unknown'}</div>
           </div>
         </div>
@@ -259,8 +302,18 @@ export default function ServiceWorkerCheckV5() {
             <li>If update is available, click "Test Update Prompt"</li>
             <li>Confirm or decline the update dialog</li>
             <li>Verify that the prompt doesn't appear again immediately</li>
+            <li>Use "Clear Prompt Flags" to reset if needed</li>
             <li>Check logs to see the update flow</li>
           </ol>
+          
+          <h3 className="font-semibold mb-2 mt-4">What's Fixed:</h3>
+          <ul className="list-disc list-inside space-y-1">
+            <li>Added session-level prompt tracking</li>
+            <li>Removed automatic skipWaiting() from SW installation</li>
+            <li>Improved flag management in both SW Manager and Force Update</li>
+            <li>Added delays and better state management</li>
+            <li>Enhanced logging for debugging</li>
+          </ul>
         </div>
       </div>
     </div>
