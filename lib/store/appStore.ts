@@ -419,60 +419,107 @@ export const useAppStore = create<AppStore>()(
   )
 )
 
-// Селекторы для оптимизации производительности
-export const useUser = () => useAppStore((state) => state.user)
-export const useUserLoading = () => useAppStore((state) => state.userLoading)
-export const useUserError = () => useAppStore((state) => state.userError)
-export const useIsNewUser = () => useAppStore((state) => state.isNewUser)
-export const useShowProfileForm = () => useAppStore((state) => state.showProfileForm)
+// ===== SSR-SAFE HOOKS =====
+// Обертки для всех хуков с защитой от SSR
 
-export const useNotifications = () => useAppStore((state) => state.notifications)
-export const useUnreadCount = () => useAppStore((state) => state.unreadCount)
-export const useNotificationsLoading = () => useAppStore((state) => state.notificationLoading)
-export const useNotificationsError = () => useAppStore((state) => state.notificationError)
+export const useUser = () => {
+  if (typeof window === 'undefined') return null
+  return useAppStore(state => state.user)
+}
 
-export const useCreator = () => useAppStore((state) => state.creator)
-export const useCreatorPosts = () => useAppStore((state) => state.posts)
-export const useCreatorAnalytics = () => useAppStore((state) => state.analytics)
-export const useCreatorLoading = () => useAppStore((state) => state.creatorLoading)
-export const useCreatorError = () => useAppStore((state) => state.creatorError)
+export const useUserLoading = () => {
+  if (typeof window === 'undefined') return false
+  return useAppStore(state => state.userLoading)
+}
 
-// Actions
-export const useUserActions = () => useAppStore((state) => ({
-  setUser: state.setUser,
-  setUserLoading: state.setUserLoading,
-  setNewUser: state.setNewUser,
-  setShowProfileForm: state.setShowProfileForm,
-  setUserError: state.setUserError,
-  updateProfile: state.updateProfile,
-  deleteAccount: state.deleteAccount,
-  refreshUser: state.refreshUser,
-  clearUser: state.clearUser
-}))
+export const useUserError = () => {
+  if (typeof window === 'undefined') return null
+  return useAppStore(state => state.userError)
+}
 
-export const useNotificationActions = () => useAppStore((state) => ({
-  setNotifications: state.setNotifications,
-  addNotification: state.addNotification,
-  markAsRead: state.markAsRead,
-  markAllAsRead: state.markAllAsRead,
-  deleteNotification: state.deleteNotification,
-  clearNotifications: state.clearNotifications,
-  setUnreadCount: state.setUnreadCount,
-  setNotificationLoading: state.setNotificationLoading,
-  setNotificationError: state.setNotificationError,
-  refreshNotifications: state.refreshNotifications
-}))
+export const useUserActions = () => {
+  if (typeof window === 'undefined') {
+    return {
+      setUser: () => {},
+      setUserLoading: () => {},
+      setUserError: () => {},
+      refreshUser: async () => {},
+      updateProfile: async () => {},
+      clearUser: () => {}
+    }
+  }
+  return useAppStore(state => ({
+    setUser: state.setUser,
+    setUserLoading: state.setUserLoading,
+    setUserError: state.setUserError,
+    refreshUser: state.refreshUser,
+    updateProfile: state.updateProfile,
+    clearUser: state.clearUser
+  }))
+}
 
-export const useCreatorActions = () => useAppStore((state) => ({
-  setCreator: state.setCreator,
-  setPosts: state.setPosts,
-  addPost: state.addPost,
-  updatePost: state.updatePost,
-  removePost: state.removePost,
-  setAnalytics: state.setAnalytics,
-  setCreatorLoading: state.setCreatorLoading,
-  setCreatorError: state.setCreatorError,
-  refreshCreator: state.refreshCreator,
-  loadCreator: state.loadCreator,
-  loadPosts: state.loadPosts
-})) 
+export const useNotifications = () => {
+  if (typeof window === 'undefined') return []
+  return useAppStore(state => state.notifications)
+}
+
+export const useUnreadCount = () => {
+  if (typeof window === 'undefined') return 0
+  return useAppStore(state => state.unreadCount)
+}
+
+export const useNotificationActions = () => {
+  if (typeof window === 'undefined') {
+    return {
+      addNotification: () => {},
+      setNotifications: () => {},
+      markAsRead: () => {},
+      clearNotifications: () => {}
+    }
+  }
+  return useAppStore(state => ({
+    addNotification: state.addNotification,
+    setNotifications: state.setNotifications,
+    markAsRead: state.markAsRead,
+    clearNotifications: state.clearNotifications
+  }))
+}
+
+export const useCreator = () => {
+  if (typeof window === 'undefined') return null
+  return useAppStore(state => state.creator)
+}
+
+export const useCreatorLoading = () => {
+  if (typeof window === 'undefined') return false
+  return useAppStore(state => state.creatorLoading)
+}
+
+export const useCreatorError = () => {
+  if (typeof window === 'undefined') return null
+  return useAppStore(state => state.creatorError)
+}
+
+export const useCreatorPosts = () => {
+  if (typeof window === 'undefined') return []
+  return useAppStore(state => state.posts)
+}
+
+export const useCreatorActions = () => {
+  if (typeof window === 'undefined') {
+    return {
+      loadCreator: async () => {},
+      refreshCreator: async () => {},
+      setCreator: () => {},
+      setCreatorLoading: () => {},
+      setCreatorError: () => {}
+    }
+  }
+  return useAppStore(state => ({
+    loadCreator: state.loadCreator,
+    refreshCreator: state.refreshCreator,
+    setCreator: state.setCreator,
+    setCreatorLoading: state.setCreatorLoading,
+    setCreatorError: state.setCreatorError
+  }))
+} 
