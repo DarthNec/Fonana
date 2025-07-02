@@ -1,6 +1,6 @@
 // Service Worker для Fonana PWA v7 - УПРОЩЕННАЯ ВЕРСИЯ
 // БЕЗ АВТОМАТИЧЕСКИХ ОБНОВЛЕНИЙ - ТОЛЬКО КЕШИРОВАНИЕ
-const SW_VERSION = 'v7-simple-cache-only';
+const SW_VERSION = 'v7-simple-20250702';
 const CACHE_NAME = 'fonana-v7';
 
 // Ресурсы для предварительного кеширования
@@ -25,6 +25,8 @@ self.addEventListener('install', event => {
       })
       .then(() => {
         console.log(`[SW ${SW_VERSION}] Installation complete`);
+        // Принудительная активация для обновлений
+        return self.skipWaiting();
       })
       .catch(err => {
         console.error(`[SW ${SW_VERSION}] Installation failed:`, err);
@@ -51,12 +53,21 @@ self.addEventListener('activate', event => {
       })
       .then(() => {
         console.log(`[SW ${SW_VERSION}] Activation complete`);
+        // Принудительно заявляем права на все клиенты
         return self.clients.claim();
       })
       .catch(err => {
         console.error(`[SW ${SW_VERSION}] Activation failed:`, err);
       })
   );
+});
+
+// Обработка сообщений от клиента
+self.addEventListener('message', event => {
+  if (event.data && event.data.type === 'SKIP_WAITING') {
+    console.log(`[SW ${SW_VERSION}] Received SKIP_WAITING message`);
+    self.skipWaiting();
+  }
 });
 
 // Fetch обработчик - простой cache-first стратегия
