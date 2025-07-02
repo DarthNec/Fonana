@@ -13,6 +13,7 @@ import OptimizedImage from '@/components/OptimizedImage'
 import { formatDistanceToNow } from 'date-fns/formatDistanceToNow'
 import { useUser, useUserLoading } from '@/lib/store/appStore'
 import { jwtManager } from '@/lib/utils/jwt'
+import SkeletonLoader from '@/components/ui/SkeletonLoader'
 
 interface Conversation {
   id: string
@@ -43,6 +44,26 @@ export default function MessagesPage() {
   const [isLoading, setIsLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState('')
   const [showSearch, setShowSearch] = useState(false)
+
+  // Debug логирование для отслеживания race conditions
+  useEffect(() => {
+    console.log('[Messages][Debug] State update:', {
+      user: user?.id ? `User ${user.id}` : 'No user',
+      isUserLoading,
+      isLoading,
+      window: typeof window !== 'undefined' ? 'Client' : 'SSR'
+    })
+  }, [user, isUserLoading, isLoading])
+
+  // Soft guard: предотвращаем рендер до готовности
+  if (typeof window === 'undefined') {
+    return null
+  }
+
+  // Soft guard: показываем loading до полной инициализации
+  if (isUserLoading || !user) {
+    return <SkeletonLoader variant="messages" />
+  }
 
   useEffect(() => {
     if (user && !isUserLoading) {

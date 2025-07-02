@@ -25,6 +25,7 @@ import CreatePostModal from '@/components/CreatePostModal'
 // import RevenueChart from '@/components/RevenueChart'
 import toast from 'react-hot-toast'
 import { useSolRate } from '@/lib/hooks/useSolRate'
+import SkeletonLoader from '@/components/ui/SkeletonLoader'
 
 interface DashboardStats {
   totalViews: number
@@ -63,6 +64,26 @@ export default function DashboardPage() {
     tips: 0,
     messages: 0
   })
+
+  // Debug логирование для отслеживания race conditions
+  useEffect(() => {
+    console.log('[Dashboard][Debug] State update:', {
+      user: user?.id ? `User ${user.id}` : 'No user',
+      isCreator: user?.isCreator,
+      publicKey: publicKey?.toBase58() ? 'Has publicKey' : 'No publicKey',
+      window: typeof window !== 'undefined' ? 'Client' : 'SSR'
+    })
+  }, [user, publicKey])
+
+  // Soft guard: предотвращаем рендер до готовности
+  if (typeof window === 'undefined') {
+    return null
+  }
+
+  // Soft guard: показываем loading до полной инициализации
+  if (!user) {
+    return <SkeletonLoader variant="dashboard" />
+  }
 
   // Используем унифицированный хук для загрузки постов создателя
   const { posts, isLoading: isLoadingPosts, refresh, handleAction } = useUnifiedPosts({

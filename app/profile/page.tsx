@@ -39,6 +39,7 @@ import { LinkIcon, CheckCircleIcon, XCircleIcon } from '@heroicons/react/24/outl
 import Link from 'next/link'
 import FloatingActionButton from '@/components/ui/FloatingActionButton'
 import { MobileWalletConnect } from '@/components/MobileWalletConnect'
+import SkeletonLoader from '@/components/ui/SkeletonLoader'
 
 interface UserProfile {
   id: string
@@ -253,13 +254,34 @@ function MyPostsSection() {
 
 export default function ProfilePage() {
   const user = useUser()
-  const isLoading = useUserLoading()
+  const isUserLoading = useUserLoading()
   const { deleteAccount, updateProfile, refreshUser } = useUserActions()
-  const { disconnect } = useWallet()
-  const { theme: currentTheme, setTheme } = useTheme()
+  const { disconnect, connected, publicKey } = useWallet()
+  const { theme, setTheme } = useTheme()
   const [activeTab, setActiveTab] = useState<'profile' | 'creator' | 'subscriptions' | 'posts'>('profile')
   const [showCreateModal, setShowCreateModal] = useState(false)
   
+  // Debug логирование для отслеживания race conditions
+  useEffect(() => {
+    console.log('[Profile][Debug] State update:', {
+      user: user?.id ? `User ${user.id}` : 'No user',
+      isUserLoading,
+      connected,
+      publicKey: publicKey?.toBase58() ? 'Has publicKey' : 'No publicKey',
+      window: typeof window !== 'undefined' ? 'Client' : 'SSR'
+    })
+  }, [user, isUserLoading, connected, publicKey])
+
+  // Soft guard: предотвращаем рендер до готовности
+  if (typeof window === 'undefined') {
+    return null
+  }
+
+  // Soft guard: показываем loading до полной инициализации
+  if (isUserLoading || !user) {
+    return <SkeletonLoader variant="profile" />
+  }
+
   // ВСЕ ХУКИ ДОЛЖНЫ БЫТЬ ВЫЗВАНЫ ДО УСЛОВНЫХ RETURN
   const [formData, setFormData] = useState<UserProfile>({
     id: user?.id || '',
@@ -282,7 +304,7 @@ export default function ProfilePage() {
       allowMessages: true,
       showOnline: true,
     },
-    theme: currentTheme || 'dark',
+    theme: theme || 'dark',
   })
 
   const [isEditing, setIsEditing] = useState(false)
