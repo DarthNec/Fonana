@@ -6,15 +6,17 @@ import { WalletAdapterNetwork } from '@solana/wallet-adapter-base'
 import { WalletModalProvider } from '@solana/wallet-adapter-react-ui'
 import {
   PhantomWalletAdapter,
-  SolflareWalletAdapter,
-  TorusWalletAdapter,
+  // SolflareWalletAdapter,
+  // TorusWalletAdapter,
 } from '@solana/wallet-adapter-wallets'
 import { clusterApiUrl } from '@solana/web3.js'
 import '@solana/wallet-adapter-react-ui/styles.css'
+import { useWallet } from '@solana/wallet-adapter-react'
 
 export function WalletProvider({ children }: { children: React.ReactNode }) {
   const [mounted, setMounted] = useState(false)
   const [hasError, setHasError] = useState(false)
+  const { connected, publicKey } = useWallet()
   
   // Get network from environment or default to mainnet
   const network = WalletAdapterNetwork.Mainnet
@@ -27,18 +29,16 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
 
   const wallets = useMemo(() => {
     try {
-      // Phantom будет первым в списке для приоритета отображения
+      // Временно используем только PhantomWalletAdapter для диагностики SSR ошибки
       const walletsArray = [
         new PhantomWalletAdapter(),
-        new SolflareWalletAdapter(),
-        new TorusWalletAdapter()
+        // new SolflareWalletAdapter(),
+        // new TorusWalletAdapter(),
       ]
-      
-      console.log('Initialized wallets:', walletsArray.map(w => w.name))
-      
+      console.log('[WalletProvider] Initialized wallets:', walletsArray.map(w => w.name))
       return walletsArray
     } catch (error) {
-      console.error('Error initializing wallet adapters:', error)
+      console.error('[WalletProvider] Error initializing wallet adapters:', error)
       setHasError(true)
       return []
     }
@@ -49,7 +49,7 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
     
     // Логируем информацию о среде
     if (typeof window !== 'undefined') {
-      console.log('Wallet Provider Environment:', {
+      console.log('[WalletProvider] Environment:', {
         userAgent: window.navigator.userAgent,
         isMobile: /android|webos|iphone|ipad|ipod|blackberry|iemobile|opera mini/i.test(window.navigator.userAgent.toLowerCase()),
         hasPhantom: !!(window as any).solana?.isPhantom,
@@ -59,15 +59,21 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
     }
   }, [endpoint])
 
+  if (typeof window === 'undefined') {
+    console.error('[SSR Guard] WalletProvider rendered on server')
+    return <>{children}</>
+  }
+
   if (!mounted) {
     return null
   }
 
-  // Если произошла ошибка инициализации, показываем children без wallet провайдера
   if (hasError) {
-    console.warn('WalletProvider initialization failed, rendering without wallet support')
+    console.warn('[WalletProvider] initialization failed, rendering without wallet support')
     return <>{children}</>
   }
+
+  console.log('[WalletProvider] Rendered')
 
   return (
     <ConnectionProvider 
