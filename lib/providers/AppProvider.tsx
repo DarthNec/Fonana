@@ -100,6 +100,21 @@ export function AppProvider({ children }: AppProviderProps) {
     }
   }
 
+  // SSR fallback: возвращаем минимальный Provider без инициализации
+  if (typeof window === 'undefined') {
+    return (
+      <ErrorBoundary
+        onError={(error, errorInfo) => {
+          console.error('[AppProvider][SSR] Error caught by boundary:', error, errorInfo)
+        }}
+      >
+        <div className="app-provider">
+          {children}
+        </div>
+      </ErrorBoundary>
+    )
+  }
+
   // Soft guard: показываем loading до полной инициализации
   if (!isInitialized && typeof window !== 'undefined') {
     return (
