@@ -8,6 +8,8 @@ const nextConfig = {
   generateBuildId: async () => {
     return `build-${Date.now()}`
   },
+  // Включаем sourcemaps для отладки React Error #185
+  productionBrowserSourceMaps: true,
   images: {
     domains: ['localhost', 'fonana.me'],
     unoptimized: true,
