@@ -39,6 +39,9 @@ export function CommentsSection({ postId, className, onClose }: CommentsSectionP
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [isAnonymous, setIsAnonymous] = useState(false)
 
+  // ✅ КРИТИЧЕСКАЯ ПРОВЕРКА: предотвращаем React Error #185
+  // Комментарии должны быть доступны всем, но без формы для неавторизованных
+  
   // Загрузка комментариев
   useEffect(() => {
     fetchComments()

@@ -44,6 +44,11 @@ export default function CreatePostModal({ onPostCreated, onPostUpdated, onClose,
   const [showCropModal, setShowCropModal] = useState(false)
   const [originalImage, setOriginalImage] = useState<string>('')
   
+  // ✅ КРИТИЧЕСКАЯ ПРОВЕРКА: предотвращаем React Error #185
+  if (!user) {
+    return null
+  }
+  
   // Состояния для режима редактирования
   const [isLoadingPost, setIsLoadingPost] = useState(false)
   const [postData, setPostData] = useState<any>(null)

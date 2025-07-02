@@ -59,6 +59,11 @@ export default function SellablePostModal({ isOpen, onClose, post }: SellablePos
   const [timeLeft, setTimeLeft] = useState('')
   const { rate: solToUsdRate = 135, isLoading: isRateLoading } = useSolRate()
   
+  // ✅ КРИТИЧЕСКАЯ ПРОВЕРКА: предотвращаем React Error #185
+  if (!user) {
+    return null
+  }
+  
   const price = Number(post.price) || 0
   const currency = post.currency || 'SOL'
   const quantity = post.quantity || 1

@@ -43,6 +43,10 @@ export default function UserSubscriptions() {
   const [loading, setLoading] = useState(true)
   const [selectedSub, setSelectedSub] = useState<string | null>(null)
 
+  if (!user) {
+    return null
+  }
+
   useEffect(() => {
     if (user) {
       fetchSubscriptions()

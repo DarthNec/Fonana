@@ -74,6 +74,11 @@ function MyPostsSection() {
   const [isEditModalOpen, setIsEditModalOpen] = useState(false)
   const [showCreateModal, setShowCreateModal] = useState(false)
 
+  // ✅ КРИТИЧЕСКАЯ ПРОВЕРКА: предотвращаем React Error #185
+  if (!user) {
+    return null
+  }
+
   useEffect(() => {
     if (user?.id) {
       fetchUserPosts()

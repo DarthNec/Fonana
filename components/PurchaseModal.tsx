@@ -68,6 +68,11 @@ export default function PurchaseModal({ post, onClose, onSuccess }: PurchaseModa
   const [creatorData, setCreatorData] = useState<any>(null)
   const { rate: solToUsdRate, isLoading: isRateLoading } = useSolRate()
   
+  // ✅ КРИТИЧЕСКАЯ ПРОВЕРКА: предотвращаем React Error #185
+  if (!user) {
+    return null
+  }
+  
   // Вычисляем цену для отображения с учетом Flash Sale
   const displayPrice = post.flashSale 
     ? post.price * (1 - post.flashSale.discount / 100)

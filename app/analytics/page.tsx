@@ -71,6 +71,10 @@ export default function AnalyticsPage() {
     recentFeedback: []
   })
 
+  if (!user) {
+    return null
+  }
+
   useEffect(() => {
     if (user?.id) {
       loadAnalytics()

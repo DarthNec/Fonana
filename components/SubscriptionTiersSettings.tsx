@@ -67,6 +67,12 @@ export default function SubscriptionTiersSettings() {
   const user = useUser()
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
+
+  // ✅ КРИТИЧЕСКАЯ ПРОВЕРКА: предотвращаем React Error #185
+  if (!user) {
+    return null
+  }
+
   const [tiers, setTiers] = useState<SubscriptionTier[]>([
     {
       id: 'basic',

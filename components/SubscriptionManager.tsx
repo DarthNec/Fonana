@@ -32,6 +32,11 @@ export default function SubscriptionManager() {
   const [subscriptions, setSubscriptions] = useState<Subscription[]>([])
   const [loading, setLoading] = useState(true)
 
+  // ✅ КРИТИЧЕСКАЯ ПРОВЕРКА: предотвращаем React Error #185
+  if (!user) {
+    return null
+  }
+
   useEffect(() => {
     if (user) {
       fetchSubscriptions()
