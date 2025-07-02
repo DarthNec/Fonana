@@ -1,6 +1,6 @@
 'use client'
 
-import { getJWTToken } from '@/lib/utils/jwt'
+import { authService } from './AuthService'
 
 export type WebSocketEvent = 
   | { type: 'creator_updated'; creatorId: string; data: any }
@@ -165,8 +165,8 @@ class WebSocketService extends EventEmitter {
     
     console.log('[WebSocket] Getting JWT token for connection...')
     
-    // Получаем JWT токен
-    const token = await getJWTToken()
+    // Получаем JWT токен через AuthService
+    const token = await authService.getToken()
     
     if (!token) {
       console.warn('[WebSocket] No JWT token available, connection may fail')

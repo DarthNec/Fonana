@@ -4,8 +4,7 @@ import type { Metadata } from 'next'
 import { Inter } from 'next/font/google'
 import { WalletProvider } from '@/components/WalletProvider'
 import { WalletPersistenceProvider } from '@/components/WalletPersistenceProvider'
-import { UserProvider } from '@/components/UserProvider'
-import { NotificationProvider } from '@/lib/contexts/NotificationContext'
+import { AppProvider } from '@/lib/providers/AppProvider'
 import { Navbar } from '@/components/Navbar'
 import { Toaster } from 'react-hot-toast'
 import { ThemeProvider } from '@/lib/contexts/ThemeContext'
@@ -81,36 +80,34 @@ export default function RootLayout({
           <ErrorBoundary>
             <WalletProvider>
               <WalletPersistenceProvider>
-                <UserProvider>
-                  <NotificationProvider>
-                    <div className="min-h-screen bg-gray-50 dark:bg-slate-900 flex flex-col">
-                      {/* Navbar только на десктопе */}
-                      <div className="hidden md:block">
-                        <Navbar />
-                      </div>
-                      <main className="pt-0 flex-1 pb-14 md:pb-0 md:pt-20">
-                        {children}
-                      </main>
-                      <ReferralNotification />
-                      <Footer />
-                      <div className="block md:hidden">
-                        <BottomNav />
-                      </div>
+                <AppProvider>
+                  <div className="min-h-screen bg-gray-50 dark:bg-slate-900 flex flex-col">
+                    {/* Navbar только на десктопе */}
+                    <div className="hidden md:block">
+                      <Navbar />
                     </div>
-                    <ServiceWorkerRegistration />
-                    <Toaster
-                      position="top-right"
-                      toastOptions={{
-                        duration: 5000, // Автоматическое закрытие через 5 секунд
-                        style: {
-                          background: '#1e293b',
-                          color: '#fff',
-                          border: '1px solid #334155',
-                        },
-                      }}
-                    />
-                  </NotificationProvider>
-                </UserProvider>
+                    <main className="pt-0 flex-1 pb-14 md:pb-0 md:pt-20">
+                      {children}
+                    </main>
+                    <ReferralNotification />
+                    <Footer />
+                    <div className="block md:hidden">
+                      <BottomNav />
+                    </div>
+                  </div>
+                  <ServiceWorkerRegistration />
+                  <Toaster
+                    position="top-right"
+                    toastOptions={{
+                      duration: 5000, // Автоматическое закрытие через 5 секунд
+                      style: {
+                        background: '#1e293b',
+                        color: '#fff',
+                        border: '1px solid #334155',
+                      },
+                    }}
+                  />
+                </AppProvider>
               </WalletPersistenceProvider>
             </WalletProvider>
           </ErrorBoundary>

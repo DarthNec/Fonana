@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { notifyPostLike } from '@/lib/notifications'
+import { validateApiRequest, likePostSchema } from '@/lib/utils/validators'
 
 // WebSocket события
 import { updatePostLikes, sendNotification } from '@/lib/services/websocket-client'
@@ -51,8 +52,16 @@ export async function POST(
   { params }: { params: { id: string } }
 ) {
   try {
-    const { userId } = await request.json()
+    const body = await request.json()
+    
+    // Валидация входных данных
+    const validatedData = validateApiRequest(likePostSchema, {
+      postId: params.id,
+      userId: body.userId
+    })
 
+    const { userId } = validatedData
+    
     if (!userId) {
       return NextResponse.json(
         { error: 'User ID is required' },

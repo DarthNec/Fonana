@@ -3,6 +3,7 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode, useRef } from 'react'
 import { useWallet } from '@solana/wallet-adapter-react'
 import { useRouter } from 'next/navigation'
+import { storageService } from '@/lib/services/StorageService'
 
 // Типы пользователя
 export interface User {
@@ -100,51 +101,18 @@ export function UserContextProvider({ children }: { children: ReactNode }) {
 
   // Функция для получения кешированных данных с проверкой TTL
   const getCachedUserData = (wallet: string): User | null => {
-    try {
-      const savedData = localStorage.getItem('fonana_user_data')
-      const savedWallet = localStorage.getItem('fonana_user_wallet')
-      const savedTimestamp = localStorage.getItem('fonana_user_timestamp')
-      
-      if (savedData && savedWallet === wallet && savedTimestamp) {
-        const timestamp = parseInt(savedTimestamp)
-        const now = Date.now()
-        
-        // Проверяем TTL
-        if (now - timestamp < CACHE_TTL) {
-          const cached: CachedUserData = {
-            user: JSON.parse(savedData),
-            timestamp
-          }
-          return cached.user
-        } else {
-          console.log('[UserContext] Cache expired')
-          clearCachedUserData()
-        }
-      }
-    } catch (e) {
-      console.error('[UserContext] Failed to load cached data:', e)
-      clearCachedUserData()
-    }
-    
-    return null
+    const cachedData = storageService.getUserFromCache(wallet)
+    return cachedData?.user || null
   }
 
   // Сохранение данных в кеш
   const setCachedUserData = (userData: User, wallet: string) => {
-    try {
-      localStorage.setItem('fonana_user_data', JSON.stringify(userData))
-      localStorage.setItem('fonana_user_wallet', wallet)
-      localStorage.setItem('fonana_user_timestamp', Date.now().toString())
-    } catch (e) {
-      console.error('[UserContext] Failed to cache user data:', e)
-    }
+    storageService.setUserToCache(userData, wallet)
   }
 
   // Очистка кеша
   const clearCachedUserData = () => {
-    localStorage.removeItem('fonana_user_data')
-    localStorage.removeItem('fonana_user_wallet')
-    localStorage.removeItem('fonana_user_timestamp')
+    storageService.clearUserCache()
   }
 
   const createOrGetUser = async (wallet: string) => {

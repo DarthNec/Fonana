@@ -84,7 +84,7 @@ export function PricingProvider({
     }, refreshInterval)
 
     return () => clearInterval(interval)
-  }, [enabled, autoRefresh, refreshInterval, fetchPrices])
+  }, [enabled, autoRefresh, refreshInterval])
 
   // Обновление при изменении видимости страницы
   useEffect(() => {
@@ -99,7 +99,7 @@ export function PricingProvider({
 
     document.addEventListener('visibilitychange', handleVisibilityChange)
     return () => document.removeEventListener('visibilitychange', handleVisibilityChange)
-  }, [enabled, fetchPrices])
+  }, [enabled])
 
   const value: PricingContextType = {
     prices,

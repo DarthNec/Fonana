@@ -1,5 +1,7 @@
 'use client'
 
+import { storageService } from '@/lib/services/StorageService'
+
 interface StoredToken {
   token: string
   expiresAt: number
@@ -7,7 +9,6 @@ interface StoredToken {
   wallet: string
 }
 
-const TOKEN_KEY = 'fonana_jwt_token'
 const TOKEN_REFRESH_THRESHOLD = 5 * 60 * 1000 // 5 минут до истечения
 
 class JWTManager {
@@ -24,13 +25,14 @@ class JWTManager {
   private loadFromStorage() {
     console.log('[JWT] Loading token from localStorage...')
     try {
-      const stored = localStorage.getItem(TOKEN_KEY)
+      const stored = storageService.getJWTToken()
       if (stored) {
         console.log('[JWT] Found stored token')
-        const data = JSON.parse(stored) as StoredToken
-        if (data.expiresAt > Date.now()) {
-          this.token = data
-          console.log('[JWT] Token is valid, expires at:', new Date(data.expiresAt).toISOString())
+        // Парсим данные токена из StorageService
+        const tokenData = JSON.parse(stored)
+        if (tokenData.expiresAt > Date.now()) {
+          this.token = tokenData
+          console.log('[JWT] Token is valid, expires at:', new Date(tokenData.expiresAt).toISOString())
           this.scheduleRefresh()
         } else {
           // Токен истек, удаляем
@@ -48,7 +50,7 @@ class JWTManager {
   
   private saveToStorage(token: StoredToken) {
     try {
-      localStorage.setItem(TOKEN_KEY, JSON.stringify(token))
+      storageService.setJWTToken(JSON.stringify(token))
     } catch (error) {
       console.error('[JWT] Error saving token to storage:', error)
     }
@@ -56,7 +58,7 @@ class JWTManager {
   
   private clearToken() {
     this.token = null
-    localStorage.removeItem(TOKEN_KEY)
+    storageService.clearJWTToken()
     if (this.refreshTimer) {
       clearTimeout(this.refreshTimer)
       this.refreshTimer = null
