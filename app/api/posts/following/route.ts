@@ -171,6 +171,19 @@ export async function GET(req: Request) {
     })
     const purchasedSellablePostIds = userPurchasedSellablePosts.map(p => p.id)
 
+    // Получаем лайки текущего пользователя для всех постов
+    let userLikes = new Set<string>()
+    if (currentUser) {
+      const userLikesData = await prisma.like.findMany({
+        where: {
+          userId: currentUser.id,
+          postId: { in: posts.map(p => p.id) }
+        },
+        select: { postId: true }
+      })
+      userLikes = new Set(userLikesData.map(like => like.postId).filter((id): id is string => id !== null))
+    }
+
     // Форматируем посты для фронтенда
     const formattedPosts = posts.map((post: any) => {
       const isCreatorPost = false // В following НЕ показываем собственные посты
@@ -254,7 +267,8 @@ export async function GET(req: Request) {
         // Engagement данные
         engagement: {
           likes: post._count?.likes || 0,
-          comments: post._count?.comments || 0
+          comments: post._count?.comments || 0,
+          isLiked: userLikes.has(post.id)
         }
       }
     })

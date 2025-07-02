@@ -135,23 +135,31 @@ export async function GET(req: Request) {
     // Получаем подписки текущего пользователя с планами
     let userSubscriptionsMap = new Map<string, string>() // creatorId -> plan
     if (currentUser) {
-      const subscriptions = await prisma.subscription.findMany({
+      const userSubscriptions = await prisma.subscription.findMany({
         where: {
           userId: currentUser.id,
           isActive: true,
-          validUntil: { gte: new Date() },
-          paymentStatus: 'COMPLETED' // ВАЖНО: проверяем оплату!
+          paymentStatus: 'COMPLETED'
         },
-        select: { 
-          creatorId: true,
-          plan: true,
-          paymentStatus: true
-        }
+        select: { creatorId: true, plan: true }
       })
-      subscriptions.forEach((sub: { creatorId: string; plan: string }) => {
+      
+      userSubscriptions.forEach(sub => {
         userSubscriptionsMap.set(sub.creatorId, sub.plan.toLowerCase())
       })
-      console.log('[API/posts] User subscriptions:', userSubscriptionsMap.size, 'active subscriptions')
+    }
+
+    // Получаем лайки текущего пользователя для всех постов
+    let userLikes = new Set<string>()
+    if (currentUser) {
+      const userLikesData = await prisma.like.findMany({
+        where: {
+          userId: currentUser.id,
+          postId: { in: posts.map(p => p.id) }
+        },
+        select: { postId: true }
+      })
+      userLikes = new Set(userLikesData.map(like => like.postId).filter((id): id is string => id !== null))
     }
 
     // Получаем покупки постов текущего пользователя

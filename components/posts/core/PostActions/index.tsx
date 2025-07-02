@@ -22,6 +22,13 @@ export function PostActions({
 }: PostActionsProps) {
   const [optimisticLikes, setOptimisticLikes] = useState(post.engagement.likes)
   const [isLiked, setIsLiked] = useState(post.engagement.isLiked)
+  const [isProcessing, setIsProcessing] = useState(false)
+
+  // Обновляем локальное состояние при изменении пропсов
+  useEffect(() => {
+    setOptimisticLikes(post.engagement.likes)
+    setIsLiked(post.engagement.isLiked)
+  }, [post.engagement.likes, post.engagement.isLiked])
 
   // Unified icon and text sizes
   const iconSize = 'w-5 h-5'
@@ -29,8 +36,9 @@ export function PostActions({
   const textSize = 'text-sm'
 
   const handleLike = () => {
-    if (!onAction) return
+    if (!onAction || isProcessing) return
 
+    setIsProcessing(true)
     const newIsLiked = !isLiked
     const newLikeCount = newIsLiked 
       ? optimisticLikes + 1 
@@ -45,6 +53,9 @@ export function PostActions({
       type: newIsLiked ? 'like' : 'unlike',
       postId: post.id
     })
+
+    // Сбрасываем флаг обработки через небольшую задержку
+    setTimeout(() => setIsProcessing(false), 1000)
   }
 
   const handleComment = () => {
@@ -69,7 +80,8 @@ export function PostActions({
         {/* Like button */}
         <button
           onClick={handleLike}
-          className="flex items-center gap-2 text-gray-600 dark:text-slate-400 hover:text-red-500 dark:hover:text-red-400 transition-colors group"
+          disabled={isProcessing}
+          className="flex items-center gap-2 text-gray-600 dark:text-slate-400 hover:text-red-500 dark:hover:text-red-400 transition-colors group disabled:opacity-50 disabled:cursor-not-allowed"
         >
           <div className={cn(
             'rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors',

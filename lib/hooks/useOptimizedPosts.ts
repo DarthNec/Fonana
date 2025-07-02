@@ -356,7 +356,9 @@ export function useOptimizedPosts(options: UseOptimizedPostsOptions = {}): UseOp
 
       if (!response.ok) throw new Error('Failed to like post')
 
-      // Оптимистичное обновление
+      const data = await response.json()
+      
+      // Обновляем состояние на основе ответа сервера
       setPosts(prevPosts => 
         prevPosts.map(post => 
           post.id === postId 
@@ -364,8 +366,8 @@ export function useOptimizedPosts(options: UseOptimizedPostsOptions = {}): UseOp
                 ...post, 
                 engagement: { 
                   ...post.engagement, 
-                  likes: post.engagement.likes + 1,
-                  isLiked: true 
+                  likes: data.likesCount,
+                  isLiked: data.isLiked
                 }
               }
             : post
@@ -377,10 +379,30 @@ export function useOptimizedPosts(options: UseOptimizedPostsOptions = {}): UseOp
         postsCache.delete(cacheKey)
       }
 
-      toast.success('Пост лайкнут!')
+      if (data.action === 'liked') {
+        toast.success('Пост лайкнут!')
+      } else {
+        toast.success('Лайк убран')
+      }
     } catch (error) {
       console.error('Like error:', error)
       toast.error('Ошибка при лайке')
+      
+      // Откатываем оптимистичное обновление при ошибке
+      setPosts(prevPosts => 
+        prevPosts.map(post => 
+          post.id === postId 
+            ? { 
+                ...post, 
+                engagement: { 
+                  ...post.engagement, 
+                  likes: post.engagement.likes - 1,
+                  isLiked: false
+                }
+              }
+            : post
+        )
+      )
     }
   }
 
@@ -404,14 +426,16 @@ export function useOptimizedPosts(options: UseOptimizedPostsOptions = {}): UseOp
   const performUnlike = async (postId: string, userId: string) => {
     try {
       const response = await fetch(`/api/posts/${postId}/like`, {
-        method: 'DELETE',
+        method: 'POST', // Используем POST для toggle
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ userId }),
       })
 
       if (!response.ok) throw new Error('Failed to unlike post')
 
-      // Оптимистичное обновление
+      const data = await response.json()
+      
+      // Обновляем состояние на основе ответа сервера
       setPosts(prevPosts => 
         prevPosts.map(post => 
           post.id === postId 
@@ -419,8 +443,8 @@ export function useOptimizedPosts(options: UseOptimizedPostsOptions = {}): UseOp
                 ...post, 
                 engagement: { 
                   ...post.engagement, 
-                  likes: Math.max(0, post.engagement.likes - 1),
-                  isLiked: false 
+                  likes: data.likesCount,
+                  isLiked: data.isLiked
                 }
               }
             : post
@@ -432,9 +456,31 @@ export function useOptimizedPosts(options: UseOptimizedPostsOptions = {}): UseOp
         postsCache.delete(cacheKey)
       }
 
+      if (data.action === 'unliked') {
+        toast.success('Лайк убран')
+      } else {
+        toast.success('Пост лайкнут!')
+      }
+
     } catch (error) {
       console.error('Unlike error:', error)
       toast.error('Ошибка при отмене лайка')
+      
+      // Откатываем оптимистичное обновление при ошибке
+      setPosts(prevPosts => 
+        prevPosts.map(post => 
+          post.id === postId 
+            ? { 
+                ...post, 
+                engagement: { 
+                  ...post.engagement, 
+                  likes: post.engagement.likes + 1,
+                  isLiked: true
+                }
+              }
+            : post
+        )
+      )
     }
   }
 
