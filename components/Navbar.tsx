@@ -24,7 +24,7 @@ import {
 } from '@heroicons/react/24/outline'
 import { MobileWalletConnect } from './MobileWalletConnect'
 import { useWallet } from '@solana/wallet-adapter-react'
-import { useUserContext } from '@/lib/contexts/UserContext'
+import { useUser } from '@/lib/store/appStore'
 import SearchModal from './SearchModal'
 import { jwtManager } from '@/lib/utils/jwt'
 import { toast } from 'react-hot-toast'
@@ -46,7 +46,7 @@ export function Navbar() {
   const [showCreateModal, setShowCreateModal] = useState(false)
   const [showSearchModal, setShowSearchModal] = useState(false)
   const { connected, disconnect, publicKey } = useWallet()
-  const { user } = useUserContext()
+  const user = useUser()
   const pathname = usePathname()
   const router = useRouter()
 
@@ -207,7 +207,7 @@ export function Navbar() {
                     <Avatar
                       src={avatarUrl}
                       alt={user.nickname || 'Profile'}
-                      seed={user.nickname || user.wallet}
+                      seed={user.nickname || user.wallet || ''}
                       size={48}
                       rounded="2xl"
                       className="border-2 border-purple-500/30 hover:border-purple-500/50"
@@ -222,7 +222,7 @@ export function Navbar() {
                           <Avatar
                             src={avatarUrl}
                             alt={user.nickname || 'Profile'}
-                            seed={user.nickname || user.wallet}
+                            seed={user.nickname || user.wallet || ''}
                             size={48}
                             rounded="2xl"
                             className="border border-purple-500/30"

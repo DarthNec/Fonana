@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
 import Avatar from './Avatar'
-import { useUserContext } from '@/lib/contexts/UserContext'
+import { useUser } from '@/lib/store/appStore'
 import { useWallet } from '@solana/wallet-adapter-react'
 import { getProfileLink } from '@/lib/utils/links'
 import {
@@ -37,7 +37,7 @@ interface Subscription {
 }
 
 export default function UserSubscriptions() {
-  const { user } = useUserContext()
+  const user = useUser()
   const { publicKey } = useWallet()
   const [subscriptions, setSubscriptions] = useState<Subscription[]>([])
   const [loading, setLoading] = useState(true)

@@ -1,6 +1,7 @@
 /**
  * WebSocket Client Library
  * Отправляет события на WebSocket сервер через HTTP API
+ * ИНТЕГРИРОВАН С WebSocketEventManager
  */
 
 const WS_API_URL = process.env.WS_API_URL || 'http://localhost:3002/api'
@@ -26,17 +27,10 @@ export async function sendNotification(
   try {
     console.log(`[WS Client] Sending notification to user ${userId}:`, notification)
     
-    // Отправляем событие через WebSocket сервис
-    const wsService = (await import('@/lib/services/websocket')).wsService
+    // Отправляем событие через WebSocket EventManager
+    const { emitNotification } = await import('@/lib/services/WebSocketEventManager')
     
-    if (wsService.isConnected()) {
-      // Отправляем уведомление конкретному пользователю
-      wsService.emit('notification', {
-        type: 'notification',
-        userId,
-        notification
-      })
-    }
+    emitNotification(userId, notification)
     
     return { success: true }
   } catch (error) {
@@ -85,18 +79,10 @@ export async function updatePostLikes(postId: string, likesCount: number, userId
   try {
     console.log('[WS Client] Updating post likes:', { postId, likesCount, userId })
     
-    // Отправляем событие через WebSocket сервис
-    const wsService = (await import('@/lib/services/websocket')).wsService
+    // Отправляем событие через WebSocket EventManager
+    const { emitPostLiked } = await import('@/lib/services/WebSocketEventManager')
     
-    if (wsService.isConnected()) {
-      // Отправляем событие всем подписчикам поста
-      wsService.emit('post_liked', {
-        type: 'post_liked',
-        postId,
-        userId,
-        likesCount
-      })
-    }
+    emitPostLiked(postId, likesCount, userId)
     
     return { success: true }
   } catch (error) {
@@ -112,17 +98,10 @@ export async function notifyNewComment(postId: string, comment: any) {
   try {
     console.log('[WS Client] Notifying new comment for post:', postId, comment)
     
-    // Отправляем событие через WebSocket сервис
-    const wsService = (await import('@/lib/services/websocket')).wsService
+    // Отправляем событие через WebSocket EventManager
+    const { emitPostCommented } = await import('@/lib/services/WebSocketEventManager')
     
-    if (wsService.isConnected()) {
-      // Отправляем событие всем подписчикам поста
-      wsService.emit('comment_added', {
-        type: 'comment_added',
-        postId,
-        comment
-      })
-    }
+    emitPostCommented(postId, comment.id, comment.userId)
     
     return { success: true }
   } catch (error) {

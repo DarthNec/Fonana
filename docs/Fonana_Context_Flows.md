@@ -4,29 +4,29 @@
 
 ```
 ┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
-│   WalletProvider│    │  UserContext    │    │NotificationContext│
+│   WalletProvider│    │  Zustand Store  │    │WebSocketEventManager│
 │                 │    │                 │    │                 │
-│ • publicKey     │───▶│ • user          │───▶│ • notifications │
-│ • connected     │    │ • isLoading     │    │ • unreadCount   │
-│ • wallet        │    │ • error         │    │ • refresh       │
+│ • publicKey     │───▶│ • user          │───▶│ • eventHandlers │
+│ • connected     │    │ • notifications │    │ • subscriptions │
+│ • wallet        │    │ • creatorData   │    │ • emit/on       │
 └─────────────────┘    └─────────────────┘    └─────────────────┘
          │                       │                       │
          ▼                       ▼                       ▼
 ┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
-│  WebSocketService│    │  CreatorContext │    │  ThemeContext   │
+│  CacheManager   │    │  AppProvider    │    │  UI Components  │
 │                 │    │                 │    │                 │
-│ • connection    │    │ • creator       │    │ • theme         │
-│ • subscriptions │    │ • posts         │    │ • toggleTheme   │
-│ • events        │    │ • analytics     │    │                 │
+│ • localStorage  │    │ • initialization│    │ • PostCard      │
+│ • TTL           │    │ • retry logic   │    │ • LikeButton    │
+│ • fallback      │    │ • error handling│    │ • CommentSection│
 └─────────────────┘    └─────────────────┘    └─────────────────┘
          │                       │
          ▼                       ▼
 ┌─────────────────┐    ┌─────────────────┐
-│   API Routes    │    │  UI Components  │
+│   API Routes    │    │  Retry System   │
 │                 │    │                 │
-│ • /api/user     │    │ • PostCard      │
-│ • /api/posts    │    │ • LikeButton    │
-│ • /api/notifications│ │ • CommentSection│
+│ • /api/user     │    │ • retryWithToast│
+│ • /api/posts    │    │ • error handling│
+│ • /api/notifications│ │ • fallback logic│
 └─────────────────┘    └─────────────────┘
 ```
 
@@ -34,14 +34,13 @@
 
 | Компонент | Depends On | Provides | Subscribes | Triggers |
 |-----------|------------|----------|------------|----------|
-| **UserContext** | `useWallet()` | `user`, `isLoading`, `error` | - | `createOrGetUser()`, `refreshUser()` |
-| **NotificationContext** | `UserContext`, `wsService` | `notifications`, `unreadCount` | `notification`, `notification_read` | `refreshNotifications()`, `markAsRead()` |
-| **WebSocketService** | `getJWTToken()` | `connection`, `events` | - | `connect()`, `subscribe()`, `emit()` |
-| **CreatorContext** | `UserContext`, `wsService` | `creator`, `posts`, `analytics` | `creator_update`, `new_post` | `refreshCreator()`, `loadPosts()` |
-| **ThemeContext** | - | `theme`, `isDark` | - | `toggleTheme()`, `setTheme()` |
-| **PostCard** | `UserContext`, `wsService` | `post display` | `post_liked`, `comment_added` | `handleLike()`, `handleComment()` |
-| **LikeButton** | `UserContext` | `like state` | - | `handleLike()`, `handleUnlike()` |
-| **CommentSection** | `UserContext`, `wsService` | `comments list` | `comment_added`, `comment_deleted` | `addComment()`, `deleteComment()` |
+| **Zustand Store** | `useWallet()` | `user`, `notifications`, `creatorData` | - | `setUser()`, `addNotification()`, `setCreatorData()` |
+| **WebSocketEventManager** | `wsService`, `store` | `eventHandlers`, `subscriptions` | `post_liked`, `notification`, `creator_update` | `emit()`, `subscribe()`, `unsubscribe()` |
+| **CacheManager** | `localStorage` | `cached data`, `TTL` | - | `set()`, `get()`, `delete()`, `clear()` |
+| **AppProvider** | `useWallet()`, `store` | `initialization` | - | `refreshUser()`, `retry logic` |
+| **PostCard** | `store`, `eventManager` | `post display` | `post_liked`, `comment_added` | `handleLike()`, `handleComment()` |
+| **LikeButton** | `store` | `like state` | - | `handleLike()`, `handleUnlike()` |
+| **CommentSection** | `store`, `eventManager` | `comments list` | `comment_added`, `comment_deleted` | `addComment()`, `deleteComment()` |
 
 ## Потоки инициализации
 
@@ -49,36 +48,39 @@
 
 ```mermaid
 graph TD
-    A[App Load] --> B[WalletProvider Mount]
-    B --> C{Wallet Connected?}
-    C -->|No| D[Show Connect Button]
-    C -->|Yes| E[UserContext Initialize]
-    E --> F[Create/Get User API]
-    F --> G{User Exists?}
-    G -->|No| H[Show Profile Setup]
-    G -->|Yes| I[Load User Data]
-    I --> J[Cache User Data]
-    J --> K[Get JWT Token]
-    K --> L[WebSocket Connect]
-    L --> M[Subscribe to Channels]
-    M --> N[NotificationContext Init]
-    N --> O[Load Notifications]
-    O --> P[UI Ready]
+    A[App Load] --> B[AppProvider Mount]
+    B --> C[WalletProvider Mount]
+    C --> D{Wallet Connected?}
+    D -->|No| E[Show Connect Button]
+    D -->|Yes| F[Zustand Store Initialize]
+    F --> G[CacheManager Check]
+    G --> H{Cache Valid?}
+    H -->|Yes| I[Restore from Cache]
+    H -->|No| J[Create/Get User API]
+    J --> K{User Exists?}
+    K -->|No| L[Show Profile Setup]
+    K -->|Yes| M[Load User Data]
+    M --> N[CacheManager.set]
+    N --> O[Get JWT Token]
+    O --> P[WebSocket Connect]
+    P --> Q[EventManager Subscribe]
+    Q --> R[Load Notifications]
+    R --> S[UI Ready]
 ```
 
 ### 2. Поток обработки лайков
 
 ```mermaid
 graph TD
-    A[User Clicks Like] --> B{User Context Available?}
-    B -->|No| C[Check LocalStorage Cache]
+    A[User Clicks Like] --> B{User in Store?}
+    B -->|No| C[CacheManager.get]
     C --> D{Cache Valid?}
     D -->|No| E[Show "Connect Wallet"]
-    D -->|Yes| F[Restore User from Cache]
+    D -->|Yes| F[Store.setUser]
     F --> G[Recursive Call handleLike]
-    G --> H[API Request /api/posts/like]
+    G --> H[retryWithToast API Request]
     H --> I[Update Database]
-    I --> J[WebSocket Event post_liked]
+    I --> J[EventManager.emit post_liked]
     J --> K[Update UI Optimistically]
     K --> L[Show Success Toast]
     
@@ -92,26 +94,26 @@ graph TD
     A[Server Event] --> B[WebSocket Server]
     B --> C[Send to Client]
     C --> D[WebSocketService.on]
-    D --> E{Event Type?}
-    E -->|notification| F[NotificationContext]
-    E -->|post_liked| G[PostCard Update]
-    E -->|comment_added| H[CommentSection Update]
+    D --> E[EventManager.handleWebSocketEvent]
+    E --> F{Event Type?}
+    F -->|notification| G[Store.addNotification]
+    F -->|post_liked| H[Store.updatePost]
+    F -->|comment_added| I[Store.updateComment]
     
-    F --> I[Add to Notifications]
-    I --> J[Update Unread Count]
+    G --> J[Update Unread Count]
     J --> K[Show Toast]
     K --> L[Play Sound]
     
-    G --> M[Update Like Count]
+    H --> M[Update Like Count]
     M --> N[Update UI]
     
-    H --> O[Add Comment]
+    I --> O[Add Comment]
     O --> P[Update Comments List]
 ```
 
 ## Детальные связи компонентов
 
-### UserContext Dependencies
+### Zustand Store Dependencies
 
 ```typescript
 // Прямые зависимости
@@ -120,58 +122,51 @@ graph TD
   - connected: boolean
   - wallet: Wallet | null
 
-// Внутренние состояния
-- user: User | null
-- isLoading: boolean
-- error: Error | null
-- isNewUser: boolean
+// Store slices
+- userSlice: User | null, isLoading, error
+- notificationSlice: Notification[], unreadCount
+- creatorSlice: CreatorData | null, creatorLoading
 
-// Методы
-- createOrGetUser(wallet: string)
+// Actions
+- setUser(user: User | null)
 - refreshUser()
-- updateProfile(data: ProfileData)
-- deleteAccount()
+- addNotification(notification: Notification)
+- setCreatorData(data: CreatorData | null)
 ```
 
-### WebSocket Service Dependencies
+### WebSocket Event Manager Dependencies
 
 ```typescript
-// Аутентификация
-- getJWTToken() - JWT токен для подключения
-
-// Состояние подключения
-- ws: WebSocket | null
-- isConnecting: boolean
-- reconnectAttempts: number
-
-// Подписки
-- subscribedChannels: Map<string, SubscriptionChannel>
-
-// События
-- EventEmitter (on, off, emit)
-```
-
-### NotificationContext Dependencies
-
-```typescript
-// Контексты
-- useUserContext() - для получения user.id
-
 // Сервисы
-- wsService - для WebSocket подписки
-- getJWTToken() - для API запросов
+- wsService - WebSocket подключение
+- store - Zustand store для обновлений
 
-// Состояния
-- notifications: Notification[]
-- unreadCount: number
-- isLoading: boolean
-- error: string | null
+// Состояние
+- eventHandlers: Map<string, Function[]>
+- subscriptions: Set<string>
 
 // Методы
-- refreshNotifications()
-- markAsRead(id: string)
-- markAllAsRead()
-- deleteNotification(id: string)
+- subscribe(event: string, handler: Function)
+- unsubscribe(event: string, handler: Function)
+- emit(event: string, data: any)
+- handleWebSocketEvent(event: string, data: any)
+```
+
+### CacheManager Dependencies
+
+```typescript
+// Storage
+- localStorage - браузерное хранилище
+
+// TTL система
+- CACHE_TTL: 7 * 24 * 60 * 60 * 1000 // 7 дней
+
+// Методы
+- set(key: string, value: any, ttl?: number)
+- get(key: string): any
+- delete(key: string): void
+- clear(): void
+- isValidCache(timestamp: number): boolean
 ```
 
 ## Цепочки инициализации
@@ -181,189 +176,75 @@ graph TD
 ```
 WalletProvider.connected = true
     ↓
-UserContext.useEffect([connected, publicKey])
+AppProvider.useEffect([connected, publicKey])
     ↓
-createOrGetUser(publicKey.toString())
+store.refreshUser()
     ↓
-API POST /api/user
+CacheManager.get('fonana_user_data')
     ↓
-setUser(data.user) + setCachedUserData()
+{Valid Cache?} → Yes: store.setUser(cachedData)
     ↓
-NotificationContext.useEffect([user?.id])
+API POST /api/user (retryWithToast)
     ↓
-wsService.subscribeToNotifications(user.id)
+store.setUser(data.user) + CacheManager.set()
     ↓
-refreshNotifications()
+EventManager.subscribe('notifications')
+    ↓
+store.setNotifications(notifications)
     ↓
 UI готов к взаимодействию
 ```
 
-### 2. Цепочка обработки лайка
+### 2. Цепочка обработки ошибок
 
 ```
-User clicks LikeButton
+API Request Fails
     ↓
-handleLike() проверяет user?.id
+retryWithToast catches error
     ↓
-Если user = null → fallback на localStorage
+{retries > 0?} → Yes: delay + retry
     ↓
-API POST /api/posts/[id]/like
+{retries = 0?} → Yes: toast.error()
     ↓
-Database update (likes table + post.likesCount)
+CacheManager fallback (if available)
     ↓
-WebSocket emit('post_liked', {postId, userId, likesCount})
-    ↓
-PostCard получает событие через wsService.on('post_liked')
-    ↓
-Optimistic UI update
-    ↓
-Toast notification
+Graceful degradation
 ```
 
-### 3. Цепочка уведомлений
+### 3. Цепочка WebSocket событий
 
 ```
-Server event (like, comment, subscription)
+Server Event
     ↓
-WebSocket server broadcast
+WebSocketService.on(event)
     ↓
-Client WebSocketService.on('notification')
+EventManager.handleWebSocketEvent(event, data)
     ↓
-NotificationContext.handleNewNotification()
+{Event Type?}
     ↓
-setNotifications(prev => [newNotification, ...prev])
+post_liked → store.updatePost()
+notification → store.addNotification()
+comment_added → store.updateComment()
     ↓
-setUnreadCount(prev => prev + 1)
+UI re-render (Zustand subscription)
     ↓
-showNotificationToast()
-    ↓
-playNotificationSound()
+Toast notification (if applicable)
 ```
 
-## Критические точки синхронизации
+## Миграция с React Context
 
-### 1. Синхронизация UserContext и WebSocket
+### Удаленные компоненты
+- ❌ `UserContext` → ✅ `Zustand userSlice`
+- ❌ `NotificationContext` → ✅ `Zustand notificationSlice`
+- ❌ `CreatorContext` → ✅ `Zustand creatorSlice`
 
-```typescript
-// Проблема: WebSocket подключается до загрузки пользователя
-useEffect(() => {
-  if (!user?.id) return // Критическая проверка
-  
-  wsService.subscribeToNotifications(user.id)
-  wsService.subscribeToFeed(user.id)
-}, [user?.id]) // Только user?.id в зависимостях
-```
+### Обновленные хуки
+- `useUserContext()` → `useAppStore(state => state.user)`
+- `useNotificationContext()` → `useAppStore(state => state.notifications)`
+- `useCreatorData()` → `useAppStore(state => state.creatorData)`
 
-### 2. Синхронизация кеша и состояния
-
-```typescript
-// Проблема: Несоответствие кеша и состояния
-const getCachedUserData = (wallet: string): User | null => {
-  const savedData = localStorage.getItem('fonana_user_data')
-  const savedWallet = localStorage.getItem('fonana_user_wallet')
-  
-  if (savedData && savedWallet === wallet) {
-    return JSON.parse(savedData)
-  }
-  return null
-}
-```
-
-### 3. Синхронизация WebSocket событий
-
-```typescript
-// Проблема: События приходят до готовности UI
-const handlePostLikedThrottled = throttle((event) => {
-  if (!user?.id) return // Защита от преждевременных событий
-  
-  batchUpdate(event.postId, {
-    engagement: {
-      likes: event.likesCount,
-      isLiked: event.userId === user.id
-    }
-  })
-}, 500)
-```
-
-## Правила взаимодействия
-
-### 1. Правила для UserContext
-
-- **НЕ использовать** UserContext до `user?.id` доступен
-- **Всегда проверять** `isLoading` перед действиями
-- **Использовать fallback** на кеш при `user = null`
-- **Рекурсивно вызывать** функции после восстановления пользователя
-
-### 2. Правила для WebSocket
-
-- **Проверять подключение** перед отправкой событий
-- **Throttle** частые события (лайки, комментарии)
-- **Fallback на HTTP API** при недоступности WebSocket
-- **Автоматически переподписываться** при переподключении
-
-### 3. Правила для уведомлений
-
-- **Загружать начальные данные** при инициализации
-- **Обновлять в реальном времени** через WebSocket
-- **Показывать toast** для важных событий
-- **Воспроизводить звук** для новых уведомлений
-
-### 4. Правила для UI компонентов
-
-- **Проверять user?.id** перед любыми действиями
-- **Показывать loading состояния** при `isLoading`
-- **Обрабатывать ошибки** gracefully
-- **Обновлять оптимистично** для лучшего UX
-
-## Диагностика проблем
-
-### 1. Проблема: "wallet есть, user нет"
-
-```typescript
-// Диагностика
-console.log('Wallet state:', { connected, publicKey: publicKey?.toString() })
-console.log('User state:', { user: user?.id, isLoading, error })
-
-// Решение
-if (!user && connected && publicKey) {
-  const cachedUser = getCachedUserData(publicKey.toString())
-  if (cachedUser) {
-    setUser(cachedUser)
-  } else {
-    refreshUser() // Принудительное обновление
-  }
-}
-```
-
-### 2. Проблема: "WebSocket не подключается"
-
-```typescript
-// Диагностика
-console.log('WebSocket status:', wsService.isConnected())
-console.log('JWT token:', await getJWTToken())
-
-// Решение
-if (!wsService.isConnected()) {
-  const token = await getJWTToken()
-  if (token) {
-    wsService.connect()
-  }
-}
-```
-
-### 3. Проблема: "Уведомления не приходят"
-
-```typescript
-// Диагностика
-console.log('NotificationContext state:', { 
-  user: user?.id, 
-  wsConnected: wsService.isConnected(),
-  notifications: notifications.length 
-})
-
-// Решение
-if (user?.id && !wsService.isConnected()) {
-  wsService.subscribeToNotifications(user.id)
-  refreshNotifications() // Fallback на HTTP
-}
-``` 
+### Новые компоненты
+- ✅ `AppProvider` - единая точка инициализации
+- ✅ `CacheManager` - централизованное кеширование
+- ✅ `WebSocketEventManager` - управление событиями
+- ✅ `retryWithToast` - обработка ошибок 

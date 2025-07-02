@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { XMarkIcon } from '@heroicons/react/24/outline'
 import Link from 'next/link'
+import { cacheManager } from '@/lib/services/CacheManager'
 
 export default function ReferralNotification() {
   const [referrer, setReferrer] = useState<string | null>(null)
@@ -18,8 +19,8 @@ export default function ReferralNotification() {
     // 2. Пользователь не залогинен
     // 3. Мы еще не показывали уведомление для этого реферера
     if (referrerFromHeader && isNewReferral) {
-      const userWallet = localStorage.getItem('userWallet')
-      const shownReferrals = JSON.parse(localStorage.getItem('fonana_shown_referral_notifications') || '[]')
+      const userWallet = cacheManager.get('userWallet')
+      const shownReferrals = JSON.parse(cacheManager.get('fonana_shown_referral_notifications') || '[]')
       
       if (!userWallet && !shownReferrals.includes(referrerFromHeader)) {
         setReferrer(referrerFromHeader)
@@ -27,32 +28,32 @@ export default function ReferralNotification() {
         
         // Запоминаем что показали уведомление для этого реферера
         shownReferrals.push(referrerFromHeader)
-        localStorage.setItem('fonana_shown_referral_notifications', JSON.stringify(shownReferrals))
+        cacheManager.set('fonana_shown_referral_notifications', JSON.stringify(shownReferrals), 7 * 24 * 60 * 60 * 1000) // 7 дней
         
-        // Также сохраняем в localStorage для других компонентов
-        localStorage.setItem('fonana_referrer', referrerFromHeader)
-        localStorage.setItem('fonana_referrer_timestamp', Date.now().toString())
+        // Также сохраняем в кеше для других компонентов
+        cacheManager.set('fonana_referrer', referrerFromHeader, 7 * 24 * 60 * 60 * 1000) // 7 дней
+        cacheManager.set('fonana_referrer_timestamp', Date.now().toString(), 7 * 24 * 60 * 60 * 1000) // 7 дней
       }
     }
     
-    // Очищаем старые записи о показанных уведомлениях (старше 7 дней)
-    const storedTimestamp = localStorage.getItem('fonana_referrer_timestamp')
-    if (storedTimestamp) {
+    // Очищаем старые записи о показанных уведомлениях (TTL обрабатывается автоматически)
+    const storedTimestamp = cacheManager.get('fonana_referrer_timestamp')
+    if (typeof storedTimestamp === 'string') {
       const sevenDays = 7 * 24 * 60 * 60 * 1000
       const isExpired = Date.now() - parseInt(storedTimestamp) > sevenDays
       
       if (isExpired) {
-        localStorage.removeItem('fonana_referrer')
-        localStorage.removeItem('fonana_referrer_timestamp')
-        localStorage.removeItem('fonana_shown_referral_notifications')
+        cacheManager.delete('fonana_referrer')
+        cacheManager.delete('fonana_referrer_timestamp')
+        cacheManager.delete('fonana_shown_referral_notifications')
       }
     }
   }, [])
 
   const handleClose = () => {
     setShowNotification(false)
-    // Опционально: можно добавить в localStorage флаг, что пользователь закрыл уведомление
-    localStorage.setItem('fonana_referral_notification_closed', 'true')
+    // Опционально: можно добавить в кеш флаг, что пользователь закрыл уведомление
+    cacheManager.set('fonana_referral_notification_closed', 'true', 24 * 60 * 60 * 1000) // 24 часа
   }
 
   if (!showNotification || !referrer) return null

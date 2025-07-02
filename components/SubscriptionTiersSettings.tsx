@@ -11,7 +11,7 @@ import {
   InformationCircleIcon
 } from '@heroicons/react/24/outline'
 import { toast } from 'react-hot-toast'
-import { useUserContext } from '@/lib/contexts/UserContext'
+import { useUser } from '@/lib/store/appStore'
 
 interface TierFeature {
   id: string
@@ -64,7 +64,7 @@ const defaultFeatures = {
 }
 
 export default function SubscriptionTiersSettings() {
-  const { user } = useUserContext()
+  const user = useUser()
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [tiers, setTiers] = useState<SubscriptionTier[]>([

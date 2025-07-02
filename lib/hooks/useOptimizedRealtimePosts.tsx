@@ -2,7 +2,8 @@
 
 import { useEffect, useCallback, useState, useRef } from 'react'
 import { wsService, WebSocketEvent } from '@/lib/services/websocket'
-import { useUserContext } from '@/lib/contexts/UserContext'
+import { setupDefaultHandlers, emitPostLiked, emitPostCommented } from '@/lib/services/WebSocketEventManager'
+import { useUser } from '@/lib/store/appStore'
 import { UnifiedPost } from '@/types/posts'
 import toast from 'react-hot-toast'
 import { throttle, debounce } from 'lodash'
@@ -35,7 +36,7 @@ export function useOptimizedRealtimePosts({
   maxPendingPosts = 50,
   batchUpdateDelay = 100
 }: UseOptimizedRealtimePostsOptions): UseOptimizedRealtimePostsReturn {
-  const { user } = useUserContext()
+  const user = useUser()
   const [newPostsCount, setNewPostsCount] = useState(0)
   const [pendingPosts, setPendingPosts] = useState<UnifiedPost[]>([])
   const [updatedPosts, setUpdatedPosts] = useState<UnifiedPost[]>(posts)
@@ -317,15 +318,8 @@ export function useOptimizedRealtimePosts({
     // Подписываемся на обновления ленты
     wsService.subscribeToFeed(user.id)
 
-    // Обработчики событий
-    wsService.on('post_liked', handlePostLikedThrottled)
-    wsService.on('post_unliked', handlePostUnlikedThrottled)
-    wsService.on('post_created', handlePostCreated)
-    wsService.on('post_deleted', handlePostDeleted)
-    wsService.on('comment_added', handleCommentUpdate)
-    wsService.on('comment_deleted', handleCommentUpdate)
-    wsService.on('post_purchased', handlePostPurchased)
-    wsService.on('subscription_updated', handleSubscriptionUpdated)
+    // Подписываемся на WebSocket события через EventManager
+    setupDefaultHandlers()
 
     // Также слушаем window события для обратной совместимости
     const handleWindowEvent = (e: Event) => {
@@ -355,14 +349,6 @@ export function useOptimizedRealtimePosts({
       applyBatchedUpdates()
       
       wsService.unsubscribeFromFeed(user.id)
-      wsService.off('post_liked', handlePostLikedThrottled)
-      wsService.off('post_unliked', handlePostUnlikedThrottled)
-      wsService.off('post_created', handlePostCreated)
-      wsService.off('post_deleted', handlePostDeleted)
-      wsService.off('comment_added', handleCommentUpdate)
-      wsService.off('comment_deleted', handleCommentUpdate)
-      wsService.off('post_purchased', handlePostPurchased)
-      wsService.off('subscription_updated', handleSubscriptionUpdated)
       
       window.removeEventListener('post-purchased', handleWindowEvent)
       window.removeEventListener('subscription-updated', handleWindowEvent)

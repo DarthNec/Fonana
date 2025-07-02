@@ -2,7 +2,7 @@
 
 import React, { useState, useRef, useEffect } from 'react'
 import { UnifiedPost, PostAction } from '@/types/posts'
-import { useUserContext } from '@/lib/contexts/UserContext'
+import { useUser } from '@/lib/store/appStore'
 import { cn } from '@/lib/utils'
 import {
   EllipsisVerticalIcon,
@@ -25,7 +25,7 @@ export interface PostMenuProps {
  * Опции шаринга и жалобы для остальных
  */
 export function PostMenu({ post, onAction, className }: PostMenuProps) {
-  const { user } = useUserContext()
+  const user = useUser()
   const [isOpen, setIsOpen] = useState(false)
   const menuRef = useRef<HTMLDivElement>(null)
   

@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef, useMemo, useCallback } from 'react'
-import { useUserContext } from '@/lib/contexts/UserContext'
+import { useUser, useUserLoading } from '@/lib/store/appStore'
 import { useOptimizedPosts } from '@/lib/hooks/useOptimizedPosts'
 import { useOptimizedRealtimePosts } from '@/lib/hooks/useOptimizedRealtimePosts'
 import { PostsContainer } from '@/components/posts/layouts/PostsContainer'
@@ -45,7 +45,8 @@ const sortOptions = [
 ]
 
 export default function RevampedFeedPage() {
-  const { user, isLoading: userLoading } = useUserContext()
+  const user = useUser()
+  const userLoading = useUserLoading()
   const [selectedCategory, setSelectedCategory] = useState('All')
   const [sortBy, setSortBy] = useState<'latest' | 'popular' | 'trending' | 'subscribed'>('latest')
   const categoryScrollRef = useRef<HTMLDivElement>(null)

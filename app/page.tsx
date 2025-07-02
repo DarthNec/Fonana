@@ -6,7 +6,7 @@ import { ArrowRightIcon, SparklesIcon, UsersIcon, ShieldCheckIcon, CurrencyDolla
 import CreatorsExplorer from '@/components/CreatorsExplorer'
 import { useRouter } from 'next/navigation'
 import { useWallet } from '@solana/wallet-adapter-react'
-import { useUserContext } from '@/lib/contexts/UserContext'
+import { useUser, useUserLoading } from '@/lib/store/appStore'
 
 const features = [
   {
@@ -45,7 +45,7 @@ const stats = [
 export default function HomePage() {
   const router = useRouter()
   const { connected } = useWallet()
-  const { user } = useUserContext()
+  const user = useUser()
   const [mounted, setMounted] = useState(false)
   const [showInfoBlock, setShowInfoBlock] = useState(true)
   const [showOffers, setShowOffers] = useState(false)

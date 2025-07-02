@@ -12,7 +12,6 @@ import {
 } from '@heroicons/react/24/outline'
 import FlashSale from './FlashSale'
 import CreateFlashSale from './CreateFlashSale'
-import { useCreatorData } from '@/lib/hooks/useCreatorData'
 
 interface FlashSalesListProps {
   isOwner?: boolean
@@ -20,27 +19,22 @@ interface FlashSalesListProps {
 
 export default function FlashSalesList({ isOwner = false }: FlashSalesListProps) {
   const { publicKey } = useWallet()
-  const { creator } = useCreatorData()
   const [flashSales, setFlashSales] = useState<any[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [showCreateModal, setShowCreateModal] = useState(false)
   const [selectedPostId, setSelectedPostId] = useState<string | undefined>()
 
   useEffect(() => {
-    if (creator) {
-      loadFlashSales()
-      // Обновляем каждые 30 секунд
-      const interval = setInterval(loadFlashSales, 30000)
-      return () => clearInterval(interval)
-    }
-  }, [creator])
+    loadFlashSales()
+    // Обновляем каждые 30 секунд
+    const interval = setInterval(loadFlashSales, 30000)
+    return () => clearInterval(interval)
+  }, [])
 
   const loadFlashSales = async () => {
-    if (!creator) return
-    
     try {
       const params = new URLSearchParams()
-      params.append('creatorId', creator.id)
+      params.append('creatorId', 'mockCreatorId')
       
       const response = await fetch(`/api/flash-sales?${params}`)
       const data = await response.json()

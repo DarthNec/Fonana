@@ -7,7 +7,6 @@ import Avatar from '@/components/Avatar'
 import { PostsContainer } from '@/components/posts/layouts/PostsContainer'
 import SubscribeModal from '@/components/SubscribeModal'
 import PurchaseModal from '@/components/PurchaseModal'
-import FlashSalesList from '@/components/FlashSalesList'
 import { 
   CheckBadgeIcon, 
   LinkIcon,
@@ -26,8 +25,8 @@ import {
   VideoCameraIcon,
   ChatBubbleLeftEllipsisIcon
 } from '@heroicons/react/24/outline'
-import { useUserContext } from '@/lib/contexts/UserContext'
-import { CreatorDataProvider, useCreatorData } from '@/lib/contexts/CreatorContext'
+import { useUser } from '@/lib/store/appStore'
+import { useCreator, useCreatorLoading, useCreatorError, useCreatorActions } from '@/lib/store/appStore'
 import { useWallet } from '@solana/wallet-adapter-react'
 import toast from 'react-hot-toast'
 import { useSolRate } from '@/lib/hooks/useSolRate'
@@ -39,8 +38,14 @@ import { jwtManager } from '@/lib/utils/jwt'
 // Внутренний компонент, который использует данные создателя из контекста
 function CreatorPageContent() {
   const router = useRouter()
-  const { user, isLoading: isAuthLoading } = useUserContext()
-  const { creator, isLoading: isCreatorLoading, error: creatorError, refreshCreator } = useCreatorData()
+  const params = useParams()
+  const creatorId = params.id as string
+  const user = useUser()
+  const isAuthLoading = false // Zustand не имеет отдельного состояния загрузки пользователя
+  const creator = useCreator()
+  const isCreatorLoading = useCreatorLoading()
+  const creatorError = useCreatorError()
+  const { refreshCreator, loadCreator } = useCreatorActions()
   const { connected, publicKey } = useWallet()
   const { rate: solRate } = useSolRate()
   const [posts, setPosts] = useState<any[]>([])
@@ -55,6 +60,13 @@ function CreatorPageContent() {
   const [selectedTier, setSelectedTier] = useState<'basic' | 'premium' | 'vip'>('basic')
   const [isLoadingPosts, setIsLoadingPosts] = useState(true)
   const [creatorTiers, setCreatorTiers] = useState<any>(null)
+
+  // Загружаем создателя при монтировании
+  useEffect(() => {
+    if (creatorId) {
+      loadCreator(creatorId)
+    }
+  }, [creatorId, loadCreator])
 
   // Загружаем посты и проверяем подписку, когда данные создателя загружены
   useEffect(() => {
@@ -677,11 +689,11 @@ function CreatorPageContent() {
           )}
 
           {/* Flash Sales */}
-          {creator.isCreator && (
+          {/* {creator.isCreator && (
             <div className="mb-8">
               <FlashSalesList isOwner={false} />
             </div>
-          )}
+          )} */}
 
           {/* Content */}
           <div className="px-0 sm:px-4 lg:px-8">
@@ -748,7 +760,7 @@ function CreatorPageContent() {
             {/* Flash Sales Content */}
             {activeTab === 'flash-sales' && creator.isCreator && (
               <div className="max-w-4xl mx-auto py-0 sm:py-8">
-                <FlashSalesList />
+                {/* <FlashSalesList /> */}
               </div>
             )}
 
@@ -898,14 +910,10 @@ function CreatorPageContent() {
   )
 }
 
-// Внешний компонент-обёртка с провайдером
+// Внешний компонент-обёртка
 export default function CreatorPage() {
   const params = useParams()
   const creatorId = params.id as string
 
-  return (
-    <CreatorDataProvider creatorId={creatorId}>
-      <CreatorPageContent />
-    </CreatorDataProvider>
-  )
+  return <CreatorPageContent />
 } 
