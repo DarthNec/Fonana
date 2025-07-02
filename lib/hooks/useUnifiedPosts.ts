@@ -168,7 +168,9 @@ export function useUnifiedPosts(options: UseUnifiedPostsOptions = {}): UseUnifie
 
       if (!response.ok) throw new Error('Failed to like post')
 
-      // Обновляем локальное состояние
+      const data = await response.json()
+      
+      // Обновляем локальное состояние на основе ответа сервера
       setPosts(prevPosts => 
         prevPosts.map(post => 
           post.id === postId 
@@ -176,18 +178,38 @@ export function useUnifiedPosts(options: UseUnifiedPostsOptions = {}): UseUnifie
                 ...post, 
                 engagement: { 
                   ...post.engagement, 
-                  likes: post.engagement.likes + 1,
-                  isLiked: true 
+                  likes: data.likesCount,
+                  isLiked: data.isLiked
                 }
               }
             : post
         )
       )
 
-      toast.success('Пост лайкнут!')
+      if (data.action === 'liked') {
+        toast.success('Пост лайкнут!')
+      } else {
+        toast.success('Лайк убран')
+      }
     } catch (error) {
       console.error('Like error:', error)
       toast.error('Ошибка при лайке')
+      
+      // Откатываем оптимистичное обновление при ошибке
+      setPosts(prevPosts => 
+        prevPosts.map(post => 
+          post.id === postId 
+            ? { 
+                ...post, 
+                engagement: { 
+                  ...post.engagement, 
+                  likes: post.engagement.likes - 1,
+                  isLiked: false
+                }
+              }
+            : post
+        )
+      )
     }
   }
 
@@ -227,7 +249,7 @@ export function useUnifiedPosts(options: UseUnifiedPostsOptions = {}): UseUnifie
   const performUnlike = async (postId: string, userId: string) => {
     try {
       const response = await fetch(`/api/posts/${postId}/like`, {
-        method: 'DELETE',
+        method: 'POST', // Используем POST для toggle
         headers: {
           'Content-Type': 'application/json',
         },
@@ -236,7 +258,9 @@ export function useUnifiedPosts(options: UseUnifiedPostsOptions = {}): UseUnifie
 
       if (!response.ok) throw new Error('Failed to unlike post')
 
-      // Обновляем локальное состояние
+      const data = await response.json()
+      
+      // Обновляем локальное состояние на основе ответа сервера
       setPosts(prevPosts => 
         prevPosts.map(post => 
           post.id === postId 
@@ -244,17 +268,39 @@ export function useUnifiedPosts(options: UseUnifiedPostsOptions = {}): UseUnifie
                 ...post, 
                 engagement: { 
                   ...post.engagement, 
-                  likes: Math.max(0, post.engagement.likes - 1),
-                  isLiked: false 
+                  likes: data.likesCount,
+                  isLiked: data.isLiked
                 }
               }
             : post
         )
       )
 
+      if (data.action === 'unliked') {
+        toast.success('Лайк убран')
+      } else {
+        toast.success('Пост лайкнут!')
+      }
+
     } catch (error) {
       console.error('Unlike error:', error)
       toast.error('Ошибка при отмене лайка')
+      
+      // Откатываем оптимистичное обновление при ошибке
+      setPosts(prevPosts => 
+        prevPosts.map(post => 
+          post.id === postId 
+            ? { 
+                ...post, 
+                engagement: { 
+                  ...post.engagement, 
+                  likes: post.engagement.likes + 1,
+                  isLiked: true
+                }
+              }
+            : post
+        )
+      )
     }
   }
 

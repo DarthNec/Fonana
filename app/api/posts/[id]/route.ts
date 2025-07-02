@@ -11,6 +11,9 @@ export async function GET(
   { params }: { params: { id: string } }
 ) {
   try {
+    // Получаем userId из query параметров для проверки лайка
+    const userId = request.nextUrl.searchParams.get('userId')
+    
     const post = await prisma.post.findUnique({
       where: { id: params.id },
       include: {
@@ -41,6 +44,20 @@ export async function GET(
       return NextResponse.json({ error: 'Post not found' }, { status: 404 })
     }
 
+    // Проверяем, лайкнул ли пользователь этот пост
+    let isLiked = false
+    if (userId) {
+      const like = await prisma.like.findUnique({
+        where: {
+          userId_postId: {
+            userId,
+            postId: params.id
+          }
+        }
+      })
+      isLiked = !!like
+    }
+
     // Форматируем пост для фронтенда
     const formattedPost = {
       ...post,
@@ -53,6 +70,11 @@ export async function GET(
       likes: post._count?.likes || 0,
       comments: post._count?.comments || 0,
       tags: post.tags?.map((t: any) => t.tag.name) || [],
+      engagement: {
+        likes: post._count?.likes || 0,
+        comments: post._count?.comments || 0,
+        isLiked
+      }
     }
 
     return NextResponse.json({ post: formattedPost })

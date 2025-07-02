@@ -17,6 +17,7 @@ import {
   PaperAirplaneIcon
 } from '@heroicons/react/24/outline'
 import { HeartIcon as HeartSolidIcon } from '@heroicons/react/24/solid'
+import { toast } from 'react-hot-toast'
 
 interface Post {
   id: string
@@ -77,7 +78,7 @@ export default function PostPage() {
         setIsLoading(true)
         setError(null)
         
-        const response = await fetch(`/api/posts/${params.id}`)
+        const response = await fetch(`/api/posts/${params.id}${user ? `?userId=${user.id}` : ''}`)
         if (!response.ok) {
           if (response.status === 404) {
             setError('Пост не найден')
@@ -89,7 +90,8 @@ export default function PostPage() {
         
         const data = await response.json()
         setPost(data.post)
-        setLikeCount(data.post.likes || 0)
+        setLikeCount(data.post.engagement?.likes || data.post.likes || 0)
+        setIsLiked(data.post.engagement?.isLiked || false)
       } catch (error) {
         console.error('Error fetching post:', error)
         setError('Ошибка подключения к серверу')
@@ -101,7 +103,7 @@ export default function PostPage() {
     if (params.id) {
       fetchPost()
     }
-  }, [params.id])
+  }, [params.id, user])
 
   // Загружаем комментарии
   useEffect(() => {
@@ -176,9 +178,16 @@ export default function PostPage() {
         const data = await response.json()
         setIsLiked(data.isLiked)
         setLikeCount(data.likesCount)
+        
+        if (data.action === 'liked') {
+          toast.success('Пост лайкнут!')
+        } else {
+          toast.success('Лайк убран')
+        }
       }
     } catch (error) {
       console.error('Error toggling like:', error)
+      toast.error('Ошибка при лайке')
     }
   }
 

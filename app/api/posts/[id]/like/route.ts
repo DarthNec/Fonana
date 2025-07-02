@@ -107,7 +107,8 @@ export async function POST(
       return NextResponse.json({
         success: true,
         isLiked: false,
-        likesCount: post.likesCount - 1
+        likesCount: post.likesCount - 1,
+        action: 'unliked'
       })
     } else {
       // Добавляем лайк
@@ -169,7 +170,8 @@ export async function POST(
       return NextResponse.json({
         success: true,
         isLiked: true,
-        likesCount: post.likesCount + 1
+        likesCount: post.likesCount + 1,
+        action: 'liked'
       })
     }
   } catch (error) {
