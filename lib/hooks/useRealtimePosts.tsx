@@ -190,11 +190,12 @@ export function useRealtimePosts({
       
       setUpdatedPosts(prev => prev.map(post => {
         if (post.creator.id === creatorId) {
-          // Проверяем доступ с новым тиром
-          const hasAccess = !post.access.tier || 
+          // Безопасная проверка доступа с новым тиром
+          const postTier = post?.access?.tier
+          const hasAccess = !postTier || 
             (newTier === 'vip') ||
-            (newTier === 'premium' && ['basic', 'premium'].includes(post.access.tier)) ||
-            (newTier === 'basic' && post.access.tier === 'basic')
+            (newTier === 'premium' && ['basic', 'premium'].includes(postTier)) ||
+            (newTier === 'basic' && postTier === 'basic')
           
           return {
             ...post,
