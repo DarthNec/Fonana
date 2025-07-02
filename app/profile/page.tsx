@@ -258,9 +258,51 @@ export default function ProfilePage() {
   const { deleteAccount, updateProfile, refreshUser } = useUserActions()
   const { disconnect, connected, publicKey } = useWallet()
   const { theme, setTheme } = useTheme()
+  
+  // ВСЕ ХУКИ ДОЛЖНЫ БЫТЬ ВЫЗВАНЫ ДО УСЛОВНЫХ RETURN
   const [activeTab, setActiveTab] = useState<'profile' | 'creator' | 'subscriptions' | 'posts'>('profile')
   const [showCreateModal, setShowCreateModal] = useState(false)
+  const [formData, setFormData] = useState<UserProfile>({
+    id: '',
+    name: '',
+    username: '',
+    nickname: '',
+    email: '',
+    avatar: '',
+    backgroundImage: '',
+    bio: '',
+    isAnonymous: false,
+    notifications: {
+      comments: true,
+      likes: true,
+      newPosts: true,
+      subscriptions: true,
+    },
+    privacy: {
+      showActivity: true,
+      allowMessages: true,
+      showOnline: true,
+    },
+    theme: theme || 'dark',
+  })
+  const [isEditing, setIsEditing] = useState(false)
+  const [saved, setSaved] = useState(false)
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
+  const [isDeleting, setIsDeleting] = useState(false)
+  const [isSaving, setIsSaving] = useState(false)
   
+  // Nickname validation states
+  const [nicknameStatus, setNicknameStatus] = useState<'idle' | 'checking' | 'available' | 'taken' | 'invalid' | 'reserved'>('idle')
+  const [nicknameCheckTimeout, setNicknameCheckTimeout] = useState<NodeJS.Timeout | null>(null)
+  
+  // User statistics
+  const [userStats, setUserStats] = useState({
+    postsCount: 0,
+    subscribersCount: 0,
+    totalEarned: 0,
+    memberSince: new Date()
+  })
+
   // Debug логирование для отслеживания race conditions
   useEffect(() => {
     console.log('[Profile][Debug] State update:', {
@@ -281,49 +323,6 @@ export default function ProfilePage() {
   if (isUserLoading || !user) {
     return <SkeletonLoader variant="profile" />
   }
-
-  // ВСЕ ХУКИ ДОЛЖНЫ БЫТЬ ВЫЗВАНЫ ДО УСЛОВНЫХ RETURN
-  const [formData, setFormData] = useState<UserProfile>({
-    id: user?.id || '',
-    name: user?.fullName || '',
-    username: user?.nickname || '',
-    nickname: user?.nickname || '',
-    email: '',
-    avatar: user?.avatar || '',
-    backgroundImage: user?.backgroundImage || '',
-    bio: user?.bio || '',
-    isAnonymous: false,
-    notifications: {
-      comments: true,
-      likes: true,
-      newPosts: true,
-      subscriptions: true,
-    },
-    privacy: {
-      showActivity: true,
-      allowMessages: true,
-      showOnline: true,
-    },
-    theme: theme || 'dark',
-  })
-
-  const [isEditing, setIsEditing] = useState(false)
-  const [saved, setSaved] = useState(false)
-  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
-  const [isDeleting, setIsDeleting] = useState(false)
-  const [isSaving, setIsSaving] = useState(false)
-  
-  // Nickname validation states
-  const [nicknameStatus, setNicknameStatus] = useState<'idle' | 'checking' | 'available' | 'taken' | 'invalid' | 'reserved'>('idle')
-  const [nicknameCheckTimeout, setNicknameCheckTimeout] = useState<NodeJS.Timeout | null>(null)
-  
-  // User statistics
-  const [userStats, setUserStats] = useState({
-    postsCount: 0,
-    subscribersCount: 0,
-    totalEarned: 0,
-    memberSince: new Date()
-  })
 
   // Проверка для неавторизованных пользователей - ПОСЛЕ всех хуков
   if (!user || !user.wallet) {
