@@ -1,12 +1,12 @@
 'use client'
 
-import { useUserContext } from '@/lib/contexts/UserContext'
+import { useUser } from '@/lib/store/appStore'
 import { UserIcon } from '@heroicons/react/24/outline'
 import { PostCard } from '@/components/posts/core/PostCard'
 import { PostNormalizer } from '@/services/posts/normalizer'
 
 export default function AvatarDemoPage() {
-  const { user } = useUserContext()
+  const user = useUser()
 
   const mockPost = {
     id: 1,

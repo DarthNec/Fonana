@@ -4,8 +4,9 @@ import { useState, useEffect } from 'react'
 import { EyeIcon, EyeSlashIcon, UserIcon } from '@heroicons/react/24/outline'
 import Image from 'next/image'
 import Avatar from './Avatar'
-import { useUserContext } from '@/lib/contexts/UserContext'
+import { useUser } from '@/lib/store/appStore'
 import toast from 'react-hot-toast'
+import { cacheManager } from '@/lib/services/CacheManager'
 
 interface Subscription {
   id: string
@@ -27,7 +28,7 @@ interface Subscription {
 }
 
 export default function SubscriptionManager() {
-  const { user } = useUserContext()
+  const user = useUser()
   const [subscriptions, setSubscriptions] = useState<Subscription[]>([])
   const [loading, setLoading] = useState(true)
 
@@ -37,11 +38,11 @@ export default function SubscriptionManager() {
     }
   }, [user])
 
-  // Load visibility preferences from localStorage
+  // Load visibility preferences from cache
   useEffect(() => {
     if (user && subscriptions.length > 0) {
-      const savedVisibility = localStorage.getItem(`sub_visibility_${user.id}`)
-      if (savedVisibility) {
+      const savedVisibility = cacheManager.get(`sub_visibility_${user.id}`)
+      if (savedVisibility && typeof savedVisibility === 'string') {
         try {
           const hiddenIds = JSON.parse(savedVisibility)
           setSubscriptions(subs => 
@@ -91,12 +92,12 @@ export default function SubscriptionManager() {
           : sub
       )
       
-      // Save hidden subscription IDs to localStorage
+      // Save hidden subscription IDs to cache
       if (user) {
         const hiddenIds = updated
           .filter(sub => !sub.isPublicVisible)
           .map(sub => sub.id)
-        localStorage.setItem(`sub_visibility_${user.id}`, JSON.stringify(hiddenIds))
+        cacheManager.set(`sub_visibility_${user.id}`, JSON.stringify(hiddenIds), 30 * 24 * 60 * 60 * 1000) // 30 дней
       }
       
       return updated

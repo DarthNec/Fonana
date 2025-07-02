@@ -2,7 +2,8 @@
 
 import { useEffect, useCallback, useState } from 'react'
 import { wsService, WebSocketEvent } from '@/lib/services/websocket'
-import { useUserContext } from '@/lib/contexts/UserContext'
+import { setupDefaultHandlers, emitPostLiked, emitPostCommented } from '@/lib/services/WebSocketEventManager'
+import { useUser } from '@/lib/store/appStore'
 import { UnifiedPost } from '@/types/posts'
 import toast from 'react-hot-toast'
 
@@ -27,7 +28,7 @@ export function useRealtimePosts({
   showNewPostsNotification = true,
   autoUpdateFeed = false
 }: UseRealtimePostsOptions): UseRealtimePostsReturn {
-  const { user } = useUserContext()
+  const user = useUser()
   const [newPostsCount, setNewPostsCount] = useState(0)
   const [pendingPosts, setPendingPosts] = useState<UnifiedPost[]>([])
   const [updatedPosts, setUpdatedPosts] = useState<UnifiedPost[]>(posts)
@@ -237,15 +238,8 @@ export function useRealtimePosts({
     // Подписываемся на обновления ленты
     wsService.subscribeToFeed(user.id)
 
-    // Обработчики событий
-    wsService.on('post_liked', handlePostLiked)
-    wsService.on('post_unliked', handlePostUnliked)
-    wsService.on('post_created', handlePostCreated)
-    wsService.on('post_deleted', handlePostDeleted)
-    wsService.on('comment_added', handleCommentAdded)
-    wsService.on('comment_deleted', handleCommentDeleted)
-    wsService.on('post_purchased', handlePostPurchased)
-    wsService.on('subscription_updated', handleSubscriptionUpdated)
+    // Подписываемся на WebSocket события через EventManager
+    setupDefaultHandlers()
 
     // Также слушаем window события для обратной совместимости
     const handleWindowPostPurchased = (e: Event) => handlePostPurchased(e as CustomEvent)
@@ -265,14 +259,6 @@ export function useRealtimePosts({
     // Отписываемся при размонтировании
     return () => {
       wsService.unsubscribeFromFeed(user.id)
-      wsService.off('post_liked', handlePostLiked)
-      wsService.off('post_unliked', handlePostUnliked)
-      wsService.off('post_created', handlePostCreated)
-      wsService.off('post_deleted', handlePostDeleted)
-      wsService.off('comment_added', handleCommentAdded)
-      wsService.off('comment_deleted', handleCommentDeleted)
-      wsService.off('post_purchased', handlePostPurchased)
-      wsService.off('subscription_updated', handleSubscriptionUpdated)
       
       window.removeEventListener('post-purchased', handleWindowPostPurchased)
       window.removeEventListener('subscription-updated', handleWindowSubscriptionUpdated)

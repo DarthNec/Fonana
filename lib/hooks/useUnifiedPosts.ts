@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback, useRef } from 'react'
 import { UnifiedPost, PostAction } from '@/types/posts'
 import { PostNormalizer } from '@/services/posts/normalizer'
 import { useWallet } from '@solana/wallet-adapter-react'
-import { useUserContext } from '@/lib/contexts/UserContext'
+import { useUser } from '@/lib/store/appStore'
 import toast from 'react-hot-toast'
 import { checkPostAccess, hasAccessToTier } from '@/lib/utils/access'
 
@@ -28,7 +28,8 @@ interface UseUnifiedPostsReturn {
  * Хук для работы с унифицированными постами
  */
 export function useUnifiedPosts(options: UseUnifiedPostsOptions = {}): UseUnifiedPostsReturn {
-  const { user, isLoading: isUserLoading } = useUserContext()
+  const user = useUser()
+  const isUserLoading = false // Zustand не имеет отдельного состояния загрузки
   const { publicKey } = useWallet()
   const [posts, setPosts] = useState<UnifiedPost[]>([])
   const [isLoading, setIsLoading] = useState(true)

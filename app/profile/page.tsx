@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react'
 import Image from 'next/image'
-import { useUserContext } from '@/lib/contexts/UserContext'
+import { useUser, useUserLoading, useUserActions } from '@/lib/store/appStore'
 import { useWallet } from '@solana/wallet-adapter-react'
 import { 
   UserIcon, 
@@ -66,7 +66,7 @@ interface UserProfile {
 
 // Component for displaying user's posts - вынесен из ProfilePage
 function MyPostsSection() {
-  const { user } = useUserContext()
+  const user = useUser()
   const [posts, setPosts] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [selectedPost, setSelectedPost] = useState<any>(null)
@@ -252,7 +252,9 @@ function MyPostsSection() {
 }
 
 export default function ProfilePage() {
-  const { user, isLoading, deleteAccount, updateProfile, refreshUser } = useUserContext()
+  const user = useUser()
+  const isLoading = useUserLoading()
+  const { deleteAccount, updateProfile, refreshUser } = useUserActions()
   const { disconnect } = useWallet()
   const { theme: currentTheme, setTheme } = useTheme()
   const [activeTab, setActiveTab] = useState<'profile' | 'creator' | 'subscriptions' | 'posts'>('profile')

@@ -11,7 +11,7 @@ import {
 import Link from 'next/link'
 import OptimizedImage from '@/components/OptimizedImage'
 import { formatDistanceToNow } from 'date-fns/formatDistanceToNow'
-import { useUserContext } from '@/lib/contexts/UserContext'
+import { useUser, useUserLoading } from '@/lib/store/appStore'
 import { jwtManager } from '@/lib/utils/jwt'
 
 interface Conversation {
@@ -37,7 +37,8 @@ interface Conversation {
 
 export default function MessagesPage() {
   const router = useRouter()
-  const { user, isLoading: isUserLoading } = useUserContext()
+  const user = useUser()
+  const isUserLoading = useUserLoading()
   const [conversations, setConversations] = useState<Conversation[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState('')

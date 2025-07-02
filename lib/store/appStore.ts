@@ -5,8 +5,40 @@
 
 import { create } from 'zustand'
 import { devtools, persist } from 'zustand/middleware'
-import { User, ProfileData } from '@/lib/contexts/UserContext'
 import { UnifiedPost } from '@/types/posts'
+
+// Типы пользователя
+export interface User {
+  id: string
+  wallet?: string
+  solanaWallet?: string
+  nickname?: string
+  fullName?: string
+  bio?: string
+  avatar?: string
+  backgroundImage?: string
+  isVerified: boolean
+  isCreator: boolean
+  followersCount: number
+  followingCount: number
+  postsCount: number
+  createdAt: string
+  updatedAt: string
+  referrerId?: string
+  referrer?: {
+    id: string
+    wallet?: string
+    solanaWallet?: string
+  } | null
+}
+
+export interface ProfileData {
+  nickname?: string
+  fullName?: string
+  bio?: string
+  avatar?: string
+  backgroundImage?: string
+}
 
 // Типы для уведомлений
 export interface Notification {
@@ -31,9 +63,27 @@ export interface Creator {
   isVerified: boolean
   isCreator: boolean
   followersCount: number
+  followingCount?: number
   postsCount: number
   subscriptionType?: 'free' | 'basic' | 'premium' | 'vip'
   tierSettings?: any
+  wallet?: string
+  solanaWallet?: string
+  website?: string
+  twitter?: string
+  telegram?: string
+  location?: string
+  referrerId?: string
+  referrer?: {
+    id: string
+    wallet?: string
+    solanaWallet?: string
+  } | null
+  flashSales?: any[]
+  earnings?: any
+  subscriptions?: any[]
+  subscribers?: any[]
+  createdAt?: string | Date
 }
 
 // User Slice
@@ -97,6 +147,7 @@ interface CreatorSlice {
   setCreatorLoading: (loading: boolean) => void
   setCreatorError: (error: string | null) => void
   refreshCreator: () => Promise<void>
+  loadCreator: (creatorId: string) => Promise<void>
   loadPosts: () => Promise<void>
 }
 
@@ -315,6 +366,24 @@ export const useAppStore = create<AppStore>()(
           }
         },
 
+        loadCreator: async (creatorId: string) => {
+          try {
+            set({ creatorLoading: true, creatorError: null })
+            
+            const response = await fetch(`/api/creators/${creatorId}`)
+            if (response.ok) {
+              const data = await response.json()
+              set({ creator: data.creator })
+            } else {
+              throw new Error('Failed to load creator')
+            }
+          } catch (err) {
+            set({ creatorError: (err as Error).message })
+          } finally {
+            set({ creatorLoading: false })
+          }
+        },
+
         loadPosts: async () => {
           const { creator } = get()
           if (!creator?.id) return
@@ -404,5 +473,6 @@ export const useCreatorActions = () => useAppStore((state) => ({
   setCreatorLoading: state.setCreatorLoading,
   setCreatorError: state.setCreatorError,
   refreshCreator: state.refreshCreator,
+  loadCreator: state.loadCreator,
   loadPosts: state.loadPosts
 })) 

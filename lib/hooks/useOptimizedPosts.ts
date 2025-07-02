@@ -4,9 +4,10 @@ import { useState, useEffect, useCallback, useRef, useMemo } from 'react'
 import { UnifiedPost, PostAction } from '@/types/posts'
 import { PostNormalizer } from '@/services/posts/normalizer'
 import { useWallet } from '@solana/wallet-adapter-react'
-import { useUserContext } from '@/lib/contexts/UserContext'
+import { useUser } from '@/lib/store/appStore'
 import toast from 'react-hot-toast'
 import debounce from 'lodash/debounce'
+import { useRetry } from '@/lib/utils/retry'
 
 interface UseOptimizedPostsOptions {
   creatorId?: string
@@ -48,8 +49,10 @@ const CACHE_TTL = 5 * 60 * 1000 // 5 минут
  * - Сохранение позиции скролла
  */
 export function useOptimizedPosts(options: UseOptimizedPostsOptions = {}): UseOptimizedPostsReturn {
-  const { user, isLoading: isUserLoading } = useUserContext()
+  const user = useUser()
+  const isUserLoading = false // Zustand не имеет отдельного состояния загрузки пользователя
   const { publicKey } = useWallet()
+  const { retryWithToast } = useRetry()
   
   // Состояние
   const [posts, setPosts] = useState<UnifiedPost[]>([])
@@ -133,13 +136,23 @@ export function useOptimizedPosts(options: UseOptimizedPostsOptions = {}): UseOp
         params.append('sortBy', options.sortBy)
       }
 
-      const response = await fetch(`${endpoint}?${params}`, {
-        signal: abortControllerRef.current.signal
-      })
-      
-      if (!response.ok) throw new Error('Failed to fetch posts')
+      const result = await retryWithToast(
+        async () => {
+          const response = await fetch(`${endpoint}?${params}`, {
+            signal: abortControllerRef.current?.signal
+          })
+          
+          if (!response.ok) throw new Error('Failed to fetch posts')
 
-      const data = await response.json()
+          return response.json()
+        },
+        { maxAttempts: 2, baseDelay: 1000 },
+        'FetchPosts'
+      )
+
+      if (!result) return // Ошибка уже обработана в retryWithToast
+
+      const data = result
       const rawPosts = data.posts || []
       const totalCount = data.totalCount || 0
 
@@ -543,10 +556,11 @@ export function useOptimizedPosts(options: UseOptimizedPostsOptions = {}): UseOp
     
     if (isUserLoading && publicKey) {
       try {
-        const savedData = localStorage.getItem('fonana_user_data')
-        const savedWallet = localStorage.getItem('fonana_user_wallet')
+        const cacheManager = (await import('@/lib/services/CacheManager')).cacheManager
+        const savedData = cacheManager.get('fonana_user_data')
+        const savedWallet = cacheManager.get('fonana_user_wallet')
         
-        if (savedData && savedWallet === publicKey.toBase58()) {
+        if (savedData && typeof savedData === 'string' && savedWallet === publicKey.toBase58()) {
           const userData = JSON.parse(savedData)
           if (userData.id) return userData.id
         }

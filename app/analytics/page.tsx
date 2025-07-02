@@ -13,7 +13,7 @@ import {
   CalendarIcon,
   DocumentTextIcon
 } from '@heroicons/react/24/outline'
-import { useUserContext } from '@/lib/contexts/UserContext'
+import { useUser, useUserLoading } from '@/lib/store/appStore'
 import { useWallet } from '@solana/wallet-adapter-react'
 import toast from 'react-hot-toast'
 
@@ -58,7 +58,7 @@ interface AnalyticsData {
 }
 
 export default function AnalyticsPage() {
-  const { user } = useUserContext()
+  const user = useUser()
   const { publicKey } = useWallet()
   const [isLoading, setIsLoading] = useState(true)
   const [timeRange, setTimeRange] = useState<'week' | 'month' | 'year'>('month')

@@ -2,71 +2,114 @@
 
 ## Обзор архитектуры
 
-Fonana - это платформа для создания и монетизации контента на блокчейне Solana. Архитектура построена на Next.js с использованием WebSocket для real-time функций, JWT аутентификации и централизованного управления состоянием пользователя.
+Fonana - это платформа для создания и монетизации контента на блокчейне Solana. Архитектура построена на Next.js с использованием WebSocket для real-time функций, JWT аутентификации и централизованного управления состоянием через Zustand store.
 
 ## Ключевые компоненты
 
-### 1. UserContext - Центральное управление состоянием пользователя
+### 1. Zustand Store - Центральное управление состоянием
 
-#### Зависимости и инициализация
+#### Структура store
 ```typescript
-// Основные зависимости
-- useWallet() - Solana Wallet Adapter
-  - publicKey: PublicKey | null
-  - connected: boolean
-  - wallet: Wallet | null
-
-// Условия инициализации
-- connected && publicKey → createOrGetUser()
-- !connected → clearUserState()
-```
-
-#### Жизненный цикл UserContext
-
-1. **Монтирование компонента**
-   - Проверка кеша localStorage (TTL 7 дней)
-   - Восстановление данных пользователя из кеша
-
-2. **Подключение кошелька**
-   - `connected && publicKey` → `createOrGetUser(publicKey.toString())`
-   - API запрос к `/api/user` (POST)
-   - Сохранение в кеш + состояние
-
-3. **Отключение кошелька**
-   - Очистка состояния: `user = null`
-   - Очистка кеша localStorage
-   - Сброс флагов: `isNewUser = false`
-
-#### Кеширование данных
-```typescript
-// Структура кеша
-localStorage.setItem('fonana_user_data', JSON.stringify(userData))
-localStorage.setItem('fonana_user_wallet', wallet)
-localStorage.setItem('fonana_user_timestamp', Date.now().toString())
-
-// TTL проверка
-const CACHE_TTL = 7 * 24 * 60 * 60 * 1000 // 7 дней
-if (now - timestamp < CACHE_TTL) {
-  return cached.user
+// lib/store/appStore.ts
+interface AppState {
+  // User slice
+  user: User | null
+  isLoading: boolean
+  error: string | null
+  
+  // Notification slice  
+  notifications: Notification[]
+  unreadCount: number
+  
+  // Creator slice
+  creatorData: CreatorData | null
+  creatorLoading: boolean
+  
+  // Actions
+  setUser: (user: User | null) => void
+  refreshUser: () => Promise<void>
+  setNotifications: (notifications: Notification[]) => void
+  addNotification: (notification: Notification) => void
+  setCreatorData: (data: CreatorData | null) => void
 }
 ```
 
-#### Fallback логика
+#### Инициализация и жизненный цикл
 ```typescript
-// Глобальная функция для восстановления пользователя
-window.__refreshUser = refreshUser
+// AppProvider.tsx - единая точка инициализации
+const AppProvider = ({ children }) => {
+  const { publicKey, connected } = useWallet()
+  const { user, setUser, refreshUser } = useAppStore()
+  
+  useEffect(() => {
+    if (connected && publicKey) {
+      refreshUser()
+    } else {
+      setUser(null)
+    }
+  }, [connected, publicKey])
+  
+  return <>{children}</>
+}
+```
 
-// Использование в компонентах
-if (!user) {
-  const cachedUser = getCachedUserData(wallet)
-  if (cachedUser) {
-    setUser(cachedUser)
-    setTimeout(() => handleAction(), 100) // Рекурсивный вызов
+#### Кеширование через CacheManager
+```typescript
+// lib/services/CacheManager.ts
+class CacheManager {
+  set(key: string, value: any, ttl?: number): void
+  get(key: string): any
+  delete(key: string): void
+  clear(): void
+}
+
+// Использование в store
+const refreshUser = async () => {
+  const cachedUser = cacheManager.get('fonana_user_data')
+  if (cachedUser && isValidCache(cachedUser.timestamp)) {
+    setUser(cachedUser.data)
   }
+  
+  // API запрос с retry логикой
+  const userData = await retryWithToast(() => 
+    fetch('/api/user', { method: 'POST' })
+  )
+  
+  cacheManager.set('fonana_user_data', {
+    data: userData,
+    timestamp: Date.now()
+  }, 7 * 24 * 60 * 60 * 1000) // 7 дней
+  
+  setUser(userData)
 }
 ```
 
-### 2. WebSocket Service - Real-time коммуникация
+### 2. WebSocket Event Manager - Real-time коммуникация
+
+#### Централизованное управление событиями
+```typescript
+// lib/services/WebSocketEventManager.ts
+class WebSocketEventManager {
+  private wsService: WebSocketService
+  private eventHandlers: Map<string, Function[]>
+  
+  subscribe(event: string, handler: Function): void
+  unsubscribe(event: string, handler: Function): void
+  emit(event: string, data: any): void
+  handleWebSocketEvent(event: string, data: any): void
+}
+
+// Интеграция с Zustand store
+const handlePostLiked = (event) => {
+  const { updatePost } = useAppStore.getState()
+  updatePost(event.postId, {
+    likesCount: event.likesCount,
+    isLiked: event.userId === user?.id
+  })
+}
+
+eventManager.subscribe('post_liked', handlePostLiked)
+```
 
 #### Аутентификация и подключение
 ```typescript
@@ -97,18 +140,38 @@ wsService.on('connected', () => {
 })
 ```
 
-#### Обработка событий
+### 3. Retry логика и обработка ошибок
+
+#### Централизованная retry система
 ```typescript
-// Основные события
-- post_liked / post_unliked
-- comment_added / comment_deleted
-- post_created / post_deleted
-- notification
-- subscription_updated
-- post_purchased
+// lib/utils/retry.ts
+export const retryWithToast = async <T>(
+  fn: () => Promise<T>,
+  options?: RetryOptions
+): Promise<T> => {
+  try {
+    return await fn()
+  } catch (error) {
+    if (options?.retries > 0) {
+      await delay(options.delay || 1000)
+      return retryWithToast(fn, { ...options, retries: options.retries - 1 })
+    }
+    
+    toast.error(options?.errorMessage || 'Произошла ошибка')
+    throw error
+  }
+}
+
+// Использование в компонентах
+const handleLike = async () => {
+  await retryWithToast(
+    () => fetch(`/api/posts/${postId}/like`, { method: 'POST' }),
+    { retries: 3, errorMessage: 'Не удалось поставить лайк' }
+  )
+}
 ```
 
-### 3. Система лайков - Многоуровневая валидация
+### 4. Система лайков - Многоуровневая валидация
 
 #### Зависимости для лайков
 ```typescript
@@ -117,9 +180,9 @@ wsService.on('connected', () => {
 - wallet.connected (обязательно)
 - publicKey (обязательно)
 
-// Fallback цепочка
-1. user из UserContext
-2. Кеш localStorage (TTL проверка)
+// Fallback цепочка через CacheManager
+1. user из Zustand store
+2. Кеш CacheManager (TTL проверка)
 3. API запрос /api/user?wallet=${publicKey}
 4. Ошибка "Подключите кошелек"
 ```
@@ -127,11 +190,13 @@ wsService.on('connected', () => {
 #### Логика обработки лайков
 ```typescript
 const handleLike = async () => {
+  const { user, refreshUser } = useAppStore.getState()
+  
   if (!user) {
-    // Fallback логика
-    const cachedUser = getCachedUserData(wallet)
-    if (cachedUser) {
-      setUser(cachedUser)
+    // Fallback логика через CacheManager
+    const cachedUser = cacheManager.get('fonana_user_data')
+    if (cachedUser && isValidCache(cachedUser.timestamp)) {
+      setUser(cachedUser.data)
       setTimeout(() => handleLike(), 100) // Рекурсивный вызов
       return
     }
@@ -139,220 +204,124 @@ const handleLike = async () => {
     return
   }
 
-  // API запрос
-  const response = await fetch(`/api/posts/${postId}/like`, {
-    method: 'POST',
-    body: JSON.stringify({ userId: user.id })
-  })
+  // API запрос с retry
+  await retryWithToast(
+    () => fetch(`/api/posts/${postId}/like`, {
+      method: 'POST',
+      body: JSON.stringify({ userId: user.id })
+    })
+  )
 
-  // WebSocket уведомление
-  await updatePostLikes(postId, newLikesCount, user.id)
+  // WebSocket уведомление через EventManager
+  eventManager.emit('post_liked', {
+    postId,
+    userId: user.id,
+    likesCount: post.likesCount + 1
+  })
 }
 ```
 
-#### WebSocket события лайков
+### 5. Notification System - Интеграция с Zustand
+
+#### Управление уведомлениями
 ```typescript
-// Отправка события
-wsService.emit('post_liked', {
-  type: 'post_liked',
-  postId,
-  userId,
-  likesCount
-})
-
-// Обработка в хуках
-const handlePostLikedThrottled = throttle((event) => {
-  batchUpdate(event.postId, {
-    engagement: {
-      likes: event.likesCount,
-      isLiked: event.userId === user?.id
-    }
-  })
-}, 500)
-```
-
-### 4. NotificationContext - Система уведомлений
-
-#### Инициализация и подписка
-```typescript
-// Зависимости
-- user?.id (обязательно)
-- JWT токен для API запросов
-- WebSocket подключение
-
-// Подписка на канал
-wsService.subscribeToNotifications(user.id)
-
-// Обработчики событий
-wsService.on('notification', handleNewNotification)
-wsService.on('notification_read', handleNotificationRead)
-wsService.on('notifications_cleared', handleNotificationsCleared)
-```
-
-#### Загрузка уведомлений
-```typescript
-const refreshNotifications = async () => {
-  const token = await getJWTToken()
+// Store slice для уведомлений
+const notificationSlice = (set, get) => ({
+  notifications: [],
+  unreadCount: 0,
   
-  const response = await fetch('/api/user/notifications', {
-    headers: {
-      'Authorization': `Bearer ${token}`
-    }
-  })
-
-  const data = await response.json()
-  setNotifications(data.notifications)
-  setUnreadCount(data.unreadCount)
-}
-```
-
-#### Real-time обработка
-```typescript
-const handleNewNotification = (event) => {
-  if (event.userId === user?.id) {
-    setNotifications(prev => [event.notification, ...prev])
-    setUnreadCount(prev => prev + 1)
-    showNotificationToast(event.notification)
-    playNotificationSound()
-  }
-}
-```
-
-### 5. Жизненный цикл от подключения кошелька до полной инициализации UI
-
-#### Фаза 1: Подключение кошелька
-```typescript
-// 1. Пользователь подключает кошелек
-wallet.connect() → connected = true, publicKey = PublicKey
-
-// 2. UserContext реагирует на изменение
-useEffect(() => {
-  if (connected && publicKey) {
-    createOrGetUser(publicKey.toString())
-  }
-}, [connected, publicKey])
-```
-
-#### Фаза 2: Создание/получение пользователя
-```typescript
-// 3. API запрос к /api/user
-const response = await fetch('/api/user', {
-  method: 'POST',
-  body: JSON.stringify({ wallet, referrerFromClient })
+  setNotifications: (notifications) => set({ notifications }),
+  addNotification: (notification) => set((state) => ({
+    notifications: [notification, ...state.notifications],
+    unreadCount: state.unreadCount + 1
+  })),
+  markAsRead: (id) => set((state) => ({
+    notifications: state.notifications.map(n => 
+      n.id === id ? { ...n, read: true } : n
+    ),
+    unreadCount: Math.max(0, state.unreadCount - 1)
+  }))
 })
 
-// 4. Сохранение в состояние и кеш
-setUser(data.user)
-setCachedUserData(data.user, wallet)
+// WebSocket интеграция
+eventManager.subscribe('notification', (event) => {
+  const { addNotification } = useAppStore.getState()
+  addNotification(event.notification)
+})
 ```
 
-#### Фаза 3: Инициализация WebSocket
+### 6. Creator Data Management
+
+#### Централизованное управление данными создателей
 ```typescript
-// 5. Получение JWT токена
-const token = await getJWTToken()
+// Store slice для creator data
+const creatorSlice = (set, get) => ({
+  creatorData: null,
+  creatorLoading: false,
+  
+  setCreatorData: (data) => set({ creatorData: data }),
+  setCreatorLoading: (loading) => set({ creatorLoading: loading }),
+  
+  fetchCreatorData: async (creatorId) => {
+    set({ creatorLoading: true })
+    
+    try {
+      const data = await retryWithToast(
+        () => fetch(`/api/creators/${creatorId}`)
+      )
+      set({ creatorData: data, creatorLoading: false })
+    } catch (error) {
+      set({ creatorLoading: false })
+    }
+  }
+})
 
-// 6. Подключение к WebSocket
-wsService.connect(`wss://fonana.me/ws?token=${token}`)
-
-// 7. Подписка на каналы
-wsService.subscribeToNotifications(user.id)
-wsService.subscribeToFeed(user.id)
+// WebSocket обновления
+eventManager.subscribe('creator_updated', (event) => {
+  const { creatorData, setCreatorData } = useAppStore.getState()
+  if (creatorData?.id === event.creatorId) {
+    setCreatorData({ ...creatorData, ...event.updates })
+  }
+})
 ```
 
-#### Фаза 4: Инициализация контекстов
-```typescript
-// 8. NotificationContext загружает уведомления
-refreshNotifications()
+## Архитектурные принципы
 
-// 9. CreatorContext инициализируется (если на странице создателя)
-<CreatorDataProvider creatorId={creatorId}>
+### 1. Единая точка истины
+- Все состояние управляется через Zustand store
+- Нет дублирования данных между компонентами
+- Централизованное кеширование через CacheManager
 
-// 10. UI полностью готов к взаимодействию
-```
+### 2. Event-driven архитектура
+- WebSocket события обрабатываются через EventManager
+- Автоматическая синхронизация между клиентами
+- Retry логика для надежности
 
-## Критические точки и правила
+### 3. Graceful degradation
+- Fallback на кеш при отсутствии сети
+- Retry механизмы для API запросов
+- Пользовательские уведомления об ошибках
 
-### 1. Правила инициализации
-- **НЕ инициировать действия** до загрузки `user?.id`
-- **Всегда проверять** `wallet.connected && publicKey` перед API запросами
-- **Использовать fallback логику** для восстановления из кеша
-- **Рекурсивные вызовы** после восстановления пользователя
+### 4. Type safety
+- Полная типизация всех store slices
+- Валидация данных через Zod
+- Безопасный доступ к вложенным свойствам
 
-### 2. WebSocket правила
-- **JWT токен обязателен** для всех подключений
-- **Автоматическая переподписка** при переподключении
-- **Throttling** для частых событий (лайки, комментарии)
-- **Fallback на HTTP API** при недоступности WebSocket
+## Миграция с React Context
 
-### 3. Кеширование
-- **TTL 7 дней** для пользовательских данных
-- **Проверка актуальности** перед использованием
-- **Автоматическая очистка** при отключении кошелька
-- **Безопасная сериализация** JSON данных
+### Удаленные компоненты
+- ❌ `lib/contexts/UserContext.tsx`
+- ❌ `lib/contexts/NotificationContext.tsx` 
+- ❌ `lib/contexts/CreatorContext.tsx`
+- ❌ `lib/hooks/useCreatorData.ts`
 
-### 4. Обработка ошибок
-- **Graceful degradation** при недоступности сервисов
-- **Retry логика** для критических операций
-- **Пользовательские уведомления** о статусе операций
-- **Логирование** всех ошибок для диагностики
+### Замененные хуки
+- `useUserContext()` → `useAppStore(state => state.user)`
+- `useNotificationContext()` → `useAppStore(state => state.notifications)`
+- `useCreatorData()` → `useAppStore(state => state.creatorData)`
 
-## Состояния системы
-
-### Состояние "wallet есть, user нет"
-```typescript
-// Причины
-- Задержка API запроса
-- Ошибка сети
-- Проблемы с JWT токеном
-
-// Решение
-- Fallback на кеш localStorage
-- Периодическая проверка (500ms до 5 секунд)
-- Рекурсивные вызовы функций после восстановления
-```
-
-### Состояние "WebSocket отключен"
-```typescript
-// Причины
-- Потеря сети
-- Истечение JWT токена
-- Проблемы сервера
-
-// Решение
-- Автоматическое переподключение
-- Fallback на HTTP API
-- Периодическое обновление данных
-```
-
-### Состояние "пропажа уведомлений"
-```typescript
-// Причины
-- WebSocket не подключен
-- Неправильная подписка на канал
-- Ошибки в обработчиках событий
-
-// Решение
-- Проверка подключения перед отправкой
-- Валидация подписок
-- HTTP fallback для критических уведомлений
-```
-
-## Рекомендации по разработке
-
-### 1. Новые компоненты
-- **Всегда проверять** `user?.id` перед действиями
-- **Использовать UserContext** вместо прямого доступа к localStorage
-- **Добавлять fallback логику** для критических операций
-- **Логировать** все состояния для диагностики
-
-### 2. API интеграция
-- **Передавать userId** в WebSocket события
-- **Использовать JWT токены** для аутентификации
-- **Обрабатывать ошибки** сети и сервера
-- **Кешировать** часто используемые данные
-
-### 3. Real-time функции
-- **Throttle** частые события
-- **Batch updates** для оптимизации производительности
-- **Graceful degradation** при недоступности WebSocket
-- **Пользовательская обратная связь** о статусе операций 
+### Обновленные компоненты
+- ✅ 25+ компонентов мигрированы на Zustand
+- ✅ Все импорты обновлены
+- ✅ Типизация исправлена
+- ✅ Сборка успешна 

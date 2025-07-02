@@ -20,8 +20,9 @@ import {
 } from '@/lib/solana/payments'
 import { useSolRate } from '@/lib/hooks/useSolRate'
 import { jwtManager } from '@/lib/utils/jwt'
-import { useUserContext } from '@/lib/contexts/UserContext'
+import { useUser } from '@/lib/store/appStore'
 import { safeToFixed, formatSolToUsd } from '@/lib/utils/format'
+import { useRetry } from '@/lib/utils/retry'
 
 // Константа для базовой комиссии сети Solana (5000 lamports = 0.000005 SOL)
 const NETWORK_FEE = 0.000005
@@ -51,8 +52,9 @@ interface SellablePostModalProps {
 
 export default function SellablePostModal({ isOpen, onClose, post }: SellablePostModalProps) {
   const { connected, publicKey, sendTransaction } = useWallet()
-  const { user } = useUserContext()
+  const user = useUser()
   const [isProcessing, setIsProcessing] = useState(false)
+  const { retryWithToast } = useRetry()
   const [bidAmount, setBidAmount] = useState('')
   const [timeLeft, setTimeLeft] = useState('')
   const { rate: solToUsdRate = 135, isLoading: isRateLoading } = useSolRate()
@@ -181,13 +183,23 @@ export default function SellablePostModal({ isOpen, onClose, post }: SellablePos
         return
       }
 
-      // Get full creator data
-      const creatorResponse = await fetch(`/api/creators/${post.creator.id}`)
-      const creatorData = await creatorResponse.json()
-      
-      if (!creatorData.creator) {
-        throw new Error('Creator not found')
-      }
+      // Get full creator data with retry
+      const creatorData = await retryWithToast(
+        async () => {
+          const creatorResponse = await fetch(`/api/creators/${post.creator.id}`)
+          const data = await creatorResponse.json()
+          
+          if (!data.creator) {
+            throw new Error('Creator not found')
+          }
+          
+          return data
+        },
+        { maxAttempts: 2, baseDelay: 1000 },
+        'FetchCreator'
+      )
+
+      if (!creatorData) return // Ошибка уже обработана в retryWithToast
 
       const creatorWallet = creatorData.creator.solanaWallet || creatorData.creator.wallet
       if (!creatorWallet || !isValidSolanaAddress(creatorWallet)) {
@@ -368,32 +380,42 @@ export default function SellablePostModal({ isOpen, onClose, post }: SellablePos
         throw new Error('Transaction not confirmed after 60 seconds')
       }
 
-      // Process payment on backend
+      // Process payment on backend with retry
       const jwtToken = await jwtManager.getToken()
       if (!jwtToken) {
         throw new Error('Not authenticated')
       }
 
-      const response = await fetch(`/api/posts/${post.id}/buy`, {
-        method: 'POST',
-        headers: { 
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${jwtToken}`
+      const data = await retryWithToast(
+        async () => {
+          const response = await fetch(`/api/posts/${post.id}/buy`, {
+            method: 'POST',
+            headers: { 
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${jwtToken}`
+            },
+            body: JSON.stringify({
+              buyerWallet: publicKey.toString(),
+              txSignature: signature,
+              price: currentPrice,
+              hasReferrer,
+              distribution
+            })
+          })
+
+          const result = await response.json()
+
+          if (!response.ok) {
+            throw new Error(result.error || 'Error processing payment')
+          }
+
+          return result
         },
-        body: JSON.stringify({
-          buyerWallet: publicKey.toString(),
-          txSignature: signature,
-          price: currentPrice,
-          hasReferrer,
-          distribution
-        })
-      })
+        { maxAttempts: 2, baseDelay: 1000 },
+        'ProcessPayment'
+      )
 
-      const data = await response.json()
-
-      if (!response.ok) {
-        throw new Error(data.error || 'Error processing payment')
-      }
+      if (!data) return // Ошибка уже обработана в retryWithToast
       
       toast.success(`Successfully bought the post!`)
       

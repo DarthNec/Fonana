@@ -15,14 +15,14 @@ import {
   GiftIcon,
   ChatBubbleLeftEllipsisIcon
 } from '@heroicons/react/24/outline'
-import { useUserContext } from '@/lib/contexts/UserContext'
-import { CreatorDataProvider } from '@/lib/contexts/CreatorContext'
+import { useUser } from '@/lib/store/appStore'
+import { useCreator, useCreatorLoading, useCreatorActions } from '@/lib/store/appStore'
 import { useWallet } from '@solana/wallet-adapter-react'
 import { useUnifiedPosts } from '@/lib/hooks/useUnifiedPosts'
 import { PostsContainer } from '@/components/posts/layouts/PostsContainer'
 import { PostAction } from '@/types/posts'
 import CreatePostModal from '@/components/CreatePostModal'
-import RevenueChart from '@/components/RevenueChart'
+// import RevenueChart from '@/components/RevenueChart'
 import toast from 'react-hot-toast'
 import { useSolRate } from '@/lib/hooks/useSolRate'
 
@@ -43,7 +43,7 @@ interface DashboardRevenue {
 }
 
 export default function DashboardPage() {
-  const { user } = useUserContext()
+  const user = useUser()
   const { publicKey } = useWallet()
   const { rate: solRate } = useSolRate()
   const [showCreateModal, setShowCreateModal] = useState(false)
@@ -327,11 +327,7 @@ export default function DashboardPage() {
 
               {/* Revenue Charts */}
               <div className="px-0 sm:px-0 mb-4 sm:mb-8">
-                {user?.id && (
-                  <CreatorDataProvider creatorId={user.id}>
-                    <RevenueChart />
-                  </CreatorDataProvider>
-                )}
+                {/* {user?.id && <RevenueChart />} */}
               </div>
 
               {/* Recent Posts */}

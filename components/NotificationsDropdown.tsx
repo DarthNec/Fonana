@@ -1,7 +1,7 @@
 'use client'
 
 import React, { useState, useRef, useEffect } from 'react'
-import { useNotifications } from '@/lib/contexts/NotificationContext'
+import { useNotifications, useUnreadCount, useNotificationActions, useNotificationsLoading } from '@/lib/store/appStore'
 import {
   BellIcon,
   HeartIcon,
@@ -29,15 +29,10 @@ function formatTimeAgo(date: Date): string {
 }
 
 export default function NotificationsDropdown() {
-  const { 
-    notifications, 
-    unreadCount, 
-    isLoading, 
-    markAsRead, 
-    markAllAsRead, 
-    deleteNotification,
-    clearAll 
-  } = useNotifications()
+  const notifications = useNotifications()
+  const unreadCount = useUnreadCount()
+  const isLoading = useNotificationsLoading()
+  const { markAsRead, markAllAsRead, deleteNotification, clearNotifications } = useNotificationActions()
   
   const [isOpen, setIsOpen] = useState(false)
   const dropdownRef = useRef<HTMLDivElement>(null)
@@ -218,7 +213,7 @@ export default function NotificationsDropdown() {
           {notifications.length > 0 && (
             <div className="px-4 py-3 border-t border-gray-200 dark:border-slate-700 flex items-center justify-between">
               <button
-                onClick={clearAll}
+                onClick={clearNotifications}
                 className="text-sm text-gray-600 dark:text-slate-400 hover:text-gray-900 dark:hover:text-white"
               >
                 Clear read notifications

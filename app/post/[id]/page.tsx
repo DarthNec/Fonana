@@ -5,7 +5,7 @@ import { useParams, useRouter } from 'next/navigation'
 import Image from 'next/image'
 import Link from 'next/link'
 import Avatar from '@/components/Avatar'
-import { useUserContext, User } from '@/lib/contexts/UserContext'
+import { useUser, User } from '@/lib/store/appStore'
 import { 
   HeartIcon, 
   ChatBubbleLeftIcon, 
@@ -59,7 +59,7 @@ interface Comment {
 export default function PostPage() {
   const params = useParams()
   const router = useRouter()
-  const { user: contextUser } = useUserContext()
+  const contextUser = useUser()
   const [user, setUser] = useState<User | null>(null)
   const [post, setPost] = useState<PostData | null>(null)
   const [comments, setComments] = useState<Comment[]>([])
@@ -72,18 +72,20 @@ export default function PostPage() {
   const [commentError, setCommentError] = useState<string | null>(null)
   const [isSubmittingComment, setIsSubmittingComment] = useState(false)
 
-  // Получаем пользователя из контекста или localStorage
+  // Получаем пользователя из контекста или кеша
   useEffect(() => {
-    if (contextUser) {
-      setUser(contextUser)
-    } else {
-      // Fallback: пытаемся получить пользователя из localStorage
-      try {
-        const cachedUserData = localStorage.getItem('fonana_user_data')
-        const cachedWallet = localStorage.getItem('fonana_user_wallet')
-        const cachedTimestamp = localStorage.getItem('fonana_user_timestamp')
+    const loadCachedUser = async () => {
+      if (contextUser) {
+        setUser(contextUser)
+      } else {
+        // Fallback: пытаемся получить пользователя из кеша
+        try {
+          const cacheManager = (await import('@/lib/services/CacheManager')).cacheManager
+          const cachedUserData = cacheManager.get('fonana_user_data') as string
+          const cachedWallet = cacheManager.get('fonana_user_wallet') as string
+          const cachedTimestamp = cacheManager.get('fonana_user_timestamp') as string
         
-        if (cachedUserData && cachedWallet && cachedTimestamp) {
+        if (cachedUserData && cachedWallet && cachedTimestamp && typeof cachedTimestamp === 'string') {
           const timestamp = parseInt(cachedTimestamp)
           const now = Date.now()
           const sevenDays = 7 * 24 * 60 * 60 * 1000
@@ -98,6 +100,7 @@ export default function PostPage() {
         console.error('Error loading cached user:', error)
       }
     }
+  }
   }, [contextUser])
 
   // Дополнительная проверка: если contextUser загружается, но user еще null, 
@@ -511,7 +514,7 @@ export default function PostPage() {
                     <Avatar
                       src={user.avatar}
                       alt={user.fullName || user.nickname || 'User'}
-                      seed={user.wallet}
+                      seed={user.wallet || ''}
                       size={48}
                       rounded="2xl"
                     />

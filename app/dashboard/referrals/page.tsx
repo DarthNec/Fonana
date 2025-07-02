@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { useUserContext } from '@/lib/contexts/UserContext'
+import { useUser } from '@/lib/store/appStore'
 import { 
   UserGroupIcon, 
   LinkIcon,
@@ -40,7 +40,7 @@ interface EarningsData {
 }
 
 export default function ReferralsPage() {
-  const { user } = useUserContext()
+  const user = useUser()
   const [referrals, setReferrals] = useState<ReferralData[]>([])
   const [earnings, setEarnings] = useState<EarningsData | null>(null)
   const [loading, setLoading] = useState(true)

@@ -1,7 +1,7 @@
 'use client'
 
 import React, { useState, useRef, useEffect } from 'react'
-import { useUserContext } from '@/lib/contexts/UserContext'
+import { useUser } from '@/lib/store/appStore'
 import { useWallet } from '@solana/wallet-adapter-react'
 import { toast } from 'react-hot-toast'
 import { 
@@ -38,7 +38,7 @@ interface CreatePostModalProps {
 
 export default function CreatePostModal({ onPostCreated, onPostUpdated, onClose, mode = 'create', postId }: CreatePostModalProps) {
   const { connected, publicKey } = useWallet()
-  const { user } = useUserContext()
+  const user = useUser()
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [isUploading, setIsUploading] = useState(false)
   const [showCropModal, setShowCropModal] = useState(false)

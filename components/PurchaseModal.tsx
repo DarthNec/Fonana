@@ -21,7 +21,7 @@ import {
 import { isValidSolanaAddress } from '@/lib/solana/config'
 import { connection } from '@/lib/solana/connection'
 import { useSolRate } from '@/lib/hooks/useSolRate'
-import { useUserContext } from '@/lib/contexts/UserContext'
+import { useUser, useUserLoading } from '@/lib/store/appStore'
 import { refreshPostAccess } from '@/lib/utils/subscriptions'
 import { jwtManager } from '@/lib/utils/jwt'
 import { safeToFixed, formatSolToUsd } from '@/lib/utils/format'
@@ -62,7 +62,8 @@ interface PurchaseModalProps {
 
 export default function PurchaseModal({ post, onClose, onSuccess }: PurchaseModalProps) {
   const { publicKey, connected, sendTransaction } = useWallet()
-  const { user, isLoading: isUserLoading } = useUserContext()
+  const user = useUser()
+  const isUserLoading = useUserLoading()
   const [isProcessing, setIsProcessing] = useState(false)
   const [creatorData, setCreatorData] = useState<any>(null)
   const { rate: solToUsdRate, isLoading: isRateLoading } = useSolRate()

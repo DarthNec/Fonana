@@ -388,5 +388,13 @@ export const emitSubscriptionUpdated = (creatorId: string, userId: string, tier:
   })
 }
 
+export const emitNotification = (userId: string, notification: any) => {
+  wsEventManager.emit({
+    type: 'notification',
+    data: { userId, notification },
+    timestamp: Date.now()
+  })
+}
+
 // Экспорт по умолчанию
 export default wsEventManager 

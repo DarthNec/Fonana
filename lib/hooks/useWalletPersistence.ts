@@ -2,6 +2,7 @@
 
 import { useEffect } from 'react'
 import { useWallet } from '@solana/wallet-adapter-react'
+import { cacheManager } from '@/lib/services/CacheManager'
 
 const WALLET_PERSISTENCE_KEY = 'fonana_wallet_persistence'
 
@@ -16,7 +17,7 @@ export function useWalletPersistence() {
         publicKey: publicKey.toString(),
         timestamp: Date.now()
       }
-      localStorage.setItem(WALLET_PERSISTENCE_KEY, JSON.stringify(persistenceData))
+      cacheManager.set(WALLET_PERSISTENCE_KEY, JSON.stringify(persistenceData), 7 * 24 * 60 * 60 * 1000) // 7 дней
     }
   }, [connected, wallet, publicKey])
 
@@ -24,15 +25,15 @@ export function useWalletPersistence() {
   useEffect(() => {
     const restoreConnection = async () => {
       try {
-        const savedData = localStorage.getItem(WALLET_PERSISTENCE_KEY)
-        if (!savedData) return
+        const savedData = cacheManager.get(WALLET_PERSISTENCE_KEY)
+        if (!savedData || typeof savedData !== 'string') return
 
         const { walletName, timestamp } = JSON.parse(savedData)
         
         // Проверяем, не истекла ли сессия (7 дней)
         const sevenDays = 7 * 24 * 60 * 60 * 1000
         if (Date.now() - timestamp > sevenDays) {
-          localStorage.removeItem(WALLET_PERSISTENCE_KEY)
+          cacheManager.delete(WALLET_PERSISTENCE_KEY)
           return
         }
 
@@ -49,13 +50,13 @@ export function useWalletPersistence() {
               await connect()
             } catch (error) {
               console.error('Failed to restore wallet connection:', error)
-              localStorage.removeItem(WALLET_PERSISTENCE_KEY)
+              cacheManager.delete(WALLET_PERSISTENCE_KEY)
             }
           }, 100)
         }
       } catch (error) {
         console.error('Error restoring wallet connection:', error)
-        localStorage.removeItem(WALLET_PERSISTENCE_KEY)
+        cacheManager.delete(WALLET_PERSISTENCE_KEY)
       }
     }
 
@@ -69,7 +70,7 @@ export function useWalletPersistence() {
   useEffect(() => {
     const handleDisconnect = () => {
       if (!connected) {
-        localStorage.removeItem(WALLET_PERSISTENCE_KEY)
+        cacheManager.delete(WALLET_PERSISTENCE_KEY)
       }
     }
 
@@ -78,7 +79,7 @@ export function useWalletPersistence() {
 
   return {
     clearPersistence: () => {
-      localStorage.removeItem(WALLET_PERSISTENCE_KEY)
+      cacheManager.delete(WALLET_PERSISTENCE_KEY)
     }
   }
 } 

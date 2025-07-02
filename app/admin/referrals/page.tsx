@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { useUserContext } from '@/lib/contexts/UserContext'
+import { useUser } from '@/lib/store/appStore'
 import { 
   MagnifyingGlassIcon,
   UserGroupIcon,
@@ -26,7 +26,7 @@ interface User {
 }
 
 export default function AdminReferralsPage() {
-  const { user } = useUserContext()
+  const user = useUser()
   const [users, setUsers] = useState<User[]>([])
   const [loading, setLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState('')

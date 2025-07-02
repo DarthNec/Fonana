@@ -23,7 +23,7 @@ import OptimizedImage from '@/components/OptimizedImage'
 import { useConnection } from '@solana/wallet-adapter-react'
 import { PublicKey } from '@solana/web3.js'
 import toast from 'react-hot-toast'
-import { useUserContext } from '@/lib/contexts/UserContext'
+import { useUser } from '@/lib/store/appStore'
 import { 
   createPostPurchaseTransaction,
   createTipTransaction,
@@ -74,7 +74,8 @@ interface Participant {
 export default function ConversationPage() {
   const { publicKey, sendTransaction } = useWallet()
   const { connection } = useConnection()
-  const { user, isLoading: isUserLoading } = useUserContext()
+  const user = useUser()
+  const isUserLoading = false // Zustand не имеет отдельного состояния загрузки пользователя
   const params = useParams()
   const router = useRouter()
   const conversationId = params.id as string

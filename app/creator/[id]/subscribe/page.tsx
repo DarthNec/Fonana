@@ -15,8 +15,8 @@ import {
 } from '@heroicons/react/24/outline'
 import { CheckBadgeIcon } from '@heroicons/react/24/solid'
 import { toast } from 'react-hot-toast'
-import { useUserContext } from '@/lib/contexts/UserContext'
-import { CreatorDataProvider, useCreatorData } from '@/lib/contexts/CreatorContext'
+import { useUser } from '@/lib/store/appStore'
+import { useCreator, useCreatorLoading, useCreatorActions } from '@/lib/store/appStore'
 import { getProfileLink } from '@/lib/utils/links'
 
 // Динамический импорт SubscriptionPayment для избежания проблем с SSR
@@ -106,8 +106,20 @@ const getSubscriptionTiers = (creatorCategory?: string): SubscriptionTier[] => {
 // Внутренний компонент, который использует данные создателя из контекста
 function SubscribePageContent() {
   const router = useRouter()
-  const { user } = useUserContext()
-  const { creator, isLoading: isCreatorLoading, error: creatorError } = useCreatorData()
+  const params = useParams()
+  const creatorId = params.id as string
+  const user = useUser()
+  const creator = useCreator()
+  const isCreatorLoading = useCreatorLoading()
+  const creatorError = null // Zustand не имеет отдельного состояния ошибки
+  const { loadCreator } = useCreatorActions()
+
+  // Загружаем создателя при монтировании
+  useEffect(() => {
+    if (creatorId) {
+      loadCreator(creatorId)
+    }
+  }, [creatorId, loadCreator])
   const [isSubscribed, setIsSubscribed] = useState(false)
   const [selectedTier, setSelectedTier] = useState('premium')
   const [showInCarousel, setShowInCarousel] = useState(true)
@@ -350,14 +362,7 @@ function SubscribePageContent() {
   )
 }
 
-// Внешний компонент-обёртка с провайдером
+// Внешний компонент-обёртка
 export default function SubscribePage() {
-  const params = useParams()
-  const creatorId = params.id as string
-
-  return (
-    <CreatorDataProvider creatorId={creatorId}>
-      <SubscribePageContent />
-    </CreatorDataProvider>
-  )
+  return <SubscribePageContent />
 } 
