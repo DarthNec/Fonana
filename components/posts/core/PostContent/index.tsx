@@ -188,7 +188,7 @@ export function PostContent({
       )}
 
       {/* Category & Tags & Tier */}
-      {variant === 'full' && (post.content.category || post.content.tags.length > 0 || post.access.tier) && (
+      {variant === 'full' && (post.content.category || post.content.tags.length > 0 || post?.access?.tier) && (
         <div className="flex flex-wrap items-center gap-2">
           {post.content.category && (
             <Link
@@ -208,11 +208,11 @@ export function PostContent({
           ))}
           {/* Tier Badge */}
           <TierBadge 
-            tier={post.access.tier} 
+            tier={post?.access?.tier} 
             interactive={true}
             onClick={() => {
               // TODO: Добавить фильтрацию по тиру
-              console.log(`Фильтровать по тиру: ${post.access.tier}`)
+              console.log(`Фильтровать по тиру: ${post?.access?.tier}`)
             }}
           />
         </div>

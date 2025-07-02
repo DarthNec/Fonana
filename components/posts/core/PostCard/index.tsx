@@ -59,13 +59,13 @@ export function PostCard({
 
   // Определяем, нужно ли показывать различные элементы
   const showFlashSale = !!post.commerce?.flashSale && !isPostSold(post.commerce)
-  const showTierBadge = !!post.access.tier && (needsSubscription(post) || needsTierUpgrade(post))
+  const showTierBadge = !!post?.access?.tier && (needsSubscription(post) || needsTierUpgrade(post))
   const showAuctionBadge = isActiveAuction(post.commerce)
   const isSold = isPostSold(post.commerce)
 
   // Фоновая подсветка по тиру
   const getTierBackgroundStyle = () => {
-    if (!post.access.tier) return ''
+    if (!post?.access?.tier) return ''
     
     switch (post.access.tier.toLowerCase()) {
       case 'basic':
