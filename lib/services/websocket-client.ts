@@ -24,25 +24,19 @@ export async function sendNotification(
   }
 ) {
   try {
-    // В продакшн версии здесь будет вызов API WebSocket сервера
-    // Пока используем заглушку
     console.log(`[WS Client] Sending notification to user ${userId}:`, notification)
     
-    // TODO: Когда WebSocket сервер поддержит HTTP API, раскомментировать:
-    // const response = await fetch(`${WS_API_URL}/notify`, {
-    //   method: 'POST',
-    //   headers: {
-    //     'Content-Type': 'application/json',
-    //     'Authorization': `Bearer ${process.env.WS_API_SECRET}`
-    //   },
-    //   body: JSON.stringify({
-    //     userId,
-    //     event: {
-    //       type: 'notification',
-    //       data: notification
-    //     }
-    //   })
-    // })
+    // Отправляем событие через WebSocket сервис
+    const wsService = (await import('@/lib/services/websocket')).wsService
+    
+    if (wsService.isConnected()) {
+      // Отправляем уведомление конкретному пользователю
+      wsService.emit('notification', {
+        type: 'notification',
+        userId,
+        notification
+      })
+    }
     
     return { success: true }
   } catch (error) {
@@ -87,11 +81,23 @@ export async function notifyNewPost(post: any, subscribers: string[]) {
 /**
  * Обновляет количество лайков поста
  */
-export async function updatePostLikes(postId: string, likesCount: number) {
+export async function updatePostLikes(postId: string, likesCount: number, userId?: string) {
   try {
-    console.log('[WS Client] Updating post likes:', { postId, likesCount })
+    console.log('[WS Client] Updating post likes:', { postId, likesCount, userId })
     
-    // TODO: Реализовать через HTTP API
+    // Отправляем событие через WebSocket сервис
+    const wsService = (await import('@/lib/services/websocket')).wsService
+    
+    if (wsService.isConnected()) {
+      // Отправляем событие всем подписчикам поста
+      wsService.emit('post_liked', {
+        type: 'post_liked',
+        postId,
+        userId,
+        likesCount
+      })
+    }
+    
     return { success: true }
   } catch (error) {
     console.error('[WS Client] Failed to update post likes:', error)
@@ -106,7 +112,18 @@ export async function notifyNewComment(postId: string, comment: any) {
   try {
     console.log('[WS Client] Notifying new comment for post:', postId, comment)
     
-    // TODO: Реализовать через HTTP API
+    // Отправляем событие через WebSocket сервис
+    const wsService = (await import('@/lib/services/websocket')).wsService
+    
+    if (wsService.isConnected()) {
+      // Отправляем событие всем подписчикам поста
+      wsService.emit('comment_added', {
+        type: 'comment_added',
+        postId,
+        comment
+      })
+    }
+    
     return { success: true }
   } catch (error) {
     console.error('[WS Client] Failed to notify new comment:', error)

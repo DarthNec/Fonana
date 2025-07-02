@@ -346,17 +346,7 @@ export function useOptimizedRealtimePosts({
         clearTimeout(updateTimerRef.current)
       }
     }
-  }, [
-    user?.id, 
-    handlePostLikedThrottled, 
-    handlePostUnlikedThrottled, 
-    handlePostCreated, 
-    handlePostDeleted,
-    handleCommentUpdate,
-    handlePostPurchased,
-    handleSubscriptionUpdated,
-    applyBatchedUpdates
-  ])
+  }, [user?.id]) // Только user?.id в зависимостях
 
   // Уведомляем об изменениях только если есть callback и посты действительно изменились
   useEffect(() => {
