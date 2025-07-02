@@ -445,6 +445,7 @@ export const useUserActions = () => {
       setUserError: () => {},
       refreshUser: async () => {},
       updateProfile: async () => {},
+      deleteAccount: async () => {},
       clearUser: () => {}
     }
   }
@@ -454,6 +455,7 @@ export const useUserActions = () => {
     setUserError: state.setUserError,
     refreshUser: state.refreshUser,
     updateProfile: state.updateProfile,
+    deleteAccount: state.deleteAccount,
     clearUser: state.clearUser
   }))
 }
@@ -466,6 +468,11 @@ export const useNotifications = () => {
 export const useUnreadCount = () => {
   if (typeof window === 'undefined') return 0
   return useAppStore(state => state.unreadCount)
+}
+
+export const useNotificationsLoading = () => {
+  if (typeof window === 'undefined') return false
+  return useAppStore(state => state.notificationLoading)
 }
 
 export const useNotificationActions = () => {
