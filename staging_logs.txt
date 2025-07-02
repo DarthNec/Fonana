@@ -1,0 +1,45 @@
+[TAILING] Tailing last 20 lines for [fonana-debug] process (change the value with --lines option)
+/var/www/fonana/logs/fonana-debug-error-2.log last 20 lines:
+2|fonana-d | 2025-07-02T17:10:39:  ⚠ Unsupported metadata viewport is configured in metadata export in /test/react-error-debug. Please move it to viewport export instead.
+2|fonana-d | Read more: https://nextjs.org/docs/app/api-reference/functions/generate-viewport
+2|fonana-d | 2025-07-02T17:10:39:  ⚠ Unsupported metadata themeColor is configured in metadata export in /test/react-error-debug. Please move it to viewport export instead.
+2|fonana-d | Read more: https://nextjs.org/docs/app/api-reference/functions/generate-viewport
+2|fonana-d | 2025-07-02T17:10:46:  ⚠ Unsupported metadata viewport is configured in metadata export in /test/react-error-debug. Please move it to viewport export instead.
+2|fonana-d | Read more: https://nextjs.org/docs/app/api-reference/functions/generate-viewport
+2|fonana-d | 2025-07-02T17:10:46:  ⚠ Unsupported metadata themeColor is configured in metadata export in /test/react-error-debug. Please move it to viewport export instead.
+2|fonana-d | Read more: https://nextjs.org/docs/app/api-reference/functions/generate-viewport
+2|fonana-d | 2025-07-02T17:10:54:  ⚠ Unsupported metadata viewport is configured in metadata export in /test/react-error-debug. Please move it to viewport export instead.
+2|fonana-d | Read more: https://nextjs.org/docs/app/api-reference/functions/generate-viewport
+2|fonana-d | 2025-07-02T17:10:54:  ⚠ Unsupported metadata themeColor is configured in metadata export in /test/react-error-debug. Please move it to viewport export instead.
+2|fonana-d | Read more: https://nextjs.org/docs/app/api-reference/functions/generate-viewport
+2|fonana-d | 2025-07-02T17:11:55:  ⚠ Unsupported metadata viewport is configured in metadata export in /test/react-error-debug. Please move it to viewport export instead.
+2|fonana-d | Read more: https://nextjs.org/docs/app/api-reference/functions/generate-viewport
+2|fonana-d | 2025-07-02T17:11:55:  ⚠ Unsupported metadata themeColor is configured in metadata export in /test/react-error-debug. Please move it to viewport export instead.
+2|fonana-d | Read more: https://nextjs.org/docs/app/api-reference/functions/generate-viewport
+2|fonana-d | 2025-07-02T17:12:03:  ⚠ Unsupported metadata viewport is configured in metadata export in /test/react-error-debug. Please move it to viewport export instead.
+2|fonana-d | Read more: https://nextjs.org/docs/app/api-reference/functions/generate-viewport
+2|fonana-d | 2025-07-02T17:12:03:  ⚠ Unsupported metadata themeColor is configured in metadata export in /test/react-error-debug. Please move it to viewport export instead.
+2|fonana-d | Read more: https://nextjs.org/docs/app/api-reference/functions/generate-viewport
+
+/var/www/fonana/logs/fonana-debug-out-2.log last 20 lines:
+2|fonana-d | 2025-07-02T17:10:23:    ▲ Next.js 14.1.0
+2|fonana-d | 2025-07-02T17:10:23:    - Local:        http://localhost:3011
+2|fonana-d | 2025-07-02T17:10:23: 
+2|fonana-d | 2025-07-02T17:10:23: [dotenv@17.0.0] injecting env (7) from .env – 🔐 encrypt with dotenvx: https://dotenvx.com
+2|fonana-d | 2025-07-02T17:10:23:  ✓ Ready in 244ms
+2|fonana-d | 2025-07-02T17:10:39: Initialized wallets: [ 'Phantom', 'Solflare', 'Torus' ]
+2|fonana-d | 2025-07-02T17:10:46: Initialized wallets: [ 'Phantom', 'Solflare', 'Torus' ]
+2|fonana-d | 2025-07-02T17:10:54: Initialized wallets: [ 'Phantom', 'Solflare', 'Torus' ]
+2|fonana-d | 2025-07-02T17:11:36:    ▲ Next.js 14.1.0
+2|fonana-d | 2025-07-02T17:11:36:    - Local:        http://localhost:3011
+2|fonana-d | 2025-07-02T17:11:36: 
+2|fonana-d | 2025-07-02T17:11:36: [dotenv@17.0.0] injecting env (7) from .env – 🔐 encrypt with dotenvx: https://dotenvx.com
+2|fonana-d | 2025-07-02T17:11:36:  ✓ Ready in 248ms
+2|fonana-d | 2025-07-02T17:11:55: Initialized wallets: [ 'Phantom', 'Solflare', 'Torus' ]
+2|fonana-d | 2025-07-02T17:12:03: Initialized wallets: [ 'Phantom', 'Solflare', 'Torus' ]
+2|fonana-d | 2025-07-02T17:19:45:    ▲ Next.js 14.1.0
+2|fonana-d | 2025-07-02T17:19:45:    - Local:        http://localhost:3011
+2|fonana-d | 2025-07-02T17:19:45: 
+2|fonana-d | 2025-07-02T17:19:45: [dotenv@17.0.0] injecting env (7) from .env – 🔐 encrypt with dotenvx: https://dotenvx.com
+2|fonana-d | 2025-07-02T17:19:45:  ✓ Ready in 249ms
+
