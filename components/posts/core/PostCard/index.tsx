@@ -155,12 +155,7 @@ export function PostCard({
         </div>
       )}
 
-      {/* Tier Badge */}
-      {showTierBadge && !showAuctionBadge && !isSold && (
-        <div className="absolute top-4 right-4 z-10">
-          <PostTierBadge tier={post.access.tier!} />
-        </div>
-      )}
+
 
       {/* Card Content */}
       <div className={variant === 'minimal' ? 'p-3' : 'p-3 sm:p-6'}>
