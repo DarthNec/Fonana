@@ -6,13 +6,14 @@
 
 'use client'
 
-import { useEffect, ReactNode } from 'react'
+import { useEffect, ReactNode, useState } from 'react'
 import { Toaster } from 'react-hot-toast'
 import { useAppStore } from '@/lib/store/appStore'
 import { setupDefaultHandlers } from '@/lib/services/WebSocketEventManager'
 import { cacheManager } from '@/lib/services/CacheManager'
 import { LocalStorageCache } from '@/lib/services/CacheManager'
 import ErrorBoundary from '@/components/ErrorBoundary'
+import { useWallet } from '@solana/wallet-adapter-react'
 
 interface AppProviderProps {
   children: ReactNode
@@ -23,12 +24,35 @@ export function AppProvider({ children }: AppProviderProps) {
     setUser, 
     setUserLoading, 
     setUserError,
-    refreshUser 
+    refreshUser,
+    user,
+    userLoading
   } = useAppStore()
+  
+  const { connected, publicKey } = useWallet()
+  const [isInitialized, setIsInitialized] = useState(false)
+
+  // Debug логирование для отслеживания race conditions
+  useEffect(() => {
+    console.log('[AppProvider][Debug] State update:', {
+      user: user?.id ? `User ${user.id}` : 'No user',
+      userLoading,
+      connected,
+      publicKey: publicKey?.toBase58() ? 'Has publicKey' : 'No publicKey',
+      isInitialized,
+      window: typeof window !== 'undefined' ? 'Client' : 'SSR'
+    })
+  }, [user, userLoading, connected, publicKey, isInitialized])
 
   // Инициализация приложения
   useEffect(() => {
     console.log('[AppProvider] Initializing application...')
+    
+    // Проверяем, что мы на клиенте
+    if (typeof window === 'undefined') {
+      console.log('[AppProvider] SSR detected, skipping initialization')
+      return
+    }
     
     // Настройка WebSocket Event Manager
     setupDefaultHandlers()
@@ -70,7 +94,28 @@ export function AppProvider({ children }: AppProviderProps) {
       setUserError(error as Error)
     } finally {
       setUserLoading(false)
+      setIsInitialized(true)
     }
+  }
+
+  // Soft guard: показываем loading до полной инициализации
+  if (!isInitialized && typeof window !== 'undefined') {
+    return (
+      <ErrorBoundary
+        onError={(error, errorInfo) => {
+          console.error('[AppProvider] Error caught by boundary:', error, errorInfo)
+        }}
+      >
+        <div className="app-provider">
+          <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-slate-900">
+            <div className="text-center">
+              <div className="w-16 h-16 border-4 border-purple-500/30 border-t-purple-500 rounded-full animate-spin mx-auto mb-4"></div>
+              <p className="text-gray-600 dark:text-slate-400">Initializing application...</p>
+            </div>
+          </div>
+        </div>
+      </ErrorBoundary>
+    )
   }
 
   return (
