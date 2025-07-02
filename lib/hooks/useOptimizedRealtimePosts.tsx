@@ -76,56 +76,74 @@ export function useOptimizedRealtimePosts({
     debounce(() => {
       applyBatchedUpdates()
     }, batchUpdateDelay),
-    [applyBatchedUpdates, batchUpdateDelay]
+    [applyBatchedUpdates]
   )
 
   // Добавление обновления в батч
   const batchUpdate = useCallback((postId: string, update: Partial<UnifiedPost>) => {
-    const currentPost = updatedPosts.find(p => p.id === postId) || 
-                       updateBatchRef.current.get(postId)
-    
-    if (currentPost) {
-      updateBatchRef.current.set(postId, { ...currentPost, ...update })
-      debouncedApplyUpdates()
-    }
-  }, [updatedPosts, debouncedApplyUpdates])
+    setUpdatedPosts(prev => {
+      const currentPost = prev.find(p => p.id === postId)
+      if (currentPost) {
+        return prev.map(post => 
+          post.id === postId ? { ...post, ...update } : post
+        )
+      }
+      return prev
+    })
+  }, [])
 
   // Throttled версия обработки лайков для предотвращения спама
   const handlePostLikedThrottled = useCallback(
     throttle((event: WebSocketEvent) => {
       if (event.type === 'post_liked' && 'postId' in event && event.postId) {
-        const currentPost = updatedPosts.find(p => p.id === event.postId)
-        const currentEngagement = currentPost?.engagement || { likes: 0, comments: 0, views: 0, isLiked: false }
-        
-        batchUpdate(event.postId, {
-          engagement: {
-            ...currentEngagement,
-            likes: 'likesCount' in event && typeof event.likesCount === 'number' ? event.likesCount : currentEngagement.likes,
-            isLiked: 'userId' in event && event.userId === user?.id ? true : currentEngagement.isLiked
-          }
+        setUpdatedPosts(prev => {
+          const currentPost = prev.find(p => p.id === event.postId)
+          const currentEngagement = currentPost?.engagement || { likes: 0, comments: 0, views: 0, isLiked: false }
+          
+          return prev.map(post => {
+            if (post.id === event.postId) {
+              return {
+                ...post,
+                engagement: {
+                  ...currentEngagement,
+                  likes: 'likesCount' in event && typeof event.likesCount === 'number' ? event.likesCount : currentEngagement.likes,
+                  isLiked: 'userId' in event && event.userId === user?.id ? true : currentEngagement.isLiked
+                }
+              }
+            }
+            return post
+          })
         })
       }
     }, 500),
-    [user?.id, batchUpdate, updatedPosts]
+    [user?.id]
   )
 
   // Throttled версия обработки удаления лайков
   const handlePostUnlikedThrottled = useCallback(
     throttle((event: WebSocketEvent) => {
       if (event.type === 'post_unliked' && 'postId' in event && event.postId) {
-        const currentPost = updatedPosts.find(p => p.id === event.postId)
-        const currentEngagement = currentPost?.engagement || { likes: 0, comments: 0, views: 0, isLiked: false }
-        
-        batchUpdate(event.postId, {
-          engagement: {
-            ...currentEngagement,
-            likes: 'likesCount' in event && typeof event.likesCount === 'number' ? event.likesCount : currentEngagement.likes,
-            isLiked: 'userId' in event && event.userId === user?.id ? false : currentEngagement.isLiked
-          }
+        setUpdatedPosts(prev => {
+          const currentPost = prev.find(p => p.id === event.postId)
+          const currentEngagement = currentPost?.engagement || { likes: 0, comments: 0, views: 0, isLiked: false }
+          
+          return prev.map(post => {
+            if (post.id === event.postId) {
+              return {
+                ...post,
+                engagement: {
+                  ...currentEngagement,
+                  likes: 'likesCount' in event && typeof event.likesCount === 'number' ? event.likesCount : currentEngagement.likes,
+                  isLiked: 'userId' in event && event.userId === user?.id ? false : currentEngagement.isLiked
+                }
+              }
+            }
+            return post
+          })
         })
       }
     }, 500),
-    [user?.id, batchUpdate, updatedPosts]
+    [user?.id]
   )
 
   // Обработка нового поста с ограничением количества
@@ -190,17 +208,26 @@ export function useOptimizedRealtimePosts({
   const handleCommentUpdate = useCallback((event: WebSocketEvent) => {
     if (!('postId' in event) || !event.postId) return
     
-    const currentPost = updatedPosts.find(p => p.id === event.postId)
-    const currentEngagement = currentPost?.engagement || { likes: 0, comments: 0, views: 0, isLiked: false }
     const delta = event.type === 'comment_added' ? 1 : -1
     
-    batchUpdate(event.postId, {
-      engagement: {
-        ...currentEngagement,
-        comments: Math.max(0, currentEngagement.comments + delta)
-      }
+    setUpdatedPosts(prev => {
+      const currentPost = prev.find(p => p.id === event.postId)
+      const currentEngagement = currentPost?.engagement || { likes: 0, comments: 0, views: 0, isLiked: false }
+      
+      return prev.map(post => {
+        if (post.id === event.postId) {
+          return {
+            ...post,
+            engagement: {
+              ...currentEngagement,
+              comments: Math.max(0, currentEngagement.comments + delta)
+            }
+          }
+        }
+        return post
+      })
     })
-  }, [batchUpdate, updatedPosts])
+  }, [])
 
   // Обработка покупки поста с оптимистичным обновлением
   const handlePostPurchased = useCallback((event: WebSocketEvent | any) => {
