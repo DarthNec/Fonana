@@ -4,6 +4,7 @@ import React, { useState } from 'react'
 import Link from 'next/link'
 import { UnifiedPost, PostAction, PostCardVariant } from '@/types/posts'
 import { PostLocked } from '../PostLocked'
+import { TierBadge } from '../TierBadge'
 import { 
   needsPayment, 
   needsSubscription, 
@@ -186,8 +187,8 @@ export function PostContent({
         </p>
       )}
 
-      {/* Category & Tags */}
-      {variant === 'full' && (post.content.category || post.content.tags.length > 0) && (
+      {/* Category & Tags & Tier */}
+      {variant === 'full' && (post.content.category || post.content.tags.length > 0 || post.access.tier) && (
         <div className="flex flex-wrap items-center gap-2">
           {post.content.category && (
             <Link
@@ -205,6 +206,8 @@ export function PostContent({
               #{tag}
             </span>
           ))}
+          {/* Tier Badge */}
+          <TierBadge tier={post.access.tier} />
         </div>
       )}
     </div>

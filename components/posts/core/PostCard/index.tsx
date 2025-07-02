@@ -63,17 +63,35 @@ export function PostCard({
   const showAuctionBadge = isActiveAuction(post.commerce)
   const isSold = isPostSold(post.commerce)
 
+  // Фоновая подсветка по тиру
+  const getTierBackgroundStyle = () => {
+    if (!post.access.tier) return ''
+    
+    switch (post.access.tier.toLowerCase()) {
+      case 'basic':
+        return 'bg-blue-50/50 dark:bg-blue-900/10'
+      case 'premium':
+        return 'bg-purple-50/50 dark:bg-purple-900/10'
+      case 'vip':
+        return 'bg-yellow-50/50 dark:bg-yellow-900/10'
+      default:
+        return ''
+    }
+  }
+
   // Стили для разных вариантов
   const getCardStyles = () => {
     const baseStyles = 'relative overflow-hidden transition-all duration-300'
     const borderStyles = getPostCardBorderStyle(post)
     const backgroundStyles = getPostCardBackgroundStyle(post)
+    const tierBackgroundStyle = getTierBackgroundStyle()
     
     switch (variant) {
       case 'full':
         return cn(
           baseStyles,
           backgroundStyles || 'bg-white dark:bg-slate-900',
+          tierBackgroundStyle,
           'border-y sm:border border-gray-200 dark:border-slate-700/50',
           'rounded-none sm:rounded-3xl',
           borderStyles
@@ -82,6 +100,7 @@ export function PostCard({
         return cn(
           baseStyles,
           backgroundStyles || 'bg-white dark:bg-slate-900',
+          tierBackgroundStyle,
           'border border-gray-200 dark:border-slate-700/50',
           'rounded-xl sm:rounded-2xl',
           borderStyles
@@ -90,6 +109,7 @@ export function PostCard({
         return cn(
           baseStyles,
           backgroundStyles || 'bg-white dark:bg-slate-900',
+          tierBackgroundStyle,
           'border border-gray-200 dark:border-slate-700/50',
           'rounded-lg',
           borderStyles
