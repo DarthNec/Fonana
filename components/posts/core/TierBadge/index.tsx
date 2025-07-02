@@ -23,8 +23,8 @@ export function TierBadge({
   showIcon = true,
   interactive = false
 }: TierBadgeProps) {
-  // Если тир не указан, не показываем badge
-  if (!tier) return null
+  // Если тир не указан или не является строкой, не показываем badge
+  if (!tier || typeof tier !== 'string') return null
 
   // Определяем стили в зависимости от тира
   const getTierStyles = () => {

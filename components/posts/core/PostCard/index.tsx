@@ -65,9 +65,10 @@ export function PostCard({
 
   // Фоновая подсветка по тиру
   const getTierBackgroundStyle = () => {
-    if (!post?.access?.tier) return ''
+    const tier = post?.access?.tier
+    if (!tier) return ''
     
-    switch (post.access.tier.toLowerCase()) {
+    switch (tier.toLowerCase()) {
       case 'basic':
         return 'bg-blue-50/50 dark:bg-blue-900/10'
       case 'premium':

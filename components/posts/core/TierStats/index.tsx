@@ -23,7 +23,7 @@ export function TierStats({
   // Подсчитываем статистику по тирам
   const tierStats = posts.reduce((acc, post) => {
     const tier = post?.access?.tier
-    if (tier) {
+    if (tier && typeof tier === 'string') {
       acc[tier] = (acc[tier] || 0) + 1
     }
     return acc

@@ -229,28 +229,22 @@ export function useOptimizedRealtimePosts({
     toast.success('Контент разблокирован!', { duration: 3000 })
   }, [])
 
-  // Обработка обновления подписки с батчингом
+  // Обработка обновления подписки
   const handleSubscriptionUpdated = useCallback((event: WebSocketEvent | any) => {
-    const creatorId = event.creatorId || event.detail?.creatorId
-    const newTier = event.tier || event.detail?.tier || 'basic'
-    
-    if (!creatorId) return
-    
-    // Сохраняем в кеш для оптимистичных обновлений
-    optimisticUpdatesCache.set(`subscription_${creatorId}`, newTier)
-    
-    setUpdatedPosts(prev => {
-      const updates: UnifiedPost[] = []
+    if (event.type === 'subscription_updated' || event.type === 'subscription-updated') {
+      const creatorId = event.creatorId || event.detail?.creatorId
+      const newTier = event.tier || event.detail?.tier || 'basic'
       
-      const newPosts = prev.map(post => {
+      setUpdatedPosts(prev => prev.map(post => {
         if (post.creator.id === creatorId) {
-          // Проверяем доступ с новым тиром
-          const hasAccess = !post.access.tier || 
+          // Безопасная проверка доступа с новым тиром
+          const postTier = post?.access?.tier
+          const hasAccess = !postTier || 
             (newTier === 'vip') ||
-            (newTier === 'premium' && ['basic', 'premium'].includes(post.access.tier)) ||
-            (newTier === 'basic' && post.access.tier === 'basic')
+            (newTier === 'premium' && ['basic', 'premium'].includes(postTier)) ||
+            (newTier === 'basic' && postTier === 'basic')
           
-          const updatedPost = {
+          return {
             ...post,
             access: {
               ...post.access,
@@ -262,26 +256,13 @@ export function useOptimizedRealtimePosts({
               shouldHideContent: post.access.isLocked && !hasAccess && !post.access.isPurchased
             }
           }
-          
-          updates.push(updatedPost)
-          return updatedPost
         }
         return post
-      })
+      }))
       
-      // Батчим обновления для оптимизации
-      if (updates.length > 0) {
-        updates.forEach(update => {
-          updateBatchRef.current.set(update.id, update)
-        })
-        debouncedApplyUpdates()
-      }
-      
-      return newPosts
-    })
-    
-    toast.success('Подписка обновлена!', { duration: 3000 })
-  }, [debouncedApplyUpdates])
+      toast.success('Подписка обновлена!')
+    }
+  }, [])
 
   // Загрузить ожидающие посты с анимацией
   const loadPendingPosts = useCallback(() => {

@@ -91,7 +91,7 @@ export default function FeedPage() {
       case 'subscribe':
         const post = posts.find(p => p.id === action.postId)
         if (post) {
-          const tier = post.access.tier || 'basic'
+          const tier = post?.access?.tier || 'basic'
           handleSubscribeClick(post.creator, tier as 'basic' | 'premium' | 'vip')
         }
         break
@@ -361,7 +361,7 @@ export default function FeedPage() {
               // Обновляем посты локально
               const updatedPosts = posts.map(post => {
                 if (post.creator.id === selectedCreator.id) {
-                  const hasAccess = hasAccessToTier(newTier, post.access.tier)
+                  const hasAccess = hasAccessToTier(newTier, post?.access?.tier)
                   return {
                     ...post,
                     access: {

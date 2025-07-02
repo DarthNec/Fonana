@@ -283,7 +283,7 @@ export default function OptimizedFeedTestPage() {
                     
                     {post.access.isLocked && (
                       <span className="text-purple-600 dark:text-purple-400 font-medium">
-                        🔒 {post.access.tier || 'Paid'}
+                        🔒 {post?.access?.tier || 'Paid'}
                       </span>
                     )}
                   </div>

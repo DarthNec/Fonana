@@ -207,14 +207,16 @@ export function PostContent({
             </span>
           ))}
           {/* Tier Badge */}
-          <TierBadge 
-            tier={post?.access?.tier} 
-            interactive={true}
-            onClick={() => {
-              // TODO: Добавить фильтрацию по тиру
-              console.log(`Фильтровать по тиру: ${post?.access?.tier}`)
-            }}
-          />
+          {post?.access?.tier && (
+            <TierBadge 
+              tier={post.access.tier} 
+              interactive={true}
+              onClick={() => {
+                // TODO: Добавить фильтрацию по тиру
+                console.log(`Фильтровать по тиру: ${post.access.tier}`)
+              }}
+            />
+          )}
         </div>
       )}
     </div>
