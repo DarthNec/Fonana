@@ -40,7 +40,8 @@ export function CommentsSection({ postId, className, onClose }: CommentsSectionP
   const [isAnonymous, setIsAnonymous] = useState(false)
 
   // ✅ КРИТИЧЕСКАЯ ПРОВЕРКА: предотвращаем React Error #185
-  // Комментарии должны быть доступны всем, но без формы для неавторизованных
+  // Комментарии доступны всем, но форма добавления только авторизованным
+  // НЕ возвращаем null, так как комментарии должны быть видны всем
   
   // Загрузка комментариев
   useEffect(() => {

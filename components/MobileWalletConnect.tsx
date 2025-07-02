@@ -7,7 +7,7 @@ import toast from 'react-hot-toast'
 
 // Проверка мобильного устройства
 const isMobileDevice = () => {
-  if (typeof window === 'undefined') return false
+  if (typeof window === 'undefined') return null
   
   const userAgent = window.navigator.userAgent.toLowerCase()
   const isMobile = /android|webos|iphone|ipad|ipod|blackberry|iemobile|opera mini/i.test(userAgent)
@@ -17,8 +17,8 @@ const isMobileDevice = () => {
 }
 
 // Проверка, установлен ли Phantom
-const isPhantomInstalled = (): boolean => {
-  if (typeof window === 'undefined') return false
+const isPhantomInstalled = (): boolean | null => {
+  if (typeof window === 'undefined') return null
   return !!(window.solana && window.solana.isPhantom)
 }
 
@@ -45,8 +45,8 @@ export function MobileWalletConnect({ className, inMenu }: MobileWalletConnectPr
   const [hasPhantom, setHasPhantom] = useState(false)
 
   useEffect(() => {
-    setIsMobile(isMobileDevice())
-    setHasPhantom(isPhantomInstalled())
+    setIsMobile(isMobileDevice() || false)
+    setHasPhantom(isPhantomInstalled() || false)
   }, [])
 
   const handleMobileConnect = () => {

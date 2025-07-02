@@ -77,8 +77,9 @@ export function AppProvider({ children }: AppProviderProps) {
       // Попытка получить пользователя из localStorage
       const cachedUser = LocalStorageCache.get<any>('user')
       if (cachedUser && typeof cachedUser === 'object' && cachedUser.id) {
-        console.log('[AppProvider] Found cached user, setting...')
+        console.log('[AppProvider] Found cached user, setting immediately to prevent race conditions...')
         setUser(cachedUser)
+        setIsInitialized(true) // Сразу помечаем как инициализированный
         
         // Обновить данные с сервера в фоне
         setTimeout(() => {
@@ -87,14 +88,15 @@ export function AppProvider({ children }: AppProviderProps) {
           })
         }, 1000)
       } else {
-        console.log('[AppProvider] No cached user found')
+        console.log('[AppProvider] No cached user found, marking as initialized')
+        setIsInitialized(true)
       }
     } catch (error) {
       console.error('[AppProvider] Error initializing user:', error)
       setUserError(error as Error)
+      setIsInitialized(true) // Всегда помечаем как инициализированный
     } finally {
       setUserLoading(false)
-      setIsInitialized(true)
     }
   }
 

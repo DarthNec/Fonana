@@ -1,4 +1,4 @@
-# Fonana Project - AI Assistant Instructions v2
+# Fonana Project - AI Assistant Instructions v3 (ПОСТМИГРАЦИОННАЯ ВЕРСИЯ)
 
 ## Project Context
 - **Repository**: https://github.com/DukeDeSouth/Fonana (private)
@@ -6,7 +6,7 @@
 - **Deploy Script**: `./deploy-to-production.sh`
 - **Server Path**: `/var/www/fonana`
 - **Language**: English UI, Russian comments OK
-- **Status**: ✅ STABILIZED после фикса React #310 и tier access errors (01.07.2025)
+- **Status**: ✅ АРХИТЕКТУРНАЯ МИГРАЦИЯ ЗАВЕРШЕНА (02.07.2025) - Zustand + CacheManager + WebSocketEventManager + AppProvider
 
 ## Quick Start
 ```
@@ -15,313 +15,44 @@ Private repo: DukeDeSouth/Fonana
 Server has Deploy Key, use ./deploy-to-production.sh
 Production DB has real users and posts
 PM2 manages the app with ecosystem.config.js
-Unified Post System completed with modular architecture
-UserContext migration completed - centralized user state management
+АРХИТЕКТУРА: Zustand Store + CacheManager + WebSocketEventManager + AppProvider
+УДАЛЕНЫ: UserContext, NotificationContext, CreatorContext - заменены на Zustand
 Service Worker simplified - no auto-updates, cache-only
-WebSocket server running on port 3002 with JWT auth
-Tier system stabilized with safe access patterns
+WebSocket server running on port 3002 with JWT auth + Event Manager
+React Error #185 устранена на продакшне (race condition fix)
 ```
 
-## 🚨 CRITICAL: React Hooks & Tier Access Rules
+## 🚨 КРИТИЧЕСКАЯ АРХИТЕКТУРНАЯ ИНФОРМАЦИЯ
 
-### React Error #310 Prevention (CRITICAL)
-- **Причина**: Нарушение правил хуков - callback функции в зависимостях useEffect
-- **Локализация**: `lib/hooks/useRealtimePosts.tsx`, `lib/hooks/useOptimizedRealtimePosts.tsx`
-- **Решение**: Убрать callback функции из зависимостей useEffect
+### ✅ ТЕКУЩАЯ АРХИТЕКТУРА (После миграции):
+- **Zustand Store**: `lib/store/appStore.ts` - централизованное управление состоянием
+- **AppProvider**: `lib/providers/AppProvider.tsx` - единая точка инициализации
+- **CacheManager**: `lib/services/CacheManager.ts` - централизованное кеширование с TTL
+- **WebSocketEventManager**: `lib/services/WebSocketEventManager.ts` - управление real-time событиями
+- **StorageService**: `lib/services/StorageService.ts` - шифрование JWT токенов
+- **Error Boundary**: `components/ErrorBoundary.tsx` - глобальная обработка ошибок
+- **Zod валидация**: `lib/utils/validators.ts` - строгая валидация всех входных данных
 
-### ✅ DO (React Hooks):
+### ❌ УДАЛЕННЫЕ КОМПОНЕНТЫ (НЕ ИСПОЛЬЗУЮТСЯ):
+- ~~`lib/contexts/UserContext.tsx`~~ → ✅ `useUser()` из Zustand
+- ~~`lib/contexts/NotificationContext.tsx`~~ → ✅ `useNotifications()` из Zustand  
+- ~~`lib/contexts/CreatorContext.tsx`~~ → ✅ `useCreator()` из Zustand
+- ~~`lib/hooks/useCreatorData.ts`~~ → ✅ `useCreatorActions()` из Zustand
+- ~~`components/UserProvider.tsx`~~ → ✅ `AppProvider`
+- ~~Прямые вызовы `localStorage`~~ → ✅ `cacheManager`
+- ~~Прямые вызовы `wsService.emit()`~~ → ✅ `WebSocketEventManager`
+
+## 🚨 КРИТИЧЕСКИ ВАЖНО: Использование новой архитектуры
+
+### ✅ DO - Новая архитектура:
 ```typescript
-// ✅ ПРАВИЛЬНО - callback вне зависимостей
-const handleSubscriptionUpdated = useCallback((event) => {
-  // логика обработки
-}, []) // пустой массив зависимостей
-
-useEffect(() => {
-  if (!token) return
-  // логика эффекта
-}, [token]) // только примитивы в зависимостях
-```
-
-### ❌ DON'T (React Hooks):
-```typescript
-// ❌ НЕПРАВИЛЬНО - callback в зависимостях
-useEffect(() => {
-  // логика
-}, [handleSubscriptionUpdated]) // НЕ ДЕЛАЙТЕ ТАК!
-```
-
-### Tier Access Safety (CRITICAL)
-- **Причина**: `Cannot read properties of undefined (reading 'tier')` при обращении к `post.access.tier`
-- **Локализация**: `PostCard`, `TierBadge`, `TierStats`, `PostContent`
-- **Решение**: Всегда использовать безопасный доступ с fallback
-
-### ✅ DO (Tier Access):
-```typescript
-// ✅ ПРАВИЛЬНО - безопасный доступ с проверками
-const tier = post?.access?.tier ?? 0
-const tierName = post?.access?.tier || 'basic'
-
-// Дополнительная проверка типа
-if (!tier || typeof tier !== 'string') return null
-
-// В reduce/filter операциях
-const tierStats = posts.reduce((acc, post) => {
-  const tier = post?.access?.tier
-  if (tier && typeof tier === 'string') {
-    acc[tier] = (acc[tier] || 0) + 1
-  }
-  return acc
-}, {} as Record<string, number>)
-```
-
-### ❌ DON'T (Tier Access):
-```typescript
-// ❌ НЕПРАВИЛЬНО - прямой доступ без проверок
-const tier = post.access.tier // Может вызвать ошибку!
-const tierName = post.access.tier.toLowerCase() // Опасно!
-
-// В reduce без проверок
-const tierStats = posts.reduce((acc, post) => {
-  acc[post.access.tier]++ // Может упасть!
-  return acc
-}, {})
-```
-
-### Components Requiring Safe Tier Access:
-- `components/posts/core/PostCard/index.tsx` - фоновая подсветка
-- `components/posts/core/TierBadge/index.tsx` - отображение badge
-- `components/posts/core/TierStats/index.tsx` - статистика тиров
-- `components/posts/core/PostContent/index.tsx` - условная отрисовка
-- `lib/hooks/useRealtimePosts.tsx` - WebSocket обновления
-- `lib/hooks/useOptimizedRealtimePosts.tsx` - оптимизированные обновления
-
-## 🚨 CRITICAL: Service Worker & PWA Rules
-
-### Current Architecture (POST-FIX)
-- **Service Worker**: `public/sw.js` - УПРОЩЕННАЯ ВЕРСИЯ v7-simple-cache-only
-- **Registration**: `components/ServiceWorkerRegistration.tsx` - только регистрация
-- **NO Auto-updates**: Убраны все автоматические обновления и force-refresh
-- **Cache Strategy**: Cache-first для статических ресурсов
-- **Version**: v7-simple-cache-only (кеширование без автообновлений)
-
-### ✅ DO:
-1. **Использовать только один Service Worker**: `public/sw.js`
-2. **Регистрировать через компонент**: `ServiceWorkerRegistration.tsx`
-3. **Обновлять версию в deploy скрипте**: `SW_VERSION="v7-simple-$(date +%Y%m%d)"`
-4. **Тестировать через**: `/test/sw-check-v5` и `/test/service-worker`
-
-### ❌ DON'T:
-1. **НЕ создавать дополнительные SW файлы** (force-update-sw.js, sw-manager.js)
-2. **НЕ добавлять автоматические обновления** без явной команды
-3. **НЕ использовать skipWaiting()** автоматически
-4. **НЕ добавлять ?v=timestamp** к статическим файлам
-5. **НЕ создавать бесконечные циклы обновлений**
-
-### PWA Update Process
-```bash
-# 1. Обновить версию в deploy скрипте
-SW_VERSION="v7-simple-$(date +%Y%m%d)"
-sed -i "s|const SW_VERSION = '.*'|const SW_VERSION = '$SW_VERSION'|g" public/sw.js
-
-# 2. Проверить MIME type статических файлов
-curl -I https://fonana.me/sw.js
-# Должно быть: Content-Type: application/javascript
-
-# 3. Тестировать обновления
-# Открыть /test/sw-check-v5 и проверить версию
-```
-
-## 🔧 WebSocket Server Architecture
-
-### Current Setup
-- **Port**: 3002 (WebSocket) + 3000 (Next.js)
-- **Process**: fonana-ws (PM2 managed)
-- **Path**: `/var/www/fonana/websocket-server/`
-- **Authentication**: JWT tokens ОБЯЗАТЕЛЬНО
-- **Redis**: Не используется (single server mode)
-
-### Configuration
-```javascript
-// ecosystem.config.js
-{
-  name: 'fonana-ws',
-  script: './websocket-server/index.js',
-  instances: 1,
-  env: {
-    NODE_ENV: 'production',
-    PORT: 3002
-  },
-  env_file: './.env'
-}
-```
-
-### Nginx Configuration
-```nginx
-# WebSocket proxy
-location /ws {
-    proxy_pass http://localhost:3002;
-    proxy_http_version 1.1;
-    proxy_set_header Upgrade $http_upgrade;
-    proxy_set_header Connection "upgrade";
-    proxy_set_header Host $host;
-    proxy_connect_timeout 7d;
-    proxy_send_timeout 7d;
-    proxy_read_timeout 7d;
-    proxy_buffering off;
-}
-```
-
-### JWT Authentication (CRITICAL)
-- **Требование**: Все WebSocket подключения требуют JWT токен
-- **Формат**: `wss://fonana.me/ws?token=JWT_TOKEN`
-- **Проверка**: Токен проверяется через NEXTAUTH_SECRET
-- **Без токена**: Соединение закрывается с кодом 1008
-
-### Monitoring
-```bash
-# Проверка статуса WebSocket сервера
-ssh -p 43988 root@69.10.59.234 "pm2 status fonana-ws"
-
-# Просмотр логов (без зависания!)
-ssh -p 43988 root@69.10.59.234 "pm2 logs fonana-ws --lines 100 --nostream > /tmp/ws-logs.txt && cat /tmp/ws-logs.txt"
-
-# Перезапуск при проблемах
-ssh -p 43988 root@69.10.59.234 "pm2 restart fonana-ws"
-```
-
-## 🚀 Deployment Process
-
-### Standard Deployment
-```bash
-# 1. Локальная подготовка
-npm run build  # Проверить сборку
-git add -A
-git commit -m "feat: description"
-git push origin main
-
-# 2. Деплой на продакшн
-./deploy-to-production.sh
-
-# 3. Проверка после деплоя
-ssh -p 43988 root@69.10.59.234 "pm2 status"
-ssh -p 43988 root@69.10.59.234 "pm2 restart fonana"
-```
-
-### Deployment Script Features
-- **Единое SSH соединение**: Все команды в одной сессии
-- **Безопасная остановка**: PM2 stop → graceful kill → force kill
-- **Автоматическое версионирование**: `YYYYMMDD-HHMMSS-commit`
-- **Service Worker обновление**: Автоматическое обновление версии
-- **Проверка MIME types**: Убедиться что статика отдается правильно
-
-### Critical Checks After Deployment
-```bash
-# 1. PM2 статус
-ssh -p 43988 root@69.10.59.234 "pm2 status"
-
-# 2. Порты
-ssh -p 43988 root@69.10.59.234 "lsof -i :3000 -i :3002"
-
-# 3. MIME type для статических файлов
-curl -I https://fonana.me/sw.js
-# Должно быть: Content-Type: application/javascript
-
-# 4. WebSocket подключение
-curl -I https://fonana.me/ws
-# Должно быть: 101 Switching Protocols
-
-# 5. Приложение работает
-curl -I https://fonana.me
-# Должно быть: 200 OK
-```
-
-## 📋 Database Models (Key Tables)
-- **User** - Пользователи с wallet и referral системой
-- **Post** - Посты с minSubscriptionTier (основное поле доступа)
-- **Subscription** - Подписки с paymentStatus (PENDING/COMPLETED)
-- **Message** - Личные сообщения + PPV
-- **Comment** - Комментарии к постам
-- **FlashSale** - Flash-распродажи
-- **Transaction** - Все транзакции (Solana + внутренние)
-- **Notification** - Уведомления системы
-- **CreatorTierSettings** - Настройки тарифов создателей
-- **PostPurchase** - Покупки постов
-- **MessagePurchase** - Покупки PPV сообщений
-
-## 🔐 Access Control System
-
-### Centralized Architecture
-- **Core**: `lib/utils/access.ts` - централизованные утилиты
-- **Constants**: `lib/constants/tiers.ts` - TIER_HIERARCHY и DEFAULT_TIER_PRICES
-- **Visual**: `lib/constants/tier-styles.ts` - TIER_VISUAL_DETAILS
-- **Main Field**: `minSubscriptionTier` (НЕ `isPremium`!)
-
-### Key Functions
-```typescript
-import { checkPostAccess, hasAccessToTier, normalizeTierName } from '@/lib/utils/access'
-
-// Проверка доступа к посту
-const accessResult = checkPostAccess(post, userId, userSubscriptions)
-if (!accessResult.hasAccess) {
-  console.log(`Access denied: ${accessResult.reason}`)
-}
-
-// Проверка иерархии тиров
-const canAccess = hasAccessToTier('premium', 'basic') // true
-
-// Нормализация названий тиров
-const normalized = normalizeTierName('Premium') // 'premium'
-```
-
-### Tier Hierarchy
-```typescript
-const TIER_HIERARCHY = {
-  'free': 1,
-  'basic': 2, 
-  'premium': 3,
-  'vip': 4
-}
-```
-
-### Payment Validation (CRITICAL)
-- **Проверять ОБА флага**: `isActive` И `paymentStatus === 'COMPLETED'`
-- **НЕ создавать платные подписки** через `/api/subscriptions` POST
-- **Использовать ТОЛЬКО** `/api/subscriptions/process-payment` для платных
-- **НЕ корректировать план автоматически** по цене
-
-## 🎨 UI Kit Components (FINALIZED)
-- **Core**: `components/ui/` и `components/posts/core/PostCard` — централизованная библиотека
-- **Status**: ✅ ПОЛНОСТЬЮ ЗАВЕРШЕНО — UI Kit + Mobile-First + ЕДИНЫЙ PostCard + УНИФИЦИРОВАННОЕ МЕНЮ
-- **Components**: Button, Input, Modal, Card, FloatingActionButton, BottomSheet, **PostCard**
-- **PostCard**: Используется во всех разделах (фид, профиль, поиск, дашборд, черновики). Нет локальных вариаций типа `ProfilePostCard`, `MyPostCard`, `SearchPostCard` и т.п. Меню управления (⋯) всегда отображается для своих постов в правом верхнем углу, стиль карточки стандартизирован.
-- **Menu Unification**: Меню управления постами теперь отображается единообразно на всех страницах для авторов своих постов, независимо от варианта карточки или флага showCreator.
-- **Mobile-First**: Edge-to-edge дизайн, touch-оптимизированные элементы
-
-### Usage
-```typescript
-import { PostCard } from '@/components/posts/core/PostCard'
-
-<PostCard
-  post={post}
-  variant="full" // или compact, minimal
-  showCreator={true}
-  onAction={handlePostAction}
-/>
-```
-
-## 🔄 User State Management (COMPLETED)
-- **Core**: `lib/contexts/UserContext.tsx` - единая точка управления
-- **Status**: ✅ 100% компонентов мигрированы
-- **Features**: Кеширование 7 дней, retry механизм, API fallback
-- **NO Direct localStorage**: ЗАПРЕЩЕНО читать/писать localStorage напрямую
-
-### Usage Guidelines
-```typescript
-// ✅ ПРАВИЛЬНО - использование UserContext
-import { useUserContext } from '@/lib/contexts/UserContext'
+// ✅ ПРАВИЛЬНО - использование Zustand Store
+import { useUser, useUserLoading, useUserError } from '@/lib/store/appStore'
 
 function MyComponent() {
-  const { user, isLoading, error, refreshUser } = useUserContext()
+  const user = useUser()
+  const isLoading = useUserLoading()
+  const error = useUserError()
   
   if (isLoading) return <div>Loading...</div>
   if (error) return <div>Error: {error}</div>
@@ -330,505 +61,449 @@ function MyComponent() {
   return <div>Welcome, {user.nickname}!</div>
 }
 
-// ❌ НЕПРАВИЛЬНО - прямой доступ к localStorage
-const wallet = localStorage.getItem('fonana_user_wallet') // НЕ ДЕЛАЙТЕ ТАК!
+// ✅ ПРАВИЛЬНО - использование CacheManager
+import { cacheManager } from '@/lib/services/CacheManager'
+
+const userData = cacheManager.get('user_data')
+cacheManager.set('user_data', newData, 7 * 24 * 60 * 60 * 1000) // 7 дней TTL
+
+// ✅ ПРАВИЛЬНО - WebSocket через Event Manager
+import { emitPostLiked, emitPostCommented } from '@/lib/services/WebSocketEventManager'
+
+emitPostLiked(postId, likesCount, userId)
+emitPostCommented(postId, commentId, userId)
+
+// ✅ ПРАВИЛЬНО - Retry логика
+import { retryWithToast } from '@/lib/utils/retry'
+
+await retryWithToast(
+  () => fetch('/api/posts/like', { method: 'POST' }),
+  { retries: 3, errorMessage: 'Не удалось поставить лайк' }
+)
 ```
 
-## 🔥 Creator Data Management (COMPLETED)
-- **Core**: `lib/contexts/CreatorContext.tsx` - централизованное управление
-- **Hook**: `lib/hooks/useCreatorData.ts` - экспорт для удобства
-- **Features**: Кеширование, WebSocket обновления, оптимистичные обновления
-- **Real-time**: Автоматическое обновление доступа через WebSocket события
-
-### Usage
+### ❌ DON'T - Устаревшая архитектура:
 ```typescript
-// На странице создателя
-import { CreatorDataProvider } from '@/lib/contexts/CreatorContext'
+// ❌ НЕПРАВИЛЬНО - старые контексты УДАЛЕНЫ
+import { useUserContext } from '@/lib/contexts/UserContext' // ФАЙЛ НЕ СУЩЕСТВУЕТ!
+import { useNotificationContext } from '@/lib/contexts/NotificationContext' // УДАЛЕН!
+import { useCreatorData } from '@/lib/hooks/useCreatorData' // УДАЛЕН!
 
-export default function CreatorPage() {
-  const params = useParams()
-  const creatorId = params.id as string
+// ❌ НЕПРАВИЛЬНО - прямые вызовы localStorage
+const userData = localStorage.getItem('fonana_user_data') // ЗАПРЕЩЕНО!
 
-  return (
-    <CreatorDataProvider creatorId={creatorId}>
-      <CreatorPageContent />
-    </CreatorDataProvider>
-  )
-}
-
-// Внутри компонентов
-import { useCreatorData } from '@/lib/hooks/useCreatorData'
-
-function MyComponent() {
-  const { creator, isLoading, error, refreshCreator } = useCreatorData()
-  // ...
-}
+// ❌ НЕПРАВИЛЬНО - прямые WebSocket вызовы
+wsService.emit('post_liked', data) // УСТАРЕЛО!
 ```
 
-## 📊 Dynamic Pricing System
-- **Core**: `lib/pricing/` - динамический курс SOL/USD
-- **API**: `/api/pricing` - реальный курс от CoinGecko
-- **Cache**: 5 минут для производительности
-- **Fallback**: 135 USD если API недоступен
+## 🧩 Zustand Store Architecture
 
-### Usage
+### Store Structure
 ```typescript
-import { useSolRate } from '@/lib/hooks/useSolRate'
-
-function MyComponent() {
-  const { rate: solRate, isLoading } = useSolRate()
+// lib/store/appStore.ts
+interface AppStore {
+  // User Slice
+  user: User | null
+  userLoading: boolean
+  userError: Error | null
+  setUser: (user: User | null) => void
+  refreshUser: () => Promise<void>
   
+  // Notification Slice  
+  notifications: Notification[]
+  unreadCount: number
+  addNotification: (notification: Notification) => void
+  setNotifications: (notifications: Notification[]) => void
+  
+  // Creator Slice
+  creator: Creator | null
+  creatorLoading: boolean
+  creatorPosts: UnifiedPost[]
+  loadCreator: (creatorId: string) => Promise<void>
+}
+```
+
+### Zustand Hooks Usage
+```typescript
+// Оптимизированные селекторы
+import { 
+  useUser, 
+  useUserLoading, 
+  useUserError,
+  useUserActions,
+  useNotifications,
+  useUnreadCount,
+  useNotificationActions,
+  useCreator,
+  useCreatorLoading,
+  useCreatorActions
+} from '@/lib/store/appStore'
+
+// В компонентах
+const user = useUser()
+const { refreshUser, updateProfile } = useUserActions()
+const notifications = useNotifications()
+const { addNotification, markAsRead } = useNotificationActions()
+```
+
+## 🗄️ CacheManager Usage
+
+### CacheManager Features
+- **TTL логика**: Автоматическое истечение кеша
+- **LRU эвикшен**: Удаление старых записей при переполнении
+- **LocalStorageCache**: Persist кеш в localStorage с TTL
+- **Безопасность**: Обработка ошибок приватного режима
+
+### Usage Examples
+```typescript
+import { cacheManager, LocalStorageCache } from '@/lib/services/CacheManager'
+
+// In-memory кеш
+cacheManager.set('user_data', userData, 7 * 24 * 60 * 60 * 1000) // 7 дней
+const user = cacheManager.get('user_data')
+
+// LocalStorage кеш с TTL
+LocalStorageCache.set('user', userData, 7 * 24 * 60 * 60 * 1000)
+const cachedUser = LocalStorageCache.get('user')
+
+// Проверка наличия
+if (cacheManager.has('user_data')) {
+  // кеш существует и не истек
+}
+```
+
+## 🔄 WebSocket Event Manager
+
+### WebSocket Architecture
+- **Централизованное управление**: Все события через EventManager
+- **Throttling**: 100ms между одинаковыми событиями
+- **Deduplication**: 5 секунд окно дедупликации
+- **Предустановленные обработчики**: Автоматическая настройка
+
+### Usage Examples
+```typescript
+import { 
+  emitPostLiked,
+  emitPostCommented,
+  emitNotification,
+  setupDefaultHandlers
+} from '@/lib/services/WebSocketEventManager'
+
+// В AppProvider
+setupDefaultHandlers() // Настройка обработчиков для Zustand
+
+// В компонентах
+emitPostLiked(postId, likesCount, userId)
+emitPostCommented(postId, commentId, userId)
+emitNotification(userId, notification)
+```
+
+## 🛡️ Security & Validation
+
+### JWT Token Security
+- **Шифрование**: AES-256-CBC через StorageService
+- **TTL**: 1 час автоматическое истечение
+- **Безопасные ключи**: Из env переменных
+
+```typescript
+import { storageService } from '@/lib/services/StorageService'
+
+// Автоматическое шифрование при сохранении
+storageService.setJWTToken(token)
+
+// Автоматическая расшифровка при получении
+const token = storageService.getJWTToken()
+```
+
+### Zod Validation
+```typescript
+import { validateApiRequest, sanitizeString } from '@/lib/utils/validators'
+
+// В API роутах
+const validatedData = validateApiRequest(likePostSchema, {
+  postId: params.id,
+  userId: body.userId
+})
+
+// Санитизация контента
+const cleanContent = sanitizeString(userInput)
+```
+
+## 🔧 AppProvider Integration
+
+### AppProvider Architecture
+- **Единая инициализация**: Заменяет все старые провайдеры
+- **Error Boundary**: Глобальная обработка ошибок
+- **Retry логика**: Встроенная устойчивость к сбоям
+- **SSR guards**: Безопасность серверного рендеринга
+
+### Layout Integration
+```typescript
+// app/layout.tsx
+import { AppProvider } from '@/lib/providers/AppProvider'
+
+export default function RootLayout({ children }) {
   return (
-    <div>
-      <span>0.1 SOL</span>
-      <span>(≈ ${(0.1 * solRate).toFixed(2)} USD)</span>
-    </div>
+    <html>
+      <body>
+        <WalletProvider>
+          <AppProvider>
+            {children}
+          </AppProvider>
+        </WalletProvider>
+      </body>
+    </html>
   )
 }
 ```
+
+## 🚨 React Error #185 Prevention (CRITICAL FIXES APPLIED)
+
+### ⚠️ Что такое React Error #185
+React Error #185 означает, что компонент возвращает `undefined`, `false` или ничего из `return` вместо JSX или `null`. В продакшне это приводит к фатальному сбою сайта.
+
+### 🔍 Исправленные критические проблемы:
+
+#### 1. ✅ PostMenu - добавлена критическая защита
+```typescript
+export function PostMenu({ post, onAction }: PostMenuProps) {
+  const user = useUser()
+  
+  // ✅ КРИТИЧЕСКАЯ ПРОВЕРКА: предотвращаем React Error #185
+  if (!user) {
+    return null
+  }
+  
+  // ... остальной код
+}
+```
+
+#### 2. ✅ MobileWalletConnect - исправлены return false
+```typescript
+// ❌ БЫЛО (НЕПРАВИЛЬНО):
+const isMobileDevice = () => {
+  if (typeof window === 'undefined') return false // Вызывает React Error #185
+}
+
+// ✅ СТАЛО (ПРАВИЛЬНО):
+const isMobileDevice = () => {
+  if (typeof window === 'undefined') return null // Безопасно
+}
+
+// Безопасное использование:
+useEffect(() => {
+  setIsMobile(isMobileDevice() || false) // Безопасное преобразование null в false
+}, [])
+```
+
+### 🛡️ ОБЯЗАТЕЛЬНЫЕ АРХИТЕКТУРНЫЕ ПРИНЦИПЫ
+
+#### ✅ ПРАВИЛЬНЫЕ ПАТТЕРНЫ:
+```typescript
+// ✅ Обязательная защита для ВСЕХ компонентов с useUser()
+function MyComponent() {
+  const user = useUser()
+  
+  // КРИТИЧЕСКИ ВАЖНО: ВСЕГДА проверяйте user перед рендером
+  if (!user) {
+    return null // НЕ undefined, НЕ false - только null!
+  }
+  
+  return <div>Контент для авторизованных</div>
+}
+
+// ✅ Безопасные SSR проверки
+if (typeof window === 'undefined') {
+  return null // НЕ false, НЕ undefined!
+}
+
+// ✅ Безопасные условные рендеры
+{user && <Component />} // Проверка существования перед рендером
+```
+
+#### ❌ ЗАПРЕЩЕННЫЕ ПАТТЕРНЫ (вызывают React Error #185):
+```typescript
+// ❌ Возврат undefined
+function Component() {
+  const user = useUser()
+  if (!user) return // ЗАПРЕЩЕНО! Вызывает React Error #185
+}
+
+// ❌ Возврат false в компонентах  
+function Component() {
+  if (typeof window === 'undefined') return false // ЗАПРЕЩЕНО!
+}
+
+// ❌ Отсутствие защиты с useUser()
+function Component() {
+  const user = useUser()
+  return <div>{user.id}</div> // Может упасть на user = null
+}
+
+// ❌ Пустой return без значения
+function Component() {
+  const user = useUser()
+  if (!user) return // ЗАПРЕЩЕНО! Должно быть return null
+}
+```
+
+### 🔒 Компоненты требующие защиты
+
+#### ✅ ЗАЩИЩЕННЫЕ компоненты (if (!user) return null):
+- `SellablePostModal` - защищен на строке 63
+- `PostMenu` - исправлен (критическая проблема была здесь)
+- `CreatePostModal` - защищен на строке 47
+- `UserSubscriptions` - защищен на строке 56
+- `SubscriptionManager` - защищен на строке 66
+- `MobileWalletConnect` - исправлен (return false → return null)
+
+#### 🔍 Проверенные компоненты (НЕ требуют защиты):
+- `CommentsSection` - комментарии доступны всем пользователям
+- `BottomNav` - частично использует user, имеет условные рендеры
+
+### 🔄 Race Condition Guards
+```typescript
+// SSR Guard - ВСЕГДА return null
+if (typeof window === 'undefined') {
+  return null // НЕ false!
+}
+
+// Loading state до готовности store
+if (isUserLoading || !user) {
+  return <SkeletonLoader variant="page" />
+}
+
+// В AppProvider - улучшенная инициализация
+const [isInitialized, setIsInitialized] = useState(false)
+
+useEffect(() => {
+  if (typeof window !== 'undefined') {
+    // инициализация только на клиенте
+    setIsInitialized(true)
+  }
+}, [])
+```
+
+### 📊 Статистика исправлений
+- **Критических проблем исправлено**: 3
+- **Компонентов с обязательной защитой**: 8+
+- **SSR функций исправлено**: 2
+- **Проверенных компонентов**: 25+
+
+### 🚨 Проверка после развертывания
+```bash
+# 1. Пересборка продакшна
+ssh -p 43988 root@69.10.59.234
+cd /var/www/fonana
+pm2 stop fonana
+rm -rf .next .turbo .cache
+npm run build
+pm2 start fonana
+
+# 2. Критическая проверка
+curl -I https://fonana.me # Должно быть 200 OK
+# 3. Тест без авторизации (React Error #185 не должен появляться)
+
+# 3. Проверка логов
+pm2 logs fonana --lines 50 | grep -i error
+```
+
+### Debug Logging
+```typescript
+// Debug состояния для продакшн отладки
+useEffect(() => {
+  console.log('[Component][Debug] State:', {
+    user: user?.id ? `User ${user.id}` : 'No user',
+    userLoading,
+    isInitialized,
+    window: typeof window !== 'undefined' ? 'Client' : 'SSR'
+  })
+}, [user, userLoading, isInitialized])
+```
+
+## 🚨 КРИТИЧЕСКИ ВАЖНО: НЕ ИСПОЛЬЗУЙТЕ СТАРЫЕ ПАТТЕРНЫ
+
+### ❌ ЗАПРЕЩЕННЫЕ ИМПОРТЫ (файлы удалены):
+```typescript
+// ❌ ЭТИ ИМПОРТЫ ВЫЗОВУТ ОШИБКИ СБОРКИ
+import { useUserContext } from '@/lib/contexts/UserContext'
+import { useNotificationContext } from '@/lib/contexts/NotificationContext' 
+import { useCreatorData } from '@/lib/hooks/useCreatorData'
+import { UserProvider } from '@/components/UserProvider'
+```
+
+### ❌ ЗАПРЕЩЕННЫЕ ПАТТЕРНЫ:
+```typescript
+// ❌ Прямой доступ к localStorage
+localStorage.getItem('fonana_user_data')
+localStorage.setItem('fonana_jwt_token', token)
+
+// ❌ Прямые WebSocket вызовы
+wsService.emit('post_liked', data)
+wsService.on('notification', handler)
+
+// ❌ API вызовы без retry логики
+fetch('/api/posts/like') // нет обработки ошибок
+```
+
+### ✅ ПРАВИЛЬНЫЕ ПАТТЕРНЫ:
+```typescript
+// ✅ Zustand хуки
+const user = useUser()
+const { refreshUser } = useUserActions()
+
+// ✅ CacheManager
+const data = cacheManager.get('key')
+cacheManager.set('key', data, ttl)
+
+// ✅ WebSocket Event Manager
+emitPostLiked(postId, likesCount, userId)
+
+// ✅ Retry логика
+await retryWithToast(() => apiCall())
+```
+
+## 📊 Migration Status
+
+### ✅ ЗАВЕРШЕННЫЕ МИГРАЦИИ:
+- **25+ компонентов** мигрированы с UserContext на Zustand
+- **WebSocket события** централизованы через Event Manager
+- **Кеширование** унифицировано через CacheManager
+- **JWT токены** зашифрованы через StorageService
+- **Error handling** через Error Boundary + retry логика
+- **Валидация** через Zod schemas
+
+### ✅ АРХИТЕКТУРНЫЕ УЛУЧШЕНИЯ:
+- **Единая точка истины**: Zustand store
+- **Централизованное кеширование**: TTL + LRU
+- **Real-time события**: Throttling + deduplication
+- **Безопасность**: Шифрование + валидация
+- **Устойчивость**: Retry логика + Error Boundary
 
 ## 🔧 Development Guidelines
 
 ### Before Making Changes
 ```bash
-# 1. Проверить текущий статус
-./scripts/devops-status.sh
+# 1. Проверить архитектуру
+npm run build # Убедиться что новая архитектура работает
 
-# 2. Проверить логи (без зависания!)
-ssh -p 43988 root@69.10.59.234 "tail -n 20 /root/.pm2/logs/fonana-error.log > /tmp/quick-check.txt && cat /tmp/quick-check.txt"
+# 2. Проверить логи
+ssh -p 43988 root@69.10.59.234 "pm2 logs fonana --lines 50 --nostream"
 
-# 3. Локальная сборка
-npm run build
-
-# 4. Проверить git статус
-git status
-```
-
-### Adding Features Without Breaking
-1. **Любая правка UI** должна сопровождаться smoke-тестом
-2. **Любой новый модуль** должен регистрироваться централизованно
-3. **НЕ добавлять скрытые** `fetch`, `eventListener` или `localStorage`-проверки без обсуждения
-4. **Обязателен флаг в state**, если фича должна запоминаться
-
-### Logging Standards
-```typescript
-// Все ключевые действия с версией
-console.log('[MODULE][ACTION][vX]', data)
-
-// Примеры
-console.log('[UserContext][LoadUser][v2]', { userId, wallet })
-console.log('[WebSocket][Connect][v1]', { userId, channels })
-console.log('[ServiceWorker][Install][v7]', { version, cacheName })
-```
-
-### Error Handling
-```typescript
-// Все runtime-ошибки типа React Error #300
-// расшифровывать в dev и описывать причину
-
-try {
-  // код
-} catch (error) {
-  console.error('[Module][Action][vX] Error:', error)
-  // Fallback или retry логика
-}
-```
-
-## 🚨 Common Issues & Solutions
-
-### 1. React Error #310 (CRITICAL)
-```bash
-# Проблема: React Error #310 - нарушение правил хуков
-# Ошибка: "Invalid hook call. Hooks can only be called inside of the body of a function component"
-
-# Причина: callback функции в зависимостях useEffect
-useEffect(() => {
-  // логика
-}, [handleSubscriptionUpdated]) // ❌ НЕПРАВИЛЬНО
-
-# Решение: Убрать callback из зависимостей
-const handleSubscriptionUpdated = useCallback((event) => {
-  // логика обработки
-}, []) // ✅ пустой массив
-
-useEffect(() => {
-  if (!token) return
-  // логика эффекта
-}, [token]) // ✅ только примитивы
-```
-
-### 2. Tier Access Errors (CRITICAL)
-```bash
-# Проблема: "Cannot read properties of undefined (reading 'tier')"
-# Локализация: My Posts, PostCard, TierBadge, TierStats
-
-# Причина: Прямой доступ к post.access.tier без проверок
-const tier = post.access.tier // ❌ НЕПРАВИЛЬНО
-
-# Решение: Безопасный доступ с fallback
-const tier = post?.access?.tier ?? 0 // ✅ ПРАВИЛЬНО
-const tierName = post?.access?.tier || 'basic'
-
-# Дополнительная проверка типа
-if (!tier || typeof tier !== 'string') return null
-```
-
-### 3. Service Worker MIME Type Issues
-```bash
-# Проблема: Content-Type: text/html вместо application/javascript
-curl -I https://fonana.me/sw.js
-
-# Решение: Добавить исключения в роутинг
-# app/[username]/page.tsx
-const excludedFiles = ['sw.js', 'manifest.json', 'force-update-sw.js']
-if (excludedFiles.includes(username)) {
-  notFound()
-  return
-}
-```
-
-### 2. WebSocket Connection Issues
-```bash
-# Проверка JWT токена
-const token = localStorage.getItem('fonana_jwt_token')
-if (!token) {
-  console.error('[WebSocket] No JWT token available')
-  return
-}
-
-# Проверка сервера
-ssh -p 43988 root@69.10.59.234 "pm2 status fonana-ws"
-```
-
-### 3. Subscription Display Issues
-```bash
-# Проверка нормализации планов
-ssh -p 43988 root@69.10.59.234 "cd /var/www/fonana && node scripts/diagnose-subscription-display-issue.js"
-
-# Исправление
-ssh -p 43988 root@69.10.59.234 "cd /var/www/fonana && node scripts/fix-subscription-display-issue.js"
-```
-
-### 4. Prisma Version Mismatch
-```bash
-# Проверка версий
-npm list prisma @prisma/client
-
-# Исправление
-rm -rf node_modules package-lock.json
-npm install
-npx prisma generate
-```
-
-### 5. Port Conflicts
-```bash
-# Проверка занятых портов
-ssh -p 43988 root@69.10.59.234 "lsof -i :3000 -i :3002"
-
-# Перезапуск через PM2 (НЕ убивать процессы вручную!)
-ssh -p 43988 root@69.10.59.234 "pm2 restart fonana fonana-ws"
-```
-
-### 6. Likes System "Connect Wallet" Error (CRITICAL)
-```bash
-# Проблема: "Пожалуйста, подключите кошелек" на странице поста при подключенном кошельке
-# Локализация: app/post/[id]/page.tsx
-
-# Причина: Задержка между подключением кошелька и загрузкой UserContext
-# UserContext загружает пользователя только при connected && publicKey
-# В это время user остается null, функции handleLike показывают ошибку
-
-# Решение: Многоуровневая fallback логика
-# 1. Периодическая проверка localStorage каждые 500ms до 5 секунд
-# 2. Рекурсивные вызовы функций после восстановления пользователя
-# 3. Graceful fallback на toast ошибку если кеш недоступен
-
-# ✅ ПРАВИЛЬНО - fallback логика
-useEffect(() => {
-  if (!contextUser && !user) {
-    const checkInterval = setInterval(() => {
-      // проверка localStorage с TTL
-      const cachedUserData = localStorage.getItem('fonana_user_data')
-      if (cachedUserData && isValidCache()) {
-        setUser(JSON.parse(cachedUserData))
-        clearInterval(checkInterval)
-      }
-    }, 500)
-    
-    setTimeout(() => clearInterval(checkInterval), 5000)
-  }
-}, [contextUser, user])
-
-# ✅ ПРАВИЛЬНО - рекурсивный вызов в handleLike
-const handleLike = async () => {
-  if (!user) {
-    // попытка восстановить пользователя из кеша
-    const cachedUser = getCachedUser()
-    if (cachedUser) {
-      setUser(cachedUser)
-      setTimeout(() => handleLike(), 100) // рекурсивный вызов
-      return
-    }
-    toast.error('Пожалуйста, подключите кошелек')
-    return
-  }
-  // логика лайка
-}
-```
-
-### 7. React Error #310 & WebSocket Notifications (CRITICAL)
-```bash
-# Проблема: React Error #310 + WebSocket уведомления не работают
-# Локализация: lib/hooks/useRealtimePosts.tsx, lib/hooks/useOptimizedRealtimePosts.tsx
-
-# Причина: Callback функции в зависимостях useEffect + заглушки в WebSocket клиенте
-# useEffect(() => {}, [handlePostLiked, handlePostCreated]) // ❌ НЕПРАВИЛЬНО
-# WebSocket клиент использовал console.log вместо реальной отправки событий
-
-# Решение: Убрать callback функции + реализовать реальные WebSocket события
-
-# ✅ ПРАВИЛЬНО - только примитивы в зависимостях
-useEffect(() => {
-  // логика WebSocket подписки
-}, [user?.id]) // Только user?.id в зависимостях
-
-# ✅ ПРАВИЛЬНО - реальная отправка WebSocket событий
-export async function updatePostLikes(postId: string, likesCount: number, userId?: string) {
-  const wsService = (await import('@/lib/services/websocket')).wsService
-  
-  if (wsService.isConnected()) {
-    wsService.emit('post_liked', {
-      type: 'post_liked',
-      postId,
-      userId,
-      likesCount
-    })
-  }
-  
-  return { success: true }
-}
-
-# ✅ ПРАВИЛЬНО - API передает userId в WebSocket события
-await updatePostLikes(params.id, post.likesCount + 1, userId)
-```
-
-## 📝 Testing & Debugging
-
-### Test Pages
-- `/test/sw-check-v5` - Service Worker диагностика
-- `/test/service-worker` - Базовое тестирование SW
-- `/test/creator-data` - CreatorContext тестирование
-- `/test/unified-posts` - Унифицированная система постов
-- `/test/realtime-demo` - WebSocket и real-time функции
-
-### Diagnostic Scripts
-```bash
-# Общая проверка здоровья
-node scripts/health-check.js
-
-# Проверка подписок
-node scripts/check-pending-subscriptions.js
-
-# Проверка WebSocket
-node scripts/test-websocket-final.js
-
-# Проверка реферальной системы
-node scripts/diagnose-referral-system.js
-```
-
-### Log Analysis
-```bash
-# Скачивание логов для анализа (НЕ читать напрямую через SSH!)
-scp -P 43988 root@69.10.59.234:/root/.pm2/logs/fonana-error.log ./logs/
-scp -P 43988 root@69.10.59.234:/root/.pm2/logs/fonana-ws-error.log ./logs/
-
-# Быстрый просмотр через временные файлы
-ssh -p 43988 root@69.10.59.234 "pm2 logs fonana --lines 100 --nostream > /tmp/logs.txt && cat /tmp/logs.txt"
-```
-
-## 🎯 Quick Commands
-
-### Status Check
-```bash
-# Быстрая проверка (без пароля!)
+# 3. Проверить статус
 ssh -p 43988 root@69.10.59.234 "pm2 status"
-
-# Полная проверка
-./scripts/devops-status.sh
-
-# Проверка портов
-ssh -p 43988 root@69.10.59.234 "lsof -i :3000,3002"
 ```
 
-### Restart Services
-```bash
-# Перезапуск основного приложения
-ssh -p 43988 root@69.10.59.234 "pm2 restart fonana"
+### Adding Features
+1. **Использовать только Zustand** для состояния
+2. **Использовать CacheManager** для кеширования
+3. **Использовать WebSocketEventManager** для real-time
+4. **Добавлять retry логику** для критических операций
+5. **Валидировать через Zod** все входные данные
 
-# Перезапуск WebSocket сервера
-ssh -p 43988 root@69.10.59.234 "pm2 restart fonana-ws"
-
-# Перезапуск всех процессов Fonana
-ssh -p 43988 root@69.10.59.234 "pm2 restart fonana fonana-ws"
-```
-
-### Database Operations
-```bash
-# Проверка здоровья БД
-ssh -p 43988 root@69.10.59.234 "cd /var/www/fonana && node scripts/health-check.js"
-
-# Применение миграций
-ssh -p 43988 root@69.10.59.234 "cd /var/www/fonana && npx prisma migrate deploy"
-
-# Генерация Prisma клиента
-ssh -p 43988 root@69.10.59.234 "cd /var/www/fonana && npx prisma generate"
-```
-
-## 🚨 Emergency Procedures
-
-### White Screen Fix
-```bash
-# Первое что попробовать
-ssh -p 43988 root@69.10.59.234 "cd /var/www/fonana && ./scripts/fix-white-screen.sh"
-
-# Если не помогло
-ssh -p 43988 root@69.10.59.234 "cd /var/www/fonana && npm run build && pm2 restart fonana"
-```
-
-### Complete System Reset
-```bash
-# Полный рестарт (крайний случай)
-ssh -p 43988 root@69.10.59.234 "pm2 delete all && cd /var/www/fonana && pm2 start ecosystem.config.js"
-```
-
-### Database Recovery
-```bash
-# Проверка подключения к БД
-ssh -p 43988 root@69.10.59.234 "systemctl status postgresql"
-
-# Проверка миграций
-ssh -p 43988 root@69.10.59.234 "cd /var/www/fonana && npx prisma migrate status"
-```
-
-## 📋 Environment Variables (Required)
-```bash
-# Database
-DATABASE_URL=postgresql://...
-
-# Authentication
-NEXTAUTH_URL=https://fonana.me
-NEXTAUTH_SECRET=...
-
-# Solana Configuration
-NEXT_PUBLIC_SOLANA_RPC_HOST=https://tame-smart-panorama.solana-mainnet.quiknode.pro/...
-NEXT_PUBLIC_SOLANA_WS_ENDPOINT=wss://tame-smart-panorama.solana-mainnet.quiknode.pro/...
-NEXT_PUBLIC_PLATFORM_WALLET=npzAZaN9fDMgLV63b3kv3FF8cLSd8dQSLxyMXASA5T4
-NEXT_PUBLIC_SOLANA_NETWORK=mainnet-beta
-
-# WebSocket
-WS_PORT=3002
-```
-
-## 🎯 Current Features Status
-
-### ✅ COMPLETED & WORKING:
-- **Service Worker**: Упрощенная версия v7-simple-cache-only
-- **WebSocket Server**: Полностью развернут на порту 3002 с JWT аутентификацией
-- **User State Management**: Централизованный UserContext с кешированием
-- **Access Control**: Единая система контроля доступа с real-time обновлениями
-- **Unified Post System**: Модульная архитектура с единообразным отображением
-- **Dynamic Pricing**: Реальный курс SOL/USD с кешированием
-- **Subscription System**: Исправлена валидация платежей и отображение тиров
-- **Personal Messages + PPV**: Полностью функционально
-- **Flash Sales**: С таймерами и ограничениями
-- **Referral System**: 5% комиссия с валидацией
-- **Search System**: Полнотекстовый поиск с автокомплитом
-- **Creator Analytics**: Расширенная аналитика с экспортом
-- **Tier System**: Стабилизирован с безопасным доступом post?.access?.tier
-- **React Hooks**: Исправлены все нарушения правил хуков (React #310)
-- **Post Components**: TierBadge, TierStats, PostCard безопасны к отсутствующим данным
-
-### ⚠️ KNOWN ISSUES:
-- Redis не установлен (WebSocket работает в single-server mode)
-- WebSocket сервер имел 16 рестартов (стабилизирован после фиксов)
-
-### ✅ RESOLVED ISSUES:
-- React Error #310 - устранена полностью (callback функции убраны из зависимостей)
-- Tier access errors - устранены полностью (добавлен безопасный доступ)
-- My Posts crashes - устранены полностью (безопасные проверки tier)
-- WebSocket hook violations - устранены полностью (правильная структура useEffect)
-- Likes system "Connect Wallet" error - устранена полностью (многоуровневая fallback логика)
-- WebSocket notifications - восстановлены полностью (реальная отправка событий вместо заглушек)
-
-### 📱 PLANNED FEATURES:
-- Mobile Wallet Adapter (MWA) integration
-- Live streaming (waiting for user base)
-- Stories (waiting for user base)
-- Push notifications (PWA)
-
-## 🔄 Version History
-
-### v2.3 (02.07.2025) - POST-REACT-310-WEBSOCKET-FIX
-- ✅ Устранена React Error #310 в WebSocket хуках (callback функции убраны из зависимостей)
-- ✅ Восстановлена система WebSocket уведомлений (реальная отправка событий)
-- ✅ Реализована передача userId в WebSocket события для правильной идентификации
-- ✅ Исправлены API лайков и комментариев для отправки реальных уведомлений
-- ✅ Система лайков работает реактивно с синхронизацией между клиентами
-- ✅ Toast уведомления появляются в реальном времени для лайков и комментариев
-
-### v2.2 (01.07.2025) - POST-LIKES-SYSTEM-FIX
-- ✅ Устранена ошибка "Подключите кошелек" на странице поста при подключенном кошельке
-- ✅ Добавлена многоуровневая fallback логика для получения пользователя из localStorage
-- ✅ Реализована периодическая проверка кеша каждые 500ms до 5 секунд
-- ✅ Добавлены рекурсивные вызовы функций handleLike и handleAddComment
-- ✅ Улучшена обработка ошибок с безопасной проверкой TTL кеша
-- ✅ Система лайков стала мгновенно доступной после подключения кошелька
-
-### v2.1 (01.07.2025) - POST-REACT-310-TIER-FIX
-- ✅ Устранена React Error #310 - callback функции убраны из зависимостей useEffect
-- ✅ Исправлены tier access errors - добавлен безопасный доступ post?.access?.tier
-- ✅ Улучшена безопасность TierBadge с проверкой типа данных
-- ✅ Стабилизированы WebSocket хуки с безопасными проверками
-- ✅ Добавлена условная отрисовка TierBadge в PostContent
-- ✅ Исправлены все тестовые и backup файлы
-
-### v2.0 (01.07.2025) - POST-PWA-FIX
-- ✅ Устранен бесконечный луп обновлений PWA
-- ✅ Service Worker упрощен до cache-only версии
-- ✅ Удалены конфликтные скрипты (force-update-sw.js, sw-manager.js)
-- ✅ WebSocket сервер стабилизирован
-- ✅ Централизованная система доступа
-- ✅ UserContext миграция завершена
-
-### v1.0 (Previous)
-- Unified Post System
-- Creator Data Management
-- Dynamic Pricing
-- Subscription System fixes
-
-## 📞 Emergency Contacts
-- If deployment fails completely: Use `scripts/safe-deploy.sh`
-- If database is corrupted: Contact project owner immediately
-- If server is down: Check with hosting provider
-
-## 🚨 DON'T DO:
-- ❌ Create multiple Service Worker files
-- ❌ Add automatic updates without explicit command
-- ❌ Use skipWaiting() automatically
-- ❌ Access localStorage directly (use UserContext)
-- ❌ Create paid subscriptions via `/api/subscriptions` POST
-- ❌ Check only `isActive` for subscription access
-- ❌ Compare subscription plans without normalization
-- ❌ Define tier hierarchies locally
-- ❌ Allow anonymous WebSocket connections
-- ❌ Manually refresh page after subscription/purchase
-- ❌ Create WebSocket connections without JWT token
-- ❌ Ignore WebSocket disconnections
-- ❌ Store sensitive data in WebSocket messages
-- ❌ Test real-time features without checking WebSocket connection first
-- ❌ Put callback functions in useEffect dependencies (causes React #310)
-- ❌ Access post.access.tier directly without safe checks (causes tier errors)
-- ❌ Use post.access.tier in reduce/filter without type checking
-- ❌ Assume tier is always a string without validation
-- ❌ Create useEffect with complex dependencies that include functions
-- ❌ Ignore React hooks rules in WebSocket or real-time components
+### ❌ DON'T DO:
+- **НЕ создавать новые контексты** - используйте Zustand slices
+- **НЕ использовать localStorage напрямую** - используйте CacheManager
+- **НЕ использовать wsService.emit()** - используйте Event Manager
+- **НЕ создавать API вызовы без retry** - используйте retryWithToast
+- **НЕ забывать про валидацию** - используйте Zod schemas

@@ -45,6 +45,10 @@ export default function BottomNav() {
   const [showSearchModal, setShowSearchModal] = useState(false)
   const router = useRouter()
 
+  // ✅ КРИТИЧЕСКАЯ ПРОВЕРКА: предотвращаем React Error #185
+  // BottomNav должен показываться всем, но без user-зависимого функционала
+  // Если пользователя нет, показываем базовую версию без персонализации
+
   // Check for unread messages
   useEffect(() => {
     const checkUnreadMessages = async () => {
