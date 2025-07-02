@@ -6,7 +6,7 @@
 - **Deploy Script**: `./deploy-to-production.sh`
 - **Server Path**: `/var/www/fonana`
 - **Language**: English UI, Russian comments OK
-- **Status**: ✅ STABILIZED после фикса бесконечного лупа обновлений PWA (01.07.2025)
+- **Status**: ✅ STABILIZED после фикса React #310 и tier access errors (01.07.2025)
 
 ## Quick Start
 ```
@@ -19,7 +19,81 @@ Unified Post System completed with modular architecture
 UserContext migration completed - centralized user state management
 Service Worker simplified - no auto-updates, cache-only
 WebSocket server running on port 3002 with JWT auth
+Tier system stabilized with safe access patterns
 ```
+
+## 🚨 CRITICAL: React Hooks & Tier Access Rules
+
+### React Error #310 Prevention (CRITICAL)
+- **Причина**: Нарушение правил хуков - callback функции в зависимостях useEffect
+- **Локализация**: `lib/hooks/useRealtimePosts.tsx`, `lib/hooks/useOptimizedRealtimePosts.tsx`
+- **Решение**: Убрать callback функции из зависимостей useEffect
+
+### ✅ DO (React Hooks):
+```typescript
+// ✅ ПРАВИЛЬНО - callback вне зависимостей
+const handleSubscriptionUpdated = useCallback((event) => {
+  // логика обработки
+}, []) // пустой массив зависимостей
+
+useEffect(() => {
+  if (!token) return
+  // логика эффекта
+}, [token]) // только примитивы в зависимостях
+```
+
+### ❌ DON'T (React Hooks):
+```typescript
+// ❌ НЕПРАВИЛЬНО - callback в зависимостях
+useEffect(() => {
+  // логика
+}, [handleSubscriptionUpdated]) // НЕ ДЕЛАЙТЕ ТАК!
+```
+
+### Tier Access Safety (CRITICAL)
+- **Причина**: `Cannot read properties of undefined (reading 'tier')` при обращении к `post.access.tier`
+- **Локализация**: `PostCard`, `TierBadge`, `TierStats`, `PostContent`
+- **Решение**: Всегда использовать безопасный доступ с fallback
+
+### ✅ DO (Tier Access):
+```typescript
+// ✅ ПРАВИЛЬНО - безопасный доступ с проверками
+const tier = post?.access?.tier ?? 0
+const tierName = post?.access?.tier || 'basic'
+
+// Дополнительная проверка типа
+if (!tier || typeof tier !== 'string') return null
+
+// В reduce/filter операциях
+const tierStats = posts.reduce((acc, post) => {
+  const tier = post?.access?.tier
+  if (tier && typeof tier === 'string') {
+    acc[tier] = (acc[tier] || 0) + 1
+  }
+  return acc
+}, {} as Record<string, number>)
+```
+
+### ❌ DON'T (Tier Access):
+```typescript
+// ❌ НЕПРАВИЛЬНО - прямой доступ без проверок
+const tier = post.access.tier // Может вызвать ошибку!
+const tierName = post.access.tier.toLowerCase() // Опасно!
+
+// В reduce без проверок
+const tierStats = posts.reduce((acc, post) => {
+  acc[post.access.tier]++ // Может упасть!
+  return acc
+}, {})
+```
+
+### Components Requiring Safe Tier Access:
+- `components/posts/core/PostCard/index.tsx` - фоновая подсветка
+- `components/posts/core/TierBadge/index.tsx` - отображение badge
+- `components/posts/core/TierStats/index.tsx` - статистика тиров
+- `components/posts/core/PostContent/index.tsx` - условная отрисовка
+- `lib/hooks/useRealtimePosts.tsx` - WebSocket обновления
+- `lib/hooks/useOptimizedRealtimePosts.tsx` - оптимизированные обновления
 
 ## 🚨 CRITICAL: Service Worker & PWA Rules
 
@@ -362,7 +436,44 @@ try {
 
 ## 🚨 Common Issues & Solutions
 
-### 1. Service Worker MIME Type Issues
+### 1. React Error #310 (CRITICAL)
+```bash
+# Проблема: React Error #310 - нарушение правил хуков
+# Ошибка: "Invalid hook call. Hooks can only be called inside of the body of a function component"
+
+# Причина: callback функции в зависимостях useEffect
+useEffect(() => {
+  // логика
+}, [handleSubscriptionUpdated]) // ❌ НЕПРАВИЛЬНО
+
+# Решение: Убрать callback из зависимостей
+const handleSubscriptionUpdated = useCallback((event) => {
+  // логика обработки
+}, []) // ✅ пустой массив
+
+useEffect(() => {
+  if (!token) return
+  // логика эффекта
+}, [token]) // ✅ только примитивы
+```
+
+### 2. Tier Access Errors (CRITICAL)
+```bash
+# Проблема: "Cannot read properties of undefined (reading 'tier')"
+# Локализация: My Posts, PostCard, TierBadge, TierStats
+
+# Причина: Прямой доступ к post.access.tier без проверок
+const tier = post.access.tier // ❌ НЕПРАВИЛЬНО
+
+# Решение: Безопасный доступ с fallback
+const tier = post?.access?.tier ?? 0 // ✅ ПРАВИЛЬНО
+const tierName = post?.access?.tier || 'basic'
+
+# Дополнительная проверка типа
+if (!tier || typeof tier !== 'string') return null
+```
+
+### 3. Service Worker MIME Type Issues
 ```bash
 # Проблема: Content-Type: text/html вместо application/javascript
 curl -I https://fonana.me/sw.js
@@ -550,10 +661,19 @@ WS_PORT=3002
 - **Referral System**: 5% комиссия с валидацией
 - **Search System**: Полнотекстовый поиск с автокомплитом
 - **Creator Analytics**: Расширенная аналитика с экспортом
+- **Tier System**: Стабилизирован с безопасным доступом post?.access?.tier
+- **React Hooks**: Исправлены все нарушения правил хуков (React #310)
+- **Post Components**: TierBadge, TierStats, PostCard безопасны к отсутствующим данным
 
 ### ⚠️ KNOWN ISSUES:
 - Redis не установлен (WebSocket работает в single-server mode)
 - WebSocket сервер имел 16 рестартов (стабилизирован после фиксов)
+
+### ✅ RESOLVED ISSUES:
+- React Error #310 - устранена полностью (callback функции убраны из зависимостей)
+- Tier access errors - устранены полностью (добавлен безопасный доступ)
+- My Posts crashes - устранены полностью (безопасные проверки tier)
+- WebSocket hook violations - устранены полностью (правильная структура useEffect)
 
 ### 📱 PLANNED FEATURES:
 - Mobile Wallet Adapter (MWA) integration
@@ -562,6 +682,14 @@ WS_PORT=3002
 - Push notifications (PWA)
 
 ## 🔄 Version History
+
+### v2.1 (01.07.2025) - POST-REACT-310-TIER-FIX
+- ✅ Устранена React Error #310 - callback функции убраны из зависимостей useEffect
+- ✅ Исправлены tier access errors - добавлен безопасный доступ post?.access?.tier
+- ✅ Улучшена безопасность TierBadge с проверкой типа данных
+- ✅ Стабилизированы WebSocket хуки с безопасными проверками
+- ✅ Добавлена условная отрисовка TierBadge в PostContent
+- ✅ Исправлены все тестовые и backup файлы
 
 ### v2.0 (01.07.2025) - POST-PWA-FIX
 - ✅ Устранен бесконечный луп обновлений PWA
@@ -597,3 +725,9 @@ WS_PORT=3002
 - ❌ Ignore WebSocket disconnections
 - ❌ Store sensitive data in WebSocket messages
 - ❌ Test real-time features without checking WebSocket connection first
+- ❌ Put callback functions in useEffect dependencies (causes React #310)
+- ❌ Access post.access.tier directly without safe checks (causes tier errors)
+- ❌ Use post.access.tier in reduce/filter without type checking
+- ❌ Assume tier is always a string without validation
+- ❌ Create useEffect with complex dependencies that include functions
+- ❌ Ignore React hooks rules in WebSocket or real-time components
