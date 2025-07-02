@@ -27,21 +27,19 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
     [network]
   )
 
+  // SSR guard только для wallets
   const wallets = useMemo(() => {
-    try {
-      // Временно используем только PhantomWalletAdapter для диагностики SSR ошибки
-      const walletsArray = [
-        new PhantomWalletAdapter(),
-        // new SolflareWalletAdapter(),
-        // new TorusWalletAdapter(),
-      ]
-      console.log('[WalletProvider] Initialized wallets:', walletsArray.map(w => w.name))
-      return walletsArray
-    } catch (error) {
-      console.error('[WalletProvider] Error initializing wallet adapters:', error)
-      setHasError(true)
+    if (typeof window === 'undefined') {
+      console.log('[WalletProvider][SSR] Returning empty wallets array for SSR')
       return []
     }
+    const walletsArray = [
+      new PhantomWalletAdapter(),
+      // new SolflareWalletAdapter(),
+      // new TorusWalletAdapter(),
+    ]
+    console.log('[WalletProvider] Initialized wallets:', walletsArray.map(w => w.name))
+    return walletsArray
   }, [])
 
   useEffect(() => {
