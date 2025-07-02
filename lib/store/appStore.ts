@@ -481,6 +481,8 @@ export const useNotificationActions = () => {
       addNotification: () => {},
       setNotifications: () => {},
       markAsRead: () => {},
+      markAllAsRead: () => {},
+      deleteNotification: () => {},
       clearNotifications: () => {}
     }
   }
@@ -488,6 +490,8 @@ export const useNotificationActions = () => {
     addNotification: state.addNotification,
     setNotifications: state.setNotifications,
     markAsRead: state.markAsRead,
+    markAllAsRead: state.markAllAsRead,
+    deleteNotification: state.deleteNotification,
     clearNotifications: state.clearNotifications
   }))
 }
