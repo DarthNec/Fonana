@@ -5,7 +5,7 @@ import { useParams, useRouter } from 'next/navigation'
 import Image from 'next/image'
 import Link from 'next/link'
 import Avatar from '@/components/Avatar'
-import { useUserContext } from '@/lib/contexts/UserContext'
+import { useUserContext, User } from '@/lib/contexts/UserContext'
 import { 
   HeartIcon, 
   ChatBubbleLeftIcon, 
@@ -19,7 +19,7 @@ import {
 import { HeartIcon as HeartSolidIcon } from '@heroicons/react/24/solid'
 import { toast } from 'react-hot-toast'
 
-interface Post {
+interface PostData {
   id: string
   creator: {
     id: string
@@ -59,8 +59,9 @@ interface Comment {
 export default function PostPage() {
   const params = useParams()
   const router = useRouter()
-  const { user } = useUserContext()
-  const [post, setPost] = useState<Post | null>(null)
+  const { user: contextUser } = useUserContext()
+  const [user, setUser] = useState<User | null>(null)
+  const [post, setPost] = useState<PostData | null>(null)
   const [comments, setComments] = useState<Comment[]>([])
   const [isLiked, setIsLiked] = useState(false)
   const [likeCount, setLikeCount] = useState(0)
@@ -70,6 +71,72 @@ export default function PostPage() {
   const [error, setError] = useState<string | null>(null)
   const [commentError, setCommentError] = useState<string | null>(null)
   const [isSubmittingComment, setIsSubmittingComment] = useState(false)
+
+  // Получаем пользователя из контекста или localStorage
+  useEffect(() => {
+    if (contextUser) {
+      setUser(contextUser)
+    } else {
+      // Fallback: пытаемся получить пользователя из localStorage
+      try {
+        const cachedUserData = localStorage.getItem('fonana_user_data')
+        const cachedWallet = localStorage.getItem('fonana_user_wallet')
+        const cachedTimestamp = localStorage.getItem('fonana_user_timestamp')
+        
+        if (cachedUserData && cachedWallet && cachedTimestamp) {
+          const timestamp = parseInt(cachedTimestamp)
+          const now = Date.now()
+          const sevenDays = 7 * 24 * 60 * 60 * 1000
+          
+          // Проверяем, не истек ли кеш
+          if (now - timestamp < sevenDays) {
+            const userData = JSON.parse(cachedUserData)
+            setUser(userData)
+          }
+        }
+      } catch (error) {
+        console.error('Error loading cached user:', error)
+      }
+    }
+  }, [contextUser])
+
+  // Дополнительная проверка: если contextUser загружается, но user еще null, 
+  // проверяем localStorage каждые 500ms до 5 секунд
+  useEffect(() => {
+    if (!contextUser && !user) {
+      const checkInterval = setInterval(() => {
+        try {
+          const cachedUserData = localStorage.getItem('fonana_user_data')
+          const cachedWallet = localStorage.getItem('fonana_user_wallet')
+          const cachedTimestamp = localStorage.getItem('fonana_user_timestamp')
+          
+          if (cachedUserData && cachedWallet && cachedTimestamp) {
+            const timestamp = parseInt(cachedTimestamp)
+            const now = Date.now()
+            const sevenDays = 7 * 24 * 60 * 60 * 1000
+            
+            if (now - timestamp < sevenDays) {
+              const userData = JSON.parse(cachedUserData)
+              setUser(userData)
+              clearInterval(checkInterval)
+            }
+          }
+        } catch (error) {
+          console.error('Error checking cached user:', error)
+        }
+      }, 500)
+
+      // Останавливаем проверку через 5 секунд
+      const timeout = setTimeout(() => {
+        clearInterval(checkInterval)
+      }, 5000)
+
+      return () => {
+        clearInterval(checkInterval)
+        clearTimeout(timeout)
+      }
+    }
+  }, [contextUser, user])
 
   // Загружаем пост
   useEffect(() => {
@@ -161,7 +228,30 @@ export default function PostPage() {
 
   const handleLike = async () => {
     if (!user) {
-      alert('Пожалуйста, подключите кошелек')
+      // Проверяем, есть ли кешированные данные пользователя
+      try {
+        const cachedUserData = localStorage.getItem('fonana_user_data')
+        const cachedWallet = localStorage.getItem('fonana_user_wallet')
+        const cachedTimestamp = localStorage.getItem('fonana_user_timestamp')
+        
+        if (cachedUserData && cachedWallet && cachedTimestamp) {
+          const timestamp = parseInt(cachedTimestamp)
+          const now = Date.now()
+          const sevenDays = 7 * 24 * 60 * 60 * 1000
+          
+          if (now - timestamp < sevenDays) {
+            const userData = JSON.parse(cachedUserData)
+            setUser(userData)
+            // Рекурсивно вызываем функцию после установки пользователя
+            setTimeout(() => handleLike(), 100)
+            return
+          }
+        }
+      } catch (error) {
+        console.error('Error loading cached user for like:', error)
+      }
+      
+      toast.error('Пожалуйста, подключите кошелек')
       return
     }
 
@@ -193,7 +283,30 @@ export default function PostPage() {
 
   const handleAddComment = async () => {
     if (!user) {
-      alert('Пожалуйста, подключите кошелек')
+      // Проверяем, есть ли кешированные данные пользователя
+      try {
+        const cachedUserData = localStorage.getItem('fonana_user_data')
+        const cachedWallet = localStorage.getItem('fonana_user_wallet')
+        const cachedTimestamp = localStorage.getItem('fonana_user_timestamp')
+        
+        if (cachedUserData && cachedWallet && cachedTimestamp) {
+          const timestamp = parseInt(cachedTimestamp)
+          const now = Date.now()
+          const sevenDays = 7 * 24 * 60 * 60 * 1000
+          
+          if (now - timestamp < sevenDays) {
+            const userData = JSON.parse(cachedUserData)
+            setUser(userData)
+            // Рекурсивно вызываем функцию после установки пользователя
+            setTimeout(() => handleAddComment(), 100)
+            return
+          }
+        }
+      } catch (error) {
+        console.error('Error loading cached user for comment:', error)
+      }
+      
+      toast.error('Пожалуйста, подключите кошелек')
       return
     }
 
