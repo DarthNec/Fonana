@@ -203,15 +203,22 @@ export function useOptimizedPosts(options: UseOptimizedPostsOptions = {}): UseOp
     }
   }, [options.creatorId, options.category, options.sortBy, pageSize, publicKey, user?.id, cacheKey, enableCache])
 
-  // Debounced версия fetchPosts
+  // Debounced версия fetchPosts для фильтрации
   const debouncedFetchPosts = useMemo(
     () => debounce(fetchPosts, 300),
     [fetchPosts]
   )
 
-  // Загрузка первой страницы при монтировании
+  // Загрузка первой страницы при монтировании (без debounce)
   useEffect(() => {
-    debouncedFetchPosts(1, false)
+    console.log('[useOptimizedPosts] Initial load with options:', {
+      sortBy: options.sortBy,
+      category: options.category,
+      creatorId: options.creatorId
+    })
+    
+    // Первая загрузка без debounce для мгновенного отклика
+    fetchPosts(1, false)
     
     return () => {
       debouncedFetchPosts.cancel()
@@ -219,7 +226,26 @@ export function useOptimizedPosts(options: UseOptimizedPostsOptions = {}): UseOp
         abortControllerRef.current.abort()
       }
     }
-  }, [debouncedFetchPosts])
+  }, []) // Пустой массив зависимостей - только при монтировании
+
+  // Отслеживание изменений параметров (с debounce для фильтрации)
+  useEffect(() => {
+    // Пропускаем первую загрузку, так как она уже обработана выше
+    if (posts.length === 0) return
+    
+    console.log('[useOptimizedPosts] Parameters changed, refreshing with debounce:', {
+      sortBy: options.sortBy,
+      category: options.category,
+      creatorId: options.creatorId
+    })
+    
+    // Используем debounce для фильтрации, чтобы избежать частых запросов
+    debouncedFetchPosts(1, false)
+    
+    return () => {
+      debouncedFetchPosts.cancel()
+    }
+  }, [options.sortBy, options.category, options.creatorId, debouncedFetchPosts])
 
   // Загрузить больше постов
   const loadMore = useCallback(() => {
@@ -232,13 +258,20 @@ export function useOptimizedPosts(options: UseOptimizedPostsOptions = {}): UseOp
 
   // Обновить посты (с опцией очистки кеша)
   const refresh = useCallback((clearCache: boolean = false) => {
+    console.log('[useOptimizedPosts] Refresh called with clearCache:', clearCache)
+    
     if (clearCache && enableCache) {
       postsCache.delete(cacheKey)
     }
     setPage(1)
     setHasMore(true)
-    debouncedFetchPosts(1, false)
-  }, [debouncedFetchPosts, cacheKey, enableCache])
+    
+    // Отменяем предыдущий debounced вызов
+    debouncedFetchPosts.cancel()
+    
+    // Принудительная загрузка без debounce для мгновенного отклика
+    fetchPosts(1, false)
+  }, [fetchPosts, cacheKey, enableCache])
 
   // Сохранение позиции скролла при unmount
   useEffect(() => {
