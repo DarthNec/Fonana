@@ -50,6 +50,9 @@ export default function RevampedFeedPage() {
   const [sortBy, setSortBy] = useState<'latest' | 'popular' | 'trending' | 'subscribed'>('latest')
   const categoryScrollRef = useRef<HTMLDivElement>(null)
   
+  // Флаг для отслеживания первой загрузки
+  const [isInitialized, setIsInitialized] = useState(false)
+  
   // Модалки
   const [showCreateModal, setShowCreateModal] = useState(false)
   const [showSubscribeModal, setShowSubscribeModal] = useState(false)
@@ -98,10 +101,22 @@ export default function RevampedFeedPage() {
     }
   }, [inView, hasMore, isLoadingMore, loadMore])
 
-  // Очищаем кеш при смене категории или сортировки
+  // Инициализация при первой загрузке
   useEffect(() => {
-    refresh(true)
-  }, [selectedCategory, sortBy])
+    if (!isInitialized) {
+      console.log('[FeedPage] Initializing with sortBy:', sortBy)
+      refresh(true)
+      setIsInitialized(true)
+    }
+  }, [isInitialized, sortBy, refresh])
+
+  // Очищаем кеш при смене категории или сортировки (только после инициализации)
+  useEffect(() => {
+    if (isInitialized) {
+      console.log('[FeedPage] Filter changed - refreshing posts:', { selectedCategory, sortBy })
+      refresh(true)
+    }
+  }, [selectedCategory, sortBy, isInitialized, refresh])
 
   // Посты уже отсортированы на сервере в зависимости от sortBy
   const filteredAndSortedPosts = useMemo(() => {
@@ -251,7 +266,11 @@ export default function RevampedFeedPage() {
             {sortOptions.map((option) => (
               <button
                 key={option.value}
-                onClick={() => setSortBy(option.value as 'latest' | 'popular' | 'trending' | 'subscribed')}
+                onClick={() => {
+                  const newSortBy = option.value as 'latest' | 'popular' | 'trending' | 'subscribed'
+                  console.log('[FeedPage] Sort filter clicked:', { from: sortBy, to: newSortBy })
+                  setSortBy(newSortBy)
+                }}
                 className={`
                   flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-all whitespace-nowrap
                   ${sortBy === option.value
