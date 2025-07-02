@@ -16,7 +16,8 @@ export default function UserProfileShortcut() {
           username === 'force-update-sw.js' || 
           username === 'force-refresh.js' ||
           username === 'sw.js' ||
-          username === 'manifest.json') {
+          username === 'manifest.json' ||
+          username === 'react-error-debug') {
         // This is likely a static file, not a username
         notFound()
         return
