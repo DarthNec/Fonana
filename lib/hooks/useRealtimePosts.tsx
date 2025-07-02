@@ -278,7 +278,7 @@ export function useRealtimePosts({
       window.removeEventListener('subscription-updated', handleWindowSubscriptionUpdated)
       window.removeEventListener('post-deleted', handleWindowPostDeleted)
     }
-  }, [user?.id]) // Убираем callback функции из зависимостей
+  }, [user?.id]) // Только user?.id в зависимостях
 
   // Уведомляем об изменениях только если есть callback и посты действительно изменились
   useEffect(() => {

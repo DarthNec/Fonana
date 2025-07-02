@@ -99,7 +99,7 @@ export async function POST(
 
       // Отправляем WebSocket событие об удалении лайка
       try {
-        await updatePostLikes(params.id, post.likesCount - 1)
+        await updatePostLikes(params.id, post.likesCount - 1, userId)
       } catch (error) {
         console.error('WebSocket notification failed:', error)
       }
@@ -162,7 +162,7 @@ export async function POST(
 
       // Отправляем WebSocket событие о новом лайке
       try {
-        await updatePostLikes(params.id, post.likesCount + 1)
+        await updatePostLikes(params.id, post.likesCount + 1, userId)
       } catch (error) {
         console.error('WebSocket notification failed:', error)
       }
