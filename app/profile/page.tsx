@@ -31,6 +31,7 @@ import UserSubscriptions from '@/components/UserSubscriptions'
 import Avatar from '@/components/Avatar'
 import { PostsContainer } from '@/components/posts/layouts/PostsContainer'
 import CreatePostModal from '@/components/CreatePostModal'
+import { TierStats } from '@/components/posts/core/TierStats'
 import toast from 'react-hot-toast'
 import { useTheme } from '@/lib/contexts/ThemeContext'
 import { isValidNickname, isReservedNickname } from '@/lib/utils/links'
@@ -182,7 +183,7 @@ function MyPostsSection() {
           </div>
 
           {/* Stats */}
-          <div className="grid grid-cols-3 gap-2 sm:gap-4">
+          <div className="grid grid-cols-3 gap-2 sm:gap-4 mb-4">
             <div className="bg-gray-50 dark:bg-slate-700/30 rounded-lg sm:rounded-xl p-3 sm:p-4 text-center">
               <p className="text-xs sm:text-sm text-gray-600 dark:text-slate-400">Total Posts</p>
               <p className="text-lg sm:text-2xl font-bold text-gray-900 dark:text-white">{posts.length}</p>
@@ -200,6 +201,16 @@ function MyPostsSection() {
               </p>
             </div>
           </div>
+
+          {/* Tier Statistics */}
+          <TierStats 
+            posts={posts}
+            onTierFilter={(tier) => {
+              // TODO: Реализовать фильтрацию по тиру
+              console.log(`Фильтровать по тиру: ${tier}`)
+              toast.success(`Фильтрация по тиру: ${tier}`)
+            }}
+          />
         </div>
 
         {/* Posts Container - унифицированный компонент с layout как в фиде */}
