@@ -1,4 +1,4 @@
 // This file is auto-generated during deployment
-export const APP_VERSION = '20250702-192159-82615b5'
-export const version = '20250702-192159-82615b5'
+export const APP_VERSION = '20250702-193646-0751c2b'
+export const version = '20250702-193646-0751c2b'
 export const buildDate = new Date().toISOString()
