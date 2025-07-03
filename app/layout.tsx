@@ -16,6 +16,7 @@ import BottomNav from '@/components/BottomNav'
 import ServiceWorkerRegistration from '@/components/ServiceWorkerRegistration'
 import { headers } from 'next/headers'
 import SolanaRateDisplay from '@/components/SolanaRateDisplay'
+import ClientShell from '@/components/ClientShell'
 
 const inter = Inter({ subsets: ['latin'] })
 
@@ -79,38 +80,40 @@ export default function RootLayout({
       <body className={inter.className}>
         <ThemeProvider>
           <ErrorBoundary>
-            <WalletProvider>
-              <WalletPersistenceProvider>
-                <AppProvider>
-                  <div className="min-h-screen bg-gray-50 dark:bg-slate-900 flex flex-col">
-                    {/* Navbar только на десктопе */}
-                    <div className="hidden md:block">
-                      <Navbar />
+            <ClientShell>
+              <WalletProvider>
+                <WalletPersistenceProvider>
+                  <AppProvider>
+                    <div className="min-h-screen bg-gray-50 dark:bg-slate-900 flex flex-col">
+                      {/* Navbar только на десктопе */}
+                      <div className="hidden md:block">
+                        <Navbar />
+                      </div>
+                      <main className="pt-0 flex-1 pb-14 md:pb-0 md:pt-20">
+                        {children}
+                      </main>
+                      <ReferralNotification />
+                      <Footer />
+                      <div className="block md:hidden">
+                        <BottomNav />
+                      </div>
                     </div>
-                    <main className="pt-0 flex-1 pb-14 md:pb-0 md:pt-20">
-                      {children}
-                    </main>
-                    <ReferralNotification />
-                    <Footer />
-                    <div className="block md:hidden">
-                      <BottomNav />
-                    </div>
-                  </div>
-                  <ServiceWorkerRegistration />
-                  <Toaster
-                    position="top-right"
-                    toastOptions={{
-                      duration: 5000, // Автоматическое закрытие через 5 секунд
-                      style: {
-                        background: '#1e293b',
-                        color: '#fff',
-                        border: '1px solid #334155',
-                      },
-                    }}
-                  />
-                </AppProvider>
-              </WalletPersistenceProvider>
-            </WalletProvider>
+                    <ServiceWorkerRegistration />
+                    <Toaster
+                      position="top-right"
+                      toastOptions={{
+                        duration: 5000, // Автоматическое закрытие через 5 секунд
+                        style: {
+                          background: '#1e293b',
+                          color: '#fff',
+                          border: '1px solid #334155',
+                        },
+                      }}
+                    />
+                  </AppProvider>
+                </WalletPersistenceProvider>
+              </WalletProvider>
+            </ClientShell>
           </ErrorBoundary>
         </ThemeProvider>
       </body>
