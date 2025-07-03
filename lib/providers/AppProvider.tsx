@@ -14,23 +14,26 @@ import { cacheManager } from '@/lib/services/CacheManager'
 import { LocalStorageCache } from '@/lib/services/CacheManager'
 import ErrorBoundary from '@/components/ErrorBoundary'
 import { useWallet } from '@solana/wallet-adapter-react'
+import { useRetry } from '@/lib/utils/retry'
+import { toast } from 'react-hot-toast'
+import { jwtManager } from '@/lib/utils/jwt'
 
 interface AppProviderProps {
   children: ReactNode
 }
 
 export function AppProvider({ children }: AppProviderProps) {
+  const [isInitialized, setIsInitialized] = useState(false)
+  const { publicKey, connected } = useWallet()
   const { 
+    user, 
     setUser, 
     setUserLoading, 
     setUserError,
     refreshUser,
-    user,
+    setNotifications,
     userLoading
   } = useAppStore()
-  
-  const { connected, publicKey } = useWallet()
-  const [isInitialized, setIsInitialized] = useState(false)
 
   // Debug логирование для отслеживания race conditions
   useEffect(() => {
@@ -38,7 +41,7 @@ export function AppProvider({ children }: AppProviderProps) {
       user: user?.id ? `User ${user.id}` : 'No user',
       userLoading,
       connected,
-      publicKey: publicKey?.toBase58() ? 'Has publicKey' : 'No publicKey',
+      publicKey: publicKey?.toBase58() || 'No publicKey',
       isInitialized,
       window: typeof window !== 'undefined' ? 'Client' : 'SSR'
     })

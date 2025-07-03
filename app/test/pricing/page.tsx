@@ -12,6 +12,7 @@ import { createPostPurchaseTransaction, calculatePaymentDistribution, formatSolA
 import { isValidSolanaAddress } from '@/lib/solana/config'
 import { connection } from '@/lib/solana/connection'
 import { useSolRate } from '@/lib/hooks/useSolRate'
+import ClientShell from '@/components/ClientShell'
 
 interface User {
   id: string
@@ -420,8 +421,8 @@ function PaymentBreakdown({ amount, hasReferrer, solRate }: {
 
 export default function PricingTestPage() {
   return (
-    <WalletProvider>
+    <ClientShell>
       <PricingDashboard />
-    </WalletProvider>
+    </ClientShell>
   )
 } 

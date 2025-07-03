@@ -1,12 +1,11 @@
-'use client'
-
 import CreatorsExplorer from '@/components/CreatorsExplorer'
+import ClientShell from '@/components/ClientShell'
 
 export default function CreatorsPage() {
   return (
-    <div className="min-h-screen bg-gradient-to-b from-slate-900 to-slate-800">
+    <ClientShell>
       {/* Creators Explorer */}
       <CreatorsExplorer />
-    </div>
+    </ClientShell>
   )
 } 

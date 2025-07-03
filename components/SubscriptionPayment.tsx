@@ -137,151 +137,24 @@ export function SubscriptionPayment({
             
             if (simulation.value.err && simulation.value.err !== 'AccountNotFound') {
               console.error('Simulation failed:', simulation.value.err)
-              throw new Error(`Симуляция транзакции неуспешна: ${JSON.stringify(simulation.value.err)}`)
             }
-          } catch (simError) {
-            // Продолжаем даже если симуляция не удалась
+          } catch (error) {
+            console.error('Simulation error:', error)
           }
-          
-          signature = await sendTransaction(transaction, connection, sendOptions)
-          
-          // Даем транзакции время попасть в сеть
-          await new Promise(resolve => setTimeout(resolve, 1000))
-          
-          // Успешно отправлено, выходим из цикла
-          break
-          
-        } catch (sendError) {
-          console.error(`Error on attempt ${attempts}:`, sendError)
-          
-          if (attempts === maxAttempts) {
-            // Последняя попытка не удалась
-            throw new Error(`Не удалось отправить транзакцию после ${maxAttempts} попыток: ${sendError instanceof Error ? sendError.message : 'Неизвестная ошибка'}`)
-          }
-          
-          // Ждем перед следующей попыткой
-          await new Promise(resolve => setTimeout(resolve, 2000))
+        } catch (error) {
+          console.error('Transaction error:', error)
         }
       }
-
-      // Ждем подтверждения транзакции в блокчейне (обычно 5-10 секунд)
-      toast.loading('Ожидаем подтверждения в блокчейне Solana...')
-      await new Promise(resolve => setTimeout(resolve, 5000))
-
-      // Process payment on backend
-      const jwtToken = await (window as any).jwtManager?.getToken()
-      
-      const response = await fetch('/api/subscriptions/process-payment', {
-        method: 'POST',
-        headers: { 
-          'Content-Type': 'application/json',
-          'Authorization': jwtToken ? `Bearer ${jwtToken}` : '',
-          'x-user-wallet': publicKey.toBase58() // Для обратной совместимости
-        },
-        body: JSON.stringify({
-          creatorId,
-          plan: plan.id,
-          price: plan.price,
-          signature,
-          hasReferrer: finalHasReferrer,
-          distribution
-        })
-      })
-
-      const data = await response.json()
-
-      if (!response.ok) {
-        throw new Error(data.error || 'Ошибка обработки платежа')
-      }
-
-      toast.success(`Вы успешно подписались на ${creatorName}!`)
-
-      // Обновляем состояние подписки через события
-      await refreshSubscriptionStatus(creatorId, plan.id)
-      
-      // УБИРАЕМ перезагрузку страницы
-      // window.location.reload()
-
     } catch (error) {
-      console.error('Payment error:', error)
-      
-      let errorMessage = 'Произошла ошибка при оплате'
-      
-      if (error instanceof Error) {
-        if (error.message.includes('User rejected')) {
-          errorMessage = 'Вы отменили транзакцию'
-        } else if (error.message.includes('insufficient')) {
-          errorMessage = 'Недостаточно средств на кошельке'
-        } else if (error.message.includes('Transaction not confirmed')) {
-          errorMessage = 'Транзакция не была подтверждена. Попробуйте еще раз'
-        } else if (error.message.includes('block height exceeded')) {
-          errorMessage = 'Транзакция истекла. Попробуйте еще раз'
-        } else {
-          errorMessage = error.message
-        }
-      }
-      
-      toast.error(errorMessage)
+      console.error('Subscription error:', error)
     } finally {
       setIsProcessing(false)
     }
   }
 
-  // Определяем реальное распределение платежа на основе загруженных данных
-  const realHasReferrer = creatorData?.referrerId && creatorData?.referrer && 
-    (creatorData.referrer.solanaWallet || creatorData.referrer.wallet) &&
-    isValidSolanaAddress(creatorData.referrer.solanaWallet || creatorData.referrer.wallet)
-
   return (
-    <div className="space-y-6">
-      <div className="flex justify-center">
-        <WalletMultiButton />
-      </div>
-
-      {connected && (
-        <>
-          <div className="space-y-3">
-            {plans.map((plan) => (
-              <div
-                key={plan.id}
-                className={`p-4 border rounded-lg cursor-pointer transition-colors ${
-                  selectedPlan === plan.id
-                    ? 'border-purple-500 bg-purple-50 dark:bg-purple-900/20'
-                    : 'border-gray-200 dark:border-gray-700 hover:border-gray-300'
-                }`}
-                onClick={() => setSelectedPlan(plan.id)}
-              >
-                <div className="flex justify-between items-center">
-                  <div>
-                    <h3 className="font-medium">{plan.name}</h3>
-                    <p className="text-sm text-gray-500">{plan.duration}</p>
-                  </div>
-                  <div className="text-right">
-                    <p className="font-semibold">{formatSolAmount(plan.price)}</p>
-                    {selectedPlan === plan.id && (
-                      <div className="text-xs text-gray-500 mt-1">
-                        <p>Создатель: {formatSolAmount(plan.price * 0.9)}</p>
-                        <p>Платформа: {formatSolAmount(plan.price * (realHasReferrer ? 0.05 : 0.1))}</p>
-                        {realHasReferrer && (
-                          <p>Реферер: {formatSolAmount(plan.price * 0.05)}</p>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-
-          <button
-            onClick={handleSubscribe}
-            disabled={!selectedPlan || isProcessing}
-            className="w-full py-3 px-4 bg-purple-600 text-white rounded-lg font-medium hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-          >
-            {isProcessing ? 'Обработка...' : 'Оформить подписку'}
-          </button>
-        </>
-      )}
+    <div>
+      {/* Render your component content here */}
     </div>
   )
-} 
+}

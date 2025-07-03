@@ -1,5 +1,6 @@
 'use client'
 
+import { useWallet, useConnection } from '@solana/wallet-adapter-react'
 import { useState, useEffect } from 'react'
 import Avatar from './Avatar'
 import { 
@@ -10,7 +11,6 @@ import {
   XMarkIcon
 } from '@heroicons/react/24/outline'
 import { CheckBadgeIcon } from '@heroicons/react/24/solid'
-import { useWallet, useConnection } from '@solana/wallet-adapter-react'
 import { toast } from 'react-hot-toast'
 import { 
   createSubscriptionTransaction, 

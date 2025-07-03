@@ -11,12 +11,10 @@ import {
 } from '@solana/wallet-adapter-wallets'
 import { clusterApiUrl } from '@solana/web3.js'
 import '@solana/wallet-adapter-react-ui/styles.css'
-import { useWallet } from '@solana/wallet-adapter-react'
 
 export function WalletProvider({ children }: { children: React.ReactNode }) {
   const [mounted, setMounted] = useState(false)
   const [hasError, setHasError] = useState(false)
-  const { connected, publicKey } = useWallet()
   
   // Get network from environment or default to mainnet
   const network = WalletAdapterNetwork.Mainnet

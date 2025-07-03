@@ -8,6 +8,9 @@ const WALLET_PERSISTENCE_KEY = 'fonana_wallet_persistence'
 
 export function useWalletPersistence() {
   const { connected, wallet, publicKey, connecting, select, connect } = useWallet()
+  if (typeof window === 'undefined') {
+    console.error('[SSR Guard] useWallet() called on server (useWalletPersistence)')
+  }
 
   // Сохраняем состояние подключения при изменении
   useEffect(() => {
