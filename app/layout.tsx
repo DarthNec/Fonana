@@ -1,3 +1,4 @@
+'use client'
 import './globals.css'
 import '@solana/wallet-adapter-react-ui/styles.css'
 import type { Metadata } from 'next'
