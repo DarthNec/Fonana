@@ -3,19 +3,7 @@ import './globals.css'
 import '@solana/wallet-adapter-react-ui/styles.css'
 import type { Metadata } from 'next'
 import { Inter } from 'next/font/google'
-import { WalletProvider } from '@/components/WalletProvider'
-import { WalletPersistenceProvider } from '@/components/WalletPersistenceProvider'
-import { AppProvider } from '@/lib/providers/AppProvider'
-import { Navbar } from '@/components/Navbar'
-import { Toaster } from 'react-hot-toast'
-import { ThemeProvider } from '@/lib/contexts/ThemeContext'
-import ErrorBoundary from '@/components/ErrorBoundary'
-import ReferralNotification from '@/components/ReferralNotification'
-import Footer from '@/components/Footer'
-import BottomNav from '@/components/BottomNav'
-import ServiceWorkerRegistration from '@/components/ServiceWorkerRegistration'
 import { headers } from 'next/headers'
-import SolanaRateDisplay from '@/components/SolanaRateDisplay'
 import ClientShell from '@/components/ClientShell'
 
 const inter = Inter({ subsets: ['latin'] })
@@ -57,19 +45,13 @@ export const metadata: Metadata = {
   },
 }
 
-export default function RootLayout({
-  children,
-}: {
-  children: React.ReactNode
-}) {
+export default function RootLayout({ children }: { children: React.ReactNode }) {
   const headersList = headers()
   const referrer = headersList.get('x-fonana-referrer')
   const isNewReferral = headersList.get('x-is-new-referral')
-  
   return (
     <html lang="en" suppressHydrationWarning>
       <head>
-        {/* УДАЛЕНЫ СКРИПТЫ ОБНОВЛЕНИЯ - ОСТАНОВКА БЕСКОНЕЧНОГО ЛУПА */}
         {referrer && (
           <meta name="x-fonana-referrer" content={referrer} />
         )}
@@ -78,44 +60,9 @@ export default function RootLayout({
         )}
       </head>
       <body className={inter.className}>
-        <ThemeProvider>
-          <ErrorBoundary>
-            <ClientShell>
-              <WalletProvider>
-                <WalletPersistenceProvider>
-                  <AppProvider>
-                    <div className="min-h-screen bg-gray-50 dark:bg-slate-900 flex flex-col">
-                      {/* Navbar только на десктопе */}
-                      <div className="hidden md:block">
-                        <Navbar />
-                      </div>
-                      <main className="pt-0 flex-1 pb-14 md:pb-0 md:pt-20">
-                        {children}
-                      </main>
-                      <ReferralNotification />
-                      <Footer />
-                      <div className="block md:hidden">
-                        <BottomNav />
-                      </div>
-                    </div>
-                    <ServiceWorkerRegistration />
-                    <Toaster
-                      position="top-right"
-                      toastOptions={{
-                        duration: 5000, // Автоматическое закрытие через 5 секунд
-                        style: {
-                          background: '#1e293b',
-                          color: '#fff',
-                          border: '1px solid #334155',
-                        },
-                      }}
-                    />
-                  </AppProvider>
-                </WalletPersistenceProvider>
-              </WalletProvider>
-            </ClientShell>
-          </ErrorBoundary>
-        </ThemeProvider>
+        <ClientShell>
+          {children}
+        </ClientShell>
       </body>
     </html>
   )
