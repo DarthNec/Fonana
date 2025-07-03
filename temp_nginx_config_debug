@@ -1,0 +1,22 @@
+error_log /var/log/nginx/fonana.error.log debug;
+
+server {
+    listen 80;
+    server_name fonana.me www.fonana.me 69.10.59.234;
+
+    location / {
+        return 301 https://$host$request_uri;
+    }
+}
+
+server {
+    listen 443 ssl http2;
+    server_name fonana.me www.fonana.me 69.10.59.234;
+
+    ssl_certificate /etc/letsencrypt/live/fonana.me/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/fonana.me/privkey.pem;
+    # include /etc/letsencrypt/options-ssl-nginx.conf; # Temporarily disabled for debugging
+    # ssl_dhparam /etc/letsencrypt/ssl-dhparams.pem; # Temporarily disabled for debugging
+    
+    client_max_body_size 100M;
+} 

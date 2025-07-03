@@ -1,8 +1,9 @@
 'use client'
 
+import { useState, useEffect } from 'react'
 import { useWallet } from '@solana/wallet-adapter-react'
-import { WalletMultiButton } from '@solana/wallet-adapter-react-ui'
-import { useEffect, useState } from 'react'
+import { useWalletModal, WalletMultiButton } from '@solana/wallet-adapter-react-ui'
+import { WalletIcon, ArrowRightOnRectangleIcon, ChevronDownIcon } from '@heroicons/react/24/outline'
 import toast from 'react-hot-toast'
 
 // Проверка мобильного устройства
@@ -34,13 +35,11 @@ const getPhantomDeeplink = () => {
   return `https://phantom.app/ul/browse/${appUrl}?ref=${currentUrl}`
 }
 
-interface MobileWalletConnectProps {
-  className?: string
-  inMenu?: boolean
-}
-
-export function MobileWalletConnect({ className, inMenu }: MobileWalletConnectProps) {
+export function MobileWalletConnect() {
   const { connected, connect, disconnect, wallet, select } = useWallet()
+  const { setVisible } = useWalletModal()
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false)
+  const [publicKey, setPublicKey] = useState<string | null>(null)
   const [isMobile, setIsMobile] = useState(false)
   const [hasPhantom, setHasPhantom] = useState(false)
 
@@ -72,11 +71,8 @@ export function MobileWalletConnect({ className, inMenu }: MobileWalletConnectPr
     return (
       <button
         onClick={handleMobileConnect}
-        className={className || (inMenu ? 
-          "w-full flex items-center justify-center gap-3 py-3 px-4 text-white rounded-xl font-medium transition-all duration-200 hover:opacity-90" :
-          "wallet-adapter-button wallet-adapter-button-trigger"
-        )}
-        style={!className && !inMenu ? {
+        className="w-full flex items-center justify-center gap-3 py-3 px-4 text-white rounded-xl font-medium transition-all duration-200 hover:opacity-90"
+        style={{
           backgroundColor: 'rgb(78, 54, 204)',
           color: 'white',
           padding: '0 24px',
@@ -90,7 +86,7 @@ export function MobileWalletConnect({ className, inMenu }: MobileWalletConnectPr
           cursor: 'pointer',
           fontWeight: '600',
           transition: 'all 0.2s'
-        } : undefined}
+        }}
       >
         {/* Phantom Logo */}
         <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
@@ -104,5 +100,5 @@ export function MobileWalletConnect({ className, inMenu }: MobileWalletConnectPr
   }
 
   // В остальных случаях используем стандартную кнопку
-  return <WalletMultiButton className={className} />
+  return <WalletMultiButton className="w-full flex items-center justify-center gap-3 py-3 px-4 text-white rounded-xl font-medium transition-all duration-200 hover:opacity-90" />
 } 

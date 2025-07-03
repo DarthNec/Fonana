@@ -307,6 +307,87 @@ eventManager.subscribe('creator_updated', (event) => {
 - Валидация данных через Zod
 - Безопасный доступ к вложенным свойствам
 
+### 5. SSR/CSR безопасность
+- Все Zustand хуки защищены SSR guards
+- Корректные fallback значения для серверного рендеринга
+- Предотвращение React Error #185 через архитектурные решения
+
+## Критическое исправление React Error #185
+
+### 🚨 Проблема (УСТРАНЕНА 03.01.2025)
+**React Error #185**: TypeError: Cannot read properties of null (reading 'useContext') во время SSR
+
+### 🔍 Корень проблемы
+- Zustand хуки (useUser, useCreator, useNotifications) вызывались во время Server-Side Rendering
+- React Context не инициализирован на сервере (null)
+- Вызов `useContext()` на null объекте → фатальный crash сайта
+- AppProvider возвращал `undefined` вместо корректного SSR fallback
+
+### ✅ Решение
+1. **SSR Guards для всех Zustand хуков**:
+```typescript
+// Пример SSR guard в useUser()
+export const useUser = () => {
+  // SSR guard - возвращаем null на сервере
+  if (typeof window === 'undefined') {
+    return null
+  }
+  return useAppStore(state => state.user)
+}
+
+export const useUserLoading = () => {
+  if (typeof window === 'undefined') {
+    return false
+  }
+  return useAppStore(state => state.userLoading)
+}
+
+export const useUserActions = () => {
+  if (typeof window === 'undefined') {
+    return {
+      setUser: () => {},
+      refreshUser: async () => {},
+      updateProfile: async () => {},
+      deleteAccount: async () => {}
+    }
+  }
+  return useAppStore(state => ({
+    setUser: state.setUser,
+    refreshUser: state.refreshUser,
+    updateProfile: state.updateProfile,
+    deleteAccount: state.deleteAccount
+  }))
+}
+```
+
+2. **Исправленный AppProvider**:
+```typescript
+export function AppProvider({ children }: { children: React.ReactNode }) {
+  // SSR guard с корректным fallback
+  if (typeof window === 'undefined') {
+    return (
+      <ErrorBoundary>
+        <div className="app-provider">{children}</div>
+      </ErrorBoundary>
+    )
+  }
+  
+  // Остальная логика инициализации...
+}
+```
+
+3. **Защищенные хуки**:
+- ✅ `useUser()`, `useUserLoading()`, `useUserError()`, `useUserActions()`
+- ✅ `useNotifications()`, `useNotificationsLoading()`, `useNotificationActions()`
+- ✅ `useCreator()`, `useCreatorLoading()`, `useCreatorError()`, `useCreatorActions()`
+
+### 📊 Результат исправления
+- **Коммит**: dad3277 - SSR guards для всех Zustand хуков
+- **Статус**: ✅ Продакшн сайт https://fonana.me работает стабильно
+- **Сборка**: 69/69 страниц без ошибок
+- **Логи**: Чистые, без SSR ошибок
+- **API версия**: "20250703-001730-react-error-185-fixed"
+
 ## Миграция с React Context
 
 ### Удаленные компоненты
@@ -316,12 +397,13 @@ eventManager.subscribe('creator_updated', (event) => {
 - ❌ `lib/hooks/useCreatorData.ts`
 
 ### Замененные хуки
-- `useUserContext()` → `useAppStore(state => state.user)`
-- `useNotificationContext()` → `useAppStore(state => state.notifications)`
-- `useCreatorData()` → `useAppStore(state => state.creatorData)`
+- `useUserContext()` → `useUser()` (с SSR guard)
+- `useNotificationContext()` → `useNotifications()` (с SSR guard)
+- `useCreatorData()` → `useCreator()` (с SSR guard)
 
 ### Обновленные компоненты
 - ✅ 25+ компонентов мигрированы на Zustand
 - ✅ Все импорты обновлены
 - ✅ Типизация исправлена
-- ✅ Сборка успешна 
+- ✅ SSR guards добавлены во все хуки
+- ✅ Сборка успешна без React Error #185 

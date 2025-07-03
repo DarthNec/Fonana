@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react'
 import { useWallet } from '@solana/wallet-adapter-react'
+import { useUser } from '@/lib/store/appStore'
 import { toast } from 'react-hot-toast'
 import { 
   BoltIcon, 
@@ -19,6 +20,7 @@ interface FlashSalesListProps {
 
 export default function FlashSalesList({ isOwner = false }: FlashSalesListProps) {
   const { publicKey } = useWallet()
+  const user = useUser()
   const [flashSales, setFlashSales] = useState<any[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [showCreateModal, setShowCreateModal] = useState(false)

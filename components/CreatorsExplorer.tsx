@@ -40,10 +40,11 @@ export default function CreatorsExplorer() {
   const [loading, setLoading] = useState(true)
   const [subscribedCreatorIds, setSubscribedCreatorIds] = useState<string[]>([])
   const [hiddenCreatorIds, setHiddenCreatorIds] = useState<string[]>([])
-  const { publicKey } = useWallet()
-  const [activeTab, setActiveTab] = useState<'recommendations' | 'subscriptions' | 'all'>('recommendations')
   const router = useRouter()
   const [showInfoBlocks, setShowInfoBlocks] = useState(true)
+  const [activeTab, setActiveTab] = useState<'recommendations' | 'subscriptions' | 'all'>('recommendations')
+
+  const { publicKey } = useWallet()
 
   // Load creators list
   useEffect(() => {

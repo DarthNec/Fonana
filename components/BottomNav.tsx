@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { usePathname } from 'next/navigation'
+import { usePathname, useRouter } from 'next/navigation'
 import { 
   HomeIcon, 
   Bars3Icon,
@@ -12,18 +12,21 @@ import {
   WalletIcon,
   CurrencyDollarIcon,
   MagnifyingGlassIcon,
-  ArrowRightOnRectangleIcon
+  ArrowRightOnRectangleIcon,
+  Cog6ToothIcon,
+  BellIcon,
+  RocketLaunchIcon
 } from '@heroicons/react/24/outline'
 import {
   HomeIcon as HomeSolidIcon,
   Bars3Icon as Bars3SolidIcon,
   PlusCircleIcon as PlusCircleSolidIcon,
   ChatBubbleLeftEllipsisIcon as ChatBubbleLeftEllipsisSolidIcon,
-  UserIcon as UserSolidIcon
+  UserIcon as UserSolidIcon,
+  RocketLaunchIcon as RocketLaunchIconSolid
 } from '@heroicons/react/24/solid'
 import { useUser } from '@/lib/store/appStore'
 import { useState, useEffect } from 'react'
-import { useWallet } from '@solana/wallet-adapter-react'
 import { useWalletModal } from '@solana/wallet-adapter-react-ui'
 import SolanaRateDisplay from '@/components/SolanaRateDisplay'
 import Avatar from '@/components/Avatar'
@@ -31,19 +34,21 @@ import { MobileWalletConnect } from '@/components/MobileWalletConnect'
 import { jwtManager } from '@/lib/utils/jwt'
 import CreatePostModal from '@/components/CreatePostModal'
 import { toast } from 'react-hot-toast'
-import { useRouter } from 'next/navigation'
 import SearchModal from '@/components/SearchModal'
+import NotificationsDropdown from './NotificationsDropdown'
+import { useWallet } from '@solana/wallet-adapter-react'
 
 export default function BottomNav() {
   const pathname = usePathname()
-  const user = useUser()
+  const router = useRouter()
   const { publicKey, disconnect } = useWallet()
   const { setVisible } = useWalletModal()
   const [unreadMessages, setUnreadMessages] = useState(0)
   const [isMenuOpen, setIsMenuOpen] = useState(false)
   const [showCreateModal, setShowCreateModal] = useState(false)
   const [showSearchModal, setShowSearchModal] = useState(false)
-  const router = useRouter()
+  const [showProfileMenu, setShowProfileMenu] = useState(false)
+  const user = useUser()
 
   // ✅ КРИТИЧЕСКАЯ ПРОВЕРКА: предотвращаем React Error #185
   // BottomNav должен показываться всем, но без user-зависимого функционала
@@ -287,10 +292,7 @@ export default function BottomNav() {
                   </button>
                 ) : (
                   <div className="w-full">
-                    <MobileWalletConnect 
-                      inMenu={true}
-                      className="w-full flex items-center gap-4 p-4 bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-2xl transition-all hover:scale-[1.02] hover:shadow-lg font-medium"
-                    />
+                    <MobileWalletConnect />
                   </div>
                 )}
               </div>

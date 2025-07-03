@@ -95,25 +95,18 @@ self.addEventListener('fetch', event => {
   }
   
   event.respondWith(
-    caches.match(event.request)
-      .then(cachedResponse => {
-        if (cachedResponse) {
-          return cachedResponse;
-        }
-        
-        return fetch(event.request)
-          .then(response => {
-            // Кешируем только успешные GET запросы
-            if (response.status === 200 && event.request.method === 'GET') {
-              const responseToCache = response.clone();
-              caches.open(CACHE_NAME)
-                .then(cache => {
-                  cache.put(event.request, responseToCache);
-                });
-            }
-            return response;
-          });
-      })
+    caches.open(CACHE_NAME).then(cache => {
+      return cache.match(event.request).then(response => {
+        const fetchPromise = fetch(event.request).then(networkResponse => {
+          if (networkResponse.status === 200) {
+            cache.put(event.request, networkResponse.clone());
+          }
+          return networkResponse;
+        });
+
+        return response || fetchPromise;
+      });
+    })
   );
 });
 

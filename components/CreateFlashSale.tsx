@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react'
 import { useWallet } from '@solana/wallet-adapter-react'
+import { useUser } from '@/lib/store/appStore'
 import { toast } from 'react-hot-toast'
 import { 
   BoltIcon, 
@@ -32,7 +33,8 @@ export default function CreateFlashSale({
   onClose, 
   onCreated 
 }: CreateFlashSaleProps) {
-  const { publicKey } = useWallet()
+  const { connected, publicKey } = useWallet()
+  const user = useUser()
   const [isCreating, setIsCreating] = useState(false)
   const [saleType, setSaleType] = useState<'post' | 'subscription'>('post')
   const [selectedPostId, setSelectedPostId] = useState(postId || '')

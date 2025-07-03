@@ -61,10 +61,11 @@ interface PurchaseModalProps {
 }
 
 export default function PurchaseModal({ post, onClose, onSuccess }: PurchaseModalProps) {
+  const [isProcessing, setIsProcessing] = useState(false)
+  const [error, setError] = useState<string | null>(null)
   const { publicKey, connected, sendTransaction } = useWallet()
   const user = useUser()
   const isUserLoading = useUserLoading()
-  const [isProcessing, setIsProcessing] = useState(false)
   const [creatorData, setCreatorData] = useState<any>(null)
   const { rate: solToUsdRate, isLoading: isRateLoading } = useSolRate()
   

@@ -44,28 +44,35 @@
 
 ## Потоки инициализации
 
-### 1. Основной поток инициализации приложения
+### 1. Основной поток инициализации приложения (с SSR guards)
 
 ```mermaid
 graph TD
-    A[App Load] --> B[AppProvider Mount]
-    B --> C[WalletProvider Mount]
-    C --> D{Wallet Connected?}
-    D -->|No| E[Show Connect Button]
-    D -->|Yes| F[Zustand Store Initialize]
-    F --> G[CacheManager Check]
-    G --> H{Cache Valid?}
-    H -->|Yes| I[Restore from Cache]
-    H -->|No| J[Create/Get User API]
-    J --> K{User Exists?}
-    K -->|No| L[Show Profile Setup]
-    K -->|Yes| M[Load User Data]
-    M --> N[CacheManager.set]
-    N --> O[Get JWT Token]
-    O --> P[WebSocket Connect]
-    P --> Q[EventManager Subscribe]
-    Q --> R[Load Notifications]
-    R --> S[UI Ready]
+    A[App Load] --> B{SSR or CSR?}
+    B -->|SSR| C[SSR Guards Active]
+    C --> D[Return Safe Fallbacks]
+    D --> E[Server Render Complete]
+    E --> F[Hydration Starts]
+    
+    B -->|CSR| G[AppProvider Mount]
+    F --> G
+    G --> H[WalletProvider Mount]
+    H --> I{Wallet Connected?}
+    I -->|No| J[Show Connect Button]
+    I -->|Yes| K[Zustand Store Initialize]
+    K --> L[CacheManager Check]
+    L --> M{Cache Valid?}
+    M -->|Yes| N[Restore from Cache]
+    M -->|No| O[Create/Get User API]
+    O --> P{User Exists?}
+    P -->|No| Q[Show Profile Setup]
+    P -->|Yes| R[Load User Data]
+    R --> S[CacheManager.set]
+    S --> T[Get JWT Token]
+    T --> U[WebSocket Connect]
+    U --> V[EventManager Subscribe]
+    V --> W[Load Notifications]
+    W --> X[UI Ready]
 ```
 
 ### 2. Поток обработки лайков
@@ -169,11 +176,65 @@ graph TD
 - isValidCache(timestamp: number): boolean
 ```
 
+## SSR Guards Architecture (КРИТИЧНО ДЛЯ ПРЕДОТВРАЩЕНИЯ React Error #185)
+
+### SSR Guard Pattern
+```typescript
+// Обязательный паттерн для всех Zustand хуков
+export const useUser = () => {
+  // КРИТИЧНО: SSR guard предотвращает React Error #185
+  if (typeof window === 'undefined') {
+    return null // Безопасное значение для сервера
+  }
+  return useAppStore(state => state.user)
+}
+
+export const useUserActions = () => {
+  if (typeof window === 'undefined') {
+    // Безопасные заглушки для сервера
+    return {
+      setUser: () => {},
+      refreshUser: async () => {},
+      updateProfile: async () => {},
+      deleteAccount: async () => {}
+    }
+  }
+  return useAppStore(state => ({
+    setUser: state.setUser,
+    refreshUser: state.refreshUser,
+    updateProfile: state.updateProfile,
+    deleteAccount: state.deleteAccount
+  }))
+}
+```
+
+### 🚨 Защищенные хуки (ОБЯЗАТЕЛЬНЫЕ SSR guards)
+- ✅ `useUser()` → `null` на сервере
+- ✅ `useUserLoading()` → `false` на сервере  
+- ✅ `useUserError()` → `null` на сервере
+- ✅ `useUserActions()` → пустые функции на сервере
+- ✅ `useNotifications()` → `[]` на сервере
+- ✅ `useNotificationsLoading()` → `false` на сервере
+- ✅ `useNotificationActions()` → пустые функции на сервере
+- ✅ `useCreator()` → `null` на сервере
+- ✅ `useCreatorLoading()` → `false` на сервере
+- ✅ `useCreatorActions()` → пустые функции на сервере
+
 ## Цепочки инициализации
 
-### 1. Цепочка подключения кошелька
+### 1. Цепочка подключения кошелька (с SSR защитой)
 
 ```
+🖥️ SSR Phase:
+SSR Guards активны → Все хуки возвращают безопасные значения
+    ↓
+Server Render завершен без ошибок
+    ↓
+HTML отправлен клиенту
+    ↓
+💻 Hydration Phase:
+typeof window !== 'undefined'
+    ↓
 WalletProvider.connected = true
     ↓
 AppProvider.useEffect([connected, publicKey])
