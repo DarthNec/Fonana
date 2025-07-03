@@ -1,10 +1,8 @@
-'use client'
 import './globals.css'
 import '@solana/wallet-adapter-react-ui/styles.css'
 import type { Metadata } from 'next'
 import { Inter } from 'next/font/google'
 import { headers } from 'next/headers'
-import ClientShell from '@/components/ClientShell'
 
 const inter = Inter({ subsets: ['latin'] })
 
@@ -60,9 +58,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         )}
       </head>
       <body className={inter.className}>
-        <ClientShell>
-          {children}
-        </ClientShell>
+        {children}
       </body>
     </html>
   )
