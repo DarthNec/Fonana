@@ -4,34 +4,40 @@
 version: '3.8'
 
 services:
-  db:
+  # PostgreSQL Database
+  postgres:
     image: postgres:15
+    container_name: fonana-postgres
     environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
-      POSTGRES_DB: fonana_dev
+      POSTGRES_DB: fonana
+      POSTGRES_USER: fonana_user
+      POSTGRES_PASSWORD: fonana_password
     ports:
-      - "5433:5432"
+      - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
+      - ./prisma/migrations:/docker-entrypoint-initdb.d
+    restart: unless-stopped
 
-  app:
-    build: 
+  # Fonana App
+  fonana:
+    build:
       context: .
-      dockerfile: Dockerfile.dev
+      dockerfile: Dockerfile
     ports:
       - "3000:3000"
     environment:
-      DATABASE_URL: postgresql://postgres:postgres@db:5432/fonana_dev
-      NEXTAUTH_URL: http://localhost:3000
-      NEXTAUTH_SECRET: dev-secret-change-me
-    volumes:
-      - .:/app
-      - /app/node_modules
-      - /app/.next
+      - NODE_ENV=development
+      - DATABASE_URL=postgresql://fonana_user:fonana_password@postgres:5432/fonana?schema=public
     depends_on:
-      - db
-    command: npm run dev
+      - postgres
+    restart: unless-stopped
+    networks:
+      - fonana-network
+
+networks:
+  fonana-network:
+    driver: bridge
 
 volumes:
   postgres_data: 

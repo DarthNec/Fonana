@@ -1,7 +1,7 @@
 'use client'
 
 import React, { useState, useRef, useEffect } from 'react'
-import { useNotifications, useUnreadCount, useNotificationActions, useNotificationsLoading } from '@/lib/store/appStore'
+// ❌ ВРЕМЕННО ОТКЛЮЧЕНО: import { useNotifications, useUnreadCount, useNotificationActions, useNotificationsLoading } from '@/lib/store/appStore'
 import {
   BellIcon,
   HeartIcon,
@@ -29,10 +29,19 @@ function formatTimeAgo(date: Date): string {
 }
 
 export default function NotificationsDropdown() {
-  const notifications = useNotifications()
-  const unreadCount = useUnreadCount()
-  const isLoading = useNotificationsLoading()
-  const { markAsRead, markAllAsRead, deleteNotification, clearNotifications } = useNotificationActions()
+  // ❌ ВРЕМЕННО ОТКЛЮЧЕНО: const notifications = useNotifications()
+  // ❌ ВРЕМЕННО ОТКЛЮЧЕНО: const unreadCount = useUnreadCount()
+  // ❌ ВРЕМЕННО ОТКЛЮЧЕНО: const isLoading = useNotificationsLoading()
+  // ❌ ВРЕМЕННО ОТКЛЮЧЕНО: const { markAsRead, markAllAsRead, deleteNotification, clearNotifications } = useNotificationActions()
+  
+  // ✅ ВРЕМЕННАЯ ЗАГЛУШКА:
+  const notifications: any[] = []
+  const unreadCount = 0
+  const isLoading = false
+  const markAsRead = () => {}
+  const markAllAsRead = () => {}
+  const deleteNotification = () => {}
+  const clearNotifications = () => {}
   
   const [isOpen, setIsOpen] = useState(false)
   const dropdownRef = useRef<HTMLDivElement>(null)

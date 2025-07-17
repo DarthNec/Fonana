@@ -6,6 +6,7 @@
 import { create } from 'zustand'
 import { devtools, persist } from 'zustand/middleware'
 import { UnifiedPost } from '@/types/posts'
+import { useCallback, useMemo } from 'react'
 
 // Типы пользователя
 export interface User {
@@ -406,10 +407,8 @@ export const useAppStore = create<AppStore>()(
       {
         name: 'fonana-app-store',
         partialize: (state) => ({
-          // Сохраняем только пользователя в localStorage
-          user: state.user,
-          notifications: state.notifications,
-          unreadCount: state.unreadCount
+          // ❌ ИСПРАВЛЕНО: НЕ сохраняем уведомления в localStorage - они должны загружаться с сервера
+          user: state.user
         })
       }
     ),
@@ -437,9 +436,20 @@ export const useUserError = () => {
   return useAppStore(state => state.userError)
 }
 
+// ✅ ИСПРАВЛЕНО: Мемоизируем selector для userActions
+const userActionsSelector = (state: AppStore) => ({
+  setUser: state.setUser,
+  setUserLoading: state.setUserLoading,
+  setUserError: state.setUserError,
+  refreshUser: state.refreshUser,
+  updateProfile: state.updateProfile,
+  deleteAccount: state.deleteAccount,
+  clearUser: state.clearUser
+})
+
 export const useUserActions = () => {
   if (typeof window === 'undefined') {
-    return {
+    return useMemo(() => ({
       setUser: () => {},
       setUserLoading: () => {},
       setUserError: () => {},
@@ -447,19 +457,12 @@ export const useUserActions = () => {
       updateProfile: async () => {},
       deleteAccount: async () => {},
       clearUser: () => {}
-    }
+    }), [])
   }
-  return useAppStore(state => ({
-    setUser: state.setUser,
-    setUserLoading: state.setUserLoading,
-    setUserError: state.setUserError,
-    refreshUser: state.refreshUser,
-    updateProfile: state.updateProfile,
-    deleteAccount: state.deleteAccount,
-    clearUser: state.clearUser
-  }))
+  return useAppStore(userActionsSelector)
 }
 
+// ✅ ИСПРАВЛЕНО: Простые селекторы для уведомлений
 export const useNotifications = () => {
   if (typeof window === 'undefined') return []
   return useAppStore(state => state.notifications)
@@ -475,25 +478,28 @@ export const useNotificationsLoading = () => {
   return useAppStore(state => state.notificationLoading)
 }
 
+// ✅ ИСПРАВЛЕНО: Мемоизируем selector для notificationActions
+const notificationActionsSelector = (state: AppStore) => ({
+  addNotification: state.addNotification,
+  setNotifications: state.setNotifications,
+  markAsRead: state.markAsRead,
+  markAllAsRead: state.markAllAsRead,
+  deleteNotification: state.deleteNotification,
+  clearNotifications: state.clearNotifications
+})
+
 export const useNotificationActions = () => {
   if (typeof window === 'undefined') {
-    return {
+    return useMemo(() => ({
       addNotification: () => {},
       setNotifications: () => {},
       markAsRead: () => {},
       markAllAsRead: () => {},
       deleteNotification: () => {},
       clearNotifications: () => {}
-    }
+    }), [])
   }
-  return useAppStore(state => ({
-    addNotification: state.addNotification,
-    setNotifications: state.setNotifications,
-    markAsRead: state.markAsRead,
-    markAllAsRead: state.markAllAsRead,
-    deleteNotification: state.deleteNotification,
-    clearNotifications: state.clearNotifications
-  }))
+  return useAppStore(notificationActionsSelector)
 }
 
 export const useCreator = () => {
@@ -516,21 +522,24 @@ export const useCreatorPosts = () => {
   return useAppStore(state => state.posts)
 }
 
+// ✅ ИСПРАВЛЕНО: Мемоизируем selector для creatorActions  
+const creatorActionsSelector = (state: AppStore) => ({
+  loadCreator: state.loadCreator,
+  refreshCreator: state.refreshCreator,
+  setCreator: state.setCreator,
+  setCreatorLoading: state.setCreatorLoading,
+  setCreatorError: state.setCreatorError
+})
+
 export const useCreatorActions = () => {
   if (typeof window === 'undefined') {
-    return {
+    return useMemo(() => ({
       loadCreator: async () => {},
       refreshCreator: async () => {},
       setCreator: () => {},
       setCreatorLoading: () => {},
       setCreatorError: () => {}
-    }
+    }), [])
   }
-  return useAppStore(state => ({
-    loadCreator: state.loadCreator,
-    refreshCreator: state.refreshCreator,
-    setCreator: state.setCreator,
-    setCreatorLoading: state.setCreatorLoading,
-    setCreatorError: state.setCreatorError
-  }))
+  return useAppStore(creatorActionsSelector)
 } 

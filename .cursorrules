@@ -1,0 +1,141 @@
+# Fonana Project Intelligence
+
+## Critical Architecture Patterns
+
+### Database Schema Reality
+- **NEVER assume Prisma schema matches database**: Always verify actual table structure via psql
+- **Missing fields pattern**: Frontend expects `name`, `username`, `backgroundImage`, `subscribers` but database only has `nickname`, `fullName`, `bio`, `avatar`
+- **Safe database access**: Always check `fonana/fonana_user:fonana_pass@localhost:5432` for actual structure
+- **Data normalization required**: Use PostNormalizer service to bridge schema gaps
+
+### API Strategy Pattern
+- **Simplified API approach**: Use route-simple.ts versions that avoid complex Prisma relationships
+- **API verification**: Always test endpoints via `/api/creators` and `/api/posts` before frontend work
+- **Broken relationship handling**: Skip complex joins that reference non-existent fields
+
+### Frontend Component Safety
+- **Null safety critical**: Components like CreatorsExplorer crash on undefined property access
+- **Fallback values required**: Always provide defaults for missing creator properties
+- **TypeScript mismatches**: Interfaces don't match database reality - add runtime checks
+
+### Development Workflow
+- **Document before fix**: Never attempt architectural fixes "on the fly" - creates more problems
+- **Playwright testing**: Use browser testing to verify actual rendering vs API responses
+- **Memory Bank first**: Always read Memory Bank files before any code changes
+
+## User Preferences
+
+### Communication Style
+- **Language**: Respond in Russian
+- **Problem approach**: Analyze and document issues comprehensively before proposing solutions
+- **Architecture focus**: Prioritize understanding system relationships over quick fixes
+
+### Development Methodology
+- **Systematic approach**: Complete architectural audits before modifications
+- **Testing verification**: Use Playwright for end-to-end verification
+- **Documentation driven**: Maintain detailed Memory Bank for session continuity
+
+## Project-Specific Patterns
+
+### Data Access Patterns
+```typescript
+// SAFE: Check for null/undefined
+const creatorName = creator.name || creator.fullName || creator.nickname || 'Unknown';
+
+// UNSAFE: Direct property access
+const creatorName = creator.name; // May be undefined
+```
+
+### Component Error Handling
+```typescript
+// SAFE: Defensive programming
+{creator.subscribers ? creator.subscribers.toLocaleString() : '0'}
+
+// UNSAFE: Assumes property exists
+{creator.subscribers.toLocaleString()} // Crashes if undefined
+```
+
+### API Response Validation
+```typescript
+// SAFE: Validate API responses
+const creators = await response.json();
+if (!Array.isArray(creators)) {
+  console.error('Invalid API response');
+  return [];
+}
+
+// UNSAFE: Assume API structure
+const creators = await response.json();
+return creators.map(c => c.name); // May fail
+```
+
+## Known Challenges
+
+### Schema Mismatch Issues
+- **Root cause**: Migration from Supabase to PostgreSQL lost many fields
+- **Symptoms**: TypeScript errors, runtime crashes, infinite loading states
+- **Solution pattern**: Use normalizer service and null-safe component code
+
+### WebSocket Authentication
+- **Issue**: JWT token not properly passed from NextAuth to WebSocket server
+- **Symptom**: WebSocket connections fail authentication
+- **Investigation needed**: NextAuth session to JWT token flow
+
+### Component State Management
+- **Pattern**: Components show "Loading..." indefinitely when API/component mismatch occurs
+- **Debug approach**: Check console errors, verify API responses, test component isolation
+
+## Evolution Tracking
+
+### Migration Decisions
+- **Supabase to PostgreSQL**: Simplified schema, lost complex relationships
+- **API simplification**: Created route-simple.ts versions to bypass broken Prisma queries
+- **Component adjustments**: Added fallback patterns for missing data
+
+### Technical Debt
+- **PostNormalizer service**: Temporary solution masking architectural problems
+- **Simplified APIs**: Limited functionality to avoid schema issues
+- **Frontend assumptions**: Components built for different data structure than database provides
+
+## Critical Files for Reference
+
+### Always Check First
+1. `memory-bank/` - Complete project context
+2. `docs/ARCHITECTURE_COMPLETE_MAP.md` - System overview
+3. `services/posts/normalizer.ts` - Data transformation patterns
+4. `components/CreatorsExplorer.tsx` - Example of problematic component patterns
+
+### Database Verification
+```bash
+# Verify actual database structure
+psql "postgresql://fonana_user:fonana_pass@localhost:5432/fonana" -c "\d users"
+
+# Check data quality
+psql "postgresql://fonana_user:fonana_pass@localhost:5432/fonana" -c "SELECT nickname, fullName FROM users LIMIT 5"
+```
+
+### Testing Patterns
+```bash
+# Verify API endpoints
+curl http://localhost:3000/api/creators | jq '.[0]'
+curl http://localhost:3000/api/posts | jq '.[0].creator'
+
+# Test frontend components
+# Use Playwright to navigate to /creators and /feed pages
+```
+
+## Success Patterns
+
+### Working Solutions
+- **Simplified API routes**: Bypass complex relationships, focus on basic data retrieval
+- **Memory Bank documentation**: Comprehensive system knowledge preservation
+- **Playwright testing**: Real browser verification of frontend/backend integration
+- **Defensive programming**: Null checks and fallback values prevent crashes
+
+### Effective Debugging
+1. **API first**: Verify endpoints return expected data structure
+2. **Component isolation**: Test components with known good data
+3. **Console monitoring**: JavaScript errors reveal schema mismatches
+4. **Database verification**: Check actual vs expected schema regularly
+
+Remember: This project has significant architectural debt that must be understood and worked around, not hastily "fixed" without comprehensive analysis. 

@@ -26,7 +26,7 @@ import { MobileWalletConnect } from './MobileWalletConnect'
 import { useWallet } from '@solana/wallet-adapter-react'
 import { useUser } from '@/lib/store/appStore'
 import SearchModal from './SearchModal'
-import { jwtManager } from '@/lib/utils/jwt'
+import { unreadMessagesService } from '@/lib/services/UnreadMessagesService'
 import { toast } from 'react-hot-toast'
 
 const navigation = [
@@ -58,40 +58,18 @@ export function Navbar() {
     return () => window.removeEventListener('scroll', handleScroll)
   }, [])
 
-  // Check for unread messages
+  // Subscribe to unread messages - FIXED: [critical_regression_infinite_loop_2025_017]
   useEffect(() => {
-    const checkUnreadMessages = async () => {
-      if (!user?.id) return
-      
-      try {
-        const token = await jwtManager.getToken()
-        if (!token) return
-
-        const response = await fetch('/api/conversations', {
-          headers: {
-            'Authorization': `Bearer ${token}`
-          }
-        })
-        
-        if (response.ok) {
-          const data = await response.json()
-          const unreadCount = data.conversations.reduce((count: number, conv: any) => 
-            count + (conv.unreadCount || 0), 0
-          )
-          setUnreadMessages(unreadCount)
-        }
-      } catch (error) {
-        console.error('Error checking unread messages:', error)
-      }
-    }
+    if (!user?.id) return
     
-    if (user?.id) {
-      checkUnreadMessages()
-      // Check every 10 seconds
-      const interval = setInterval(checkUnreadMessages, 10000)
-      return () => clearInterval(interval)
+    console.log('[Navbar] Subscribing to unread messages service')
+    const unsubscribe = unreadMessagesService.subscribe(setUnreadMessages)
+    
+    return () => {
+      console.log('[Navbar] Unsubscribing from unread messages service')
+      unsubscribe()
     }
-  }, [user])
+  }, [user?.id])
 
   const isActive = (href: string) => pathname === href
 

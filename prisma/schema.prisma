@@ -8,125 +8,67 @@ datasource db {
 }
 
 model User {
-  id             String         @id @default(cuid())
-  email          String?        @unique
-  emailVerified  DateTime?      @map("email_verified")
-  name           String?
-  image          String?
-  nickname       String?        @unique
-  fullName       String?
-  bio            String?
-  avatar         String?
-  backgroundImage String?
-  website        String?
-  twitter        String?
-  telegram       String?
-  location       String?
-  createdAt      DateTime       @default(now())
-  updatedAt      DateTime       @updatedAt
-  isVerified     Boolean        @default(false)
-  isCreator      Boolean        @default(false)
-  followersCount Int            @default(0)
-  followingCount Int            @default(0)
-  postsCount     Int            @default(0)
-  
-  // Wallet fields
-  wallet         String?        @unique
-  solanaWallet   String?        @unique @map("solana_wallet")
-  
-  // Relations
-  comments       Comment[]
-  follows        Follow[]       @relation("UserFollows")
-  followers      Follow[]       @relation("UserFollowers")
-  likes          Like[]
-  posts          Post[]
-  subscriptions  Subscription[]  @relation("UserSubscriptions")
-  subscribers    Subscription[]  @relation("CreatorSubscriptions")
-  postPurchases  PostPurchase[]
-
-  // Referral system
-  referrerId     String?
-  referrer       User?          @relation("Referrals", fields: [referrerId], references: [id])
-  referrals      User[]         @relation("Referrals")
-
-  // NextAuth
-  accounts       Account[]
-  sessions       Session[]
-  
-  // Settings
-  settings       UserSettings?
-  tierSettings   CreatorTierSettings?
-  
-  // Notifications
-  notifications  Notification[]
-
-  // Additional relations for auctions
-  purchasedSellablePosts Post[] @relation("PurchasedSellablePosts")
-  auctionDeposits        AuctionDeposit[]
-  auctionBids           AuctionBid[]
-  auctionPayments       AuctionPayment[]
-  
-  // Flash sales
-  flashSales            FlashSale[]
-  flashSaleRedemptions  FlashSaleRedemption[]
-
-  // Direct Messages
-  conversations      Conversation[] @relation("UserConversations")
-  sentMessages       Message[]      @relation("SentMessages")
-  messagePurchases   MessagePurchase[]
+  id                   String                @id @default(cuid())
+  wallet               String                @unique
+  nickname             String?               @unique
+  fullName             String?
+  bio                  String?
+  avatar               String?
+  website              String?
+  twitter              String?
+  telegram             String?
+  location             String?
+  createdAt            DateTime              @default(now())
+  updatedAt            DateTime              @updatedAt
+  isVerified           Boolean               @default(false)
+  isCreator            Boolean               @default(false)
+  followersCount       Int                   @default(0)
+  followingCount       Int                   @default(0)
+  postsCount           Int                   @default(0)
+  accounts             Account[]
+  auctionBids          AuctionBid[]
+  auctionDeposits      AuctionDeposit[]
+  auctionPayments      AuctionPayment[]
+  comments             Comment[]
+  flashSaleRedemptions FlashSaleRedemption[]
+  follows              Follow[]              @relation("UserFollows")
+  followers            Follow[]              @relation("UserFollowers")
+  likes                Like[]
+  posts                Post[]
+  sessions             Session[]
+  subscribers          Subscription[]        @relation("CreatorSubscriptions")
+  subscriptions        Subscription[]        @relation("UserSubscriptions")
+  settings             UserSettings?
 
   @@map("users")
 }
 
 model Post {
-  id            String    @id @default(cuid())
-  creatorId     String
-  title         String
-  content       String
-  type          String
-  category      String?
-  thumbnail     String?
-  mediaUrl      String?
-  isLocked      Boolean   @default(false)
-  isPremium     Boolean   @default(false)
-  price         Float?
-  currency      String    @default("SOL")
-  minSubscriptionTier String?
-  imageAspectRatio String? // 'vertical' | 'square' | 'horizontal'
-  likesCount    Int       @default(0)
-  commentsCount Int       @default(0)
-  viewsCount    Int       @default(0)
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
-  
-  // Sellable post fields
-  isSellable        Boolean   @default(false)
-  sellType          SellType?
-  quantity          Int?      @default(1)  // Количество товара
-  auctionStartPrice Float?
-  auctionStepPrice  Float?
-  auctionDepositAmount Float?  @default(0.01) // Залог для участия
-  auctionStartAt    DateTime?
-  auctionEndAt      DateTime?
-  auctionStatus     AuctionStatus @default(DRAFT)
-  
-  // Sold post fields
-  soldAt            DateTime?
-  soldToId          String?
-  soldTo            User?     @relation("PurchasedSellablePosts", fields: [soldToId], references: [id])
-  soldPrice         Float?
-  sellerConfirmedAt DateTime? // Когда продавец подтвердил продажу
-  
-  // Relations
-  comments      Comment[]
-  likes         Like[]
-  tags          PostTag[]
-  creator       User      @relation(fields: [creatorId], references: [id], onDelete: Cascade)
-  purchases     PostPurchase[]
-  auctionDeposits AuctionDeposit[]
+  id              String           @id @default(cuid())
+  creatorId       String
+  title           String
+  content         String
+  type            String
+  category        String?
+  thumbnail       String?
+  mediaUrl        String?
+  isLocked        Boolean          @default(false)
+  isPremium       Boolean          @default(false)
+  price           Float?
+  currency        String           @default("SOL")
+  likesCount      Int              @default(0)
+  commentsCount   Int              @default(0)
+  viewsCount      Int              @default(0)
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
   auctionBids     AuctionBid[]
+  auctionDeposits AuctionDeposit[]
   auctionPayment  AuctionPayment?
-  flashSales    FlashSale[]
+  comments        Comment[]
+  flashSales      FlashSale[]
+  likes           Like[]
+  tags            PostTag[]
+  creator         User             @relation(fields: [creatorId], references: [id], onDelete: Cascade)
 
   @@map("posts")
 }
@@ -184,27 +126,18 @@ model Like {
 }
 
 model Subscription {
-  id           String   @id @default(cuid())
+  id           String        @id @default(cuid())
   userId       String
   creatorId    String
   plan         String
   price        Float
-  currency     String   @default("SOL")
-  subscribedAt DateTime @default(now())
+  currency     String        @default("SOL")
+  subscribedAt DateTime      @default(now())
   validUntil   DateTime
-  isActive     Boolean  @default(true)
+  isActive     Boolean       @default(true)
   txSignature  String?
-  
-  // Payment details
-  paymentStatus    PaymentStatus @default(PENDING)
-  paymentAmount    Float?
-  platformFee      Float?
-  referrerFee      Float?
-  creatorAmount    Float?
-  
-  // Relations
-  user         User     @relation("UserSubscriptions", fields: [userId], references: [id], onDelete: Cascade)
-  creator      User     @relation("CreatorSubscriptions", fields: [creatorId], references: [id], onDelete: Cascade)
+  creator      User          @relation("CreatorSubscriptions", fields: [creatorId], references: [id], onDelete: Cascade)
+  user         User          @relation("UserSubscriptions", fields: [userId], references: [id], onDelete: Cascade)
   transactions Transaction[]
 
   @@unique([userId, creatorId])
@@ -223,87 +156,47 @@ model Follow {
   @@map("follows")
 }
 
-// Transaction tracking model
 model Transaction {
-  id              String   @id @default(cuid())
-  subscriptionId  String?
-  subscription    Subscription? @relation(fields: [subscriptionId], references: [id])
-  postPurchaseId  String?  @unique
-  postPurchase    PostPurchase? @relation(fields: [postPurchaseId], references: [id])
-  
-  // Transaction details
-  txSignature     String   @unique
-  fromWallet      String
-  toWallet        String
-  amount          Float
-  currency        String   @default("SOL")
-  type            TransactionType
-  status          TransactionStatus @default(PENDING)
-  
-  // Additional fields for flexible tracking
-  senderId        String?
-  receiverId      String?
-  
-  // Fee distribution
-  platformFee     Float?
-  referrerFee     Float?
-  referrerWallet  String?
-  
-  // Metadata
-  metadata        Json?
-  errorMessage    String?
-  confirmedAt     DateTime?
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
-  
+  id             String            @id @default(cuid())
+  subscriptionId String?
+  txSignature    String            @unique
+  fromWallet     String
+  toWallet       String
+  amount         Float
+  currency       String            @default("SOL")
+  type           TransactionType
+  status         TransactionStatus @default(PENDING)
+  platformFee    Float?
+  referrerFee    Float?
+  referrerWallet String?
+  metadata       Json?
+  errorMessage   String?
+  confirmedAt    DateTime?
+  createdAt      DateTime          @default(now())
+  updatedAt      DateTime          @updatedAt
+  postPurchaseId String?           @unique
+  receiverId     String?
+  senderId       String?
+  postPurchase   PostPurchase?     @relation(fields: [postPurchaseId], references: [id])
+  subscription   Subscription?     @relation(fields: [subscriptionId], references: [id])
+
   @@map("transactions")
 }
 
-// Payment status enum
-enum PaymentStatus {
-  PENDING
-  PROCESSING
-  COMPLETED
-  FAILED
-  REFUNDED
-}
-
-// Transaction type enum
-enum TransactionType {
-  SUBSCRIPTION
-  POST_PURCHASE
-  PLATFORM_FEE
-  REFERRER_FEE
-  WITHDRAWAL
-  REFUND
-  MESSAGE_PURCHASE
-  TIP
-}
-
-// Transaction status enum
-enum TransactionStatus {
-  PENDING
-  CONFIRMED
-  FAILED
-  EXPIRED
-}
-
-// NextAuth models
 model Account {
-  id                 String  @id @default(cuid())
-  userId             String  @map("user_id")
-  type               String
-  provider           String
-  providerAccountId  String  @map("provider_account_id")
-  refresh_token      String? @db.Text
-  access_token       String? @db.Text
-  expires_at         Int?
-  token_type         String?
-  scope              String?
-  id_token           String? @db.Text
-  session_state      String?
-
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id                String  @id @default(cuid())
+  userId            String  @map("user_id")
+  type              String
+  provider          String
+  providerAccountId String  @map("provider_account_id")
+  refresh_token     String?
+  access_token      String?
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String?
+  session_state     String?
+  user              User    @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([provider, providerAccountId])
   @@map("accounts")
@@ -319,97 +212,232 @@ model Session {
   @@map("sessions")
 }
 
-// New model for tracking post purchases
 model PostPurchase {
-  id            String    @id @default(cuid())
+  id            String        @id @default(cuid())
   postId        String
   userId        String
   price         Float
-  currency      String    @default("SOL")
+  currency      String        @default("SOL")
   txSignature   String?
-  purchasedAt   DateTime  @default(now())
-  
-  // Payment details
+  purchasedAt   DateTime      @default(now())
   paymentStatus PaymentStatus @default(PENDING)
   platformFee   Float?
   referrerFee   Float?
   creatorAmount Float?
-  
-  // Relations
-  post          Post      @relation(fields: [postId], references: [id], onDelete: Cascade)
-  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   transaction   Transaction?
-  
+
   @@unique([userId, postId])
   @@map("post_purchases")
 }
 
-// User settings model
 model UserSettings {
-  id                      String   @id @default(cuid())
-  userId                  String   @unique
-  
-  // Notification settings
-  notifyComments         Boolean  @default(true)
-  notifyLikes            Boolean  @default(true)
-  notifyNewPosts         Boolean  @default(true)
-  notifySubscriptions    Boolean  @default(true)
-  
-  // Privacy settings
-  showActivity           Boolean  @default(true)
-  allowMessages          Boolean  @default(true)
-  showOnlineStatus       Boolean  @default(true)
-  
-  // Theme
-  theme                  String   @default("dark")
-  
-  createdAt              DateTime @default(now())
-  updatedAt              DateTime @updatedAt
-  
-  // Relations
-  user                   User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  
+  id                  String   @id @default(cuid())
+  userId              String   @unique
+  notifyComments      Boolean  @default(true)
+  notifyLikes         Boolean  @default(true)
+  notifyNewPosts      Boolean  @default(true)
+  notifySubscriptions Boolean  @default(true)
+  showActivity        Boolean  @default(true)
+  allowMessages       Boolean  @default(true)
+  showOnlineStatus    Boolean  @default(true)
+  theme               String   @default("dark")
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+  user                User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
   @@map("user_settings")
 }
 
-// Creator tier settings model
 model CreatorTierSettings {
-  id            String   @id @default(cuid())
-  creatorId     String   @unique
-  
-  // Tier settings stored as JSON
-  basicTier     Json?    // { enabled: boolean, price: number, description: string, features: [] }
-  premiumTier   Json?    // { enabled: boolean, price: number, description: string, features: [] }
-  vipTier       Json?    // { enabled: boolean, price: number, description: string, features: [] }
-  
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
-  
-  // Relations
-  creator       User     @relation(fields: [creatorId], references: [id], onDelete: Cascade)
-  
+  id          String   @id @default(cuid())
+  creatorId   String   @unique
+  basicTier   Json?
+  premiumTier Json?
+  vipTier     Json?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
   @@map("creator_tier_settings")
 }
 
-// Notification model
 model Notification {
-  id            String   @id @default(cuid())
-  userId        String
-  type          NotificationType
-  title         String
-  message       String
-  isRead        Boolean  @default(false)
-  metadata      Json?    // Дополнительные данные (postId, commentId, etc)
-  createdAt     DateTime @default(now())
-  
-  // Relations
-  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  
+  id        String           @id @default(cuid())
+  userId    String
+  type      NotificationType
+  title     String
+  message   String
+  isRead    Boolean          @default(false)
+  metadata  Json?
+  createdAt DateTime         @default(now())
+
   @@index([userId, isRead])
   @@map("notifications")
 }
 
-// Notification types
+model AuctionDeposit {
+  id                String        @id @default(cuid())
+  postId            String
+  userId            String
+  amount            Float
+  txSignature       String
+  status            DepositStatus @default(HELD)
+  createdAt         DateTime      @default(now())
+  refundedAt        DateTime?
+  refundTxSignature String?
+  forfeitedAt       DateTime?
+  post              Post          @relation(fields: [postId], references: [id], onDelete: Cascade)
+  user              User          @relation(fields: [userId], references: [id])
+
+  @@unique([postId, userId])
+  @@index([userId, status])
+  @@map("auction_deposits")
+}
+
+model AuctionBid {
+  id        String   @id @default(cuid())
+  postId    String
+  userId    String
+  amount    Float
+  isWinning Boolean  @default(false)
+  createdAt DateTime @default(now())
+  post      Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id])
+
+  @@index([postId, amount])
+  @@index([userId])
+  @@map("auction_bids")
+}
+
+model AuctionPayment {
+  id                String               @id @default(cuid())
+  postId            String               @unique
+  userId            String
+  amount            Float
+  txSignature       String?
+  status            AuctionPaymentStatus @default(PENDING)
+  dueAt             DateTime
+  paidAt            DateTime?
+  sellerConfirmedAt DateTime?
+  createdAt         DateTime             @default(now())
+  post              Post                 @relation(fields: [postId], references: [id])
+  user              User                 @relation(fields: [userId], references: [id])
+
+  @@index([userId, status])
+  @@map("auction_payments")
+}
+
+model FlashSale {
+  id               String                @id @default(cuid())
+  creatorId        String?
+  postId           String?
+  subscriptionPlan String?
+  discount         Float
+  maxRedemptions   Int?
+  usedCount        Int                   @default(0)
+  startAt          DateTime              @default(now())
+  endAt            DateTime
+  isActive         Boolean               @default(true)
+  createdAt        DateTime              @default(now())
+  updatedAt        DateTime              @updatedAt
+  redemptions      FlashSaleRedemption[]
+  post             Post?                 @relation(fields: [postId], references: [id], onDelete: Cascade)
+
+  @@index([creatorId, isActive])
+  @@index([endAt, isActive])
+  @@map("flash_sales")
+}
+
+model FlashSaleRedemption {
+  id             String    @id @default(cuid())
+  flashSaleId    String
+  userId         String
+  originalPrice  Float
+  discountAmount Float
+  finalPrice     Float
+  redeemedAt     DateTime  @default(now())
+  flashSale      FlashSale @relation(fields: [flashSaleId], references: [id], onDelete: Cascade)
+  user           User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([flashSaleId, userId])
+  @@map("flash_sale_redemptions")
+}
+
+/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by Prisma Client.
+model Conversation {
+  id            String    @default(cuid())
+  lastMessageAt DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  @@ignore
+}
+
+model Message {
+  id             String            @id @default(cuid())
+  conversationId String
+  senderId       String
+  content        String?
+  mediaUrl       String?
+  mediaType      String?
+  isPaid         Boolean           @default(false)
+  price          Float?
+  isRead         Boolean           @default(false)
+  createdAt      DateTime          @default(now())
+  metadata       Json?
+  purchases      MessagePurchase[]
+
+  @@index([conversationId])
+  @@index([senderId])
+}
+
+model MessagePurchase {
+  id          String   @id @default(cuid())
+  messageId   String
+  userId      String
+  amount      Float
+  txSignature String
+  createdAt   DateTime @default(now())
+  message     Message  @relation(fields: [messageId], references: [id], onDelete: Cascade)
+
+  @@unique([messageId, userId])
+  @@index([userId])
+}
+
+model UserConversations {
+  A String
+  B String
+
+  @@id([A, B], map: "_UserConversations_AB_pkey")
+  @@index([B], map: "_UserConversations_B_index")
+  @@map("_UserConversations")
+}
+
+enum PaymentStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+  REFUNDED
+}
+
+enum TransactionType {
+  SUBSCRIPTION
+  PLATFORM_FEE
+  REFERRER_FEE
+  WITHDRAWAL
+  REFUND
+  POST_PURCHASE
+  MESSAGE_PURCHASE
+  TIP
+}
+
+enum TransactionStatus {
+  PENDING
+  CONFIRMED
+  FAILED
+  EXPIRED
+}
+
 enum NotificationType {
   LIKE_POST
   LIKE_COMMENT
@@ -426,181 +454,31 @@ enum NotificationType {
   NEW_MESSAGE
 }
 
-// Залоги участников аукциона
-model AuctionDeposit {
-  id           String   @id @default(cuid())
-  postId       String
-  post         Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
-  userId       String
-  user         User     @relation(fields: [userId], references: [id])
-  amount       Float    // Сумма залога
-  txSignature  String   // Транзакция оплаты залога
-  status       DepositStatus @default(HELD)
-  createdAt    DateTime @default(now())
-  refundedAt   DateTime?
-  refundTxSignature String?
-  forfeitedAt  DateTime? // Когда залог был конфискован
-  
-  @@unique([postId, userId])
-  @@index([userId, status])
-  @@map("auction_deposits")
-}
-
-// Ставки на аукционе (без реальной оплаты)
-model AuctionBid {
-  id          String   @id @default(cuid())
-  postId      String
-  post        Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
-  userId      String
-  user        User     @relation(fields: [userId], references: [id])
-  amount      Float
-  isWinning   Boolean  @default(false)
-  createdAt   DateTime @default(now())
-  
-  @@index([postId, amount])
-  @@index([userId])
-  @@map("auction_bids")
-}
-
-// Оплата победителя аукциона
-model AuctionPayment {
-  id              String   @id @default(cuid())
-  postId          String   @unique
-  post            Post     @relation(fields: [postId], references: [id])
-  userId          String
-  user            User     @relation(fields: [userId], references: [id])
-  amount          Float
-  txSignature     String?
-  status          AuctionPaymentStatus @default(PENDING)
-  dueAt           DateTime // Крайний срок оплаты (час после окончания)
-  paidAt          DateTime?
-  sellerConfirmedAt DateTime?
-  createdAt       DateTime @default(now())
-  
-  @@index([userId, status])
-  @@map("auction_payments")
-}
-
-// Enums for auction system
 enum SellType {
   FIXED_PRICE
   AUCTION
 }
 
 enum AuctionStatus {
-  DRAFT       // Черновик
-  SCHEDULED   // Запланирован
-  ACTIVE      // Идет аукцион
-  ENDED       // Завершен, ждет оплаты
-  SOLD        // Продан
-  CANCELLED   // Отменен
-  EXPIRED     // Истек без оплаты
+  DRAFT
+  SCHEDULED
+  ACTIVE
+  ENDED
+  SOLD
+  CANCELLED
+  EXPIRED
 }
 
 enum DepositStatus {
-  HELD        // Удерживается
-  REFUNDED    // Возвращен
-  FORFEITED   // Конфискован
+  HELD
+  REFUNDED
+  FORFEITED
 }
 
 enum AuctionPaymentStatus {
-  PENDING     // Ожидает оплаты
-  PAID        // Оплачен
-  CONFIRMED   // Подтвержден продавцом
-  EXPIRED     // Истек срок оплаты
-  CANCELLED   // Отменен
-}
-
-// Flash Sales model
-model FlashSale {
-  id              String   @id @default(cuid())
-  creatorId       String?  // null = platform-wide sale
-  postId          String?  // specific post sale
-  subscriptionPlan String? // 'basic' | 'premium' | 'vip' - for subscription sales
-  
-  discount        Float    // Percentage discount (10-90)
-  maxRedemptions  Int?     // Max number of uses
-  usedCount       Int      @default(0)
-  
-  startAt         DateTime @default(now())
-  endAt           DateTime // When sale expires
-  
-  isActive        Boolean  @default(true)
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
-  
-  // Relations
-  creator         User?    @relation(fields: [creatorId], references: [id], onDelete: Cascade)
-  post            Post?    @relation(fields: [postId], references: [id], onDelete: Cascade)
-  redemptions     FlashSaleRedemption[]
-  
-  @@index([creatorId, isActive])
-  @@index([endAt, isActive])
-  @@map("flash_sales")
-}
-
-// Track who used flash sales
-model FlashSaleRedemption {
-  id            String    @id @default(cuid())
-  flashSaleId   String
-  userId        String
-  
-  originalPrice Float     // Price before discount
-  discountAmount Float    // Amount saved
-  finalPrice    Float     // Price paid
-  
-  redeemedAt    DateTime  @default(now())
-  
-  // Relations
-  flashSale     FlashSale @relation(fields: [flashSaleId], references: [id], onDelete: Cascade)
-  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  
-  @@unique([flashSaleId, userId]) // One redemption per user per sale
-  @@map("flash_sale_redemptions")
-}
-
-// Direct Messages
-model Conversation {
-  id            String    @id @default(cuid())
-  participants  User[]    @relation("UserConversations")
-  messages      Message[]
-  lastMessageAt DateTime?
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
-}
-
-model Message {
-  id             String       @id @default(cuid())
-  conversationId String
-  senderId       String
-  content        String?      @db.Text
-  mediaUrl       String?
-  mediaType      String?      // 'image' | 'video' | 'audio'
-  isPaid         Boolean      @default(false)
-  price          Float?
-  isRead         Boolean      @default(false)
-  metadata       Json?
-  createdAt      DateTime     @default(now())
-  
-  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
-  sender         User         @relation("SentMessages", fields: [senderId], references: [id])
-  purchases      MessagePurchase[]
-  
-  @@index([conversationId])
-  @@index([senderId])
-}
-
-model MessagePurchase {
-  id          String   @id @default(cuid())
-  messageId   String
-  userId      String
-  amount      Float
-  txSignature String
-  createdAt   DateTime @default(now())
-  
-  message     Message  @relation(fields: [messageId], references: [id], onDelete: Cascade)
-  user        User     @relation(fields: [userId], references: [id])
-  
-  @@unique([messageId, userId])
-  @@index([userId])
+  PENDING
+  PAID
+  CONFIRMED
+  EXPIRED
+  CANCELLED
 }

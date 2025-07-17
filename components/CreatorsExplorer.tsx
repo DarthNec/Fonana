@@ -12,24 +12,13 @@ import { useWallet } from '@solana/wallet-adapter-react'
 import toast from 'react-hot-toast'
 import { useRouter } from 'next/navigation'
 import { getProfileLink } from '@/lib/utils/links'
+import { ComponentCreator, ApiCreatorsResponse } from '../types/creators'
+import { mapApiCreatorsToComponent } from '../lib/utils/creatorsMapper'
 
 const categories = ['All', 'Art', 'Music', 'Gaming', 'Lifestyle', 'Fitness', 'Tech', 'DeFi', 'NFT', 'Trading', 'GameFi', 'Blockchain', 'Intimate', 'Education', 'Comedy']
 
-interface Creator {
-  id: string
-  name: string
-  username: string
-  description: string
-  avatar: string | null
-  backgroundImage?: string | null
-  coverImage: string
-  isVerified: boolean
-  subscribers: number
-  posts: number
-  tags: string[]
-  monthlyEarnings: string
-  createdAt: string
-}
+// Alias for backwards compatibility
+type Creator = ComponentCreator
 
 export default function CreatorsExplorer() {
   const [selectedCategory, setSelectedCategory] = useState('All')
@@ -80,16 +69,25 @@ export default function CreatorsExplorer() {
     try {
       setLoading(true)
       const response = await fetch('/api/creators')
-      const data = await response.json()
       
-      if (response.ok) {
-        setCreators(data.creators || [])
-      } else {
-        toast.error('Error loading creators')
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`)
       }
+      
+      const data: ApiCreatorsResponse = await response.json()
+      
+      if (!data.creators || !Array.isArray(data.creators)) {
+        throw new Error('Invalid API response format')
+      }
+      
+      // Map API data to component format with fallback values
+      const mappedCreators = mapApiCreatorsToComponent(data.creators)
+      setCreators(mappedCreators)
+      
     } catch (error) {
       console.error('Error fetching creators:', error)
-      toast.error('Error loading creators')
+      toast.error(error instanceof Error ? error.message : 'Error loading creators')
+      setCreators([]) // Clear existing data on error
     } finally {
       setLoading(false)
     }
@@ -209,6 +207,7 @@ export default function CreatorsExplorer() {
             ? 'border-gray-200 dark:border-slate-700/30 opacity-75 hover:opacity-100 hover:border-gray-300 dark:hover:border-slate-600/50'
             : 'border-gray-200 dark:border-slate-700/50 hover:border-purple-500/50 dark:hover:border-purple-500/30'
         }`}
+        data-testid="creator-card"
       >
         {/* Hover glow effect */}
         <div className={`absolute -inset-1 rounded-3xl opacity-0 group-hover:opacity-100 blur-xl transition-opacity duration-500 ${
@@ -231,14 +230,14 @@ export default function CreatorsExplorer() {
             {creator.backgroundImage ? (
               <Image
                 src={creator.backgroundImage}
-                alt={`${creator.name} background`}
+                alt={`${creator.name || 'Creator'} background`}
                 fill
                 className="object-cover group-hover:scale-110 transition-transform duration-700"
               />
             ) : (
               <div className="w-full h-full bg-gradient-to-br from-purple-600/20 to-pink-600/20 flex items-center justify-center">
                 <span className="text-4xl font-bold text-white/50">
-                  {creator.name.charAt(0).toUpperCase()}
+                  {(creator.name || '?').charAt(0).toUpperCase()}
                 </span>
               </div>
             )}
@@ -266,8 +265,8 @@ export default function CreatorsExplorer() {
               <div className="w-16 h-16 rounded-2xl overflow-hidden border-2 border-purple-500/30 bg-gradient-to-br from-purple-500/20 to-pink-500/20">
                 <Avatar
                   src={creator.avatar}
-                  alt={creator.name}
-                  seed={creator.username}
+                  alt={creator.name || 'Creator'}
+                  seed={creator.username || creator.id}
                   size={64}
                   rounded="2xl"
                 />
@@ -277,16 +276,16 @@ export default function CreatorsExplorer() {
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2 mb-1">
                 <h3 className="font-bold text-gray-900 dark:text-white truncate group-hover:text-purple-600 dark:group-hover:text-purple-300 transition-colors">
-                  {creator.name}
+                  {creator.name || 'Anonymous Creator'}
                 </h3>
                 {creator.isVerified && (
                   <CheckBadgeIcon className="w-5 h-5 text-blue-500 dark:text-blue-400 flex-shrink-0" />
                 )}
               </div>
-              <p className="text-gray-600 dark:text-slate-400 text-sm truncate">@{creator.username}</p>
+              <p className="text-gray-600 dark:text-slate-400 text-sm truncate">@{creator.username || 'unknown'}</p>
               <div className="flex items-center gap-4 mt-2 text-sm">
                 <span className="text-purple-600 dark:text-purple-400 font-semibold">
-                  {creator.subscribers.toLocaleString()} subscribers
+                  {(creator.subscribers || 0).toLocaleString()} subscribers
                 </span>
               </div>
             </div>
@@ -302,9 +301,18 @@ export default function CreatorsExplorer() {
             {/* Tags */}
             <div className="flex flex-wrap gap-2 mb-6">
               {(() => {
+                // Null-safe handling of tags
+                if (!creator.tags || creator.tags.length === 0) {
+                  return (
+                    <span className="px-3 py-1 bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400 text-xs font-medium rounded-full">
+                      No tags
+                    </span>
+                  )
+                }
+                
                 // Обрабатываем случай, когда все теги в одной строке
                 let processedTags = creator.tags;
-                if (creator.tags.length === 1 && creator.tags[0].includes(' ')) {
+                if (creator.tags.length === 1 && creator.tags[0]?.includes(' ')) {
                   // Разбиваем по пробелам, запятым, точкам с запятой и хэштегам
                   processedTags = creator.tags[0]
                     .split(/[\s,;]+/)
@@ -533,7 +541,7 @@ export default function CreatorsExplorer() {
             )}
           </div>
         ) : (
-          <div className="grid gap-6 md:gap-8 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                        <div className="grid gap-6 md:gap-8 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4" data-testid="creators-grid">
             {filteredCreators.map((creator, index) => renderCreatorCard(creator, index))}
           </div>
         )}
