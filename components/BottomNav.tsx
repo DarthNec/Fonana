@@ -31,7 +31,7 @@ import { useWalletModal } from '@solana/wallet-adapter-react-ui'
 import SolanaRateDisplay from '@/components/SolanaRateDisplay'
 import Avatar from '@/components/Avatar'
 import { MobileWalletConnect } from '@/components/MobileWalletConnect'
-import { jwtManager } from '@/lib/utils/jwt'
+import { unreadMessagesService } from '@/lib/services/UnreadMessagesService'
 import CreatePostModal from '@/components/CreatePostModal'
 import { toast } from 'react-hot-toast'
 import SearchModal from '@/components/SearchModal'
@@ -54,40 +54,18 @@ export default function BottomNav() {
   // BottomNav должен показываться всем, но без user-зависимого функционала
   // Если пользователя нет, показываем базовую версию без персонализации
 
-  // Check for unread messages
+  // Subscribe to unread messages - FIXED: [critical_regression_infinite_loop_2025_017]
   useEffect(() => {
-    const checkUnreadMessages = async () => {
-      if (!user) return
-      
-      try {
-        const token = await jwtManager.getToken()
-        if (!token) return
-
-        const response = await fetch('/api/conversations', {
-          headers: {
-            'Authorization': `Bearer ${token}`
-          }
-        })
-        
-        if (response.ok) {
-          const data = await response.json()
-          const unreadCount = data.conversations.reduce((count: number, conv: any) => 
-            count + (conv.unreadCount || 0), 0
-          )
-          setUnreadMessages(unreadCount)
-        }
-      } catch (error) {
-        console.error('Error checking unread messages:', error)
-      }
-    }
+    if (!user?.id) return
     
-    if (user) {
-      checkUnreadMessages()
-      // Check every 10 seconds
-      const interval = setInterval(checkUnreadMessages, 10000)
-      return () => clearInterval(interval)
+    console.log('[BottomNav] Subscribing to unread messages service')
+    const unsubscribe = unreadMessagesService.subscribe(setUnreadMessages)
+    
+    return () => {
+      console.log('[BottomNav] Unsubscribing from unread messages service')
+      unsubscribe()
     }
-  }, [user])
+  }, [user?.id])
 
   const navItems = [
     {

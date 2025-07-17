@@ -160,8 +160,9 @@ class WebSocketService extends EventEmitter {
     
     // В production используем WSS, в development - WS
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
-    const host = window.location.host
-    let url = `${protocol}//${host}/ws`
+    const host = window.location.hostname  // hostname without port
+    const wsPort = process.env.NODE_ENV === 'development' ? '3002' : '3000'
+    let url = `${protocol}//${host}:${wsPort}/ws`
     
     console.log('[WebSocket] Getting JWT token for connection...')
     

@@ -81,7 +81,7 @@ export default function OptimizedImage({
     if (!isInView) return
     if (!thumbSrc) {
       // Если нет никакого src, показываем плейсхолдер
-      setCurrentSrc('/placeholder-image.png')
+      setCurrentSrc('/placeholder.jpg')
       setIsLoading(false)
       return
     }
@@ -119,10 +119,11 @@ export default function OptimizedImage({
           }, RETRY_DELAYS[attempt])
         } else {
           // После всех попыток показываем плейсхолдер в зависимости от типа
-          const placeholder = type === 'video' ? '/placeholder-video-enhanced.png' : '/placeholder-image.png'
+          const placeholder = type === 'video' ? '/placeholder.jpg' : '/placeholder.jpg'
           setCurrentSrc(placeholder)
           setIsLoading(false)
           setImageError(true)
+          console.warn(`[OptimizedImage] Failed to load after ${MAX_RETRIES} attempts: ${thumbSrc}`)
         }
       }
     }

@@ -12,6 +12,7 @@ import {
   AuctionData,
   FlashSaleData
 } from '@/types/posts'
+import { transformMediaUrl } from '@/lib/utils/mediaUrl'
 
 /**
  * Класс для нормализации данных постов из различных источников
@@ -80,9 +81,9 @@ export class PostNormalizer {
   private static normalizeMedia(rawPost: any): PostMedia {
     return {
       type: rawPost.type || 'text',
-      url: rawPost.mediaUrl || rawPost.image,
-      thumbnail: rawPost.thumbnail,
-      preview: rawPost.preview,
+      url: transformMediaUrl(rawPost.mediaUrl || rawPost.image),
+      thumbnail: transformMediaUrl(rawPost.thumbnail),
+      preview: transformMediaUrl(rawPost.preview),
       aspectRatio: rawPost.imageAspectRatio
     }
   }

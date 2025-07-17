@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { useWallet } from '@solana/wallet-adapter-react'
 import { useParams, useRouter } from 'next/navigation'
 import { 
@@ -101,22 +101,88 @@ export default function ConversationPage() {
   const [lastMessageCount, setLastMessageCount] = useState(0)
   const { rate: solRate } = useSolRate()
 
-  useEffect(() => {
-    if (user && !isUserLoading && conversationId) {
-      loadMessages()
-      
-      // Request notification permission
-      if ('Notification' in window && Notification.permission === 'default') {
-        Notification.requestPermission()
-      }
-      
-      // Polling для новых сообщений
-      const interval = setInterval(loadMessages, 5000)
-      return () => clearInterval(interval)
-    } else if (!isUserLoading && !user) {
-      setIsLoading(false)
+  // 🚀 PHASE 1 FIX: Circuit breaker state to prevent infinite API calls
+  const [circuitBreakerState, setCircuitBreakerState] = useState({
+    callCount: 0,
+    lastResetTime: Date.now(),
+    isBlocked: false,
+    blockUntil: 0
+  })
+
+  // Conversation loading state to prevent duplicate calls
+  const [conversationLoadState, setConversationLoadState] = useState({
+    isLoaded: false,
+    isLoading: false,
+    lastAttempt: 0
+  })
+
+  // 🚀 PHASE 1 FIX: Circuit breaker functions to prevent API abuse
+  const checkCircuitBreaker = useCallback((endpoint: string) => {
+    const now = Date.now();
+    const { callCount, lastResetTime, blockUntil } = circuitBreakerState;
+    
+    // Check if still blocked
+    if (blockUntil > now) {
+      console.warn(`[Circuit Breaker] ${endpoint} blocked until ${new Date(blockUntil)}`);
+      return false;
     }
-  }, [user, isUserLoading, conversationId])
+    
+    // Reset counter every 60 seconds
+    if (now - lastResetTime > 60000) {
+      setCircuitBreakerState({
+        callCount: 0,
+        lastResetTime: now,
+        isBlocked: false,
+        blockUntil: 0
+      });
+      return true;
+    }
+    
+    // Check rate limit (max 10 calls per minute)
+    if (callCount >= 10) {
+      const blockDuration = 60000; // Block for 1 minute
+      setCircuitBreakerState(prev => ({
+        ...prev,
+        isBlocked: true,
+        blockUntil: now + blockDuration
+      }));
+      console.error(`[Circuit Breaker] ${endpoint} rate limited. Blocked for ${blockDuration/1000}s`);
+      return false;
+    }
+    
+    return true;
+  }, [circuitBreakerState]);
+
+  const incrementCallCounter = useCallback(() => {
+    setCircuitBreakerState(prev => ({
+      ...prev,
+      callCount: prev.callCount + 1
+    }));
+  }, []);
+
+  // 🚀 PHASE 1 FIX: Stable useEffect dependencies to prevent infinite loop
+  const userId = user?.id;
+  const isUserReady = Boolean(userId && !isUserLoading);
+
+  useEffect(() => {
+    if (!isUserReady || !conversationId) {
+      if (!isUserLoading && !userId) {
+        setIsLoading(false)
+      }
+      return;
+    }
+    
+    loadMessages()
+    
+    // Request notification permission
+    if ('Notification' in window && Notification.permission === 'default') {
+      Notification.requestPermission()
+    }
+    
+    // Polling для новых сообщений
+    const interval = setInterval(loadMessages, 5000)
+    return () => clearInterval(interval)
+  }, [userId, isUserReady, conversationId]) // ✅ Only stable primitives
 
   useEffect(() => {
     scrollToBottom()
@@ -178,7 +244,7 @@ export default function ConversationPage() {
         
         setHasMore(data.hasMore)
         
-        // Получаем информацию об участнике из первого сообщения
+        // 🚀 PHASE 1 FIX: Protected participant detection with guards
         if (data.messages.length > 0 && !participant) {
           const firstMessage = data.messages[0]
           const otherParticipant = firstMessage.isOwn 
@@ -187,9 +253,16 @@ export default function ConversationPage() {
           
           if (otherParticipant) {
             setParticipant(otherParticipant)
+            console.log('[loadMessages] Participant found from message sender');
           } else {
-            // Загружаем информацию о чате
-            loadConversationInfo()
+            // Only call loadConversationInfo if not already loaded/loading and guards pass
+            const { isLoaded, isLoading } = conversationLoadState;
+            if (!isLoaded && !isLoading && checkCircuitBreaker('conversations-check')) {
+              console.log('[loadMessages] Calling loadConversationInfo for participant detection');
+              loadConversationInfo()
+            } else {
+              console.log('[loadMessages] Skipping loadConversationInfo', { isLoaded, isLoading });
+            }
           }
         }
       } else {
@@ -203,8 +276,43 @@ export default function ConversationPage() {
     }
   }
 
-  const loadConversationInfo = async () => {
+  // 🚀 PHASE 1 FIX: Protected loadConversationInfo with circuit breaker and guards
+  const loadConversationInfo = useCallback(async () => {
+    const now = Date.now();
+    const { isLoaded, isLoading, lastAttempt } = conversationLoadState;
+    
+    // Prevent multiple simultaneous calls
+    if (isLoading) {
+      console.log('[loadConversationInfo] Already loading, skipping');
+      return;
+    }
+    
+    // Prevent rapid successive calls (min 5 seconds between attempts)
+    if (now - lastAttempt < 5000) {
+      console.log('[loadConversationInfo] Too soon, skipping');
+      return;
+    }
+    
+    // Already loaded and successful
+    if (isLoaded) {
+      console.log('[loadConversationInfo] Already loaded, skipping');
+      return;
+    }
+    
+    // Circuit breaker check
+    if (!checkCircuitBreaker('conversations')) {
+      return;
+    }
+    
+    setConversationLoadState(prev => ({
+      ...prev,
+      isLoading: true,
+      lastAttempt: now
+    }));
+    
     try {
+      incrementCallCounter();
+      
       const token = await jwtManager.getToken()
       if (!token) {
         console.error('No JWT token available')
@@ -219,15 +327,36 @@ export default function ConversationPage() {
 
       if (response.ok) {
         const data = await response.json()
+        console.log('[loadConversationInfo] API response:', data);
+        
         const conversation = data.conversations.find((c: any) => c.id === conversationId)
-        if (conversation) {
+        if (conversation && conversation.participant) {
           setParticipant(conversation.participant)
+          setConversationLoadState(prev => ({
+            ...prev,
+            isLoaded: true
+          }));
+          console.log('[loadConversationInfo] Participant found and set');
+        } else {
+          console.log('[loadConversationInfo] No matching conversation or participant found');
+          // Mark as loaded even if no participant found to prevent infinite retries
+          setConversationLoadState(prev => ({
+            ...prev,
+            isLoaded: true
+          }));
         }
+      } else {
+        console.error('Failed to load conversations:', await response.text());
       }
     } catch (error) {
       console.error('Error loading conversation info:', error)
+    } finally {
+      setConversationLoadState(prev => ({
+        ...prev,
+        isLoading: false
+      }));
     }
-  }
+  }, [conversationId, conversationLoadState, checkCircuitBreaker, incrementCallCounter])
 
   const handleMediaSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0]
