@@ -157,11 +157,11 @@ EOF
 
 # Transfer files and execute
 log "Transferring files to server..."
-scp -o StrictHostKeyChecking=no "${DEPLOY_PACKAGE}" root@${PRODUCTION_SERVER}:/tmp/deployment-package.tar.gz
-scp -o StrictHostKeyChecking=no "${TEMP_DIR}/emergency-deploy.sh" root@${PRODUCTION_SERVER}:/tmp/emergency-deploy.sh
+scp -i ~/.ssh/fonana_deploy_key -o StrictHostKeyChecking=no "${DEPLOY_PACKAGE}" root@${PRODUCTION_SERVER}:/tmp/deployment-package.tar.gz
+scp -i ~/.ssh/fonana_deploy_key -o StrictHostKeyChecking=no "${TEMP_DIR}/emergency-deploy.sh" root@${PRODUCTION_SERVER}:/tmp/emergency-deploy.sh
 
 log "Executing emergency deployment on server..."
-ssh -o StrictHostKeyChecking=no root@${PRODUCTION_SERVER} "chmod +x /tmp/emergency-deploy.sh && /tmp/emergency-deploy.sh"
+ssh -i ~/.ssh/fonana_deploy_key -o StrictHostKeyChecking=no root@${PRODUCTION_SERVER} "chmod +x /tmp/emergency-deploy.sh && /tmp/emergency-deploy.sh"
 
 # Setup Nginx for development port
 log "Configuring Nginx for development mode..."
@@ -206,17 +206,17 @@ server {
 }
 EOF
 
-scp -o StrictHostKeyChecking=no "${TEMP_DIR}/nginx-emergency.conf" root@${PRODUCTION_SERVER}:/etc/nginx/sites-available/fonana
+scp -i ~/.ssh/fonana_deploy_key -o StrictHostKeyChecking=no "${TEMP_DIR}/nginx-emergency.conf" root@${PRODUCTION_SERVER}:/etc/nginx/sites-available/fonana
 
 log "Enabling Nginx configuration..."
-ssh -o StrictHostKeyChecking=no root@${PRODUCTION_SERVER} "
+ssh -i ~/.ssh/fonana_deploy_key -o StrictHostKeyChecking=no root@${PRODUCTION_SERVER} "
     ln -sf /etc/nginx/sites-available/fonana /etc/nginx/sites-enabled/
     nginx -t && systemctl reload nginx
 "
 
 # Setup SSL with Certbot
 log "Setting up SSL certificate..."
-ssh -o StrictHostKeyChecking=no root@${PRODUCTION_SERVER} "
+ssh -i ~/.ssh/fonana_deploy_key -o StrictHostKeyChecking=no root@${PRODUCTION_SERVER} "
     certbot --nginx -d ${DOMAIN} -d www.${DOMAIN} --non-interactive --agree-tos --email admin@${DOMAIN} || echo 'SSL setup may have failed, continuing...'
 "
 
