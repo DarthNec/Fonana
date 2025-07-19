@@ -9,7 +9,7 @@ export default function AdminReferralsClient() {
   const [users, setUsers] = useState([])
   const [loading, setLoading] = useState(true)
 
-  const isAdmin = user?.wallet === 'npzAZaN9fDMgLV63b3kv3FF8cLSd8dQSLxyMXASA5T4' || 
+  const isAdmin = user?.wallet === 'EEqsmopVfTuaiJrh8xL7ZsZbUctckY6S5WyHYR66wjpw' || 
                   user?.wallet === 'DUxkXhMWuo76ofUMtFRZtL8zmVqQnb8twLeB5NcaM4cG'
 
   if (!user) {

@@ -52,4 +52,54 @@ export const TIER_VISUAL_DETAILS: Record<TierName | 'free', TierVisualDetails> =
     text: 'text-yellow-700 dark:text-yellow-300', 
     dot: 'bg-yellow-500 dark:bg-yellow-400' 
   }
+} as const
+
+// [content_access_system_2025_017] Добавляем стили для blur эффектов
+export const TIER_BLUR_STYLES = {
+  backdrop: 'backdrop-blur-md',
+  overlay: 'bg-white/80 dark:bg-slate-900/80 absolute inset-0 flex items-center justify-center',
+  content: 'opacity-30 pointer-events-none select-none'
+} as const
+
+// [content_access_system_2025_017] Стили для легкой блеклости без overlay
+export const TIER_DIM_STYLES = {
+  content: 'opacity-50 brightness-75 saturate-50',
+  border: 'border-opacity-50 dark:border-opacity-30',
+  hover: 'hover:opacity-70 hover:brightness-90 hover:saturate-75 transition-all duration-300'
+} as const
+
+// [content_access_system_2025_017] Промпты для апгрейда подписки
+export const TIER_UPGRADE_PROMPTS = {
+  basic: 'Upgrade to Basic to unlock this content',
+  premium: 'Upgrade to Premium for exclusive access',
+  vip: 'Join VIP for ultimate experience',
+  paid: 'Purchase to unlock this content'
+} as const
+
+// [content_access_system_2025_017] Дополнительные стили для специальных типов контента
+export const SPECIAL_CONTENT_STYLES = {
+  paid: {
+    name: 'Paid',
+    color: 'orange',
+    icon: '💰',
+    gradient: 'from-yellow-500/20 to-orange-500/20',
+    border: 'border-yellow-500/30',
+    text: 'text-yellow-700 dark:text-yellow-300'
+  },
+  sellable: {
+    name: 'For Sale',
+    color: 'red',
+    icon: '🛍️',
+    gradient: 'from-orange-500/20 to-red-500/20',
+    border: 'border-orange-500/30',
+    text: 'text-orange-700 dark:text-orange-300'
+  },
+  sold: {
+    name: 'SOLD',
+    color: 'green',
+    icon: '✅',
+    gradient: 'from-green-500/20 to-emerald-500/20',
+    border: 'border-green-500/30',
+    text: 'text-green-700 dark:text-green-300'
+  }
 } as const 

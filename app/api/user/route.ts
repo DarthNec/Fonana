@@ -30,15 +30,6 @@ export async function GET(request: NextRequest) {
       user = await prisma.user.findUnique({
         where: { id },
         include: {
-          referrer: {
-            select: {
-              id: true,
-              nickname: true,
-              fullName: true,
-              wallet: true,
-              solanaWallet: true
-            }
-          },
           _count: {
             select: {
               posts: true,
@@ -63,15 +54,6 @@ export async function GET(request: NextRequest) {
           }
         },
         include: {
-          referrer: {
-            select: {
-              id: true,
-              nickname: true,
-              fullName: true,
-              wallet: true,
-              solanaWallet: true
-            }
-          },
           _count: {
             select: {
               posts: true,
@@ -88,23 +70,15 @@ export async function GET(request: NextRequest) {
       }
       
       // Получаем пользователя по wallet с полной информацией
+      // [critical_regression_2025_017] Убрано solanaWallet - поле не существует в БД
       user = await prisma.user.findFirst({
         where: {
           OR: [
             { wallet: wallet },
-            { solanaWallet: wallet }
+            // УБРАНО: { solanaWallet: wallet } - поле не существует в БД
           ]
         },
         include: {
-          referrer: {
-            select: {
-              id: true,
-              nickname: true,
-              fullName: true,
-              wallet: true,
-              solanaWallet: true
-            }
-          },
           _count: {
             select: {
               posts: true,

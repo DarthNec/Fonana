@@ -329,7 +329,7 @@ export default function SubscribeModal({ creator, preferredTier, onClose, onSucc
     
     try {
       // Check that it's not the platform wallet
-      const PLATFORM_WALLET = 'npzAZaN9fDMgLV63b3kv3FF8cLSd8dQSLxyMXASA5T4'
+      const PLATFORM_WALLET = 'EEqsmopVfTuaiJrh8xL7ZsZbUctckY6S5WyHYR66wjpw'
       if (publicKey.toBase58() === PLATFORM_WALLET) {
         toast.error('❌ You cannot subscribe from the platform wallet!')
         return

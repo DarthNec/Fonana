@@ -40,7 +40,30 @@ class JWTManager {
           this.clearToken()
         }
       } else {
-        console.log('[JWT] No token found in localStorage')
+        console.log('[JWT] No token found in encrypted storage, checking localStorage fallback...')
+        
+        // Fallback на прямое чтение из localStorage
+        const fallbackToken = localStorage.getItem('fonana_jwt_token')
+        if (fallbackToken) {
+          try {
+            const tokenData = JSON.parse(fallbackToken)
+            if (tokenData.token && tokenData.expiresAt > Date.now()) {
+              console.log('[JWT] Found valid fallback token in localStorage')
+              this.token = tokenData
+              this.scheduleRefresh()
+            } else {
+              console.log('[JWT] Fallback token expired, clearing...')
+              localStorage.removeItem('fonana_jwt_token')
+              localStorage.removeItem('fonana_user_wallet')
+            }
+          } catch (error) {
+            console.warn('[JWT] Invalid fallback token format:', error)
+            localStorage.removeItem('fonana_jwt_token')
+            localStorage.removeItem('fonana_user_wallet')
+          }
+        } else {
+          console.log('[JWT] No token found anywhere')
+        }
       }
     } catch (error) {
       console.error('[JWT] Error loading token from storage:', error)
@@ -50,7 +73,14 @@ class JWTManager {
   
   private saveToStorage(token: StoredToken) {
     try {
+      // Сохраняем через StorageService (зашифровано)
       storageService.setJWTToken(JSON.stringify(token))
+      
+      // Также сохраняем в localStorage для fallback доступа (незашифровано)
+      localStorage.setItem('fonana_jwt_token', JSON.stringify(token))
+      localStorage.setItem('fonana_user_wallet', token.wallet)
+      
+      console.log('[JWT] Token saved to both encrypted storage and localStorage')
     } catch (error) {
       console.error('[JWT] Error saving token to storage:', error)
     }
@@ -59,6 +89,11 @@ class JWTManager {
   private clearToken() {
     this.token = null
     storageService.clearJWTToken()
+    
+    // Очищаем также localStorage fallback
+    localStorage.removeItem('fonana_jwt_token')
+    localStorage.removeItem('fonana_user_wallet')
+    
     if (this.refreshTimer) {
       clearTimeout(this.refreshTimer)
       this.refreshTimer = null
@@ -76,7 +111,7 @@ class JWTManager {
     }, refreshTime)
   }
   
-  async getToken(): Promise<string | null> {
+    async getToken(): Promise<string | null> {
     console.log('[JWT] getToken called, checking current token...')
     
     // Проверяем, есть ли валидный токен
@@ -84,16 +119,31 @@ class JWTManager {
       console.log('[JWT] Valid token found in memory')
       return this.token.token
     }
+
+    console.log('[JWT] No valid token in memory, checking localStorage...')
     
-    console.log('[JWT] No valid token in memory, checking wallet...')
+    // Сначала пытаемся найти сохраненный JWT токен напрямую
+    const savedToken = localStorage.getItem('fonana_jwt_token')
+    if (savedToken) {
+      try {
+        const tokenData = JSON.parse(savedToken)
+        if (tokenData.token && tokenData.expiresAt > Date.now()) {
+          console.log('[JWT] Found valid saved JWT token')
+          this.token = tokenData
+          return tokenData.token
+        }
+      } catch (error) {
+        console.warn('[JWT] Invalid saved token format:', error)
+      }
+    }
     
-    // Пытаемся обновить токен
+    // Fallback на поиск через wallet
     const wallet = localStorage.getItem('fonana_user_wallet')
     if (!wallet) {
       console.log('[JWT] No wallet found in localStorage, cannot get token')
       return null
     }
-    
+
     console.log('[JWT] Wallet found:', wallet.substring(0, 8) + '...')
     
     return this.requestNewToken(wallet)

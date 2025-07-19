@@ -20,6 +20,11 @@ import {
   isActiveAuction,
   isPostSold
 } from '@/components/posts/utils/postHelpers'
+// [content_access_system_2025_017] Добавляем импорты для визуальной системы
+import { TIER_VISUAL_DETAILS, TIER_BLUR_STYLES, TIER_DIM_STYLES, SPECIAL_CONTENT_STYLES } from '@/lib/constants/tier-styles'
+import { getPostAccessType, PostAccessType } from '@/types/posts/access'
+import { normalizeTierName } from '@/lib/utils/access'
+import { SparklesIcon, LockClosedIcon } from '@heroicons/react/24/solid'
 
 export interface PostCardProps {
   /** Данные поста */
@@ -36,7 +41,7 @@ export interface PostCardProps {
 
 /**
  * Главный компонент карточки поста
- * Адаптивный компонент, который может отображаться в разных вариантах
+ * [content_access_system_2025_017] Расширен для полной визуальной системы
  */
 export function PostCard({
   post,
@@ -63,57 +68,62 @@ export function PostCard({
   const showAuctionBadge = isActiveAuction(post.commerce)
   const isSold = isPostSold(post.commerce)
 
-  // Фоновая подсветка по тиру
-  const getTierBackgroundStyle = () => {
-    const tier = post?.access?.tier
-    if (!tier) return ''
-    
-    switch (tier.toLowerCase()) {
-      case 'basic':
-        return 'bg-blue-50/50 dark:bg-blue-900/10'
-      case 'premium':
-        return 'bg-purple-50/50 dark:bg-purple-900/10'
-      case 'vip':
-        return 'bg-yellow-50/50 dark:bg-yellow-900/10'
-      default:
-        return ''
-    }
-  }
+  // [content_access_system_2025_017] Определяем визуальные параметры
+  const accessType = getPostAccessType({
+    isLocked: post.access?.isLocked,
+    minSubscriptionTier: post.access?.tier,
+    price: post.access?.price,
+    isSellable: post.commerce?.isSellable
+  })
+  const shouldBlur = post.access?.shouldBlur || false
+  const shouldDim = post.access?.shouldDim || false // [tier_access_visual_fix_2025_017]
+  const upgradePrompt = post.access?.upgradePrompt
+  const requiredTier = normalizeTierName(post.access?.requiredTier || post.access?.tier)
 
-  // Стили для разных вариантов
-  const getCardStyles = () => {
+  // [content_access_system_2025_017] Расширенные стили для 6 типов контента
+  const getTierCardStyles = () => {
     const baseStyles = 'relative overflow-hidden transition-all duration-300'
-    const borderStyles = getPostCardBorderStyle(post)
-    const backgroundStyles = getPostCardBackgroundStyle(post)
-    const tierBackgroundStyle = getTierBackgroundStyle()
+    
+    // Определяем визуальный стиль на основе типа доступа
+    let visualStyle = null
+    
+    // Специальные стили для платных и продаваемых постов
+    if (post.access?.price && !post.commerce?.isSellable) {
+      visualStyle = SPECIAL_CONTENT_STYLES.paid
+    } else if (post.commerce?.isSellable) {
+      visualStyle = isSold ? SPECIAL_CONTENT_STYLES.sold : SPECIAL_CONTENT_STYLES.sellable
+    } else if (requiredTier) {
+      visualStyle = TIER_VISUAL_DETAILS[requiredTier]
+    }
+    
+    // Применяем стили
+    const borderClasses = visualStyle ? `border-2 ${visualStyle.border}` : 'border border-gray-200 dark:border-slate-700/50'
+    const backgroundClasses = visualStyle ? `bg-gradient-to-br ${visualStyle.gradient}` : 'bg-white dark:bg-slate-900'
     
     switch (variant) {
       case 'full':
         return cn(
           baseStyles,
-          backgroundStyles || 'bg-white dark:bg-slate-900',
-          tierBackgroundStyle,
-          'border-y sm:border border-gray-200 dark:border-slate-700/50',
+          backgroundClasses,
+          borderClasses,
           'rounded-none sm:rounded-3xl',
-          borderStyles
+          'hover:shadow-lg transition-shadow'
         )
       case 'compact':
         return cn(
           baseStyles,
-          backgroundStyles || 'bg-white dark:bg-slate-900',
-          tierBackgroundStyle,
-          'border border-gray-200 dark:border-slate-700/50',
+          backgroundClasses,
+          borderClasses,
           'rounded-xl sm:rounded-2xl',
-          borderStyles
+          'hover:shadow-md transition-shadow'
         )
       case 'minimal':
         return cn(
           baseStyles,
-          backgroundStyles || 'bg-white dark:bg-slate-900',
-          tierBackgroundStyle,
-          'border border-gray-200 dark:border-slate-700/50',
+          backgroundClasses,
+          borderClasses,
           'rounded-lg',
-          borderStyles
+          'hover:shadow-sm transition-shadow'
         )
       default:
         return baseStyles
@@ -124,7 +134,11 @@ export function PostCard({
   const needsUnlock = needsPayment(post) || needsSubscription(post) || needsTierUpgrade(post)
   
   return (
-    <article className={cn(getCardStyles(), className)}>
+    <article className={cn(
+      getTierCardStyles(), 
+      className,
+      shouldDim ? TIER_DIM_STYLES.content : '' // [tier_access_visual_fix_2025_017] Применяем dim к всей карточке
+    )}>
       {/* Hover Glow Effect */}
       {needsUnlock && (
         <div className={cn(
@@ -141,8 +155,8 @@ export function PostCard({
       {/* Sold Badge */}
       {isSold && (
         <div className="absolute top-4 right-4 z-10">
-          <div className="bg-gray-900/90 text-white px-3 py-1.5 rounded-full text-sm font-medium backdrop-blur-sm">
-            ✅ Продано
+          <div className="bg-green-900/90 text-white px-3 py-1.5 rounded-full text-sm font-medium backdrop-blur-sm flex items-center gap-1.5">
+            {SPECIAL_CONTENT_STYLES.sold.icon} SOLD
           </div>
         </div>
       )}
@@ -156,23 +170,33 @@ export function PostCard({
         </div>
       )}
 
-
+      {/* [content_access_system_2025_017] Tier Badge для всех типов - УБРАНО дублирование */}
+      {/* Убираем верхний badge, используем только нижний в PostContent */}
+      {false && requiredTier && !post.access?.hasAccess && !isSold && (
+        <div className="absolute top-4 left-4 z-10">
+          <PostTierBadge tier={requiredTier || 'basic'} size="sm" />
+        </div>
+      )}
 
       {/* Card Content */}
-      <div className={variant === 'minimal' ? 'p-3' : 'p-3 sm:p-6'}>
-        {/* Header */}
-        {showCreator && (
-          <PostHeader 
-            post={post}
-            variant={variant}
-            onAction={onAction}
-          />
-        )}
+      <div className={cn(
+        variant === 'minimal' ? 'p-3' : 'p-3 sm:p-6',
+        shouldBlur ? TIER_BLUR_STYLES.content : ''
+        // [tier_access_visual_fix_2025_017] Dim стили теперь применены к всей карточке
+      )}>
+          {/* Header */}
+          {showCreator && (
+            <PostHeader 
+              post={post}
+              variant={variant}
+              onAction={onAction}
+            />
+          )}
 
-        {/* Post Menu for own posts - show when not showing creator header */}
-        {!showCreator && (
-          <div className="flex justify-end mb-4">
-            <PostMenu 
+          {/* Post Menu for own posts - show when not showing creator header */}
+          {!showCreator && (
+            <div className="flex justify-end mb-4">
+              <PostMenu 
               post={post}
               onAction={onAction}
             />
@@ -195,6 +219,50 @@ export function PostCard({
           />
         )}
       </div>
+
+      {/* [content_access_system_2025_017] Blur Overlay с Upgrade Prompt */}
+      {shouldBlur && upgradePrompt && (
+        <div className={cn(TIER_BLUR_STYLES.overlay, 'z-20')}>
+          <div className="bg-white dark:bg-slate-800 rounded-2xl p-6 shadow-2xl max-w-sm mx-4 text-center">
+            {/* Tier Icon */}
+            {requiredTier && TIER_VISUAL_DETAILS[requiredTier] && (
+              <div className="text-5xl mb-4">
+                {TIER_VISUAL_DETAILS[requiredTier].icon}
+              </div>
+            )}
+            
+            {/* Lock Icon for paid content */}
+            {accessType === PostAccessType.PAID && (
+              <LockClosedIcon className="w-12 h-12 mx-auto mb-4 text-yellow-500" />
+            )}
+            
+            {/* Upgrade Message */}
+            <h3 className="text-xl font-bold mb-2 text-gray-900 dark:text-white">
+              {upgradePrompt}
+            </h3>
+            
+            {/* CTA Button */}
+            {onAction && (
+              <button
+                onClick={() => onAction({ 
+                  type: needsPayment(post) ? 'purchase' : 'subscribe', 
+                  postId: post.id 
+                })}
+                className={cn(
+                  'mt-4 px-6 py-3 rounded-full font-medium transition-all',
+                  'transform hover:scale-105 active:scale-95',
+                  requiredTier && TIER_VISUAL_DETAILS[requiredTier]
+                    ? `bg-gradient-to-r ${TIER_VISUAL_DETAILS[requiredTier].gradient} ${TIER_VISUAL_DETAILS[requiredTier].text}`
+                    : 'bg-gradient-to-r from-purple-500 to-pink-500 text-white'
+                )}
+              >
+                <SparklesIcon className="w-5 h-5 inline mr-2" />
+                {needsPayment(post) ? 'Purchase Now' : `Upgrade to ${requiredTier?.toUpperCase() || 'Subscribe'}`}
+              </button>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Секция комментариев */}
       {showComments && (

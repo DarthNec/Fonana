@@ -1,14 +1,13 @@
 import { Connection, ConnectionConfig } from '@solana/web3.js'
-import { SOLANA_CONFIG } from './config'
 
-// Основной RPC endpoint
+// Основной RPC endpoint - обновленный QuickNode
 const PRIMARY_RPC = process.env.NEXT_PUBLIC_SOLANA_RPC_URL || 
   'https://tame-smart-panorama.solana-mainnet.quiknode.pro/0e70fc875702b126bf8b93cdcd626680e9c48894/'
 
-// Резервные публичные RPC endpoints
+// Резервные RPC endpoints - тоже обновленные
 const FALLBACK_RPCS = [
-  'https://api.mainnet-beta.solana.com',
-  'https://solana-api.projectserum.com'
+  'https://tame-smart-panorama.solana-mainnet.quiknode.pro/0e70fc875702b126bf8b93cdcd626680e9c48894/',  
+  'https://api.devnet.solana.com' // fallback на devnet если mainnet не работает
 ]
 
 const connectionConfig: ConnectionConfig = {
@@ -16,6 +15,9 @@ const connectionConfig: ConnectionConfig = {
   confirmTransactionInitialTimeout: 120000, // 2 минуты
   disableRetryOnRateLimit: false
 }
+
+console.log('[Solana Connection] Primary RPC:', PRIMARY_RPC)
+console.log('[Solana Connection] Fallback RPCs:', FALLBACK_RPCS)
 
 // Создаем основное соединение
 let connection = new Connection(PRIMARY_RPC, connectionConfig)
@@ -29,12 +31,12 @@ async function switchToFallbackRpc() {
     // Возвращаемся к основному RPC
     currentRpcIndex = -1
     connection = new Connection(PRIMARY_RPC, connectionConfig)
-    console.log('Switching back to primary RPC')
+    console.log('[Solana Connection] Switching back to primary RPC:', PRIMARY_RPC)
     return
   }
   
   const fallbackRpc = FALLBACK_RPCS[currentRpcIndex]
-  console.log(`Switching to fallback RPC: ${fallbackRpc}`)
+  console.log(`[Solana Connection] Switching to fallback RPC: ${fallbackRpc}`)
   connection = new Connection(fallbackRpc, connectionConfig)
 }
 
@@ -45,7 +47,7 @@ export async function getConnectionWithFallback(): Promise<Connection> {
     await connection.getSlot()
     return connection
   } catch (error) {
-    console.error('RPC connection error, trying fallback:', error)
+    console.error('[Solana Connection] RPC connection error, trying fallback:', error)
     await switchToFallbackRpc()
     
     // Проверяем новое соединение
@@ -53,7 +55,7 @@ export async function getConnectionWithFallback(): Promise<Connection> {
       await connection.getSlot()
       return connection
     } catch (fallbackError) {
-      console.error('Fallback RPC also failed:', fallbackError)
+      console.error('[Solana Connection] Fallback RPC also failed:', fallbackError)
       // Продолжаем с текущим соединением
       return connection
     }
@@ -69,7 +71,7 @@ export { connection }
 
 // Helper to get network type
 export function getNetworkUrl(): string {
-  return SOLANA_CONFIG.RPC_HOST
+  return PRIMARY_RPC
 }
 
 // Helper to get commitment level

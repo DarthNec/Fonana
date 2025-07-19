@@ -9,7 +9,7 @@ export async function GET(request: NextRequest) {
     
     // Simple admin check (you should implement proper authentication)
     const adminWallets = [
-      'npzAZaN9fDMgLV63b3kv3FF8cLSd8dQSLxyMXASA5T4', // fonanadev
+      'EEqsmopVfTuaiJrh8xL7ZsZbUctckY6S5WyHYR66wjpw', // ihavecam
       'DUxkXhMWuo76ofUMtFRZtL8zmVqQnb8twLeB5NcaM4cG'  // Dogwater
     ]
     

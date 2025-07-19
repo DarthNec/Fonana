@@ -56,6 +56,16 @@ export interface PostAccess {
   shouldHideContent: boolean
   /** Является ли пользователь автором поста */
   isCreatorPost?: boolean
+  /** Есть ли доступ к посту */
+  hasAccess?: boolean
+  /** Нужно ли размывать контент с overlay */
+  shouldBlur?: boolean
+  /** Нужно ли затемнять контент без overlay */
+  shouldDim?: boolean // [tier_access_visual_fix_2025_017]
+  /** Сообщение для апгрейда */
+  upgradePrompt?: string
+  /** Требуемый тир для доступа */
+  requiredTier?: string
 }
 
 /**
@@ -161,7 +171,7 @@ export type PostPageVariant = 'feed' | 'profile' | 'creator' | 'search' | 'dashb
 /**
  * Типы layout для контейнера постов
  */
-export type PostLayoutType = 'list' | 'grid' | 'masonry'
+export type PostLayoutType = 'list' | 'grid' | 'gallery' | 'masonry'
 
 /**
  * Ответ сервера со списком постов

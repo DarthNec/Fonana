@@ -34,9 +34,14 @@ interface Subscription {
   subscribedAt: string
   validUntil: string
   isActive: boolean
+  showInProfile?: boolean // Добавлено для индивидуального контроля видимости
 }
 
-export default function UserSubscriptions() {
+interface UserSubscriptionsProps {
+  compact?: boolean
+}
+
+export default function UserSubscriptions({ compact = false }: UserSubscriptionsProps) {
   const user = useUser()
   const { publicKey } = useWallet()
   const [subscriptions, setSubscriptions] = useState<Subscription[]>([])
@@ -97,16 +102,44 @@ export default function UserSubscriptions() {
     }
   }
 
+  const handleToggleVisibility = async (subscriptionId: string, showInProfile: boolean) => {
+    try {
+      const response = await fetch(`/api/subscriptions/${subscriptionId}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ showInProfile })
+      })
+
+      if (response.ok) {
+        setSubscriptions(prevSubscriptions => 
+          prevSubscriptions.map(sub => 
+            sub.id === subscriptionId 
+              ? { ...sub, showInProfile } 
+              : sub
+          )
+        )
+        toast.success(`Subscription ${showInProfile ? 'shown' : 'hidden'} in profile`)
+      } else {
+        toast.error('Error updating subscription visibility')
+      }
+    } catch (error) {
+      console.error('Error updating subscription visibility:', error)
+      toast.error('Error updating subscription visibility')
+    }
+  }
+
   const getTierColor = (tier: string) => {
     switch (tier.toLowerCase()) {
       case 'basic':
-        return 'from-gray-400 to-gray-600'
+        return 'from-blue-400 to-cyan-400'  // Basic теперь цветной (синий)
       case 'premium':
         return 'from-purple-500 to-pink-500'
       case 'vip':
         return 'from-yellow-400 to-orange-500'
       default:
-        return 'from-blue-400 to-cyan-400'
+        return 'from-gray-400 to-gray-600'  // Free теперь нейтральный (серый)
     }
   }
 
@@ -140,8 +173,8 @@ export default function UserSubscriptions() {
 
   if (loading) {
     return (
-      <div className="bg-white dark:bg-slate-800/50 backdrop-blur-xl border border-gray-200 dark:border-slate-700/50 rounded-3xl p-8 shadow-lg">
-        <div className="text-center text-gray-600 dark:text-slate-400">
+      <div className={compact ? "text-center text-gray-600 dark:text-gray-400 py-4" : "bg-white dark:bg-slate-800/50 backdrop-blur-xl border border-gray-200 dark:border-slate-700/50 rounded-3xl p-8 shadow-lg"}>
+        <div className={compact ? "text-sm" : "text-center text-gray-600 dark:text-slate-400"}>
           Loading subscriptions...
         </div>
       </div>
@@ -150,12 +183,117 @@ export default function UserSubscriptions() {
 
   if (subscriptions.length === 0) {
     return (
-      <div className="bg-white dark:bg-slate-800/50 backdrop-blur-xl border border-gray-200 dark:border-slate-700/50 rounded-3xl p-8 shadow-lg">
+      <div className={compact ? "text-center py-4" : "bg-white dark:bg-slate-800/50 backdrop-blur-xl border border-gray-200 dark:border-slate-700/50 rounded-3xl p-8 shadow-lg"}>
         <div className="text-center">
-          <SparklesIcon className="w-16 h-16 text-gray-400 dark:text-slate-600 mx-auto mb-4" />
-          <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2">You don't have any active subscriptions</h3>
-          <p className="text-gray-600 dark:text-slate-400">Explore creators and subscribe to interesting content</p>
+          {!compact && <SparklesIcon className="w-16 h-16 text-gray-400 dark:text-slate-600 mx-auto mb-4" />}
+          <h3 className={compact ? "text-base font-medium text-gray-900 dark:text-white mb-1" : "text-xl font-bold text-gray-900 dark:text-white mb-2"}>
+            You don't have any active subscriptions
+          </h3>
+          <p className={compact ? "text-sm text-gray-600 dark:text-gray-400" : "text-gray-600 dark:text-slate-400"}>
+            Explore creators and subscribe to interesting content
+          </p>
         </div>
+      </div>
+    )
+  }
+
+  // Compact version
+  if (compact) {
+    return (
+      <div className="space-y-3">
+        {subscriptions.map((subscription) => {
+          const daysLeft = getDaysLeft(subscription.validUntil)
+          const isExpiringSoon = daysLeft <= 7
+          
+          return (
+            <div
+              key={subscription.id}
+              className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700/30 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700/50 transition-colors"
+            >
+              <div className="flex items-center gap-3">
+                <Link 
+                  href={getProfileLink({ id: subscription.creator.id, nickname: subscription.creator.nickname })}
+                  className="flex-shrink-0"
+                >
+                  <Avatar
+                    src={subscription.creator.avatar}
+                    alt={subscription.creator.fullName}
+                    seed={subscription.creator.nickname}
+                    size={40}
+                    rounded="xl"
+                  />
+                </Link>
+                
+                <div>
+                  <div className="flex items-center gap-2">
+                    <Link 
+                      href={getProfileLink({ id: subscription.creator.id, nickname: subscription.creator.nickname })}
+                      className="font-medium text-gray-900 dark:text-white hover:text-purple-600 dark:hover:text-purple-400 transition-colors"
+                    >
+                      {subscription.creator.fullName || subscription.creator.nickname}
+                    </Link>
+                    {subscription.creator.isVerified && (
+                      <CheckBadgeIcon className="w-4 h-4 text-blue-500 dark:text-blue-400" />
+                    )}
+                  </div>
+                  <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
+                    <span className={`px-2 py-0.5 rounded-md text-xs font-medium text-white bg-gradient-to-r ${getTierColor(subscription.plan)}`}>
+                      {getTierIcon(subscription.plan)} {subscription.plan}
+                    </span>
+                    <span>{subscription.price} {subscription.currency}/mo</span>
+                    <span className={isExpiringSoon ? 'text-orange-600 dark:text-orange-400' : ''}>
+                      {daysLeft > 0 ? `${daysLeft}d left` : 'Expired'}
+                    </span>
+                  </div>
+                </div>
+              </div>
+              
+              <div className="flex items-center gap-1">
+                {/* Show in Profile Toggle */}
+                <div className="flex items-center gap-1 px-2">
+                  <label className="relative inline-flex items-center cursor-pointer" title="Show in profile">
+                    <input
+                      type="checkbox"
+                      checked={subscription.showInProfile !== false}
+                      onChange={(e) => handleToggleVisibility(subscription.id, e.target.checked)}
+                      className="sr-only peer"
+                    />
+                    <div className="w-9 h-5 bg-gray-200 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-purple-300 dark:peer-focus:ring-purple-800 rounded-full peer dark:bg-gray-600 peer-checked:after:translate-x-4 peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all dark:border-gray-600 peer-checked:bg-purple-600"></div>
+                  </label>
+                </div>
+                
+                <Link
+                  href={getProfileLink({ id: subscription.creator.id, nickname: subscription.creator.nickname })}
+                  className="p-2 text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
+                  title="View Profile"
+                >
+                  <UserIcon className="w-4 h-4" />
+                </Link>
+                {subscription.plan.toLowerCase() !== 'vip' && (
+                  <Link
+                    href={`${getProfileLink({ id: subscription.creator.id, nickname: subscription.creator.nickname })}#subscription-tiers`}
+                    className="p-2 text-gray-400 hover:text-purple-600 dark:hover:text-purple-400 transition-colors"
+                    title="Upgrade Tier"
+                  >
+                    <ArrowUpIcon className="w-4 h-4" />
+                  </Link>
+                )}
+                <button
+                  onClick={() => {
+                    if (confirm('Are you sure you want to cancel this subscription?')) {
+                      handleUnsubscribe(subscription.id)
+                    }
+                  }}
+                  className="p-2 text-gray-400 hover:text-red-600 dark:hover:text-red-400 transition-colors"
+                  title="Cancel Subscription"
+                >
+                  <TrashIcon className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+          )
+        })}
+
       </div>
     )
   }

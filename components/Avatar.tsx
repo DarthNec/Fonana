@@ -25,15 +25,16 @@ export default function Avatar({
   
   // Сбрасываем ошибки при изменении src
   useEffect(() => {
+    console.log(`[Avatar] Src changed: ${src}`)
     setImageError(false)
     setGeneratorError(false)
   }, [src])
   
-  // Проверяем, является ли src валидным локальным изображением
-  const isValidLocalImage = src && src.includes('/avatars/') && (src.includes('.jpg') || src.includes('.png') || src.includes('.webp') || src.includes('.jpeg'))
+  // Проверяем есть ли валидный src для изображения
+  const hasValidSrc = src && src.length > 0 && src !== 'undefined' && src !== 'null'
   
-  // Если нет валидного изображения, используем DiceBear
-  const shouldUseGenerator = !src || !isValidLocalImage || imageError
+  // Используем DiceBear ТОЛЬКО если нет src ИЛИ произошла ошибка загрузки
+  const shouldUseGenerator = !hasValidSrc || imageError
   
   const roundedClasses = {
     'full': 'rounded-full',
@@ -74,7 +75,13 @@ export default function Avatar({
           height={size}
           className="w-full h-full"
           unoptimized
-          onError={() => setGeneratorError(true)}
+          onError={(e) => {
+            console.log(`[Avatar] DiceBear error for URL: ${avatarUrl}`, e)
+            setGeneratorError(true)
+          }}
+          onLoad={() => {
+            console.log(`[Avatar] DiceBear loaded: ${avatarUrl}`)
+          }}
         />
       </div>
     )
@@ -92,7 +99,13 @@ export default function Avatar({
         width={size}
         height={size}
         className="object-cover w-full h-full"
-        onError={() => setImageError(true)}
+        onError={(e) => {
+          console.log(`[Avatar] Image load error for src: ${src}`, e)
+          setImageError(true)
+        }}
+        onLoad={() => {
+          console.log(`[Avatar] Image loaded successfully: ${src}`)
+        }}
       />
     </div>
   )

@@ -152,7 +152,7 @@ export async function validatePaymentDistribution(
   try {
     const expectedRecipients = [
       distribution.creatorWallet,
-      process.env.NEXT_PUBLIC_PLATFORM_WALLET || 'npzAZaN9fDMgLV63b3kv3FF8cLSd8dQSLxyMXASA5T4'
+      process.env.NEXT_PUBLIC_PLATFORM_WALLET || 'EEqsmopVfTuaiJrh8xL7ZsZbUctckY6S5WyHYR66wjpw'
     ]
     
     if (distribution.referrerWallet) {
@@ -192,7 +192,7 @@ export async function validatePaymentDistribution(
       key => key.toBase58() === distribution.creatorWallet
     )
     const platformIndex = accountKeys.staticAccountKeys.findIndex(
-      key => key.toBase58() === (process.env.NEXT_PUBLIC_PLATFORM_WALLET || 'npzAZaN9fDMgLV63b3kv3FF8cLSd8dQSLxyMXASA5T4')
+      key => key.toBase58() === (process.env.NEXT_PUBLIC_PLATFORM_WALLET || 'EEqsmopVfTuaiJrh8xL7ZsZbUctckY6S5WyHYR66wjpw')
     )
 
     // Проверяем суммы

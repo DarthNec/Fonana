@@ -14,12 +14,15 @@ import {
 import Avatar from '@/components/Avatar'
 import toast from 'react-hot-toast'
 import { isValidNickname, isReservedNickname } from '@/lib/utils/links'
+import { useUser, useUserActions } from '@/lib/store/appStore'
 
 interface ProfileSetupModalProps {
   isOpen: boolean
   onClose: () => void
   onComplete: (profileData: ProfileData) => void
-  userWallet: string
+  userWallet?: string
+  mode?: 'create' | 'edit'
+  initialData?: Partial<ProfileData>
 }
 
 interface ProfileData {
@@ -37,29 +40,41 @@ export default function ProfileSetupModal({
   isOpen, 
   onClose, 
   onComplete,
-  userWallet 
+  userWallet = '',
+  mode = 'create',
+  initialData = {}
 }: ProfileSetupModalProps) {
-  const [step, setStep] = useState(1)
+  const [step, setStep] = useState(mode === 'edit' ? 1 : 1)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const user = useUser()
+  const { setUser } = useUserActions()
   
   const [formData, setFormData] = useState<ProfileData>({
-    nickname: '',
-    fullName: '',
-    bio: '',
-    avatar: undefined,
-    website: '',
-    twitter: '',
-    telegram: ''
+    nickname: initialData.nickname || '',
+    fullName: initialData.fullName || '',
+    bio: initialData.bio || '',
+    avatar: initialData.avatar || undefined,
+    website: initialData.website || '',
+    twitter: initialData.twitter || '',
+    telegram: initialData.telegram || ''
   })
 
-  // Nickname validation
-  const [nicknameStatus, setNicknameStatus] = useState<'idle' | 'checking' | 'available' | 'taken' | 'invalid' | 'reserved'>('idle')
+  // В режиме редактирования сразу проверяем что никнейм доступен (это текущий никнейм)
+  const [nicknameStatus, setNicknameStatus] = useState<'idle' | 'checking' | 'available' | 'taken' | 'invalid' | 'reserved'>(
+    mode === 'edit' && initialData.nickname ? 'available' : 'idle'
+  )
   const [nicknameCheckTimeout, setNicknameCheckTimeout] = useState<NodeJS.Timeout | null>(null)
 
   const checkNicknameAvailability = async (nickname: string) => {
     if (!nickname) {
       setNicknameStatus('idle')
+      return
+    }
+
+    // В режиме редактирования, если никнейм не изменился - считаем доступным
+    if (mode === 'edit' && nickname === initialData.nickname) {
+      setNicknameStatus('available')
       return
     }
 
@@ -82,7 +97,12 @@ export default function ProfileSetupModal({
       const data = await response.json()
       
       if (data.user) {
-        setNicknameStatus('taken')
+        // В режиме редактирования, если найденный пользователь - это текущий пользователь
+        if (mode === 'edit' && data.user.nickname === initialData.nickname) {
+          setNicknameStatus('available')
+        } else {
+          setNicknameStatus('taken')
+        }
       } else {
         setNicknameStatus('available')
       }
@@ -127,7 +147,29 @@ export default function ProfileSetupModal({
         }
         
         setFormData(prev => ({ ...prev, avatar: data.avatarUrl }))
-        toast.success('Avatar uploaded!')
+        
+        // Обновляем БД через API и перезагружаем страницу для обновления всех компонентов
+        try {
+          const updateResponse = await fetch('/api/user', {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ 
+              wallet: userWallet, 
+              avatar: data.avatarUrl 
+            })
+          })
+          
+          if (updateResponse.ok) {
+            toast.success('Avatar updated successfully!')
+            // Перезагружаем страницу чтобы все компоненты получили новые данные
+            window.location.reload()
+          } else {
+            throw new Error('Failed to update user profile')
+          }
+        } catch (updateError) {
+          console.error('Error updating user profile:', updateError)
+          toast.error('Avatar uploaded but failed to update profile')
+        }
       } catch (error) {
         console.error('Error uploading avatar:', error)
         toast.error('Failed to upload avatar')
@@ -206,10 +248,10 @@ export default function ProfileSetupModal({
                 </button>
               )}
               <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
-                Welcome to Fonana! 🎉
+                {mode === 'edit' ? 'Edit Your Profile' : 'Welcome to Fonana! 🎉'}
               </h2>
               <p className="text-gray-600 dark:text-slate-400">
-                Let's set up your profile
+                {mode === 'edit' ? 'Update your profile information' : 'Let\'s set up your profile'}
               </p>
             </div>
 

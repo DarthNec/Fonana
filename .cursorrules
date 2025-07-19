@@ -23,6 +23,54 @@
 - **Playwright testing**: Use browser testing to verify actual rendering vs API responses
 - **Memory Bank first**: Always read Memory Bank files before any code changes
 
+## 🎯 **IDEAL METHODOLOGY Integration**
+
+### **Systematic Debugging Patterns (2025-018)**
+Based on successful SparklesIcon error resolution:
+
+#### **HeroIcons Import Errors**
+- **Symptom**: `ReferenceError: [IconName] is not defined`
+- **Root Cause**: Missing import in component file
+- **Diagnosis**: Use `grep_search` to find icon usage vs imports
+- **Solution**: Add missing icon to existing `import { } from '@heroicons/react/24/outline'`
+- **Validation**: Playwright MCP reproduction with browser console monitoring
+- **Time**: ~10 minutes with IDEAL METHODOLOGY
+
+#### **React setState Warnings Pattern**
+- **Symptom**: `Cannot update component while rendering another component`
+- **Root Cause**: Usually secondary effect of JavaScript ReferenceError in render
+- **Fix Strategy**: Resolve primary error (missing import) → setState warning disappears
+- **Don't**: Try to fix setState warning directly without addressing root cause
+
+#### **Conditional Rendering Errors**
+- **Pattern**: Errors occur only with specific data types (e.g., tip messages with JWT tokens)
+- **Discovery Method**: Playwright MCP navigation to different scenarios
+- **Key Insight**: Error shows only when component reaches specific rendering path
+- **Testing**: Always test both "No JWT" and "With JWT" scenarios
+
+### **Playwright MCP Debug Strategy**
+```javascript
+// Standard debugging automation sequence:
+// 1. Navigate to problem URL
+await page.goto('http://localhost:3000/messages/[id]');
+
+// 2. Collect console evidence
+const console_logs = await browser_console_messages();
+
+// 3. Check for specific error patterns
+const errors = console_logs.filter(m => m.includes('ReferenceError'));
+
+// 4. Validate fix by repeating navigation
+// Expected: 0 errors after fix
+```
+
+### **7-File System Success Patterns**
+- **Discovery Phase**: Playwright MCP reproduction critical for accurate diagnosis
+- **Impact Analysis**: Always classify risks (Critical/Major/Minor) before coding
+- **Implementation Simulation**: Model all edge cases before actual changes
+- **Browser Validation**: Real-world testing prevents theoretical solutions
+- **Time Efficiency**: 10-minute fix with 1-hour analysis prevents days of debugging
+
 ## User Preferences
 
 ### Communication Style
@@ -131,11 +179,15 @@ curl http://localhost:3000/api/posts | jq '.[0].creator'
 - **Memory Bank documentation**: Comprehensive system knowledge preservation
 - **Playwright testing**: Real browser verification of frontend/backend integration
 - **Defensive programming**: Null checks and fallback values prevent crashes
+- **IDEAL METHODOLOGY**: 7-file systematic debugging prevents hasty fixes and ensures enterprise-quality solutions
 
 ### Effective Debugging
 1. **API first**: Verify endpoints return expected data structure
 2. **Component isolation**: Test components with known good data
 3. **Console monitoring**: JavaScript errors reveal schema mismatches
 4. **Database verification**: Check actual vs expected schema regularly
+5. **Playwright MCP automation**: Real browser reproduction of issues
+6. **Import validation**: Always check missing imports before complex debugging
+7. **IDEAL METHODOLOGY application**: Follow systematic 7-phase approach for all non-trivial issues
 
-Remember: This project has significant architectural debt that must be understood and worked around, not hastily "fixed" without comprehensive analysis. 
+Remember: This project has significant architectural debt that must be understood and worked around, not hastily "fixed" without comprehensive analysis. Always follow IDEAL METHODOLOGY for debugging to prevent time waste and ensure quality solutions. 

@@ -29,7 +29,7 @@ const categories = [
 ]
 
 interface CreatePostModalProps {
-  onPostCreated?: () => void
+  onPostCreated?: (createdPost?: any) => void  // [tier_access_system_2025_017] Передаем созданный пост
   onPostUpdated?: (updatedPost?: any) => void
   onClose?: () => void
   mode?: 'create' | 'edit'
@@ -660,7 +660,8 @@ export default function CreatePostModal({ onPostCreated, onPostUpdated, onClose,
         // Передаем обновленный пост в callback
         setTimeout(() => onPostUpdated(post), 500)
       } else if (mode === 'create' && onPostCreated) {
-        setTimeout(onPostCreated, 500)
+        // [tier_access_system_2025_017] Передаем созданный пост для локального обновления
+        setTimeout(() => onPostCreated(post), 500)
       }
 
     } catch (error) {

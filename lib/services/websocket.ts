@@ -370,7 +370,9 @@ class WebSocketService extends EventEmitter {
 // Singleton экземпляр
 export const wsService = new WebSocketService()
 
-// Автоматически подключаемся при загрузке в браузере
+// ВРЕМЕННО ОТКЛЮЧЕНО: Автоматически подключаемся при загрузке в браузере
+// [critical_regression_2025_017] Отключено для остановки infinite reconnect loop
+/*
 if (typeof window !== 'undefined') {
   // Откладываем подключение, чтобы дать время для загрузки JWT
   setTimeout(() => {
@@ -378,3 +380,6 @@ if (typeof window !== 'undefined') {
     wsService.connect()
   }, 1000)
 } 
+*/
+
+console.log('[WebSocket] Auto-connect disabled for emergency stabilization [critical_regression_2025_017]') 

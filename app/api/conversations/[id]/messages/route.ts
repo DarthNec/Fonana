@@ -46,20 +46,33 @@ export async function GET(
       return NextResponse.json({ error: 'Access denied' }, { status: 403 })
     }
     
-    // Получаем сообщения
+    // Получаем параметры пагинации
+    const url = new URL(request.url)
+    const before = url.searchParams.get('before')
+    const limit = parseInt(url.searchParams.get('limit') || '20')
+    
+    // Создаем условие для пагинации
+    let whereCondition: any = { conversationId }
+    if (before) {
+      // Получаем дату сообщения before для пагинации
+      const beforeMessage = await prisma.message.findUnique({
+        where: { id: before },
+        select: { createdAt: true }
+      })
+      
+      if (beforeMessage) {
+        whereCondition.createdAt = {
+          lt: beforeMessage.createdAt
+        }
+      }
+    }
+    
+    // Получаем сообщения с пагинацией
     const messages = await prisma.message.findMany({
-      where: { conversationId },
+      where: whereCondition,
       orderBy: { createdAt: 'desc' },
+      take: limit,
       include: {
-        sender: {
-          select: {
-            id: true,
-            wallet: true,
-            nickname: true,
-            fullName: true,
-            avatar: true
-          }
-        },
         purchases: {
           where: { userId: user.id },
           select: {
@@ -69,6 +82,9 @@ export async function GET(
         }
       }
     })
+    
+    // Проверяем есть ли еще сообщения
+    const hasMore = messages.length === limit
     
     // Помечаем сообщения как прочитанные
     await prisma.message.updateMany({
@@ -80,9 +96,24 @@ export async function GET(
       data: { isRead: true }
     })
     
+    // Получаем данные отправителей
+    const senderIds = Array.from(new Set(messages.map(m => m.senderId)))
+    const senders = await prisma.user.findMany({
+      where: { id: { in: senderIds } },
+      select: {
+        id: true,
+        wallet: true,
+        nickname: true,
+        fullName: true,
+        avatar: true
+      }
+    })
+    const sendersMap = Object.fromEntries(senders.map(s => [s.id, s]))
+    
     // Форматируем сообщения
     const formattedMessages = messages.map((message: any) => ({
       ...message,
+      sender: sendersMap[message.senderId],
       content: message.isPaid && message.purchases.length === 0 && message.senderId !== user.id
         ? null 
         : message.content,
@@ -90,7 +121,10 @@ export async function GET(
       isOwn: message.senderId === user.id
     }))
     
-    return NextResponse.json({ messages: formattedMessages })
+    return NextResponse.json({ 
+      messages: formattedMessages,
+      hasMore: hasMore
+    })
   } catch (error) {
     console.error('Error fetching messages:', error)
     return NextResponse.json({ error: 'Failed to fetch messages' }, { status: 500 })
@@ -139,14 +173,7 @@ export async function POST(
       return NextResponse.json({ error: 'User not found' }, { status: 404 })
     }
     
-    // Проверяем, что чат существует
-    const conversation = await prisma.conversation.findUnique({
-      where: { id: conversationId }
-    })
-    
-    if (!conversation) {
-      return NextResponse.json({ error: 'Conversation not found' }, { status: 404 })
-    }
+    // NOTE: Conversation model is @@ignore in schema, skip validation for now
     
     // Проверяем что пользователь участник чата через raw query
     const isParticipant = await prisma.$queryRaw<{count: bigint}[]>`
@@ -171,24 +198,10 @@ export async function POST(
         price: isPaid ? price : null,
         metadata
       },
-      include: {
-        sender: {
-          select: {
-            id: true,
-            wallet: true,
-            nickname: true,
-            fullName: true,
-            avatar: true
-          }
-        }
-      }
+      // NOTE: sender relation not available in schema
     })
     
-    // Обновляем lastMessageAt в чате
-    await prisma.conversation.update({
-      where: { id: conversationId },
-      data: { lastMessageAt: new Date() }
-    })
+    // NOTE: Conversation model is @@ignore in schema, skip lastMessageAt update
     
     // Получаем участников чата для создания уведомления
     const participants = await prisma.$queryRaw<{id: string}[]>`

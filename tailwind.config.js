@@ -39,6 +39,18 @@ module.exports = {
         accent: 'rgb(var(--accent) / <alpha-value>)',
         warning: 'rgb(var(--warning) / <alpha-value>)',
         danger: 'rgb(var(--danger) / <alpha-value>)',
+        // Shadcn colors
+        border: "hsl(var(--border))",
+        input: "hsl(var(--input))",
+        ring: "hsl(var(--ring))",
+        muted: {
+          DEFAULT: "hsl(var(--muted))",
+          foreground: "hsl(var(--muted-foreground))",
+        },
+        destructive: {
+          DEFAULT: "hsl(var(--destructive))",
+          foreground: "hsl(var(--destructive-foreground))",
+        },
         neon: {
           blue: 'rgb(var(--neon-blue) / <alpha-value>)',
           purple: 'rgb(var(--neon-purple) / <alpha-value>)',
@@ -72,6 +84,8 @@ module.exports = {
         'modern': 'var(--border-radius)',
         'modern-lg': 'var(--border-radius-lg)',
         'modern-xl': 'var(--border-radius-xl)',
+        // Shadcn radius
+        'radius': 'var(--radius)',
       },
       animation: {
         'bounce-slow': 'bounce 2s linear infinite',

@@ -25,6 +25,7 @@ interface UseOptimizedPostsReturn {
   loadMore: () => void
   refresh: (clearCache?: boolean) => void
   handleAction: (action: PostAction) => Promise<void>
+  addNewPost: (newPost: UnifiedPost) => void
 }
 
 /**
@@ -99,8 +100,6 @@ export function useOptimizedPosts(options: UseOptimizedPostsOptions = {}): UseOp
         if (err.name !== 'AbortError') {
           console.error('[useOptimizedPosts] Fetch error:', err)
           setError(err)
-        } else {
-          console.log('[useOptimizedPosts] Request aborted (expected)')
         }
       } finally {
         setIsLoading(false)
@@ -109,14 +108,19 @@ export function useOptimizedPosts(options: UseOptimizedPostsOptions = {}): UseOp
     
     loadPosts()
     
-    // ✅ Cleanup function
+    // ✅ Cleanup properly
     return () => {
-      console.log('[useOptimizedPosts] Cleanup: aborting request')
       controller.abort()
     }
-  }, [options.sortBy, options.category, options.creatorId, publicKey, user?.id])  // ✅ Clear dependencies
+  }, [
+    options.sortBy, 
+    options.category, 
+    options.creatorId,
+    publicKey?.toBase58(),
+    user?.id
+  ])
   
-  // Placeholder functions to maintain interface compatibility
+  // Placeholder functions for Phase 1
   const loadMore = useCallback(() => {
     console.log('[useOptimizedPosts] loadMore not implemented in Phase 1')
   }, [])
@@ -131,6 +135,23 @@ export function useOptimizedPosts(options: UseOptimizedPostsOptions = {}): UseOp
     // TODO Phase 2: Implement post actions
   }, [])
   
+  // [tier_access_system_2025_017] Добавляем функцию для локального добавления нового поста
+  // [post_content_render_2025_017] Исправлено: нормализуем пост перед добавлением
+  const addNewPost = useCallback((newPost: UnifiedPost) => {
+    console.log('[useOptimizedPosts] Adding new post locally:', newPost.id, newPost.content.title)
+    
+    // Нормализуем пост перед добавлением чтобы избежать ошибок рендеринга
+    const normalizedPost = PostNormalizer.normalize(newPost)
+    console.log('[useOptimizedPosts] Normalized post structure:', {
+      id: normalizedPost.id,
+      content: normalizedPost.content,
+      hasText: !!normalizedPost.content?.text
+    })
+    
+    // Добавляем нормализованный пост в начало списка
+    setPosts(prevPosts => [normalizedPost, ...prevPosts])
+  }, [])
+  
   return {
     posts,
     isLoading,
@@ -139,6 +160,7 @@ export function useOptimizedPosts(options: UseOptimizedPostsOptions = {}): UseOp
     hasMore: false,       // Simplified for Phase 1
     loadMore,
     refresh,
-    handleAction
+    handleAction,
+    addNewPost  // [tier_access_system_2025_017] Экспортируем функцию локального добавления
   }
 } 

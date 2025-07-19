@@ -228,7 +228,7 @@ export async function POST(request: Request) {
       }
     } else if (userWallet) {
       // Обратная совместимость - поиск по кошельку
-      user = await prisma.user.findUnique({
+      user = await prisma.user.findFirst({
         where: { solanaWallet: userWallet }
       })
 
@@ -328,11 +328,7 @@ export async function POST(request: Request) {
             validUntil,
             isActive: true,
             txSignature: signature,
-            paymentStatus: 'COMPLETED',
-            paymentAmount: price,
-            platformFee: distribution.platformAmount,
-            referrerFee: distribution.referrerAmount,
-            creatorAmount: distribution.creatorAmount
+            paymentStatus: 'COMPLETED'
           }
         })
       : await prisma.subscription.create({
@@ -346,10 +342,7 @@ export async function POST(request: Request) {
             isActive: true,
             txSignature: signature,
             paymentStatus: 'COMPLETED',
-            paymentAmount: price,
-            platformFee: distribution.platformAmount,
-            referrerFee: distribution.referrerAmount,
-            creatorAmount: distribution.creatorAmount
+
           }
         })
 

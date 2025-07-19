@@ -100,14 +100,7 @@ export async function GET(req: Request) {
             comments: true,
           },
         },
-        // Новые связи для продаваемых постов
-        soldTo: {
-          select: {
-            id: true,
-            nickname: true,
-            wallet: true,
-          }
-        },
+
         auctionBids: {
           orderBy: { amount: 'desc' },
           take: 1,
@@ -161,15 +154,23 @@ export async function GET(req: Request) {
     })
     const purchasedPostIds = userPurchasedPosts.map(p => p.postId)
     
-    // Получаем купленные sellable посты
-    const userPurchasedSellablePosts = await prisma.post.findMany({
+    // Получаем купленные sellable посты через PostPurchase
+    const userPurchasedSellablePostsData = await prisma.postPurchase.findMany({
       where: {
-        soldToId: currentUser.id,
-        isSellable: true
+        userId: currentUser.id
       },
-      select: { id: true }
+      include: {
+        post: {
+          select: { 
+            id: true,
+            isSellable: true 
+          }
+        }
+      }
     })
-    const purchasedSellablePostIds = userPurchasedSellablePosts.map(p => p.id)
+    const purchasedSellablePostIds = userPurchasedSellablePostsData
+      .filter(purchase => purchase.post.isSellable)
+      .map(purchase => purchase.post.id)
 
     // Получаем лайки текущего пользователя для всех постов
     let userLikes = new Set<string>()
@@ -236,7 +237,7 @@ export async function GET(req: Request) {
         imageAspectRatio: post.imageAspectRatio,
         // Новые поля для продаваемых постов
         isSellable: post.isSellable,
-        sellType: post.sellType,
+
         quantity: post.quantity,
         auctionStatus: post.auctionStatus,
         auctionStartPrice: post.auctionStartPrice,
@@ -244,14 +245,6 @@ export async function GET(req: Request) {
         auctionDepositAmount: post.auctionDepositAmount,
         auctionStartAt: post.auctionStartAt,
         auctionEndAt: post.auctionEndAt,
-        soldAt: post.soldAt,
-        soldTo: post.soldTo ? {
-          id: post.soldTo.id,
-          name: post.soldTo.nickname || post.soldTo.wallet.slice(0, 6) + '...',
-          username: post.soldTo.nickname || post.soldTo.wallet.slice(0, 6) + '...' + post.soldTo.wallet.slice(-4),
-          wallet: post.soldTo.wallet
-        } : null,
-        soldPrice: post.soldPrice,
         // Flash Sale информация
         flashSale: post.flashSales?.[0] ? {
           id: post.flashSales[0].id,

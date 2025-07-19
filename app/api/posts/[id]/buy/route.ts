@@ -39,8 +39,7 @@ export async function POST(
     const post = await prisma.post.findUnique({
       where: { id: params.id },
       include: {
-        creator: true,
-        soldTo: true
+        creator: true
       }
     })
 
@@ -63,7 +62,7 @@ export async function POST(
     // Проверяем, что пост можно купить
     // Поддерживаем два типа: продаваемые посты (isSellable) и платные посты (isLocked с ценой)
     const isPayablePost = post.isLocked && post.price && post.price > 0
-    const isSellablePost = post.isSellable && post.sellType === 'FIXED_PRICE'
+    const isSellablePost = post.isSellable
     
     if (!isPayablePost && !isSellablePost) {
       return NextResponse.json(
@@ -73,7 +72,10 @@ export async function POST(
     }
 
     // Проверяем, что пост еще не продан (только для продаваемых постов)
-    if (isSellablePost && (post.soldAt || post.soldToId)) {
+    const existingPurchase = await prisma.postPurchase.findFirst({
+      where: { postId: params.id }
+    })
+    if (isSellablePost && existingPurchase) {
       return NextResponse.json(
         { error: 'This post has already been sold' },
         { status: 400 }
@@ -167,15 +169,9 @@ export async function POST(
       // Обновляем пост (только для продаваемых постов помечаем как проданный)
       prisma.post.update({
         where: { id: params.id },
-        data: isSellablePost ? {
-          soldAt: new Date(),
-          soldToId: buyer.id,
-          soldPrice: price,
-          auctionStatus: 'SOLD'
-        } : {},
+        data: {},
         include: {
-          creator: true,
-          soldTo: true
+          creator: true
         }
       }),
       

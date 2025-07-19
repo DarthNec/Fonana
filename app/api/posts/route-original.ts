@@ -86,14 +86,7 @@ export async function GET(req: Request) {
             comments: true,
           },
         },
-        // Новые связи для продаваемых постов
-        soldTo: {
-          select: {
-            id: true,
-            nickname: true,
-            wallet: true,
-          }
-        },
+
         auctionBids: {
           orderBy: { amount: 'desc' },
           take: 1,
@@ -176,15 +169,23 @@ export async function GET(req: Request) {
       })
       userPurchasedPosts = purchases.map((purchase: { postId: string }) => purchase.postId)
       
-      // Получаем купленные sellable посты
-      const sellablePurchases = await prisma.post.findMany({
+      // Получаем купленные sellable посты через PostPurchase
+      const sellablePurchasesData = await prisma.postPurchase.findMany({
         where: {
-          soldToId: currentUser.id,
-          isSellable: true
+          userId: currentUser.id
         },
-        select: { id: true }
+        include: {
+          post: {
+            select: { 
+              id: true,
+              isSellable: true 
+            }
+          }
+        }
       })
-      userPurchasedSellablePosts = sellablePurchases.map((post: { id: string }) => post.id)
+      userPurchasedSellablePosts = sellablePurchasesData
+        .filter((purchase: any) => purchase.post.isSellable)
+        .map((purchase: any) => purchase.post.id)
       
       console.log('[API/posts] User purchased posts:', userPurchasedPosts.length, 'posts')
       console.log('[API/posts] User purchased sellable posts:', userPurchasedSellablePosts.length, 'posts')
@@ -248,7 +249,7 @@ export async function GET(req: Request) {
         imageAspectRatio: post.imageAspectRatio,
         // Новые поля для продаваемых постов
         isSellable: post.isSellable,
-        sellType: post.sellType,
+
         quantity: post.quantity,
         auctionStatus: post.auctionStatus,
         auctionStartPrice: post.auctionStartPrice,
@@ -256,10 +257,6 @@ export async function GET(req: Request) {
         auctionDepositAmount: post.auctionDepositAmount,
         auctionStartAt: post.auctionStartAt,
         auctionEndAt: post.auctionEndAt,
-        soldAt: post.soldAt,
-        soldTo: post.soldTo,
-        soldPrice: post.soldPrice,
-        sellerConfirmedAt: post.sellerConfirmedAt,
         // Текущая ставка для аукционов
         auctionCurrentBid: post.auctionBids && post.auctionBids.length > 0 ? post.auctionBids[0].amount : null,
         // Flash Sale (берем первую активную)
@@ -354,9 +351,9 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Please specify a price' }, { status: 400 })
     }
     
-    // Проверяем, что для sellable постов с фиксированной ценой указана цена
-    if (body.isSellable && body.sellType === 'FIXED_PRICE' && (!body.price || body.price <= 0)) {
-      return NextResponse.json({ error: 'Please specify a price for fixed price items' }, { status: 400 })
+    // Проверяем, что для sellable постов указана цена
+    if (body.isSellable && (!body.price || body.price <= 0)) {
+      return NextResponse.json({ error: 'Please specify a price for sellable items' }, { status: 400 })
     }
 
     const post = await createPost(body.creatorWallet, {
@@ -379,7 +376,6 @@ export async function POST(request: NextRequest) {
             body.accessType === 'paid' ? 'paid' : 'free',
       // Новые поля для продаваемых постов
       isSellable: body.isSellable || false,
-      sellType: body.sellType,
       quantity: body.quantity,
       auctionStartPrice: body.auctionStartPrice,
       auctionStepPrice: body.auctionStepPrice,

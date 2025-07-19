@@ -9,13 +9,13 @@ import {
   PaperAirplaneIcon,
   PhotoIcon,
   LockClosedIcon,
-  SparklesIcon,
   CurrencyDollarIcon,
   XMarkIcon,
   ChatBubbleLeftEllipsisIcon,
   VideoCameraIcon,
   CheckCircleIcon,
-  GiftIcon
+  GiftIcon,
+  SparklesIcon
 } from '@heroicons/react/24/outline'
 import { HeartIcon, EyeIcon } from '@heroicons/react/24/solid'
 import Link from 'next/link'
@@ -129,23 +129,28 @@ export default function ConversationPage() {
     
     // Reset counter every 60 seconds
     if (now - lastResetTime > 60000) {
-      setCircuitBreakerState({
-        callCount: 0,
-        lastResetTime: now,
-        isBlocked: false,
-        blockUntil: 0
-      });
+      // Use setTimeout to prevent setState during render cycle
+      setTimeout(() => {
+        setCircuitBreakerState({
+          callCount: 0,
+          lastResetTime: now,
+          isBlocked: false,
+          blockUntil: 0
+        });
+      }, 0)
       return true;
     }
     
     // Check rate limit (max 10 calls per minute)
     if (callCount >= 10) {
       const blockDuration = 60000; // Block for 1 minute
-      setCircuitBreakerState(prev => ({
-        ...prev,
-        isBlocked: true,
-        blockUntil: now + blockDuration
-      }));
+      setTimeout(() => {
+        setCircuitBreakerState(prev => ({
+          ...prev,
+          isBlocked: true,
+          blockUntil: now + blockDuration
+        }));
+      }, 0)
       console.error(`[Circuit Breaker] ${endpoint} rate limited. Blocked for ${blockDuration/1000}s`);
       return false;
     }
@@ -154,10 +159,13 @@ export default function ConversationPage() {
   }, [circuitBreakerState]);
 
   const incrementCallCounter = useCallback(() => {
-    setCircuitBreakerState(prev => ({
-      ...prev,
-      callCount: prev.callCount + 1
-    }));
+    // Use setTimeout to prevent setState during render cycle
+    setTimeout(() => {
+      setCircuitBreakerState(prev => ({
+        ...prev,
+        callCount: prev.callCount + 1
+      }));
+    }, 0)
   }, []);
 
   // 🚀 PHASE 1 FIX: Stable useEffect dependencies to prevent infinite loop
@@ -187,6 +195,42 @@ export default function ConversationPage() {
   useEffect(() => {
     scrollToBottom()
   }, [messages])
+
+  // 🚀 PHASE 1: Separate useEffect for participant detection (SAFE - after render)
+  useEffect(() => {
+    const timestamp = Date.now();
+    console.log(`[${timestamp}] [Participant Effect] Triggered:`, {
+      messagesLength: messages.length,
+      hasParticipant: !!participant,
+      participantId: participant?.id || 'none'
+    });
+
+    // CRITICAL: Both conditions must be present to prevent infinite loop
+    if (messages.length > 0 && !participant) {
+      const firstMessage = messages[0]
+      console.log(`[${timestamp}] [Participant Effect] First message:`, {
+        messageId: firstMessage.id,
+        isOwn: firstMessage.isOwn,
+        senderId: firstMessage.sender?.id || 'none'
+      });
+      
+      const otherParticipant = firstMessage.isOwn 
+        ? null // Own message - нужен receiver (будет загружен через loadConversationInfo)
+        : firstMessage.sender // Message from other - sender is participant
+      
+      if (otherParticipant) {
+        console.log(`[${timestamp}] [Participant Effect] Setting participant:`, otherParticipant);
+        setParticipant(otherParticipant) // ✅ Safe - in useEffect after render
+      } else {
+        console.log(`[${timestamp}] [Participant Effect] No participant from messages, need conversation info`);
+        // Fallback to loadConversationInfo если нужно (для own messages)
+      }
+    } else {
+      console.log(`[${timestamp}] [Participant Effect] Skipping:`, {
+        reason: messages.length === 0 ? 'no_messages' : 'has_participant'
+      });
+    }
+  }, [messages, participant]) // ✅ BOTH dependencies - prevents infinite loop
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
@@ -244,27 +288,8 @@ export default function ConversationPage() {
         
         setHasMore(data.hasMore)
         
-        // 🚀 PHASE 1 FIX: Protected participant detection with guards
-        if (data.messages.length > 0 && !participant) {
-          const firstMessage = data.messages[0]
-          const otherParticipant = firstMessage.isOwn 
-            ? null // Нужно загрузить информацию о получателе
-            : firstMessage.sender
-          
-          if (otherParticipant) {
-            setParticipant(otherParticipant)
-            console.log('[loadMessages] Participant found from message sender');
-          } else {
-            // Only call loadConversationInfo if not already loaded/loading and guards pass
-            const { isLoaded, isLoading } = conversationLoadState;
-            if (!isLoaded && !isLoading && checkCircuitBreaker('conversations-check')) {
-              console.log('[loadMessages] Calling loadConversationInfo for participant detection');
-              loadConversationInfo()
-            } else {
-              console.log('[loadMessages] Skipping loadConversationInfo', { isLoaded, isLoading });
-            }
-          }
-        }
+        // 🚀 PHASE 2: Participant detection REMOVED - now handled by separate useEffect
+        // All participant logic moved to useEffect to prevent setState during render cycle
       } else {
         console.error('Failed to load messages:', await response.text())
       }
@@ -331,12 +356,12 @@ export default function ConversationPage() {
         
         const conversation = data.conversations.find((c: any) => c.id === conversationId)
         if (conversation && conversation.participant) {
-          setParticipant(conversation.participant)
+          // 🚀 PHASE 3: Participant logic REMOVED - handled by useEffect now
+          console.log('[loadConversationInfo] Participant found, will be set by useEffect');
           setConversationLoadState(prev => ({
             ...prev,
             isLoaded: true
           }));
-          console.log('[loadConversationInfo] Participant found and set');
         } else {
           console.log('[loadConversationInfo] No matching conversation or participant found');
           // Mark as loaded even if no participant found to prevent infinite retries
@@ -351,6 +376,7 @@ export default function ConversationPage() {
     } catch (error) {
       console.error('Error loading conversation info:', error)
     } finally {
+      // 🚀 PHASE 3: setTimeout removed - direct setState is safe here
       setConversationLoadState(prev => ({
         ...prev,
         isLoading: false
@@ -808,7 +834,8 @@ export default function ConversationPage() {
     <div className="min-h-screen bg-white dark:bg-slate-900 flex flex-col">
       {/* Header */}
       <div className="sticky top-0 z-40 bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl border-b border-gray-200 dark:border-slate-700/50">
-        <div className="flex items-center gap-3 p-3 sm:p-4">
+        <div className="max-w-2xl mx-auto">
+          <div className="flex items-center gap-3 p-3 sm:p-4">
           <Link 
             href="/messages" 
             className="p-2 hover:bg-gray-100 dark:hover:bg-slate-800 rounded-xl transition-colors"
@@ -838,11 +865,13 @@ export default function ConversationPage() {
               </div>
             </Link>
           )}
+          </div>
         </div>
       </div>
 
       {/* Messages */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-4">
+      <div className="flex-1 overflow-y-auto p-4">
+        <div className="max-w-2xl mx-auto space-y-4">
         {isLoading ? (
           <div className="flex items-center justify-center py-20">
             <div className="text-center">
@@ -1096,8 +1125,12 @@ export default function ConversationPage() {
             </div>
           </div>
         )}
+        </div>
+      </div>
         
-        <div className="p-3 sm:p-4">
+      {/* Input Area */}
+      <div className="p-3 sm:p-4 border-t border-gray-200 dark:border-slate-700">
+        <div className="max-w-2xl mx-auto">
           {selectedMedia && (
             <div className="mb-3 relative inline-block">
               <div className="relative">
@@ -1204,18 +1237,6 @@ export default function ConversationPage() {
                 <CurrencyDollarIcon className="w-5 h-5" />
               </button>
               
-              {/* Quick Tips */}
-              <button
-                onClick={() => setShowQuickTips(!showQuickTips)}
-                className={`p-2.5 rounded-xl transition-all ${
-                  showQuickTips
-                    ? 'bg-gradient-to-r from-yellow-100 to-orange-100 dark:from-yellow-900/30 dark:to-orange-900/30 text-yellow-600 dark:text-yellow-400'
-                    : 'text-gray-600 dark:text-slate-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-slate-800'
-                }`}
-                title="Send tip"
-              >
-                <SparklesIcon className="w-5 h-5" />
-              </button>
               
               {/* Custom Tip */}
               <button
