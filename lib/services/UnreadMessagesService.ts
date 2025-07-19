@@ -57,8 +57,14 @@ class UnreadMessagesService {
   
   /**
    * Запустить автоматический polling
+   * ВРЕМЕННО ОТКЛЮЧЕНО [critical_regression_2025_017]
    */
   private startPolling(): void {
+    // ВРЕМЕННО ОТКЛЮЧЕНО для остановки infinite Conversations API loop
+    console.log('[UnreadMessagesService] Polling disabled for emergency stabilization [critical_regression_2025_017]')
+    return
+    
+    /* ОТКЛЮЧЕННЫЙ КОД:
     if (this.isPolling || this.intervalId) {
       return // Уже запущен
     }
@@ -73,6 +79,7 @@ class UnreadMessagesService {
     this.intervalId = setInterval(() => {
       this.fetchAndNotify()
     }, 30000)
+    */
   }
   
   /**

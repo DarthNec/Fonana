@@ -32,10 +32,10 @@ export async function POST(request: NextRequest) {
     let uploadDir: string
     
     if (process.env.NODE_ENV === 'production') {
-      uploadDir = '/var/www/fonana/public/backgrounds'
+      uploadDir = '/var/www/fonana/public/media/backgrounds'
     } else {
       // Для локальной разработки используем путь относительно корня проекта
-      uploadDir = path.join(process.cwd(), 'public', 'backgrounds')
+      uploadDir = path.join(process.cwd(), 'public', 'media', 'backgrounds')
     }
     
     // Создаем директорию синхронно с recursive
@@ -51,7 +51,7 @@ export async function POST(request: NextRequest) {
 
     // Сохраняем файл
     await writeFile(filepath, buffer)
-    const backgroundUrl = `/backgrounds/${filename}`
+    const backgroundUrl = `/media/backgrounds/${filename}`
 
     return NextResponse.json({ 
       success: true, 

@@ -104,7 +104,7 @@ export default function PurchaseModal({ post, onClose, onSuccess }: PurchaseModa
     }
     
     // КРИТИЧЕСКАЯ ПРОВЕРКА: запрещаем покупки с кошелька платформы
-    const PLATFORM_WALLET = 'npzAZaN9fDMgLV63b3kv3FF8cLSd8dQSLxyMXASA5T4'
+    const PLATFORM_WALLET = 'EEqsmopVfTuaiJrh8xL7ZsZbUctckY6S5WyHYR66wjpw'
     if (publicKey.toBase58() === PLATFORM_WALLET) {
       toast.error('❌ Вы не можете покупать контент с кошелька платформы!')
       return

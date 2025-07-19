@@ -167,7 +167,15 @@ export const useAppStore = create<AppStore>()(
         showProfileForm: false,
         userError: null,
 
-        setUser: (user) => set({ user }),
+        setUser: (user) => {
+          console.log('[AppStore] setUser called:', { 
+            hasUser: !!user, 
+            avatar: user?.avatar, 
+            nickname: user?.nickname,
+            timestamp: Date.now() 
+          })
+          set({ user })
+        },
         setUserLoading: (userLoading) => set({ userLoading }),
         setNewUser: (isNewUser) => set({ isNewUser }),
         setShowProfileForm: (showProfileForm) => set({ showProfileForm }),

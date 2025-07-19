@@ -43,10 +43,12 @@ export async function POST(request: NextRequest) {
     let uploadDir: string
     
     if (process.env.NODE_ENV === 'production') {
-      uploadDir = '/var/www/fonana/public/avatars'
+      uploadDir = '/var/www/fonana/public/media/avatars'
     } else {
-      // Для локальной разработки используем путь относительно корня проекта
-      uploadDir = path.join(process.cwd(), 'public', 'avatars')
+      // Для локальной разработки используем __dirname и path.resolve
+      // В Next.js API routes process.cwd() может быть неправильным
+      uploadDir = path.resolve('./public/media/avatars')
+      console.log('Upload directory (resolved):', uploadDir)
     }
     
     console.log('Upload directory:', uploadDir)
@@ -78,7 +80,7 @@ export async function POST(request: NextRequest) {
       throw new Error(`Failed to write file: ${writeError}`)
     }
     
-    const avatarUrl = `/avatars/${filename}`
+    const avatarUrl = `/media/avatars/${filename}`
     console.log('Avatar URL:', avatarUrl)
 
     return NextResponse.json({ 

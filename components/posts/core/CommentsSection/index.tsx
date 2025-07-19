@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react'
 import { cn } from '@/lib/utils'
 import { useUser } from '@/lib/store/appStore'
 import toast from 'react-hot-toast'
+import Avatar from '@/components/Avatar'
 
 export interface Comment {
   id: string
@@ -143,10 +144,13 @@ export function CommentsSection({ postId, className, onClose }: CommentsSectionP
       {user && (
         <form onSubmit={handleSubmit} className="mb-4">
           <div className="flex gap-3">
-            <img
-              src={user.avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${user.nickname}`}
-              alt="Avatar"
-              className="w-10 h-10 rounded-full"
+            <Avatar
+              src={user.avatar}
+              alt="Your avatar"
+              seed={user.nickname || user.id}
+              size={40}
+              className="flex-shrink-0"
+              rounded="full"
             />
             <div className="flex-1">
               <textarea
@@ -192,14 +196,13 @@ export function CommentsSection({ postId, className, onClose }: CommentsSectionP
         ) : (
           comments.map((comment) => (
             <div key={comment.id} className="flex gap-3">
-              <img
-                src={
-                  comment.isAnonymous 
-                    ? 'https://api.dicebear.com/7.x/avataaars/svg?seed=anonymous'
-                    : comment.user.avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${comment.user.nickname}`
-                }
+              <Avatar
+                src={comment.isAnonymous ? null : comment.user?.avatar}
                 alt="Avatar"
-                className="w-8 h-8 rounded-full"
+                seed={comment.isAnonymous ? 'anonymous' : comment.user?.nickname || 'user'}
+                size={32}
+                className="flex-shrink-0"
+                rounded="full"
               />
               <div className="flex-1">
                 <div className="bg-gray-100 dark:bg-slate-800 rounded-lg px-4 py-3">

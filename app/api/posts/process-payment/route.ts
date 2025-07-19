@@ -78,7 +78,7 @@ export async function POST(request: Request) {
     }
 
     // Найти или создать пользователя по кошельку
-    let user = await prisma.user.findUnique({
+    let user = await prisma.user.findFirst({
       where: { solanaWallet: userId }
     })
 

@@ -65,7 +65,7 @@ export function SubscriptionPayment({
     }
     
     // КРИТИЧЕСКАЯ ПРОВЕРКА: запрещаем подписки с кошелька платформы
-    const PLATFORM_WALLET = 'npzAZaN9fDMgLV63b3kv3FF8cLSd8dQSLxyMXASA5T4'
+    const PLATFORM_WALLET = 'EEqsmopVfTuaiJrh8xL7ZsZbUctckY6S5WyHYR66wjpw'
     if (publicKey.toBase58() === PLATFORM_WALLET) {
       toast.error('❌ Вы не можете оформлять подписку с кошелька платформы!')
       return

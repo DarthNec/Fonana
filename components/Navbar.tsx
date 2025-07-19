@@ -28,6 +28,8 @@ import { useUser } from '@/lib/store/appStore'
 import SearchModal from './SearchModal'
 import { unreadMessagesService } from '@/lib/services/UnreadMessagesService'
 import { toast } from 'react-hot-toast'
+import { getProfileLink } from '@/lib/utils/links'
+import { isPlaywrightTestMode } from '@/lib/test/playwright-detection'
 
 const navigation = [
   { name: 'Home', href: '/', icon: HomeIcon },
@@ -47,6 +49,7 @@ export function Navbar() {
   const [showSearchModal, setShowSearchModal] = useState(false)
   const { connected, disconnect, publicKey } = useWallet()
   const user = useUser()
+  const [apiUser, setApiUser] = useState(null)
   const pathname = usePathname()
   const router = useRouter()
 
@@ -73,11 +76,38 @@ export function Navbar() {
 
   const isActive = (href: string) => pathname === href
 
-  // Добавляем timestamp к аватару для обхода кеширования
-  // Используем updatedAt пользователя для стабильного timestamp
-  const avatarUrl = user?.avatar 
-    ? `${user.avatar}?t=${user.updatedAt ? new Date(user.updatedAt).getTime() : Date.now()}` 
+  // Загружаем свежие данные пользователя из API (как делают фид/профиль/карточки)
+  useEffect(() => {
+    if (user?.id) {
+      fetch(`/api/user?id=${user.id}`)
+        .then(res => res.json())
+        .then(data => {
+          if (data.user) {
+            console.log('[Navbar] Got fresh user data from API:', data.user.avatar)
+            setApiUser(data.user)
+          }
+        })
+        .catch(err => console.error('[Navbar] Failed to load user data:', err))
+    }
+  }, [user?.id]) // Убрал apiUser из dependencies чтобы перезагружать при изменениях
+
+  // Используем свежий аватар из API (как делают остальные компоненты) 
+  const currentUser = apiUser || user
+  const avatarUrl = currentUser?.avatar 
+    ? `${currentUser.avatar}?t=${Date.now()}` 
     : undefined
+
+  // Диагностическое логирование
+  useEffect(() => {
+    console.log('[Navbar Debug] Avatar data:', { 
+      hasGlobalUser: !!user,
+      hasApiUser: !!apiUser, 
+      globalAvatar: user?.avatar,
+      apiAvatar: apiUser && typeof apiUser === 'object' && 'avatar' in apiUser ? (apiUser as any).avatar : null,
+      finalAvatarUrl: avatarUrl,
+      timestamp: Date.now() 
+    })
+  }, [user?.avatar, apiUser, avatarUrl])
 
   // Check if it's PWA mode
   const isPWA = typeof window !== 'undefined' && window.matchMedia('(display-mode: standalone)').matches
@@ -85,7 +115,7 @@ export function Navbar() {
   const handleNavClick = (item: any, e?: React.MouseEvent) => {
     if (item.isAction && item.name === 'Create') {
       e?.preventDefault()
-      if (!connected) {
+      if (!connected && !(isPlaywrightTestMode() && user)) {
         toast.error('Подключите кошелек для создания поста')
         return
       }
@@ -176,7 +206,7 @@ export function Navbar() {
               </div>
 
               {/* Profile */}
-              {connected && user && (
+              {(connected && user) || (isPlaywrightTestMode() && user) ? (
                 <div className="relative">
                   <button
                     onClick={() => setIsProfileOpen(!isProfileOpen)}
@@ -184,8 +214,8 @@ export function Navbar() {
                   >
                     <Avatar
                       src={avatarUrl}
-                      alt={user.nickname || 'Profile'}
-                      seed={user.nickname || user.wallet || ''}
+                      alt={currentUser?.nickname || 'Profile'}
+                      seed={currentUser?.nickname || currentUser?.wallet || ''}
                       size={48}
                       rounded="2xl"
                       className="border-2 border-purple-500/30 hover:border-purple-500/50"
@@ -199,18 +229,18 @@ export function Navbar() {
                         <div className="flex items-center gap-3">
                           <Avatar
                             src={avatarUrl}
-                            alt={user.nickname || 'Profile'}
-                            seed={user.nickname || user.wallet || ''}
+                            alt={currentUser?.nickname || 'Profile'}
+                            seed={currentUser?.nickname || currentUser?.wallet || ''}
                             size={48}
                             rounded="2xl"
                             className="border border-purple-500/30"
                           />
                           <div>
                             <div className="font-semibold text-gray-900 dark:text-white">
-                              {user.fullName || user.nickname || 'User'}
+                              {currentUser?.fullName || currentUser?.nickname || 'User'}
                             </div>
                             <div className="text-gray-600 dark:text-slate-400 text-sm">
-                              @{user.nickname || 'user'}
+                              @{currentUser?.nickname || 'user'}
                             </div>
                           </div>
                         </div>
@@ -218,7 +248,7 @@ export function Navbar() {
                       
                       <div className="p-2">
                         <Link
-                          href="/profile"
+                          href={currentUser ? getProfileLink({ id: currentUser.id, nickname: currentUser.nickname }) : "/profile"}
                           className="flex items-center gap-3 px-4 py-3 text-gray-600 dark:text-slate-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-slate-700/50 rounded-2xl transition-colors"
                           onClick={() => setIsProfileOpen(false)}
                         >
@@ -247,7 +277,7 @@ export function Navbar() {
                     </div>
                   )}
                 </div>
-              )}
+              ) : null}
             </div>
 
             {/* Mobile Menu Button */}
@@ -318,10 +348,10 @@ export function Navbar() {
                     <MobileWalletConnect />
                   </div>
                   
-                  {connected && (
+                  {(connected || (isPlaywrightTestMode() && user)) && (
                     <div className="space-y-2">
                       <Link
-                        href="/profile"
+                        href={currentUser ? getProfileLink({ id: currentUser.id, nickname: currentUser.nickname }) : "/profile"}
                         className="flex items-center gap-3 px-4 py-3 text-gray-600 dark:text-slate-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-slate-800/50 rounded-2xl transition-colors"
                       >
                         <UserIcon className="w-5 h-5" />

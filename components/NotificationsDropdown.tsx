@@ -88,7 +88,7 @@ export default function NotificationsDropdown() {
   // Обработка клика на уведомление
   const handleNotificationClick = async (notification: any) => {
     if (!notification.isRead) {
-      await markAsRead(notification.id)
+      await markAsRead()
     }
     
     // Переход к соответствующему контенту
@@ -192,7 +192,7 @@ export default function NotificationsDropdown() {
                           <button
                             onClick={(e) => {
                               e.stopPropagation()
-                              markAsRead(notification.id)
+                              markAsRead()
                             }}
                             className="p-1 text-green-600 hover:text-green-700 dark:text-green-400 dark:hover:text-green-300"
                             title="Mark as read"
@@ -203,7 +203,7 @@ export default function NotificationsDropdown() {
                         <button
                           onClick={(e) => {
                             e.stopPropagation()
-                            deleteNotification(notification.id)
+                            deleteNotification()
                           }}
                           className="p-1 text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300"
                           title="Delete"

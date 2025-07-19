@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react'
 import { UnifiedPost, PostAction, PostLayoutType, PostPageVariant } from '@/types/posts'
 import { PostGrid } from './PostGrid'
 import { PostList } from './PostList'
+import { PostGallery } from './PostGallery'
 import { PostNormalizer } from '@/services/posts/normalizer'
 import { useRealtimePosts } from '@/lib/hooks/useRealtimePosts'
 // import { PostMasonry } from './PostMasonry' // Будет добавлен позже
@@ -11,7 +12,7 @@ import { useRealtimePosts } from '@/lib/hooks/useRealtimePosts'
 export interface PostsContainerProps {
   /** Массив постов для отображения */
   posts: any[] // Принимаем любые посты для нормализации
-  /** Тип layout (list, grid, masonry) */
+  /** Тип layout (list, grid, gallery, masonry) */
   layout?: PostLayoutType
   /** Вариант страницы для стилизации */
   variant?: PostPageVariant
@@ -128,6 +129,7 @@ export function PostsContainer({
   const LayoutComponent = {
     list: PostList,
     grid: PostGrid,
+    gallery: PostGallery,
     masonry: PostList // Временно используем PostList для masonry
   }[layout]
 

@@ -17,6 +17,7 @@ import { useWallet } from '@solana/wallet-adapter-react'
 import { useRetry } from '@/lib/utils/retry'
 import { toast } from 'react-hot-toast'
 import { jwtManager } from '@/lib/utils/jwt'
+import { isPlaywrightTestMode, getPlaywrightTestUser } from '@/lib/test/playwright-detection'
 
 interface AppProviderProps {
   children: ReactNode
@@ -70,12 +71,104 @@ export function AppProvider({ children }: AppProviderProps) {
     }
   }, [])
 
+  // JWT токен creation при подключении кошелька
+  useEffect(() => {
+    if (connected && publicKey && isInitialized) {
+      console.log('[AppProvider] Wallet connected, ensuring JWT token exists...')
+      ensureJWTTokenForWallet(publicKey.toBase58())
+    } else if (!connected && isInitialized) {
+      console.log('[AppProvider] Wallet disconnected, clearing JWT token...')
+      // Очищаем токен при отключении кошелька
+      localStorage.removeItem('fonana_jwt_token')
+      localStorage.removeItem('fonana_user_wallet')
+      jwtManager.logout()
+    }
+  }, [connected, publicKey, isInitialized])
+
+  /**
+   * Обеспечивает существование JWT токена для подключенного кошелька
+   */
+  const ensureJWTTokenForWallet = async (walletAddress: string) => {
+    try {
+      // Проверяем, есть ли валидный токен в localStorage
+      const savedToken = localStorage.getItem('fonana_jwt_token')
+      if (savedToken) {
+        try {
+          const tokenData = JSON.parse(savedToken)
+          if (tokenData.token && tokenData.expiresAt > Date.now() && tokenData.wallet === walletAddress) {
+            console.log('[AppProvider] Valid JWT token already exists for this wallet')
+            return
+          }
+        } catch (error) {
+          console.warn('[AppProvider] Invalid token format in localStorage, creating new one')
+        }
+      }
+      
+      console.log('[AppProvider] Creating JWT token for wallet:', walletAddress.substring(0, 8) + '...')
+      
+      const response = await fetch('/api/auth/wallet', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ wallet: walletAddress })
+      })
+      
+      if (!response.ok) {
+        console.error('[AppProvider] Failed to create JWT token:', response.status)
+        return
+      }
+      
+      const data = await response.json()
+      
+      if (data.token && data.user) {
+        console.log('[AppProvider] JWT token created successfully, saving to localStorage')
+        
+        // Сохраняем токен в localStorage для jwtManager
+        const tokenData = {
+          token: data.token,
+          expiresAt: Date.now() + 30 * 24 * 60 * 60 * 1000, // 30 дней
+          userId: data.user.id,
+          wallet: data.user.wallet
+        }
+        
+        localStorage.setItem('fonana_jwt_token', JSON.stringify(tokenData))
+        localStorage.setItem('fonana_user_wallet', data.user.wallet)
+        
+        // Обновляем пользователя в store если еще нет
+        if (!user) {
+          setUser(data.user)
+        }
+        
+        // Обновляем jwtManager чтобы он сразу подхватил новый токен из storage
+        // jwtManager автоматически загрузит токен из localStorage при следующем обращении
+        
+        console.log('[AppProvider] JWT token and user data saved successfully')
+      }
+      
+    } catch (error) {
+      console.error('[AppProvider] Error ensuring JWT token:', error)
+    }
+  }
+
   /**
    * Инициализация пользователя из кеша
    */
   const initializeUserFromCache = async () => {
     try {
       setUserLoading(true)
+      
+      // [NEW] Check for Playwright test mode first
+      if (isPlaywrightTestMode()) {
+        console.log('[Playwright] Test mode detected, using test user')
+        const testUser = getPlaywrightTestUser()
+        if (testUser) {
+          setUser(testUser)
+          setIsInitialized(true)
+          setUserLoading(false)
+          return
+        }
+      }
       
       // Попытка получить пользователя из localStorage
       const cachedUser = LocalStorageCache.get<any>('user')
@@ -106,11 +199,7 @@ export function AppProvider({ children }: AppProviderProps) {
   // SSR fallback: возвращаем минимальный Provider без инициализации
   if (typeof window === 'undefined') {
     return (
-      <ErrorBoundary
-        onError={(error, errorInfo) => {
-          console.error('[AppProvider][SSR] Error caught by boundary:', error, errorInfo)
-        }}
-      >
+      <ErrorBoundary>
         <div className="app-provider">
           {children}
         </div>
@@ -121,11 +210,7 @@ export function AppProvider({ children }: AppProviderProps) {
   // Soft guard: показываем loading до полной инициализации
   if (!isInitialized && typeof window !== 'undefined') {
     return (
-      <ErrorBoundary
-        onError={(error, errorInfo) => {
-          console.error('[AppProvider] Error caught by boundary:', error, errorInfo)
-        }}
-      >
+      <ErrorBoundary>
         <div className="app-provider">
           <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-slate-900">
             <div className="text-center">
@@ -139,11 +224,7 @@ export function AppProvider({ children }: AppProviderProps) {
   }
 
   return (
-    <ErrorBoundary
-      onError={(error, errorInfo) => {
-        console.error('[AppProvider] Error caught by boundary:', error, errorInfo)
-      }}
-    >
+    <ErrorBoundary>
       <div className="app-provider">
         {children}
         <Toaster

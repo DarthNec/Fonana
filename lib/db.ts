@@ -42,10 +42,7 @@ export async function createOrUpdateUser(wallet: string, data?: {
       // Если это не тот же пользователь
       const currentUser = await prisma.user.findFirst({
         where: {
-          OR: [
-            { wallet: wallet },
-            { solanaWallet: wallet }
-          ]
+          wallet: wallet
         }
       })
       
@@ -71,13 +68,10 @@ export async function createOrUpdateUser(wallet: string, data?: {
     }
   }
 
-  // Сначала пытаемся найти пользователя по любому из полей wallet
+  // Сначала пытаемся найти пользователя по wallet
   const existingUser = await prisma.user.findFirst({
     where: {
-      OR: [
-        { wallet: wallet },
-        { solanaWallet: wallet }
-      ]
+      wallet: wallet
     }
   })
 
@@ -87,9 +81,8 @@ export async function createOrUpdateUser(wallet: string, data?: {
       where: { id: existingUser.id },
       data: {
         ...data,
-        // Обновляем оба поля wallet для консистентности
+        // Обновляем wallet поле для консистентности
         wallet: wallet,
-        solanaWallet: wallet,
         updatedAt: new Date()
       }
     })
@@ -98,7 +91,6 @@ export async function createOrUpdateUser(wallet: string, data?: {
     return await prisma.user.create({
       data: {
         wallet,
-        solanaWallet: wallet, // Сохраняем в оба поля
         isCreator: true,
         referrerId,
         ...data,
@@ -110,10 +102,7 @@ export async function createOrUpdateUser(wallet: string, data?: {
 export async function getUserByWallet(wallet: string) {
   return prisma.user.findFirst({
     where: {
-      OR: [
-        { wallet: wallet },
-        { solanaWallet: wallet }
-      ]
+      wallet: wallet
     },
     include: {
       _count: {
@@ -138,13 +127,10 @@ export async function updateUserProfile(wallet: string, data: {
   telegram?: string
   location?: string
 }) {
-  // Сначала находим пользователя по любому из полей wallet
+  // Сначала находим пользователя по wallet
   const user = await prisma.user.findFirst({
     where: {
-      OR: [
-        { wallet: wallet },
-        { solanaWallet: wallet }
-      ]
+      wallet: wallet
     }
   })
 
@@ -318,16 +304,8 @@ export async function createPost(creatorWallet: string, data: {
     }
   }
 
-  // Вычисляем даты для аукциона
-  let auctionStartAt: Date | undefined
-  let auctionEndAt: Date | undefined
-  let auctionStatus: 'DRAFT' | 'SCHEDULED' | 'ACTIVE' | undefined
-  
-  if (data.isSellable && data.sellType === 'AUCTION' && data.auctionDuration) {
-    auctionStartAt = new Date()
-    auctionEndAt = new Date(auctionStartAt.getTime() + data.auctionDuration * 60 * 60 * 1000)
-    auctionStatus = 'ACTIVE'
-  }
+
+
 
   const post = await prisma.post.create({
     data: {
@@ -346,14 +324,10 @@ export async function createPost(creatorWallet: string, data: {
       imageAspectRatio: data.imageAspectRatio,
       // Новые поля для продаваемых постов
       isSellable: data.isSellable || false,
-      sellType: data.isSellable ? data.sellType : undefined,
-      quantity: data.isSellable ? (data.quantity || 1) : undefined,
-      auctionStartPrice: data.isSellable && data.sellType === 'AUCTION' ? data.auctionStartPrice : undefined,
-      auctionStepPrice: data.isSellable && data.sellType === 'AUCTION' ? data.auctionStepPrice : undefined,
-      auctionDepositAmount: data.isSellable && data.sellType === 'AUCTION' ? data.auctionDepositAmount : undefined,
-      auctionStartAt,
-      auctionEndAt,
-      auctionStatus: data.isSellable ? (data.sellType === 'AUCTION' ? auctionStatus : 'DRAFT') : undefined,
+      // quantity: data.isSellable ? (data.quantity || 1) : undefined, // TODO: Добавить в схему
+      // auctionStartAt, // TODO: Проверить схему
+      // auctionEndAt,   // TODO: Проверить схему  
+      // auctionStatus: data.isSellable ? 'DRAFT' : undefined, // TODO: Проверить схему
       // Поле price уже установлено выше, дополнительная логика не нужна
       tags: data.tags ? {
         create: data.tags.map(tagName => ({
@@ -554,8 +528,8 @@ export async function getUserSubscriptions(userWallet: string) {
     where: {
       userId: user.id,
       isActive: true,
-      validUntil: { gte: new Date() },
-      paymentStatus: 'COMPLETED' // Только оплаченные подписки
+      validUntil: { gte: new Date() }
+      // ИСПРАВЛЕНО: убрал paymentStatus - поля нет в БД
     },
     include: {
       user: false,
@@ -577,8 +551,8 @@ export async function hasActiveSubscription(userWallet: string, creatorWallet: s
       userId: user.id,
       creatorId: creator.id,
       isActive: true,
-      validUntil: { gte: new Date() },
-      paymentStatus: 'COMPLETED' // Только оплаченные подписки
+      validUntil: { gte: new Date() }
+      // ИСПРАВЛЕНО: убрал paymentStatus - поля нет в БД
     },
   })
 

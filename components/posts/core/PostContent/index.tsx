@@ -177,7 +177,8 @@ export function PostContent({
       )}
 
       {/* Text Content */}
-      {!shouldHideContent && post.content.text && (
+      {/* [post_content_render_2025_017] Добавлена проверка типа для предотвращения ошибок рендеринга */}
+      {!shouldHideContent && post.content?.text && typeof post.content.text === 'string' && (
         <p className={cn(
           'text-gray-700 dark:text-slate-300',
           getContentSize(),

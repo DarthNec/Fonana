@@ -41,7 +41,7 @@ async function checkAccount() {
     
     // 4. Проверяем через разные RPC
     console.log('\n🌐 Проверка через публичный RPC:')
-    const publicConnection = new Connection('https://api.mainnet-beta.solana.com', 'confirmed')
+    const publicConnection = new Connection('https://tame-smart-panorama.solana-mainnet.quiknode.pro/0e70fc875702b126bf8b93cdcd626680e9c48894/', 'confirmed')
     const publicAccountInfo = await publicConnection.getAccountInfo(pubkey)
     
     if (publicAccountInfo) {

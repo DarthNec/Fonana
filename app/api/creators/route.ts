@@ -10,6 +10,7 @@ export async function GET(request: NextRequest) {
     console.log('[API] Simple creators API called')
     
     // Простой запрос всех креаторов без сложных связей
+    // [critical_regression_2025_017] Исправлены поля schema
     const creators = await prisma.user.findMany({
       where: {
         isCreator: true
@@ -22,10 +23,15 @@ export async function GET(request: NextRequest) {
         bio: true,
         avatar: true,
         backgroundImage: true,
-        name: true,
+        // УБРАНО: name: true, - поле не существует в БД
         postsCount: true,
         followersCount: true,
-        createdAt: true
+        createdAt: true,
+        isVerified: true,
+        website: true,
+        twitter: true,
+        telegram: true,
+        location: true
       },
       orderBy: {
         createdAt: 'desc'
@@ -41,7 +47,7 @@ export async function GET(request: NextRequest) {
   } catch (error) {
     console.error('[API] Creators error:', error)
     return NextResponse.json(
-      { error: 'Failed to fetch creators', details: error.message },
+              { error: 'Failed to fetch creators', details: error instanceof Error ? error.message : 'Unknown error' },
       { status: 500 }
     )
   }

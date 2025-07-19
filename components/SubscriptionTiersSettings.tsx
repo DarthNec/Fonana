@@ -8,7 +8,8 @@ import {
   CheckIcon,
   PlusIcon,
   TrashIcon,
-  InformationCircleIcon
+  InformationCircleIcon,
+  XMarkIcon
 } from '@heroicons/react/24/outline'
 import { toast } from 'react-hot-toast'
 import { useUser } from '@/lib/store/appStore'
@@ -63,10 +64,20 @@ const defaultFeatures = {
   ]
 }
 
-export default function SubscriptionTiersSettings() {
-  const user = useUser()
-  const [loading, setLoading] = useState(true)
+interface Props {
+  testUser?: any
+}
+
+export default function SubscriptionTiersSettings({ testUser }: Props = {}) {
+  console.log('SubscriptionTiersSettings START:', { testUser })
+  const storeUser = useUser()
+  console.log('SubscriptionTiersSettings useUser:', { storeUser })
+  const user = testUser || storeUser
+  const [loading, setLoading] = useState(!testUser) // В тестовом режиме loading = false
   const [saving, setSaving] = useState(false)
+  
+  // Debug log
+  console.log('SubscriptionTiersSettings render:', { testUser: !!testUser, user: !!user, loading })
 
   // ✅ КРИТИЧЕСКАЯ ПРОВЕРКА: предотвращаем React Error #185
   if (!user) {
@@ -110,13 +121,19 @@ export default function SubscriptionTiersSettings() {
   ])
 
   const [showRecommendations, setShowRecommendations] = useState(false)
+  const [expandedTier, setExpandedTier] = useState<string | null>(null)
 
   // Загружаем настройки при монтировании
   useEffect(() => {
     if (user?.wallet) {
+      // В тестовом режиме просто устанавливаем loading в false
+      if (testUser) {
+        setLoading(false)
+      } else {
       loadTierSettings()
+      }
     }
-  }, [user?.wallet])
+  }, [user?.wallet, testUser])
 
   const loadTierSettings = async () => {
     try {
@@ -355,30 +372,33 @@ export default function SubscriptionTiersSettings() {
       )}
 
       {/* Tiers */}
-      <div className="space-y-3 sm:space-y-8">
-        {tiers.map((tier) => (
+      {expandedTier ? (
+        <div className="space-y-6">
+          {tiers
+            .filter(tier => tier.id === expandedTier)
+            .map((tier) => (
           <div
             key={tier.id}
-            className={`border rounded-xl sm:rounded-2xl p-3 sm:p-6 transition-all duration-300 ${
-              tier.enabled 
-                ? 'border-gray-200 dark:border-slate-600/50 bg-gray-50 dark:bg-slate-700/30' 
-                : 'border-gray-300 dark:border-slate-700/30 bg-gray-100 dark:bg-slate-800/30 opacity-60'
-            }`}
+                className="bg-white dark:bg-slate-800/50 rounded-xl border-2 border-purple-200 dark:border-purple-700 p-6 shadow-lg"
           >
-            {/* Tier Header */}
-            <div className="flex items-center justify-between mb-4 sm:mb-6">
-              <div className="flex items-center gap-3 sm:gap-4">
-                <div className={`w-10 h-10 sm:w-12 sm:h-12 bg-gradient-to-r ${tier.color} rounded-lg sm:rounded-xl flex items-center justify-center`}>
-                  <tier.icon className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
+                {/* Header with close button */}
+                <div className="flex items-center justify-between mb-6">
+                  <div className="flex items-center gap-4">
+                    <div className={`w-12 h-12 bg-gradient-to-r ${tier.color} rounded-xl flex items-center justify-center`}>
+                      <tier.icon className="w-6 h-6 text-white" />
                 </div>
                 <div>
-                  <h3 className="text-lg sm:text-xl font-bold text-gray-900 dark:text-white">{tier.name}</h3>
-                  <p className="text-gray-600 dark:text-slate-400 text-xs sm:text-sm">
-                    {tier.enabled ? 'Active' : 'Disabled'}
+                      <h3 className="text-xl font-bold text-gray-900 dark:text-white">{tier.name} Settings</h3>
+                      <p className="text-gray-600 dark:text-slate-400 text-sm">
+                        Configure pricing, description and features
                   </p>
                 </div>
               </div>
               
+                  <div className="flex items-center gap-4">
+                    {/* Enable/Disable Toggle */}
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm text-gray-700 dark:text-slate-300">Enabled</span>
               <button
                 onClick={() => toggleTierEnabled(tier.id)}
                 className={`relative inline-flex h-6 w-11 items-center rounded-full transition-all duration-300 ${
@@ -391,14 +411,24 @@ export default function SubscriptionTiersSettings() {
                   tier.enabled ? 'translate-x-6' : 'translate-x-1'
                 }`} />
               </button>
+                    </div>
+                    
+                    {/* Close Button */}
+                    <button
+                      onClick={() => setExpandedTier(null)}
+                      className="p-2 hover:bg-gray-100 dark:hover:bg-slate-700 rounded-lg transition-colors"
+                    >
+                      <XMarkIcon className="w-5 h-5 text-gray-500 dark:text-slate-400" />
+                    </button>
+                  </div>
             </div>
 
             {tier.enabled && (
               <>
                 {/* Price and Description */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 mb-4 sm:mb-6">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
                   <div>
-                    <label className="block text-xs sm:text-sm font-medium text-gray-700 dark:text-slate-300 mb-1 sm:mb-2">
+                        <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-2">
                       Price (SOL/month)
                     </label>
                     <input
@@ -407,19 +437,19 @@ export default function SubscriptionTiersSettings() {
                       onChange={(e) => updateTierPrice(tier.id, parseFloat(e.target.value) || 0)}
                       step="0.01"
                       min="0"
-                      className="w-full px-3 sm:px-4 py-2 bg-white dark:bg-slate-700/50 border border-gray-300 dark:border-slate-600/50 rounded-lg sm:rounded-xl text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-purple-400 text-sm"
+                          className="w-full px-4 py-3 bg-white dark:bg-slate-700/50 border border-gray-300 dark:border-slate-600/50 rounded-xl text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-purple-400"
                     />
                   </div>
                   
                   <div>
-                    <label className="block text-xs sm:text-sm font-medium text-gray-700 dark:text-slate-300 mb-1 sm:mb-2">
+                        <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-2">
                       Description
                     </label>
                     <input
                       type="text"
                       value={tier.description}
                       onChange={(e) => updateTierDescription(tier.id, e.target.value)}
-                      className="w-full px-3 sm:px-4 py-2 bg-white dark:bg-slate-700/50 border border-gray-300 dark:border-slate-600/50 rounded-lg sm:rounded-xl text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-purple-400 text-sm"
+                          className="w-full px-4 py-3 bg-white dark:bg-slate-700/50 border border-gray-300 dark:border-slate-600/50 rounded-xl text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-purple-400"
                       placeholder="Brief tier description"
                     />
                   </div>
@@ -427,29 +457,31 @@ export default function SubscriptionTiersSettings() {
 
                 {/* Features */}
                 <div>
-                  <h4 className="text-xs sm:text-sm font-medium text-gray-700 dark:text-slate-300 mb-2 sm:mb-3">
-                    Tier features
+                      <h4 className="text-sm font-medium text-gray-700 dark:text-slate-300 mb-4 flex items-center gap-2">
+                        <CheckIcon className="w-4 h-4" />
+                        Tier Features
                   </h4>
-                  <div className="space-y-1.5 sm:space-y-2">
+                      
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-4">
                     {tier.features.map((feature) => (
                       <div
                         key={feature.id}
-                        className="flex items-center justify-between p-2 sm:p-3 bg-white dark:bg-slate-700/30 rounded-lg sm:rounded-xl group hover:bg-gray-100 dark:hover:bg-slate-700/50 transition-all"
+                            className="flex items-center justify-between p-3 bg-gray-50 dark:bg-slate-700/30 rounded-xl group hover:bg-gray-100 dark:hover:bg-slate-700/50 transition-all"
                       >
-                        <div className="flex items-center gap-2 sm:gap-3">
+                            <div className="flex items-center gap-3">
                           <button
                             onClick={() => toggleFeature(tier.id, feature.id)}
-                            className={`w-4 h-4 sm:w-5 sm:h-5 rounded border-2 flex items-center justify-center transition-all ${
+                                className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-all ${
                               feature.enabled
                                 ? 'bg-purple-500 border-purple-500'
                                 : 'border-gray-400 dark:border-slate-500 hover:border-purple-400'
                             }`}
                           >
                             {feature.enabled && (
-                              <CheckIcon className="w-2.5 h-2.5 sm:w-3 sm:h-3 text-white" />
+                                  <CheckIcon className="w-3 h-3 text-white" />
                             )}
                           </button>
-                          <span className={`text-xs sm:text-sm ${
+                              <span className={`text-sm ${
                             feature.enabled ? 'text-gray-900 dark:text-white' : 'text-gray-600 dark:text-slate-400'
                           }`}>
                             {feature.text}
@@ -461,7 +493,7 @@ export default function SubscriptionTiersSettings() {
                             onClick={() => removeFeature(tier.id, feature.id)}
                             className="opacity-0 group-hover:opacity-100 p-1 hover:bg-red-500/20 rounded-lg transition-all"
                           >
-                            <TrashIcon className="w-3 h-3 sm:w-4 sm:h-4 text-red-500 dark:text-red-400" />
+                                <TrashIcon className="w-4 h-4 text-red-500 dark:text-red-400" />
                           </button>
                         )}
                       </div>
@@ -469,7 +501,7 @@ export default function SubscriptionTiersSettings() {
                   </div>
 
                   {/* Add Custom Feature */}
-                  <div className="mt-3 sm:mt-4">
+                      <div className="mt-4">
                     <form
                       onSubmit={(e) => {
                         e.preventDefault()
@@ -479,19 +511,20 @@ export default function SubscriptionTiersSettings() {
                           input.value = ''
                         }
                       }}
-                      className="flex gap-2"
+                          className="flex gap-3"
                     >
                       <input
                         name="feature"
                         type="text"
                         placeholder="Add custom feature"
-                        className="flex-1 px-3 sm:px-4 py-2 bg-white dark:bg-slate-700/50 border border-gray-300 dark:border-slate-600/50 rounded-lg sm:rounded-xl text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-purple-400 text-sm"
+                            className="flex-1 px-4 py-3 bg-white dark:bg-slate-700/50 border border-gray-300 dark:border-slate-600/50 rounded-xl text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-purple-400"
                       />
                       <button
                         type="submit"
-                        className="px-3 sm:px-4 py-2 bg-purple-500/20 hover:bg-purple-500/30 text-purple-700 dark:text-purple-300 rounded-lg sm:rounded-xl transition-all duration-300"
+                            className="px-4 py-3 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white rounded-xl transition-all duration-300 flex items-center gap-2"
                       >
-                        <PlusIcon className="w-4 h-4 sm:w-5 sm:h-5" />
+                            <PlusIcon className="w-5 h-5" />
+                            Add Feature
                       </button>
                     </form>
                   </div>
@@ -500,7 +533,90 @@ export default function SubscriptionTiersSettings() {
             )}
           </div>
         ))}
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+          {tiers.map((tier) => (
+            <div
+              key={tier.id}
+              onClick={() => setExpandedTier(tier.id)}
+              className={`relative border-2 rounded-2xl cursor-pointer transition-all duration-300 hover:scale-105 bg-white dark:bg-slate-800/50 backdrop-blur-sm p-6 ${
+                tier.enabled 
+                  ? `border-purple-500/30 hover:border-purple-500/50 shadow-lg shadow-purple-500/10`
+                  : 'border-gray-300 dark:border-slate-700/50 opacity-60 hover:opacity-80'
+              }`}
+            >
+              {/* Tier Icon and Header */}
+              <div className="text-center mb-4">
+                <div className={`w-16 h-16 mx-auto mb-3 rounded-xl bg-gradient-to-r ${tier.color} flex items-center justify-center`}>
+                  <tier.icon className="w-8 h-8 text-white" />
+                </div>
+                <h4 className="text-lg font-bold text-gray-900 dark:text-white mb-1">
+                  {tier.name}
+                </h4>
+                <p className="text-gray-600 dark:text-slate-400 text-sm mb-3">
+                  {tier.description}
+                </p>
+                
+                {/* Price */}
+                <div className="flex items-baseline justify-center gap-1 mb-3">
+                  <span className="text-3xl font-bold text-gray-900 dark:text-white">
+                    {tier.price}
+                  </span>
+                  <span className="text-lg text-purple-600 dark:text-purple-400 font-semibold">
+                    SOL
+                  </span>
+                  <span className="text-gray-600 dark:text-slate-400 text-sm">
+                    /month
+                  </span>
+                </div>
+              </div>
+
+              {/* Status and Features Preview */}
+              <div className="space-y-3">
+                {/* Status */}
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-gray-600 dark:text-slate-400">Status</span>
+                  <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                    tier.enabled 
+                      ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300'
+                      : 'bg-gray-100 dark:bg-gray-900/30 text-gray-700 dark:text-gray-300'
+                  }`}>
+                    {tier.enabled ? 'Active' : 'Disabled'}
+                  </span>
+                </div>
+                
+                {/* Features Preview */}
+                <div>
+                  <span className="text-sm text-gray-600 dark:text-slate-400 mb-2 block">Features</span>
+                  <div className="space-y-1">
+                    {tier.features.filter(f => f.enabled).slice(0, 3).map((feature, index) => (
+                      <div key={index} className="flex items-center gap-2">
+                        <CheckIcon className="w-3 h-3 text-green-500" />
+                        <span className="text-xs text-gray-700 dark:text-slate-300">
+                          {feature.text}
+                        </span>
+                      </div>
+                    ))}
+                    {tier.features.filter(f => f.enabled).length > 3 && (
+                      <div className="text-xs text-purple-600 dark:text-purple-400">
+                        +{tier.features.filter(f => f.enabled).length - 3} more features
+                      </div>
+                    )}
+                  </div>
+                </div>
       </div>
+              
+              {/* Edit indicator */}
+              <div className="mt-4 text-center">
+                <span className="text-xs text-purple-600 dark:text-purple-400 font-medium">
+                  Click to edit
+                </span>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
 
       {/* Save Button */}
       <div className="mt-6 sm:mt-8 flex justify-end">
