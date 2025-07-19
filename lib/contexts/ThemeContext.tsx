@@ -15,16 +15,32 @@ const ThemeContext = createContext<ThemeContextType | undefined>(undefined)
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const [theme, setTheme] = useState<Theme>('dark')
   const [resolvedTheme, setResolvedTheme] = useState<'light' | 'dark'>('dark')
+  const [mounted, setMounted] = useState(false)
 
+  // Mark as mounted after hydration
   useEffect(() => {
-    // Load saved theme from localStorage
-    const savedTheme = localStorage.getItem('theme') as Theme
-    if (savedTheme) {
-      setTheme(savedTheme)
-    }
+    setMounted(true)
   }, [])
 
   useEffect(() => {
+    // Only run on client side after mounting
+    if (!mounted || typeof window === 'undefined') return
+
+    // Load saved theme from localStorage
+    try {
+      const savedTheme = localStorage.getItem('theme') as Theme
+      if (savedTheme && ['light', 'dark', 'auto'].includes(savedTheme)) {
+        setTheme(savedTheme)
+      }
+    } catch (error) {
+      console.warn('Failed to load theme from localStorage:', error)
+    }
+  }, [mounted])
+
+  useEffect(() => {
+    // Only run on client side after mounting
+    if (!mounted || typeof window === 'undefined') return
+
     // Apply theme to document
     let actualTheme: 'light' | 'dark' = 'dark'
     
@@ -51,9 +67,11 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     
     setResolvedTheme(actualTheme)
     applyTheme(actualTheme)
-  }, [theme])
+  }, [theme, mounted])
 
   const applyTheme = (theme: 'light' | 'dark') => {
+    if (typeof document === 'undefined') return
+
     // Remove old theme class
     document.documentElement.classList.remove('light', 'dark')
     // Add new theme class
@@ -68,7 +86,28 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
 
   const handleSetTheme = (newTheme: Theme) => {
     setTheme(newTheme)
-    localStorage.setItem('theme', newTheme)
+    
+    // Only save to localStorage on client side
+    if (typeof window !== 'undefined') {
+      try {
+        localStorage.setItem('theme', newTheme)
+      } catch (error) {
+        console.warn('Failed to save theme to localStorage:', error)
+      }
+    }
+  }
+
+  // SSR fallback: return default context without localStorage access
+  if (!mounted) {
+    return (
+      <ThemeContext.Provider value={{ 
+        theme: 'dark', 
+        setTheme: () => {}, 
+        resolvedTheme: 'dark' 
+      }}>
+        {children}
+      </ThemeContext.Provider>
+    )
   }
 
   return (
@@ -80,8 +119,14 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
 
 export function useTheme() {
   const context = useContext(ThemeContext)
+  // Instead of throwing an error, return safe defaults
   if (context === undefined) {
-    throw new Error('useTheme must be used within a ThemeProvider')
+    console.warn('useTheme must be used within a ThemeProvider. Using default values.')
+    return {
+      theme: 'dark' as Theme,
+      setTheme: () => {},
+      resolvedTheme: 'dark' as 'light' | 'dark'
+    }
   }
   return context
 } 
