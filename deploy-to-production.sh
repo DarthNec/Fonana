@@ -79,6 +79,7 @@ git push origin main || {
 # Create deployment package (source code only)
 log "Creating emergency deployment package..."
 TEMP_DIR=$(mktemp -d)
+DATE=$(date +%Y%m%d_%H%M%S)
 DEPLOY_PACKAGE="${TEMP_DIR}/fonana-emergency-${DATE}.tar.gz"
 
 # Copy source files (excluding .next, node_modules, etc.)
