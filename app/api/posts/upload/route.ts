@@ -66,7 +66,7 @@ export async function POST(request: NextRequest) {
     const mediaType = type === 'image' ? 'images' : type === 'video' ? 'videos' : 'audio'
     
     if (process.env.NODE_ENV === 'production') {
-      uploadDir = `/var/www/fonana/public/posts/${mediaType}`
+      uploadDir = `/var/www/Fonana/public/posts/${mediaType}`
     } else {
       // Для локальной разработки используем путь относительно __dirname
       // В Next.js API routes __dirname указывает на .next/server/app/api/posts/upload
