@@ -1,17 +1,24 @@
 'use client'
 
-import { useState, useEffect } from 'react'
-import Avatar from './Avatar'
+import React, { useState, useEffect } from 'react'
+import { Fragment } from 'react'
 import { 
-  XMarkIcon,
-  LockClosedIcon,
-  CheckIcon,
-  ShoppingCartIcon,
-  BoltIcon
+  SafeDialog as Dialog,
+  SafeDialogPanel,
+  SafeTransition as Transition,
+  SafeTransitionChild
+} from '@/components/ui/ssr-safe'
+import { 
+  XMarkIcon, 
+  CurrencyDollarIcon,
+  CreditCardIcon,
+  CheckCircleIcon,
+  ExclamationTriangleIcon,
+  ArrowPathIcon
 } from '@heroicons/react/24/outline'
 import { CheckBadgeIcon } from '@heroicons/react/24/solid'
-import { useWallet } from '@solana/wallet-adapter-react'
-import { WalletMultiButton } from '@solana/wallet-adapter-react-ui'
+import { useWallet } from '@/lib/hooks/useSafeWallet'
+import { SafeWalletButton } from '@/components/ui/ssr-safe'
 import { toast } from 'react-hot-toast'
 import { 
   createPostPurchaseTransaction, 
@@ -518,7 +525,7 @@ export default function PurchaseModal({ post, onClose, onSuccess }: PurchaseModa
         <div className="space-y-3">
           {!connected ? (
             <div className="flex justify-center">
-              <WalletMultiButton />
+              <SafeWalletButton />
             </div>
           ) : (
             <button

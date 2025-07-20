@@ -7,17 +7,23 @@
 'use client'
 
 import { useEffect, ReactNode, useState } from 'react'
-import { Toaster } from 'react-hot-toast'
+import dynamic from 'next/dynamic'
 import { useAppStore } from '@/lib/store/appStore'
 import { setupDefaultHandlers } from '@/lib/services/WebSocketEventManager'
 import { cacheManager } from '@/lib/services/CacheManager'
 import { LocalStorageCache } from '@/lib/services/CacheManager'
 import ErrorBoundary from '@/components/ErrorBoundary'
-import { useWallet } from '@solana/wallet-adapter-react'
+import { useWallet } from '@/lib/hooks/useSafeWallet'
 import { useRetry } from '@/lib/utils/retry'
 import { toast } from 'react-hot-toast'
 import { jwtManager } from '@/lib/utils/jwt'
 import { isPlaywrightTestMode, getPlaywrightTestUser } from '@/lib/test/playwright-detection'
+
+// Dynamic import Toaster to prevent SSR useContext errors
+const Toaster = dynamic(
+  () => import('react-hot-toast').then(mod => mod.Toaster),
+  { ssr: false }
+)
 
 interface AppProviderProps {
   children: ReactNode

@@ -1,7 +1,7 @@
 'use client'
 
 import React, { useState, useRef, useEffect } from 'react'
-import { Dialog } from '@headlessui/react'
+import { SafeDialog as Dialog, SafeDialogPanel } from '@/components/ui/ssr-safe'
 import { 
   UserIcon, 
   PhotoIcon, 
@@ -233,7 +233,7 @@ export default function ProfileSetupModal({
       <div className="fixed inset-0 bg-black/30 backdrop-blur-sm" aria-hidden="true" />
       
       <div className="fixed inset-0 flex items-center justify-center p-4">
-        <Dialog.Panel className="mx-auto max-w-md w-full bg-white dark:bg-slate-800 rounded-3xl shadow-2xl">
+                  <SafeDialogPanel className="mx-auto max-w-md w-full bg-white dark:bg-slate-800 rounded-3xl shadow-2xl">
           <div className="p-6">
             {/* Header */}
             <div className="text-center mb-6 relative">
@@ -489,7 +489,7 @@ export default function ProfileSetupModal({
               </button>
             )}
           </div>
-        </Dialog.Panel>
+                  </SafeDialogPanel>
       </div>
     </Dialog>
   )

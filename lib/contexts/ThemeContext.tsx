@@ -118,6 +118,15 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
 }
 
 export function useTheme() {
+  // SSR safety check
+  if (typeof window === 'undefined') {
+    return {
+      theme: 'dark',
+      setTheme: () => {},
+      systemTheme: 'dark'
+    }
+  }
+  
   const context = useContext(ThemeContext)
   // Instead of throwing an error, return safe defaults
   if (context === undefined) {

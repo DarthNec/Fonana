@@ -5,7 +5,7 @@ import Link from 'next/link'
 import { ArrowRightIcon, SparklesIcon, UsersIcon, ShieldCheckIcon, CurrencyDollarIcon, PlayIcon, StarIcon } from '@heroicons/react/24/outline'
 import CreatorsExplorer from '@/components/CreatorsExplorer'
 import { useRouter } from 'next/navigation'
-import { useWallet } from '@solana/wallet-adapter-react'
+import { useWallet } from '@/lib/hooks/useSafeWallet'
 import { useUser, useUserLoading } from '@/lib/store/appStore'
 
 const features = [

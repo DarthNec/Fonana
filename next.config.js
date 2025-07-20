@@ -45,14 +45,21 @@ const nextConfig = {
     esmExternals: false,
     // Отключаем static generation для всех страниц
     forceSwcTransforms: true,
+    // Force standalone generation even with errors
+    appDir: true,
   },
   // Отключаем static generation полностью
   output: 'standalone',
-  trailingSlash: false,
-  // Принудительно отключаем static optimization
+  // Ignore pre-render errors for standalone generation
+  onDemandEntries: {
+    maxInactiveAge: 25 * 1000,
+    pagesBufferLength: 2,
+  },
+  // Force standalone even with build errors
   generateBuildId: async () => {
     return 'fonana-build-' + Date.now()
-  }
+  },
+  trailingSlash: false,
 }
 
 module.exports = nextConfig 

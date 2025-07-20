@@ -118,6 +118,19 @@ export function PricingProvider({
 }
 
 export function usePricing() {
+  // SSR safety check
+  if (typeof window === 'undefined') {
+    return {
+      tiers: [],
+      exchangeRate: 0,
+      getPriceInUSD: () => '0.00',
+      formatPrice: () => '0 SOL',
+      formatPriceShort: () => '0',
+      loading: true,
+      error: null
+    }
+  }
+  
   const context = useContext(PricingContext)
   if (!context) {
     throw new Error('usePricing must be used within a PricingProvider')

@@ -1,9 +1,9 @@
 'use client'
 
 import React, { useMemo, useEffect, useState } from 'react'
+import dynamic from 'next/dynamic'
 import { ConnectionProvider, WalletProvider as SolanaWalletProvider } from '@solana/wallet-adapter-react'
 import { WalletAdapterNetwork } from '@solana/wallet-adapter-base'
-import { WalletModalProvider } from '@solana/wallet-adapter-react-ui'
 import {
   PhantomWalletAdapter,
   // SolflareWalletAdapter,
@@ -11,6 +11,16 @@ import {
 } from '@solana/wallet-adapter-wallets'
 import { clusterApiUrl } from '@solana/web3.js'
 import '@solana/wallet-adapter-react-ui/styles.css'
+import { WalletStoreSync } from './WalletStoreSync'
+
+// Dynamic import WalletModalProvider to prevent SSR useContext errors
+const WalletModalProvider = dynamic(
+  () => import('@solana/wallet-adapter-react-ui').then(mod => mod.WalletModalProvider),
+  { 
+    ssr: false,
+    loading: () => <div className="wallet-modal-loading" />
+  }
+)
 
 export function WalletProvider({ children }: { children: React.ReactNode }) {
   const [mounted, setMounted] = useState(false)
@@ -57,7 +67,20 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
 
   if (typeof window === 'undefined') {
     console.error('[SSR Guard] WalletProvider rendered on server')
-    return <>{children}</>
+    // Provide fallback context for SSR to prevent useWallet() errors
+    return (
+      <ConnectionProvider endpoint={endpoint}>
+        <SolanaWalletProvider 
+          wallets={[]} 
+          autoConnect={false}
+          localStorageKey="fonanaWallet"
+        >
+          <WalletModalProvider>
+            {children}
+          </WalletModalProvider>
+        </SolanaWalletProvider>
+      </ConnectionProvider>
+    )
   }
 
   if (!mounted) {
@@ -88,6 +111,7 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
         }}
       >
         <WalletModalProvider>
+          <WalletStoreSync />
           {children}
         </WalletModalProvider>
       </SolanaWalletProvider>

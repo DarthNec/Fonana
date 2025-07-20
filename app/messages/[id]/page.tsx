@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef, useCallback } from 'react'
-import { useWallet } from '@solana/wallet-adapter-react'
+import { useWallet } from '@/lib/hooks/useSafeWallet'
 import { useParams, useRouter } from 'next/navigation'
 import { 
   ArrowLeftIcon,
@@ -73,7 +73,7 @@ interface Participant {
 
 export default function ConversationPage() {
   const { publicKey, sendTransaction } = useWallet()
-  const { connection } = useConnection()
+  
   const user = useUser()
   const isUserLoading = false // Zustand не имеет отдельного состояния загрузки пользователя
   const params = useParams()

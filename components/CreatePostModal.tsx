@@ -2,7 +2,7 @@
 
 import React, { useState, useRef, useEffect } from 'react'
 import { useUser } from '@/lib/store/appStore'
-import { useWallet } from '@solana/wallet-adapter-react'
+import { useWallet } from '@/lib/hooks/useSafeWallet'
 import { toast } from 'react-hot-toast'
 import { 
   PhotoIcon,

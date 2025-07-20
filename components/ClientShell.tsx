@@ -1,5 +1,6 @@
 "use client"
 
+import dynamic from 'next/dynamic'
 import { WalletProvider } from '@/components/WalletProvider'
 import { WalletPersistenceProvider } from '@/components/WalletPersistenceProvider'
 import { AppProvider } from '@/lib/providers/AppProvider'
@@ -10,9 +11,27 @@ import ErrorBoundary from '@/components/ErrorBoundary'
 import ReferralNotification from '@/components/ReferralNotification'
 import Footer from '@/components/Footer'
 import ServiceWorkerRegistration from '@/components/ServiceWorkerRegistration'
-import { Toaster } from 'react-hot-toast'
 import { useState, useEffect } from 'react'
 import SkeletonLoader from '@/components/ui/SkeletonLoader'
+
+/**
+ * Dynamic import of Toaster to prevent SSR useContext errors
+ * 
+ * Context: react-hot-toast uses React Context internally which causes
+ * "Cannot read properties of null (reading 'useContext')" during SSR
+ * 
+ * Solution: Dynamic import with { ssr: false } ensures Toaster only
+ * loads on client-side after hydration
+ * 
+ * Related: docs/debug/ssr-usecontext-deep-analysis-2025-020/
+ */
+const Toaster = dynamic(
+  () => import('react-hot-toast').then(mod => mod.Toaster),
+  { 
+    ssr: false,
+    loading: () => null
+  }
+)
 
 export default function ClientShell({ children }: { children: React.ReactNode }) {
   const [mounted, setMounted] = useState(false)

@@ -67,7 +67,7 @@ export function getConnection(): Connection {
 }
 
 // Экспортируем connection напрямую для обратной совместимости
-export { connection }
+export { connection, connectionService } from '@/lib/services/ConnectionService'
 
 // Helper to get network type
 export function getNetworkUrl(): string {
