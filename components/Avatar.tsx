@@ -30,8 +30,29 @@ export default function Avatar({
     setGeneratorError(false)
   }, [src])
   
+  // Нормализуем src для Next.js Image
+  const normalizeSrc = (src: string | null | undefined): string | null => {
+    if (!src || src.length === 0 || src === 'undefined' || src === 'null') {
+      return null;
+    }
+    
+    // Если это уже полный URL (http/https), возвращаем как есть
+    if (src.startsWith('http://') || src.startsWith('https://')) {
+      return src;
+    }
+    
+    // Если это относительный путь без ведущего слеша, добавляем /
+    if (!src.startsWith('/')) {
+      return `/${src}`;
+    }
+    
+    return src;
+  }
+  
+  const normalizedSrc = normalizeSrc(src);
+  
   // Проверяем есть ли валидный src для изображения
-  const hasValidSrc = src && src.length > 0 && src !== 'undefined' && src !== 'null'
+  const hasValidSrc = normalizedSrc && normalizedSrc.length > 0
   
   // Используем DiceBear ТОЛЬКО если нет src ИЛИ произошла ошибка загрузки
   const shouldUseGenerator = !hasValidSrc || imageError
@@ -94,17 +115,17 @@ export default function Avatar({
       style={{ width: size, height: size }}
     >
       <Image
-        src={src}
+        src={normalizedSrc!}
         alt={alt}
         width={size}
         height={size}
         className="object-cover w-full h-full"
         onError={(e) => {
-          console.log(`[Avatar] Image load error for src: ${src}`, e)
+          console.log(`[Avatar] Image load error for src: ${normalizedSrc} (original: ${src})`, e)
           setImageError(true)
         }}
         onLoad={() => {
-          console.log(`[Avatar] Image loaded successfully: ${src}`)
+          console.log(`[Avatar] Image loaded successfully: ${normalizedSrc} (original: ${src})`)
         }}
       />
     </div>
