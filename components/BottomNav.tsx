@@ -27,7 +27,7 @@ import {
 } from '@heroicons/react/24/solid'
 import { useUser } from '@/lib/store/appStore'
 import { useState, useEffect } from 'react'
-import { useWalletModal } from '@solana/wallet-adapter-react-ui'
+import { useSafeWalletModal } from '@/lib/hooks/useSafeWalletModal'
 import SolanaRateDisplay from '@/components/SolanaRateDisplay'
 import Avatar from '@/components/Avatar'
 import { MobileWalletConnect } from '@/components/MobileWalletConnect'
@@ -36,13 +36,13 @@ import CreatePostModal from '@/components/CreatePostModal'
 import { toast } from 'react-hot-toast'
 import SearchModal from '@/components/SearchModal'
 import NotificationsDropdown from './NotificationsDropdown'
-import { useWallet } from '@solana/wallet-adapter-react'
+import { useWallet } from '@/lib/hooks/useSafeWallet'
 
 export default function BottomNav() {
   const pathname = usePathname()
   const router = useRouter()
   const { publicKey, disconnect } = useWallet()
-  const { setVisible } = useWalletModal()
+  const { setVisible } = useSafeWalletModal()
   const [unreadMessages, setUnreadMessages] = useState(0)
   const [isMenuOpen, setIsMenuOpen] = useState(false)
   const [showCreateModal, setShowCreateModal] = useState(false)

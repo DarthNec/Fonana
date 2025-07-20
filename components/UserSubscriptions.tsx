@@ -5,7 +5,7 @@ import Image from 'next/image'
 import Link from 'next/link'
 import Avatar from './Avatar'
 import { useUser } from '@/lib/store/appStore'
-import { useWallet } from '@solana/wallet-adapter-react'
+import { useWallet } from '@/lib/hooks/useSafeWallet'
 import { getProfileLink } from '@/lib/utils/links'
 import {
   CheckBadgeIcon,

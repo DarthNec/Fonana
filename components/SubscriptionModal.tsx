@@ -1,7 +1,13 @@
 'use client'
 
 import { Fragment } from 'react'
-import { Dialog, Transition } from '@headlessui/react'
+import { 
+  SafeDialog as Dialog, 
+  SafeDialogPanel,
+  SafeDialogTitle,
+  SafeTransition as Transition,
+  SafeTransitionChild 
+} from '@/components/ui/ssr-safe'
 import { X } from 'lucide-react'
 import { SubscriptionPayment } from './SubscriptionPayment'
 
@@ -47,7 +53,7 @@ export function SubscriptionModal({ isOpen, onClose, creator }: SubscriptionModa
   return (
     <Transition appear show={isOpen} as={Fragment}>
       <Dialog as="div" className="relative z-50" onClose={onClose}>
-        <Transition.Child
+                      <SafeTransitionChild
           as={Fragment}
           enter="ease-out duration-300"
           enterFrom="opacity-0"
@@ -57,11 +63,11 @@ export function SubscriptionModal({ isOpen, onClose, creator }: SubscriptionModa
           leaveTo="opacity-0"
         >
           <div className="fixed inset-0 bg-black bg-opacity-25" />
-        </Transition.Child>
+                      </SafeTransitionChild>
 
         <div className="fixed inset-0 overflow-y-auto">
           <div className="flex min-h-full items-center justify-center p-4">
-            <Transition.Child
+            <SafeTransitionChild
               as={Fragment}
               enter="ease-out duration-300"
               enterFrom="opacity-0 scale-95"
@@ -70,11 +76,11 @@ export function SubscriptionModal({ isOpen, onClose, creator }: SubscriptionModa
               leaveFrom="opacity-100 scale-100"
               leaveTo="opacity-0 scale-95"
             >
-              <Dialog.Panel className="w-full max-w-md transform overflow-hidden rounded-2xl bg-white dark:bg-gray-800 p-6 shadow-xl transition-all">
+                              <SafeDialogPanel className="w-full max-w-md transform overflow-hidden rounded-2xl bg-white dark:bg-gray-800 p-6 shadow-xl transition-all">
                 <div className="flex items-center justify-between mb-6">
-                  <Dialog.Title className="text-lg font-medium">
+                  <SafeDialogTitle className="text-lg font-medium">
                     Подписка на {creator.name}
-                  </Dialog.Title>
+                  </SafeDialogTitle>
                   <button
                     onClick={onClose}
                     className="text-gray-400 hover:text-gray-500"
@@ -91,8 +97,8 @@ export function SubscriptionModal({ isOpen, onClose, creator }: SubscriptionModa
                   referrerWallet={referrerWallet}
                   plans={DEFAULT_PLANS}
                 />
-              </Dialog.Panel>
-            </Transition.Child>
+              </SafeDialogPanel>
+            </SafeTransitionChild>
           </div>
         </div>
       </Dialog>

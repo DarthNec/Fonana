@@ -1,8 +1,9 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { useWallet } from '@solana/wallet-adapter-react'
-import { useWalletModal, WalletMultiButton } from '@solana/wallet-adapter-react-ui'
+import { useWallet } from '@/lib/hooks/useSafeWallet'
+import { useSafeWalletModal } from '@/lib/hooks/useSafeWalletModal'
+import { SafeWalletButton } from '@/components/ui/ssr-safe'
 import { WalletIcon, ArrowRightOnRectangleIcon, ChevronDownIcon } from '@heroicons/react/24/outline'
 import toast from 'react-hot-toast'
 
@@ -37,7 +38,7 @@ const getPhantomDeeplink = () => {
 
 export function MobileWalletConnect() {
   const { connected, connect, disconnect, wallet, select } = useWallet()
-  const { setVisible } = useWalletModal()
+  const { setVisible } = useSafeWalletModal()
   const [isDropdownOpen, setIsDropdownOpen] = useState(false)
   const [publicKey, setPublicKey] = useState<string | null>(null)
   const [isMobile, setIsMobile] = useState(false)
@@ -100,5 +101,5 @@ export function MobileWalletConnect() {
   }
 
   // В остальных случаях используем стандартную кнопку
-  return <WalletMultiButton className="w-full flex items-center justify-center gap-3 py-3 px-4 text-white rounded-xl font-medium transition-all duration-200 hover:opacity-90" />
+  return <SafeWalletButton className="w-full flex items-center justify-center gap-3 py-3 px-4 text-white rounded-xl font-medium transition-all duration-200 hover:opacity-90" />
 } 

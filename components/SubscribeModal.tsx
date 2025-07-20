@@ -1,8 +1,8 @@
 'use client'
 
-import { useWallet, useConnection } from '@solana/wallet-adapter-react'
-import { useState, useEffect } from 'react'
-import Avatar from './Avatar'
+import React, { useState, useEffect, Fragment } from 'react'
+import { useWallet } from '@/lib/hooks/useSafeWallet'
+import { connection } from '@/lib/solana/connection'
 import { 
   CheckIcon,
   SparklesIcon,
@@ -18,7 +18,6 @@ import {
   formatSolAmount 
 } from '@/lib/solana/payments'
 import { isValidSolanaAddress } from '@/lib/solana/config'
-import { connection } from '@/lib/solana/connection'
 import { useSolRate } from '@/lib/hooks/useSolRate'
 import { refreshSubscriptionStatus } from '@/lib/utils/subscriptions'
 import { jwtManager } from '@/lib/utils/jwt'

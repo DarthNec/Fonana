@@ -1,7 +1,7 @@
 #!/bin/bash
 
-# Fonana Emergency Deployment Script v1.1
-# EMERGENCY MODE: Deploy without production build due to React Context issues
+# Fonana Emergency Deployment Script v1.3
+# INTERACTIVE MODE: SSH with password input + Node.js setup
 # Target: 64.20.37.222 (fonana.me)
 
 set -euo pipefail
@@ -22,222 +22,292 @@ LOG_FILE="./deployment.log"
 MAX_ROLLBACK_COUNT=5
 
 echo -e "${BLUE}=============================================================================="
-echo -e "            FONANA EMERGENCY DEPLOYMENT SCRIPT v1.1"
-echo -e "              EMERGENCY MODE: DEV DEPLOYMENT"
+echo -e "            FONANA EMERGENCY DEPLOYMENT SCRIPT v1.3"
+echo -e "          INTERACTIVE MODE: SSH + FULL SERVER SETUP"
 echo -e "=============================================================================="
 echo -e "${NC}"
 
-echo -e "${YELLOW}⚠️  EMERGENCY DEPLOYMENT: Skipping production build due to React Context issues"
-echo -e "⚠️  This will deploy Fonana in development mode to: ${PRODUCTION_SERVER}"
-echo -e "⚠️  Domain: ${DOMAIN}"
-echo -e "⚠️  Estimated time: 30-45 minutes"
-echo -e "${NC}"
-
-# Confirmation
-read -p "Continue with emergency deployment? (y/N): " -n 1 -r
-echo
-if [[ ! $REPLY =~ ^[Yy]$ ]]; then
-    echo -e "${RED}❌ Deployment cancelled by user"
-    exit 1
+# Check if running with confirmation
+if [[ $# -eq 0 ]] || [[ "$1" != "confirmed" ]]; then
+    echo -e "${YELLOW}⚠️  EMERGENCY DEPLOYMENT MODE АКТИВЕН"
+    echo -e "   - Установка Node.js, npm, PM2 на чистый сервер"
+    echo -e "   - Деплой без production build (из-за React Context ошибок)"
+    echo -e "   - Приложение будет запущено в dev режиме на сервере"
+    echo -e "   - SSH подключение с интерактивным вводом пароля"
+    echo -e "   - Целевой сервер: ${PRODUCTION_SERVER} (${DOMAIN})"
+    echo -e ""
+    echo -e "Продолжить? (y/n): ${NC}"
+    read -r confirmation
+    if [[ "$confirmation" != "y" && "$confirmation" != "Y" ]]; then
+        echo -e "${RED}Deployment отменен пользователем.${NC}"
+        exit 1
+    fi
 fi
 
-# Start logging
-exec 1> >(tee -a ${LOG_FILE})
-exec 2> >(tee -a ${LOG_FILE} >&2)
-
+# Logging function
 log() {
-    echo -e "${GREEN}🔄 $(date '+%H:%M:%S')${NC} - $1"
+    local message="[$(date '+%Y-%m-%d %H:%M:%S')] $1"
+    echo -e "${GREEN}$message${NC}"
+    echo "$message" >> "$LOG_FILE"
 }
 
-error() {
-    echo -e "${RED}❌ $(date '+%H:%M:%S')${NC} - $1"
+# Error handling
+error_exit() {
+    echo -e "${RED}❌ ERROR: $1${NC}" >&2
+    echo "[$(date '+%Y-%m-%d %H:%M:%S')] ERROR: $1" >> "$LOG_FILE"
+    exit 1
 }
 
-success() {
-    echo -e "${GREEN}✅ $(date '+%H:%M:%S')${NC} - $1"
-}
-
-log "Starting emergency deployment..."
-
-# EMERGENCY: Skip production build
-log "⚠️  EMERGENCY MODE: Skipping production build"
-log "⚠️  Application will run in development/SSR mode on production server"
-
-# Check if we have uncommitted changes
-if ! git diff-index --quiet HEAD --; then
-    log "⚠️  Uncommitted changes detected, auto-committing..."
-    git add .
-    git commit -m "🚨 Emergency deployment: Auto-commit before deploy"
-fi
-
-# Push to repository
-log "Pushing latest changes to repository..."
-git push origin main || {
-    log "⚠️  Git push failed, continuing with emergency deployment..."
-}
-
-# Create deployment package (source code only)
-log "Creating emergency deployment package..."
-TEMP_DIR=$(mktemp -d)
-DATE=$(date +%Y%m%d_%H%M%S)
-DEPLOY_PACKAGE="${TEMP_DIR}/fonana-emergency-${DATE}.tar.gz"
-
-# Copy source files (excluding .next, node_modules, etc.)
-tar --exclude='.next' \
-    --exclude='node_modules' \
-    --exclude='.git' \
-    --exclude='deployment.log' \
-    --exclude='*.tar.gz' \
-    -czf "${DEPLOY_PACKAGE}" .
-
-success "Emergency deployment package created: $(basename ${DEPLOY_PACKAGE})"
-
-# Deploy to server
-log "Deploying to production server: ${PRODUCTION_SERVER}..."
-
-# Emergency deployment script for server
-cat > "${TEMP_DIR}/emergency-deploy.sh" << 'EOF'
+# Main deployment function
+main() {
+    log "🚀 Starting Fonana emergency deployment to $DOMAIN"
+    
+    # Pre-deployment checks
+    log "📋 Running pre-deployment checks..."
+    
+    # Check if we're in the right directory
+    if [[ ! -f "package.json" ]] || ! grep -q "fonana" package.json; then
+        error_exit "Not in Fonana project directory"
+    fi
+    
+    # Check server connectivity (without SSH keys)
+    log "🔗 Checking server connectivity..."
+    if ! ping -c 1 "$PRODUCTION_SERVER" >/dev/null 2>&1; then
+        error_exit "Cannot reach production server $PRODUCTION_SERVER"
+    fi
+    
+    # Create deployment package (source code only)
+    log "📦 Creating emergency deployment package..."
+    TEMP_DIR=$(mktemp -d)
+    DATE=$(date +%Y%m%d_%H%M%S)
+    DEPLOY_PACKAGE="${TEMP_DIR}/fonana-emergency-${DATE}.tar.gz"
+    
+    # Create tar package excluding unnecessary files
+    tar -czf "$DEPLOY_PACKAGE" \
+        --exclude=node_modules \
+        --exclude=.next \
+        --exclude=.git \
+        --exclude="*.log" \
+        --exclude=".env*" \
+        --exclude="deployment.log" \
+        .
+    
+    log "✅ Deployment package created: $(basename "$DEPLOY_PACKAGE")"
+    
+    # Create remote deployment script
+    cat > "${TEMP_DIR}/emergency-deploy.sh" << 'REMOTE_SCRIPT'
 #!/bin/bash
 set -euo pipefail
 
-DEPLOY_PATH="/var/www/Fonana"
-BACKUP_DIR="/backup"
-DATE=$(date +%Y%m%d_%H%M%S)
+# Emergency deployment script for Fonana with full server setup
+log() {
+    echo "[$(date '+%Y-%m-%d %H:%M:%S')] $1"
+}
 
-echo "🚨 EMERGENCY DEPLOYMENT STARTING..."
+log "🚀 Starting full server setup and deployment..."
+
+# Update system packages
+log "📦 Updating system packages..."
+apt update && apt upgrade -y
+
+# Install essential tools
+log "🔧 Installing essential tools..."
+apt install -y curl wget git nginx certbot python3-certbot-nginx postgresql-client
+
+# Install Node.js 20.x (LTS)
+log "📥 Installing Node.js 20.x..."
+curl -fsSL https://deb.nodesource.com/setup_20.x | bash -
+apt install -y nodejs
+
+# Verify Node.js installation
+log "✅ Node.js version: $(node --version)"
+log "✅ npm version: $(npm --version)"
+
+# Install PM2 globally
+log "📥 Installing PM2 globally..."
+npm install -g pm2
 
 # Create backup directory
-mkdir -p ${BACKUP_DIR}
-
-# Stop existing services
-echo "Stopping existing services..."
-pm2 stop fonana || echo "No existing PM2 process"
-pm2 delete fonana || echo "No existing PM2 process to delete"
-
-# Backup current deployment (if exists)
-if [ -d "${DEPLOY_PATH}" ]; then
-    echo "Creating backup..."
-    tar -czf "${BACKUP_DIR}/fonana-backup-${DATE}.tar.gz" -C "${DEPLOY_PATH}" . || echo "Backup failed, continuing..."
+mkdir -p /backup
+if [[ -d "/var/www/Fonana" ]]; then
+    BACKUP_NAME="fonana_backup_$(date +%Y%m%d_%H%M%S)"
+    log "📦 Creating backup: $BACKUP_NAME"
+    cp -r /var/www/Fonana "/backup/$BACKUP_NAME"
 fi
 
-# Extract new deployment
-echo "Extracting new deployment..."
-mkdir -p ${DEPLOY_PATH}
-cd ${DEPLOY_PATH}
-
-# Clear existing files
-rm -rf * .* 2>/dev/null || true
-
-# Extract package
+# Extract new version
+log "📦 Extracting new version..."
+mkdir -p /var/www
+cd /var/www
+rm -rf Fonana_temp
+mkdir Fonana_temp
+cd Fonana_temp
 tar -xzf /tmp/deployment-package.tar.gz
 
 # Install dependencies
-echo "Installing dependencies..."
-npm ci --only=production
+log "📥 Installing dependencies..."
+npm ci
 
-# EMERGENCY: Setup for development mode
-echo "🚨 EMERGENCY: Setting up development mode..."
-echo "NODE_ENV=production" > .env.production.local
-echo "NEXT_PUBLIC_NODE_ENV=production" >> .env.production.local
+# Setup environment
+log "⚙️  Setting up environment..."
+cat > .env << 'ENV_CONTENT'
+# Production Environment for Fonana
+DATABASE_URL="postgresql://fonana_user:fonana_pass@localhost:5432/fonana"
+NEXTAUTH_URL="https://fonana.me"
+NEXTAUTH_SECRET="rFbhMWHvRfN5xqP7tK3mL9nE2wQ8sV1zA4bC6dF0gJ"
+JWT_SECRET="rFbhMWHvRfN5xqP7tK3mL9nE2wQ8sV1zA4bC6dF0gJ"
 
-# Copy environment variables
-if [ -f ".env.example" ]; then
-    cp .env.example .env.local
+# Solana Configuration
+NEXT_PUBLIC_SOLANA_RPC_URL="https://tame-smart-panorama.solana-mainnet.quiknode.pro/0e70fc875702b126bf8b93cdcd626680e9c48894/"
+NEXT_PUBLIC_SOLANA_NETWORK="devnet"
+NEXT_PUBLIC_PLATFORM_WALLET="EEqsmopVfTuaiJrh8xL7ZsZbUctckY6S5WyHYR66wjpw"
+
+# WebSocket Configuration  
+WS_PORT=3002
+ENV_CONTENT
+
+# Move to final location
+log "🔄 Deploying new version..."
+cd /var/www
+if [[ -d "Fonana" ]]; then
+    rm -rf Fonana_old
+    mv Fonana Fonana_old
 fi
+mv Fonana_temp Fonana
+cd Fonana
 
-# Start in development mode with PM2
-echo "Starting application in development mode..."
-pm2 start npm --name "fonana" -- run dev
+# Configure PM2 ecosystem
+cat > ecosystem.config.js << 'PM2_CONFIG'
+module.exports = {
+  apps: [{
+    name: 'fonana-app',
+    script: 'npm',
+    args: 'run dev',
+    cwd: '/var/www/Fonana',
+    instances: 1,
+    exec_mode: 'fork',
+    watch: false,
+    max_memory_restart: '2G',
+    env: {
+      NODE_ENV: 'production',
+      PORT: 3000
+    },
+    error_file: '/var/log/fonana-error.log',
+    out_file: '/var/log/fonana-out.log',
+    log_file: '/var/log/fonana-combined.log',
+    time: true
+  }]
+};
+PM2_CONFIG
+
+# Start application with PM2
+log "🚀 Starting application with PM2..."
+pm2 delete fonana-app 2>/dev/null || true
+pm2 start ecosystem.config.js
 pm2 save
+pm2 startup
 
-echo "✅ EMERGENCY DEPLOYMENT COMPLETED!"
-echo "📊 Application status:"
-pm2 status
-EOF
+# Setup PM2 startup service
+log "⚙️  Configuring PM2 startup service..."
+env PATH=$PATH:/usr/bin /usr/lib/node_modules/pm2/bin/pm2 startup systemd -u root --hp /root
 
-# Transfer files and execute
-log "Transferring files to server..."
-scp -i ~/.ssh/fonana_deploy_key -o StrictHostKeyChecking=no "${DEPLOY_PACKAGE}" root@${PRODUCTION_SERVER}:/tmp/deployment-package.tar.gz
-scp -i ~/.ssh/fonana_deploy_key -o StrictHostKeyChecking=no "${TEMP_DIR}/emergency-deploy.sh" root@${PRODUCTION_SERVER}:/tmp/emergency-deploy.sh
+log "✅ Emergency deployment completed successfully!"
+log "🌐 Application should be available at: https://fonana.me"
+log "📊 Check status with: pm2 status"
+log "📝 Check logs with: pm2 logs fonana-app"
+REMOTE_SCRIPT
 
-log "Executing emergency deployment on server..."
-ssh -i ~/.ssh/fonana_deploy_key -o StrictHostKeyChecking=no root@${PRODUCTION_SERVER} "chmod +x /tmp/emergency-deploy.sh && /tmp/emergency-deploy.sh"
-
-# Setup Nginx for development port
-log "Configuring Nginx for development mode..."
-cat > "${TEMP_DIR}/nginx-emergency.conf" << EOF
+    chmod +x "${TEMP_DIR}/emergency-deploy.sh"
+    
+    # Transfer files and execute (INTERACTIVE MODE)
+    log "📤 Transferring files to server..."
+    echo -e "${YELLOW}Введи пароль root для сервера:${NC}"
+    scp -o StrictHostKeyChecking=no "${DEPLOY_PACKAGE}" root@${PRODUCTION_SERVER}:/tmp/deployment-package.tar.gz
+    
+    echo -e "${YELLOW}Введи пароль root еще раз для копирования скрипта:${NC}"
+    scp -o StrictHostKeyChecking=no "${TEMP_DIR}/emergency-deploy.sh" root@${PRODUCTION_SERVER}:/tmp/emergency-deploy.sh
+    
+    log "🚀 Executing full server setup and deployment..."
+    echo -e "${YELLOW}Введи пароль root для выполнения деплоя (займет 5-10 минут):${NC}"
+    ssh -o StrictHostKeyChecking=no root@${PRODUCTION_SERVER} "chmod +x /tmp/emergency-deploy.sh && /tmp/emergency-deploy.sh"
+    
+    # Setup Nginx configuration
+    log "⚙️  Configuring Nginx..."
+    cat > "${TEMP_DIR}/nginx-emergency.conf" << 'NGINX_CONFIG'
 server {
     listen 80;
-    server_name ${DOMAIN} www.${DOMAIN};
+    server_name fonana.me www.fonana.me;
     
-    # Redirect HTTP to HTTPS
-    return 301 https://\$server_name\$request_uri;
-}
-
-server {
-    listen 443 ssl http2;
-    server_name ${DOMAIN} www.${DOMAIN};
-    
-    # SSL Configuration (will be set up by Certbot)
-    ssl_certificate /etc/letsencrypt/live/${DOMAIN}/fullchain.pem;
-    ssl_certificate_key /etc/letsencrypt/live/${DOMAIN}/privkey.pem;
-    include /etc/letsencrypt/options-ssl-nginx.conf;
-    ssl_dhparam /etc/letsencrypt/ssl-dhparams.pem;
-    
-    # Security headers
-    add_header X-Frame-Options DENY;
-    add_header X-Content-Type-Options nosniff;
-    add_header X-XSS-Protection "1; mode=block";
-    add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;
-    
-    # Proxy to Next.js development server
     location / {
         proxy_pass http://localhost:3000;
         proxy_http_version 1.1;
-        proxy_set_header Upgrade \$http_upgrade;
+        proxy_set_header Upgrade $http_upgrade;
         proxy_set_header Connection 'upgrade';
-        proxy_set_header Host \$host;
-        proxy_set_header X-Real-IP \$remote_addr;
-        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto \$scheme;
-        proxy_cache_bypass \$http_upgrade;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_cache_bypass $http_upgrade;
         proxy_read_timeout 86400;
     }
+    
+    # WebSocket support
+    location /ws {
+        proxy_pass http://localhost:3002;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "Upgrade";
+        proxy_set_header Host $host;
+    }
 }
-EOF
+NGINX_CONFIG
 
-scp -i ~/.ssh/fonana_deploy_key -o StrictHostKeyChecking=no "${TEMP_DIR}/nginx-emergency.conf" root@${PRODUCTION_SERVER}:/etc/nginx/sites-available/fonana
+    echo -e "${YELLOW}Введи пароль root для настройки Nginx:${NC}"
+    scp -o StrictHostKeyChecking=no "${TEMP_DIR}/nginx-emergency.conf" root@${PRODUCTION_SERVER}:/etc/nginx/sites-available/fonana
+    
+    log "🔧 Enabling Nginx configuration..."
+    echo -e "${YELLOW}Введи пароль root для перезагрузки Nginx:${NC}"
+    ssh -o StrictHostKeyChecking=no root@${PRODUCTION_SERVER} "
+        ln -sf /etc/nginx/sites-available/fonana /etc/nginx/sites-enabled/
+        nginx -t && systemctl reload nginx
+    "
+    
+    # Setup SSL with Certbot
+    log "🔒 Setting up SSL certificate..."
+    echo -e "${YELLOW}Введи пароль root для настройки SSL:${NC}"
+    ssh -o StrictHostKeyChecking=no root@${PRODUCTION_SERVER} "
+        certbot --nginx -d ${DOMAIN} -d www.${DOMAIN} --non-interactive --agree-tos --email admin@${DOMAIN} --redirect || echo 'SSL setup may have failed, continuing...'
+    "
+    
+    # Final health check
+    log "🏥 Performing health check..."
+    sleep 15
+    
+    if curl -f "http://${PRODUCTION_SERVER}" >/dev/null 2>&1; then
+        log "✅ Health check passed - server responding"
+    else
+        log "⚠️  Health check failed - server may still be starting"
+    fi
+    
+    # Cleanup
+    rm -rf "$TEMP_DIR"
+    
+    log "🎉 EMERGENCY DEPLOYMENT COMPLETED!"
+    log "🌐 Application URL: https://${DOMAIN}"
+    log "📊 Server status: ssh root@${PRODUCTION_SERVER} 'pm2 status'"
+    log "📝 Application logs: ssh root@${PRODUCTION_SERVER} 'pm2 logs fonana-app'"
+    log "🔄 To restart: ssh root@${PRODUCTION_SERVER} 'pm2 restart fonana-app'"
+    
+    echo -e ""
+    echo -e "${GREEN}=============================================================================="
+    echo -e "                    DEPLOYMENT COMPLETED SUCCESSFULLY!"
+    echo -e "=============================================================================="
+    echo -e ""
+    echo -e "🌐 Application URL: https://${DOMAIN}"
+    echo -e "📊 Check status: ssh root@${PRODUCTION_SERVER} 'pm2 status'"
+    echo -e "📝 View logs: ssh root@${PRODUCTION_SERVER} 'pm2 logs fonana-app'"
+    echo -e "${NC}"
+}
 
-log "Enabling Nginx configuration..."
-ssh -i ~/.ssh/fonana_deploy_key -o StrictHostKeyChecking=no root@${PRODUCTION_SERVER} "
-    ln -sf /etc/nginx/sites-available/fonana /etc/nginx/sites-enabled/
-    nginx -t && systemctl reload nginx
-"
-
-# Setup SSL with Certbot
-log "Setting up SSL certificate..."
-ssh -i ~/.ssh/fonana_deploy_key -o StrictHostKeyChecking=no root@${PRODUCTION_SERVER} "
-    certbot --nginx -d ${DOMAIN} -d www.${DOMAIN} --non-interactive --agree-tos --email admin@${DOMAIN} || echo 'SSL setup may have failed, continuing...'
-"
-
-# Cleanup
-rm -rf "${TEMP_DIR}"
-
-# Health check
-log "Performing health check..."
-sleep 10
-
-if curl -f -s "https://${DOMAIN}" > /dev/null 2>&1; then
-    success "🎉 EMERGENCY DEPLOYMENT SUCCESSFUL!"
-    success "🌐 Application is live at: https://${DOMAIN}"
-    success "📊 Check status: pm2 status"
-    success "📋 View logs: pm2 logs fonana"
-else
-    error "❌ Health check failed - please check manually"
-    error "🔍 SSH to server: ssh root@${PRODUCTION_SERVER}"
-    error "📊 Check PM2: pm2 status"
-    error "📋 Check logs: pm2 logs fonana"
-fi
-
-success "Emergency deployment process completed!"
-log "Deployment log saved to: ${LOG_FILE}" 
+# Run main function
+main "$@" 

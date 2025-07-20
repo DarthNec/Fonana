@@ -1,10 +1,10 @@
 'use client'
 
 import React, { useState, useEffect } from 'react'
-import { useWallet } from '@solana/wallet-adapter-react'
-import { PublicKey, LAMPORTS_PER_SOL } from '@solana/web3.js'
-import { connection } from '@/lib/solana/connection'
 import { toast } from 'react-hot-toast'
+import { useWallet } from '@/lib/hooks/useSafeWallet'
+import { PublicKey, SystemProgram, Transaction, LAMPORTS_PER_SOL } from '@solana/web3.js'
+import { connection } from '@/lib/solana/connection'
 import { 
   XMarkIcon,
   CurrencyDollarIcon,

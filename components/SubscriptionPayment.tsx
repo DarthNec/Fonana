@@ -1,8 +1,8 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { useWallet } from '@solana/wallet-adapter-react'
-import { WalletMultiButton } from '@solana/wallet-adapter-react-ui'
+import { useWallet } from '@/lib/hooks/useSafeWallet'
+import { SafeWalletButton } from '@/components/ui/ssr-safe'
 import { 
   createSubscriptionTransaction, 
   calculatePaymentDistribution,

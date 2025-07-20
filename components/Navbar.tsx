@@ -23,7 +23,7 @@ import {
   RocketLaunchIcon
 } from '@heroicons/react/24/outline'
 import { MobileWalletConnect } from './MobileWalletConnect'
-import { useWallet } from '@solana/wallet-adapter-react'
+import { useWallet } from '@/lib/hooks/useSafeWallet'
 import { useUser } from '@/lib/store/appStore'
 import SearchModal from './SearchModal'
 import { unreadMessagesService } from '@/lib/services/UnreadMessagesService'
