@@ -3,6 +3,9 @@ import { PrismaClient } from '@prisma/client'
 
 const prisma = new PrismaClient()
 
+// Force dynamic rendering for user referrals API (uses query parameters)
+export const dynamic = 'force-dynamic'
+
 // GET /api/user/referrals?userId=ID - получить список рефералов пользователя
 export async function GET(request: NextRequest) {
   try {

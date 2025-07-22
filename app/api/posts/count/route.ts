@@ -3,10 +3,13 @@ import { PrismaClient } from '@prisma/client'
 
 const prisma = new PrismaClient()
 
+// Force dynamic rendering for posts count API (uses query parameters)
+export const dynamic = 'force-dynamic'
+
 // [media_only_tab_optimization_2025_017] Легкий API для подсчета постов по типам
 export async function GET(request: NextRequest) {
   try {
-    const { searchParams } = new URL(request.url)
+    const searchParams = request.nextUrl.searchParams
     const creatorId = searchParams.get('creatorId')
     const types = searchParams.get('type')?.split(',') || []
     

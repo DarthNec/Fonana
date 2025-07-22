@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 
+// Force dynamic rendering for admin routes (appropriate for auth)
+export const dynamic = 'force-dynamic'
+
 // GET /api/admin/users - получить список всех пользователей
 export async function GET(request: NextRequest) {
   try {
