@@ -1,12 +1,15 @@
-import { NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
 import { format, subDays, subMonths, startOfWeek } from 'date-fns'
 import { TransactionStatus } from '@prisma/client'
 
+// Force dynamic rendering for analytics API (uses query parameters)
+export const dynamic = 'force-dynamic'
+
 // GET /api/creators/analytics?creatorId=xxx&period=day|week|month
-export async function GET(request: Request) {
+export async function GET(request: NextRequest) {
   try {
-    const { searchParams } = new URL(request.url)
+    const searchParams = request.nextUrl.searchParams
     const creatorId = searchParams.get('creatorId')
     const period = searchParams.get('period') || 'week' // day, week, month
     
