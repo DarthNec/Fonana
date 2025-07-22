@@ -550,6 +550,14 @@ export default function CreatePostModal({ onPostCreated, onPostUpdated, onClose,
           throw new Error('Failed to upload file')
         }
         
+        console.log('[CreatePostModal] 🔥 UPLOAD RESULT DEBUG:', {
+          uploadResult,
+          url: uploadResult.url,
+          thumbUrl: uploadResult.thumbUrl,
+          isWebP: uploadResult.url.includes('.webp'),
+          isJPG: uploadResult.url.includes('.JPG')
+        })
+        
         mediaUrl = uploadResult.url
         
         // Use thumbUrl from upload result or fallback to placeholder
@@ -568,6 +576,15 @@ export default function CreatePostModal({ onPostCreated, onPostUpdated, onClose,
         mediaUrl = postData.mediaUrl
         thumbnail = postData.thumbnail
       }
+
+      console.log('[CreatePostModal] 🔥 FINAL MEDIA DEBUG:', {
+        mediaUrl,
+        thumbnail,
+        mode,
+        hasFile: !!formData.file,
+        isMediaUrlWebP: mediaUrl?.includes('.webp'),
+        isMediaUrlJPG: mediaUrl?.includes('.JPG')
+      })
 
       // Подготавливаем данные поста
       const postDataToSend = {
@@ -1192,7 +1209,7 @@ export default function CreatePostModal({ onPostCreated, onPostUpdated, onClose,
           <div className="flex gap-3 pt-4 border-t border-gray-200 dark:border-slate-700/50 pb-safe sm:pb-0">
             <button
               type="submit"
-              disabled={isUploading || !connected || (mode === 'edit' && isLoadingPost)}
+              disabled={isUploading || (!connected && !publicKey) || (mode === 'edit' && isLoadingPost)}
               className="flex-1 px-6 py-3 bg-gradient-to-r from-purple-500 to-pink-500 text-white font-medium rounded-xl hover:from-purple-600 hover:to-pink-600 transform hover:scale-105 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none flex items-center justify-center gap-2"
             >
               {isUploading ? (
