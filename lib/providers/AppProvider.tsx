@@ -6,7 +6,7 @@
 
 'use client'
 
-import { useEffect, ReactNode, useState } from 'react'
+import { useEffect, ReactNode, useState, useRef } from 'react'
 import dynamic from 'next/dynamic'
 import { useAppStore, useUserActions } from '@/lib/store/appStore'
 import { setupDefaultHandlers } from '@/lib/services/WebSocketEventManager'
@@ -42,6 +42,9 @@ export function AppProvider({ children }: AppProviderProps) {
     userLoading
   } = useAppStore()
   const { setJwtReady } = useUserActions()
+  
+  // 🔥 PRODUCTION MODE FIX: Unmount protection для async operations
+  const isMountedRef = useRef(true)
 
   // Debug логирование для отслеживания race conditions
   useEffect(() => {
@@ -74,6 +77,7 @@ export function AppProvider({ children }: AppProviderProps) {
     // Очистка при размонтировании
     return () => {
       console.log('[AppProvider] Cleaning up...')
+      isMountedRef.current = false // 🔥 Mark as unmounted
       cacheManager.cleanup()
     }
   }, [])
@@ -99,6 +103,12 @@ export function AppProvider({ children }: AppProviderProps) {
    */
   const ensureJWTTokenForWallet = async (walletAddress: string) => {
     try {
+      // 🔥 PRODUCTION MODE FIX: Check if component is still mounted
+      if (!isMountedRef.current) {
+        console.log('[AppProvider] Component unmounted, aborting JWT creation')
+        return
+      }
+      
       // Set JWT as not ready at start
       setJwtReady(false)
       
@@ -160,6 +170,12 @@ export function AppProvider({ children }: AppProviderProps) {
           setUser(data.user)
         }
         
+        // 🔥 PRODUCTION MODE FIX: Check if still mounted before setState
+        if (!isMountedRef.current) {
+          console.log('[AppProvider] Component unmounted during JWT creation, skipping setState')
+          return
+        }
+        
         // CRITICAL: Set JWT ready AFTER token is saved
         setJwtReady(true)
         
@@ -171,6 +187,13 @@ export function AppProvider({ children }: AppProviderProps) {
       
     } catch (error) {
       console.error('[AppProvider] JWT creation failed:', error)
+      
+      // 🔥 PRODUCTION MODE FIX: Check if still mounted before setState
+      if (!isMountedRef.current) {
+        console.log('[AppProvider] Component unmounted during JWT error, skipping setState')
+        return
+      }
+      
       setJwtReady(false) // Ensure false on failure
       
       // Show user-friendly error after a delay to avoid flooding
