@@ -7,7 +7,7 @@ echo "============================================"
 SERVER_IP="69.10.59.234"
 SERVER_PORT="43988"
 SERVER_USER="root"
-SERVER_PATH="/var/www/fonana"
+SERVER_PATH="/var/www/Fonana"
 
 echo "📡 Checking server connection..."
 ssh -p $SERVER_PORT $SERVER_USER@$SERVER_IP "echo '✅ Connected to server'" || {
@@ -43,7 +43,7 @@ echo "🔄 Deploying to production server..."
 
 # Деплоим на сервер
 ssh -p $SERVER_PORT $SERVER_USER@$SERVER_IP << 'EOF'
-cd /var/www/fonana
+cd /var/www/Fonana
 
 echo "📥 Pulling latest changes..."
 git pull origin main

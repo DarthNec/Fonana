@@ -8,7 +8,7 @@ echo ""
 
 # Проверяем стандартные директории
 DIRS=(
-    "/var/www/fonana"
+    "/var/www/Fonana"
     "/var/www/Fonana"
     "/root/fonana"
     "/root/Fonana"

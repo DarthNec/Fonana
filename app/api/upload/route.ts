@@ -63,13 +63,13 @@ export async function POST(request: NextRequest) {
     let uploadSubDir: string
     switch (type) {
       case 'avatar':
-        uploadSubDir = 'avatars'
+        uploadSubDir = 'media/avatars'
         break
       case 'background':
-        uploadSubDir = 'backgrounds'
+        uploadSubDir = 'media/backgrounds'
         break
       case 'post':
-        uploadSubDir = 'posts'
+        uploadSubDir = 'posts/images'
         break
       case 'message':
       case 'image': // для обратной совместимости
@@ -83,7 +83,7 @@ export async function POST(request: NextRequest) {
     // Определяем полный путь
     let uploadDir: string
     if (process.env.NODE_ENV === 'production') {
-      uploadDir = `/var/www/fonana/public/${uploadSubDir}`
+      uploadDir = `/var/www/Fonana/public/${uploadSubDir}`
     } else {
       // Для локальной разработки используем путь относительно корня проекта
       const projectRoot = path.join(process.cwd(), 'public')

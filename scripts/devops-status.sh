@@ -38,7 +38,7 @@ fi
 # 5. Check disk space
 echo ""
 echo "5️⃣ Server Disk Space:"
-ssh -p 43988 root@69.10.59.234 "df -h /var/www/fonana | tail -1" 2>/dev/null || echo "   ⚠️  Cannot check disk space"
+ssh -p 43988 root@69.10.59.234 "df -h /var/www/Fonana | tail -1" 2>/dev/null || echo "   ⚠️  Cannot check disk space"
 
 # 6. Database status
 echo ""

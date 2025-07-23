@@ -87,7 +87,11 @@ export default function FeedPageClient() {
     hasNewPosts,
     loadPendingPosts
   } = useOptimizedRealtimePosts({
-    posts
+    posts,
+    autoUpdateFeed: user?.id ? true : false, // NEW: Auto-update для logged-in users
+    showNewPostsNotification: true, // Показываем уведомления о новых постах от других
+    maxPendingPosts: 50,
+    batchUpdateDelay: 100
   })
 
   // Infinite scroll

@@ -5,7 +5,7 @@ const path = require('path');
 
 console.log('🔐 Извлечение переменных окружения\n');
 
-const envPath = path.join('/var/www/fonana', '.env');
+const envPath = path.join('/var/www/Fonana', '.env');
 const envContent = fs.readFileSync(envPath, 'utf8');
 
 // Парсим переменные

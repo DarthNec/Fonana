@@ -21,7 +21,7 @@ fi
 
 # 3. Очищаем кеш Next.js
 echo "🗑️  Clearing Next.js cache..."
-cd /var/www/fonana
+cd /var/www/Fonana
 rm -rf .next/cache
 
 # 4. Запускаем приложение через PM2

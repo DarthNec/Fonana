@@ -3,7 +3,7 @@
 echo "Запускаю Fonana..."
 
 # Переходим в директорию приложения
-cd /var/www/fonana
+cd /var/www/Fonana
 
 # Проверяем порт 3001
 if lsof -Pi :3001 -sTCP:LISTEN -t >/dev/null ; then

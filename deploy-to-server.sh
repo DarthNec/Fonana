@@ -7,7 +7,7 @@ echo "🚀 Начинаем деплой Fonana на продакшн..."
 # Конфигурация
 SERVER="root@fonana.me"
 PORT="43988"
-PROJECT_DIR="/var/www/fonana"
+PROJECT_DIR="/var/www/Fonana"
 
 # Цвета для вывода
 GREEN='\033[0;32m'
@@ -22,7 +22,7 @@ ssh -p $PORT $SERVER << 'ENDSSH'
 set -e
 
 # Переходим в директорию проекта
-cd /var/www/fonana
+cd /var/www/Fonana
 
 echo "📍 Текущая директория: $(pwd)"
 echo "📌 Текущий коммит: $(git rev-parse --short HEAD)"

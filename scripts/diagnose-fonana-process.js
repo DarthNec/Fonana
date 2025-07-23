@@ -58,7 +58,7 @@ try {
 // 4. Проверяем start-production.js
 console.log('\n\n📄 Проверка start-production.js:');
 try {
-  const startScript = execSync('cat /var/www/fonana/start-production.js | grep -E "dotenv|NEXTAUTH_SECRET|require" | head -10', { encoding: 'utf8' });
+  const startScript = execSync('cat /var/www/Fonana/start-production.js | grep -E "dotenv|NEXTAUTH_SECRET|require" | head -10', { encoding: 'utf8' });
   console.log(startScript);
 } catch (error) {
   console.log('❌ Ошибка чтения start-production.js:', error.message);
@@ -107,12 +107,12 @@ console.log('First 10 chars:', secret ? secret.substring(0, 10) : 'not-set');
   
   // Запускаем с dotenv
   console.log('\nЗапуск с dotenv:');
-  const withDotenv = execSync('cd /var/www/fonana && node -r dotenv/config /tmp/test-env.js', { encoding: 'utf8' });
+  const withDotenv = execSync('cd /var/www/Fonana && node -r dotenv/config /tmp/test-env.js', { encoding: 'utf8' });
   console.log(withDotenv);
   
   // Запускаем без dotenv
   console.log('Запуск БЕЗ dotenv:');
-  const withoutDotenv = execSync('cd /var/www/fonana && node /tmp/test-env.js', { encoding: 'utf8' });
+  const withoutDotenv = execSync('cd /var/www/Fonana && node /tmp/test-env.js', { encoding: 'utf8' });
   console.log(withoutDotenv);
   
 } catch (error) {

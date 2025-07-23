@@ -101,24 +101,24 @@ sleep 5
 echo -e "${YELLOW}📍 Phase 3: File Migration${NC}"
 
 log "Checking for orphaned files in wrong directory..."
-ORPHANED_FILES=$(ssh fonana "ls -1 /var/www/fonana/public/posts/ 2>/dev/null | wc -l" 2>/dev/null || echo "0")
+ORPHANED_FILES=$(ssh fonana "ls -1 /var/www/Fonana/public/posts/ 2>/dev/null | wc -l" 2>/dev/null || echo "0")
 
 if [ "$ORPHANED_FILES" -gt 0 ]; then
-    warn "Found orphaned files in /var/www/fonana/public/posts/"
+    warn "Found orphaned files in /var/www/Fonana/public/posts/"
     
     log "Migrating orphaned files to correct location..."
     ssh fonana "
-    if [ -d '/var/www/fonana/public/posts' ]; then
+    if [ -d '/var/www/Fonana/public/posts' ]; then
         echo 'Creating target directories...'
         mkdir -p /var/www/Fonana/public/posts/images
         mkdir -p /var/www/Fonana/public/posts/videos
         mkdir -p /var/www/Fonana/public/posts/audio
         
         echo 'Copying files...'
-        cp -r /var/www/fonana/public/posts/* /var/www/Fonana/public/posts/ 2>/dev/null || true
+        cp -r /var/www/Fonana/public/posts/* /var/www/Fonana/public/posts/ 2>/dev/null || true
         
         # Verify copy was successful
-        SOURCE_COUNT=\$(find /var/www/fonana/public/posts -type f | wc -l)
+        SOURCE_COUNT=\$(find /var/www/Fonana/public/posts -type f | wc -l)
         TARGET_COUNT=\$(find /var/www/Fonana/public/posts -type f | wc -l)
         
         echo \"Source files: \$SOURCE_COUNT\"
@@ -126,7 +126,7 @@ if [ "$ORPHANED_FILES" -gt 0 ]; then
         
         if [ \"\$TARGET_COUNT\" -ge \"\$SOURCE_COUNT\" ]; then
             echo 'File copy successful. Cleaning up source...'
-            rm -rf /var/www/fonana/public/posts/
+            rm -rf /var/www/Fonana/public/posts/
             echo 'Migration completed successfully.'
         else
             echo 'File copy may have failed. NOT removing source.'
@@ -197,8 +197,8 @@ RECENT_LOGS=$(ssh fonana "pm2 logs fonana-app --lines 10 --nostream | grep 'Uplo
 
 if [[ "$RECENT_LOGS" == *"/var/www/Fonana/"* ]]; then
     success "Production logs show correct upload path (/var/www/Fonana/)"
-elif [[ "$RECENT_LOGS" == *"/var/www/fonana/"* ]]; then
-    error "Production logs still show wrong path (/var/www/fonana/)"
+elif [[ "$RECENT_LOGS" == *"/var/www/Fonana/"* ]]; then
+    error "Production logs still show wrong path (/var/www/Fonana/)"
     echo "Logs: $RECENT_LOGS"
 else
     warn "No recent upload logs found - may need to wait for next upload"

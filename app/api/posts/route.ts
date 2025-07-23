@@ -310,6 +310,18 @@ export async function POST(request: NextRequest) {
     
     console.log('[API] Post created successfully:', post.id)
     
+    // NEW: WebSocket уведомление автора (non-blocking)
+    try {
+      // Динамический импорт WebSocket функции
+      const { notifyPostAuthor } = await import('@/websocket-server/src/events/posts')
+      
+      const success = await notifyPostAuthor(post, user.id)
+      console.log(`[API] ${success ? '✅' : '⚠️'} Author WebSocket notification: ${success ? 'sent' : 'failed'}`)
+    } catch (error) {
+      // Не блокируем API response при ошибке WebSocket
+      console.error('[API] ⚠️ WebSocket notification failed:', error.message)
+    }
+    
     // [tier_access_system_2025_017] Возвращаем пост с информацией о доступе для автора
     const responsePost = {
       id: post.id,

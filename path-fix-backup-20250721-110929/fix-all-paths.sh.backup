@@ -1,0 +1,82 @@
+#!/bin/bash
+
+# 🔧 BULK PATH FIX: Исправление всех /var/www/fonana на /var/www/Fonana
+# М7 METHODOLOGY - Comprehensive Path Audit Fix
+
+echo "🔍 М7 PATH AUDIT: Исправление всех неправильных путей в проекте"
+echo "=================================================="
+
+# Создаем backup
+BACKUP_DIR="path-fix-backup-$(date +%Y%m%d-%H%M%S)"
+echo "📦 Создаю backup в $BACKUP_DIR..."
+mkdir -p "$BACKUP_DIR"
+
+# Функция для создания backup файла перед изменением
+backup_and_fix() {
+    local file="$1"
+    echo "🔄 Исправляю: $file"
+    
+    # Создаем backup
+    cp "$file" "$BACKUP_DIR/$(basename $file).backup"
+    
+    # Исправляем пути
+    sed -i.tmp 's|/var/www/fonana|/var/www/Fonana|g' "$file"
+    rm "$file.tmp"
+}
+
+echo ""
+echo "🎯 Исправление критических .sh scripts:"
+find . -name "*.sh" -not -path "./node_modules/*" -not -path "./.git/*" -not -path "./docs/*" -not -name "*backup*" | while read -r file; do
+    if grep -q "/var/www/fonana" "$file"; then
+        backup_and_fix "$file"
+    fi
+done
+
+echo ""
+echo "🎯 Исправление критических .js config files:"
+find . -name "*.js" -not -path "./node_modules/*" -not -path "./.git/*" -not -path "./docs/*" -not -name "*backup*" | while read -r file; do
+    if grep -q "/var/www/fonana" "$file"; then
+        backup_and_fix "$file"
+    fi
+done
+
+echo ""
+echo "🎯 Исправление deployment configs:"
+for file in ecosystem*.js; do
+    if [[ -f "$file" && ! "$file" =~ backup ]]; then
+        if grep -q "/var/www/fonana" "$file"; then
+            backup_and_fix "$file"
+        fi
+    fi
+done
+
+echo ""
+echo "📊 РЕЗУЛЬТАТЫ ИСПРАВЛЕНИЯ:"
+echo "========================="
+
+# Подсчитываем оставшиеся проблемы
+REMAINING=$(grep -r "/var/www/fonana" . --include="*.sh" --include="*.js" --exclude-dir=node_modules --exclude-dir=.git --exclude-dir=docs --exclude="*backup*" 2>/dev/null | wc -l)
+
+echo "📁 Оставшихся файлов с неправильными путями: $REMAINING"
+
+if [ "$REMAINING" -eq 0 ]; then
+    echo "✅ ВСЕ КРИТИЧЕСКИЕ ПУТИ ИСПРАВЛЕНЫ!"
+else
+    echo "⚠️  Остались файлы с неправильными путями:"
+    grep -r "/var/www/fonana" . --include="*.sh" --include="*.js" --exclude-dir=node_modules --exclude-dir=.git --exclude-dir=docs --exclude="*backup*" 2>/dev/null | head -10
+fi
+
+echo ""
+echo "🔧 СЛЕДУЮЩИЕ ШАГИ:"
+echo "=================="
+echo "1. Проверить исправленные файлы"
+echo "2. Скопировать критические файлы на production"
+echo "3. Перезапустить PM2 на production"
+echo "4. Проверить работоспособность"
+
+echo ""
+echo "📦 Backup создан в: $BACKUP_DIR"
+echo "💡 Для отката: cp $BACKUP_DIR/* ./"
+
+echo ""
+echo "🎉 М7 PATH AUDIT ЗАВЕРШЕН!" 
