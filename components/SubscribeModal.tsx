@@ -3,6 +3,7 @@
 import React, { useState, useEffect, Fragment } from 'react'
 import { useWallet } from '@/lib/hooks/useSafeWallet'
 import { connection } from '@/lib/solana/connection'
+import Avatar from '@/components/Avatar'
 import { 
   CheckIcon,
   SparklesIcon,

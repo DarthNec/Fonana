@@ -283,9 +283,9 @@ export default function CreatePostModal({ onPostCreated, onPostUpdated, onClose,
     // Determine content type based on file
     let contentType: 'image' | 'video' | 'audio' = 'image'
     const maxSizes = {
-      image: 10 * 1024 * 1024, // 10MB
-      video: 100 * 1024 * 1024, // 100MB
-      audio: 50 * 1024 * 1024 // 50MB
+      image: 100 * 1024 * 1024, // 100MB
+      video: 200 * 1024 * 1024, // 200MB
+      audio: 100 * 1024 * 1024 // 100MB
     }
 
     if (file.type.startsWith('video/')) {
@@ -868,7 +868,7 @@ export default function CreatePostModal({ onPostCreated, onPostUpdated, onClose,
                         Drag file or click
                       </p>
                       <p className="text-xs text-gray-500 dark:text-slate-600 mt-1">
-                        Max: {formData.type === 'video' ? '100MB' : formData.type === 'audio' ? '50MB' : '10MB'}
+                        Max: {formData.type === 'video' ? '200MB' : formData.type === 'audio' ? '100MB' : '100MB'}
                       </p>
                     </div>
                   )}

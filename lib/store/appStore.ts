@@ -96,12 +96,16 @@ interface UserSlice {
   showProfileForm: boolean
   userError: Error | null
   
+  // JWT Authentication State
+  isJwtReady: boolean
+  
   // Действия
   setUser: (user: User | null) => void
   setUserLoading: (loading: boolean) => void
   setNewUser: (isNew: boolean) => void
   setShowProfileForm: (show: boolean) => void
   setUserError: (error: Error | null) => void
+  setJwtReady: (ready: boolean) => void
   updateProfile: (data: ProfileData) => Promise<User>
   deleteAccount: () => Promise<boolean>
   refreshUser: () => Promise<void>
@@ -166,6 +170,9 @@ export const useAppStore = create<AppStore>()(
         isNewUser: false,
         showProfileForm: false,
         userError: null,
+        
+        // JWT Authentication State
+        isJwtReady: false,
 
         setUser: (user) => {
           console.log('[AppStore] setUser called:', { 
@@ -180,6 +187,11 @@ export const useAppStore = create<AppStore>()(
         setNewUser: (isNewUser) => set({ isNewUser }),
         setShowProfileForm: (showProfileForm) => set({ showProfileForm }),
         setUserError: (userError) => set({ userError }),
+        
+        setJwtReady: (isJwtReady) => {
+          console.log('[AppStore] setJwtReady:', isJwtReady)
+          set({ isJwtReady })
+        },
 
         updateProfile: async (profileData) => {
           const { user } = get()
@@ -271,7 +283,8 @@ export const useAppStore = create<AppStore>()(
           user: null, 
           isNewUser: false, 
           showProfileForm: false, 
-          userError: null 
+          userError: null,
+          isJwtReady: false 
         }),
 
         // === NOTIFICATION SLICE ===
@@ -444,11 +457,18 @@ export const useUserError = () => {
   return useAppStore(state => state.userError)
 }
 
+// JWT Ready State Hook
+export const useJwtReady = () => {
+  if (typeof window === 'undefined') return false // SSR guard
+  return useAppStore(state => state.isJwtReady)
+}
+
 // ✅ ИСПРАВЛЕНО: Мемоизируем selector для userActions
 const userActionsSelector = (state: AppStore) => ({
   setUser: state.setUser,
   setUserLoading: state.setUserLoading,
   setUserError: state.setUserError,
+  setJwtReady: state.setJwtReady,
   refreshUser: state.refreshUser,
   updateProfile: state.updateProfile,
   deleteAccount: state.deleteAccount,
@@ -461,6 +481,7 @@ export const useUserActions = () => {
       setUser: () => {},
       setUserLoading: () => {},
       setUserError: () => {},
+      setJwtReady: () => {},
       refreshUser: async () => {},
       updateProfile: async () => {},
       deleteAccount: async () => {},

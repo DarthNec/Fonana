@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react'
 import { Fragment } from 'react'
+import Avatar from '@/components/Avatar'
 import { 
   SafeDialog as Dialog,
   SafeDialogPanel,
@@ -14,7 +15,10 @@ import {
   CreditCardIcon,
   CheckCircleIcon,
   ExclamationTriangleIcon,
-  ArrowPathIcon
+  ArrowPathIcon,
+  LockClosedIcon,
+  ShoppingCartIcon,
+  CheckIcon
 } from '@heroicons/react/24/outline'
 import { CheckBadgeIcon } from '@heroicons/react/24/solid'
 import { useWallet } from '@/lib/hooks/useSafeWallet'
