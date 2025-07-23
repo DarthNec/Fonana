@@ -6,6 +6,16 @@ import fs from 'fs'
 import sharp from 'sharp'
 import { generateVideoThumbnailAtPercentage } from '@/lib/utils/video-processor'
 
+// 🔧 ФИКС M7: Next.js body parser configuration for large file uploads
+export const config = {
+  api: {
+    bodyParser: {
+      sizeLimit: '100mb', // Supports images(10MB), videos(100MB), audio(50MB)
+    },
+  },
+  maxDuration: 30, // Allow time for large file processing & Sharp optimization
+}
+
 export async function POST(request: NextRequest) {
   try {
     const formData = await request.formData()
