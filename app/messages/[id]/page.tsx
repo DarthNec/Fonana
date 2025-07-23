@@ -80,6 +80,9 @@ export default function ConversationPage() {
   const router = useRouter()
   const conversationId = params.id as string
   
+  // 🔥 CRITICAL FIX: Unmount protection для async operations
+  const isMountedRef = useRef(true)
+  
   const [messages, setMessages] = useState<Message[]>([])
   const [participant, setParticipant] = useState<Participant | null>(null)
   const [isLoading, setIsLoading] = useState(true)
@@ -129,8 +132,12 @@ export default function ConversationPage() {
     
     // Reset counter every 60 seconds
     if (now - lastResetTime > 60000) {
-      // Use setTimeout to prevent setState during render cycle
+      // 🔥 CRITICAL FIX: Check if component is still mounted before setState
       setTimeout(() => {
+        if (!isMountedRef.current) {
+          console.log('[Circuit Breaker] Component unmounted, skipping setState')
+          return
+        }
         setCircuitBreakerState({
           callCount: 0,
           lastResetTime: now,
@@ -145,6 +152,10 @@ export default function ConversationPage() {
     if (callCount >= 10) {
       const blockDuration = 60000; // Block for 1 minute
       setTimeout(() => {
+        if (!isMountedRef.current) {
+          console.log('[Circuit Breaker] Component unmounted, skipping block setState')
+          return
+        }
         setCircuitBreakerState(prev => ({
           ...prev,
           isBlocked: true,
@@ -159,8 +170,12 @@ export default function ConversationPage() {
   }, [circuitBreakerState]);
 
   const incrementCallCounter = useCallback(() => {
-    // Use setTimeout to prevent setState during render cycle
+    // 🔥 CRITICAL FIX: Check if component is still mounted before setState
     setTimeout(() => {
+      if (!isMountedRef.current) {
+        console.log('[Circuit Breaker] Component unmounted, skipping increment setState')
+        return
+      }
       setCircuitBreakerState(prev => ({
         ...prev,
         callCount: prev.callCount + 1
@@ -189,7 +204,11 @@ export default function ConversationPage() {
     
     // Polling для новых сообщений
     const interval = setInterval(loadMessages, 5000)
-    return () => clearInterval(interval)
+    return () => {
+      clearInterval(interval)
+      // Mark component as unmounted
+      isMountedRef.current = false
+    }
   }, [userId, isUserReady, conversationId]) // ✅ Only stable primitives
 
   useEffect(() => {
