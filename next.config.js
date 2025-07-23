@@ -36,41 +36,50 @@ const nextConfig = {
         protocol: 'http',
         hostname: 'localhost',
         port: '3000',
-        pathname: '/posts/**',
-      },
-      {
-        protocol: 'https',
-        hostname: 'fonana.me',
-        pathname: '/posts/**',
+        pathname: '/posts/*',
       },
     ],
   },
-  // Отключаем TypeScript и ESLint проверки при сборке
-  typescript: {
-    ignoreBuildErrors: true,
-  },
-  eslint: {
-    ignoreDuringBuilds: true,
-  },
+  
+  // 🔧 ФИКС M7: App Router body size limit для file uploads
   experimental: {
-    esmExternals: false,
-    // Отключаем static generation для всех страниц
-    forceSwcTransforms: true,
-    // Force standalone generation even with errors
-    appDir: true,
+    serverActions: {
+      bodySizeLimit: '100mb', // Supports images(10MB), videos(100MB), audio(50MB)
+    },
   },
+
+  webpack: (config, { isServer }) => {
+    // Не загружать определенные модули на клиенте
+    if (!isServer) {
+      config.resolve.fallback = {
+        ...config.resolve.fallback,
+        fs: false,
+        net: false,
+        tls: false,
+        crypto: false,
+      }
+    }
+    return config
+  },
+
   // Отключаем static generation полностью
-  // output: 'standalone', // 🔧 ИСПРАВЛЕНО: Убрано т.к. ломает static file serving в subdirectories (/posts/images/)
+  // output: 'standalone', // 🔧 REMOVED: ломает static file serving в subdirectories
   // Ignore pre-render errors for standalone generation
-  onDemandEntries: {
-    maxInactiveAge: 25 * 1000,
-    pagesBufferLength: 2,
-  },
-  // Force standalone even with build errors
-  generateBuildId: async () => {
-    return 'fonana-build-' + Date.now()
-  },
-  trailingSlash: false,
+  // typescript: {
+  //   ignoreBuildErrors: true,
+  // },
+  // eslint: {
+  //   ignoreDuringBuilds: true,
+  // },
+  
+  // Experimental features
+  swcMinify: true,
+  
+  // Enable source maps in production для better debugging
+  productionBrowserSourceMaps: false,
+  
+  // Добавляем поддержку модулей
+  transpilePackages: ['three'],
 }
 
 module.exports = nextConfig 
