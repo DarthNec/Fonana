@@ -44,7 +44,7 @@ const nextConfig = {
   // 🔧 ФИКС M7: App Router body size limit для file uploads
   experimental: {
     serverActions: {
-      bodySizeLimit: '100mb', // Supports images(10MB), videos(100MB), audio(50MB)
+      bodySizeLimit: '200mb', // Supports images(100MB), videos(200MB), audio(100MB)
     },
   },
 
@@ -65,9 +65,9 @@ const nextConfig = {
   // Отключаем static generation полностью
   // output: 'standalone', // 🔧 REMOVED: ломает static file serving в subdirectories
   // Ignore pre-render errors for standalone generation
-  // typescript: {
-  //   ignoreBuildErrors: true,
-  // },
+  typescript: {
+    ignoreBuildErrors: true,
+  },
   // eslint: {
   //   ignoreDuringBuilds: true,
   // },

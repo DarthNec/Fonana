@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { useUser } from '@/lib/store/appStore'
+import { useUser, useJwtReady } from '@/lib/store/appStore'
 import { ChatBubbleLeftEllipsisIcon, UserIcon } from '@heroicons/react/24/outline'
 import { jwtManager } from '@/lib/utils/jwt'
 import Link from 'next/link'
@@ -27,6 +27,7 @@ interface Conversation {
 
 export default function MessagesPageClient() {
   const user = useUser()
+  const isJwtReady = useJwtReady()
   const [conversations, setConversations] = useState<Conversation[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -37,8 +38,15 @@ export default function MessagesPageClient() {
       return
     }
     
+    // NEW: Wait for JWT ready
+    if (!isJwtReady) {
+      console.log('[MessagesPageClient] Waiting for JWT token ready...')
+      return
+    }
+    
+    console.log('[MessagesPageClient] JWT ready, loading conversations')
     loadConversations()
-  }, [user?.id])
+  }, [user?.id, isJwtReady])
 
   const loadConversations = async () => {
     try {
@@ -132,6 +140,23 @@ export default function MessagesPageClient() {
           </h2>
           <p className="text-gray-600 dark:text-gray-400">
             Please connect your wallet to access messages
+          </p>
+        </div>
+      </div>
+    )
+  }
+
+  // NEW: Add JWT waiting state
+  if (user && !isJwtReady) {
+    return (
+      <div className="flex items-center justify-center min-h-screen pt-20">
+        <div className="text-center">
+          <ChatBubbleLeftEllipsisIcon className="w-16 h-16 text-gray-400 mx-auto mb-4 animate-pulse" />
+          <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">
+            Initializing Authentication
+          </h2>
+          <p className="text-gray-600 dark:text-gray-400">
+            Setting up secure connection...
           </p>
         </div>
       </div>

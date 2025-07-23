@@ -8,7 +8,7 @@
 
 import { useEffect, ReactNode, useState } from 'react'
 import dynamic from 'next/dynamic'
-import { useAppStore } from '@/lib/store/appStore'
+import { useAppStore, useUserActions } from '@/lib/store/appStore'
 import { setupDefaultHandlers } from '@/lib/services/WebSocketEventManager'
 import { cacheManager } from '@/lib/services/CacheManager'
 import { LocalStorageCache } from '@/lib/services/CacheManager'
@@ -41,6 +41,7 @@ export function AppProvider({ children }: AppProviderProps) {
     setNotifications,
     userLoading
   } = useAppStore()
+  const { setJwtReady } = useUserActions()
 
   // Debug логирование для отслеживания race conditions
   useEffect(() => {
@@ -84,6 +85,8 @@ export function AppProvider({ children }: AppProviderProps) {
       ensureJWTTokenForWallet(publicKey.toBase58())
     } else if (!connected && isInitialized) {
       console.log('[AppProvider] Wallet disconnected, clearing JWT token...')
+      // Clear JWT ready state on disconnect
+      setJwtReady(false)
       // Очищаем токен при отключении кошелька
       localStorage.removeItem('fonana_jwt_token')
       localStorage.removeItem('fonana_user_wallet')
@@ -96,6 +99,9 @@ export function AppProvider({ children }: AppProviderProps) {
    */
   const ensureJWTTokenForWallet = async (walletAddress: string) => {
     try {
+      // Set JWT as not ready at start
+      setJwtReady(false)
+      
       // Проверяем, есть ли валидный токен в localStorage
       const savedToken = localStorage.getItem('fonana_jwt_token')
       if (savedToken) {
@@ -103,6 +109,7 @@ export function AppProvider({ children }: AppProviderProps) {
           const tokenData = JSON.parse(savedToken)
           if (tokenData.token && tokenData.expiresAt > Date.now() && tokenData.wallet === walletAddress) {
             console.log('[AppProvider] Valid JWT token already exists for this wallet')
+            setJwtReady(true) // Set ready immediately for existing valid token
             return
           }
         } catch (error) {
@@ -112,13 +119,20 @@ export function AppProvider({ children }: AppProviderProps) {
       
       console.log('[AppProvider] Creating JWT token for wallet:', walletAddress.substring(0, 8) + '...')
       
-      const response = await fetch('/api/auth/wallet', {
+      // Add timeout protection
+      const timeoutPromise = new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('JWT creation timeout')), 10000)
+      )
+      
+      const tokenPromise = fetch('/api/auth/wallet', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({ wallet: walletAddress })
       })
+      
+      const response = await Promise.race([tokenPromise, timeoutPromise])
       
       if (!response.ok) {
         console.error('[AppProvider] Failed to create JWT token:', response.status)
@@ -146,14 +160,44 @@ export function AppProvider({ children }: AppProviderProps) {
           setUser(data.user)
         }
         
+        // CRITICAL: Set JWT ready AFTER token is saved
+        setJwtReady(true)
+        
         // Обновляем jwtManager чтобы он сразу подхватил новый токен из storage
         // jwtManager автоматически загрузит токен из localStorage при следующем обращении
         
-        console.log('[AppProvider] JWT token and user data saved successfully')
+        console.log('[AppProvider] JWT token ready for components')
       }
       
     } catch (error) {
-      console.error('[AppProvider] Error ensuring JWT token:', error)
+      console.error('[AppProvider] JWT creation failed:', error)
+      setJwtReady(false) // Ensure false on failure
+      
+      // Show user-friendly error after a delay to avoid flooding
+      setTimeout(() => {
+        toast.error('Authentication failed. Please try reconnecting your wallet.')
+      }, 1000)
+    }
+  }
+
+  /**
+   * Validate JWT token availability and correctness
+   */
+  const validateJwtToken = async () => {
+    try {
+      const token = await jwtManager.getToken()
+      if (!token) {
+        console.warn('[AppProvider] JWT validation failed - no token')
+        setJwtReady(false)
+        return false
+      }
+      
+      console.log('[AppProvider] JWT token validation passed')
+      return true
+    } catch (error) {
+      console.error('[AppProvider] JWT validation error:', error)
+      setJwtReady(false)
+      return false
     }
   }
 

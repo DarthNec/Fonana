@@ -388,9 +388,9 @@ export default function ConversationPage() {
     const file = event.target.files?.[0]
     if (!file) return
 
-    // Validate file size (max 10MB)
-    if (file.size > 10 * 1024 * 1024) {
-      toast.error('File size must be less than 10MB')
+    // Validate file size (max 100MB)
+    if (file.size > 100 * 1024 * 1024) {
+      toast.error('File size must be less than 100MB')
       return
     }
 

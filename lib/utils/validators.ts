@@ -265,11 +265,11 @@ export function sanitizeHtmlContent(content: string): string {
  * Валидация файла изображения
  */
 export function validateImageFile(file: File): { valid: boolean; error?: string } {
-  const maxSize = 10 * 1024 * 1024 // 10MB
+  const maxSize = 100 * 1024 * 1024 // 100MB
   const allowedTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/gif']
   
   if (file.size > maxSize) {
-    return { valid: false, error: 'File size must be less than 10MB' }
+    return { valid: false, error: 'File size must be less than 100MB' }
   }
   
   if (!allowedTypes.includes(file.type)) {

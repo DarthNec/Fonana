@@ -6,15 +6,8 @@ import fs from 'fs'
 import sharp from 'sharp'
 import { generateVideoThumbnailAtPercentage } from '@/lib/utils/video-processor'
 
-// 🔧 ФИКС M7: Next.js body parser configuration for large file uploads
-export const config = {
-  api: {
-    bodyParser: {
-      sizeLimit: '100mb', // Supports images(10MB), videos(100MB), audio(50MB)
-    },
-  },
-  maxDuration: 30, // Allow time for large file processing & Sharp optimization
-}
+// 🔧 ФИКС M7: App Router body size configuration (Next.js 14 syntax)
+export const maxDuration = 30 // Allow time for large file processing & Sharp optimization
 
 export async function POST(request: NextRequest) {
   try {
@@ -50,9 +43,9 @@ export async function POST(request: NextRequest) {
 
     // Проверяем размер файла
     const maxSizes: Record<string, number> = {
-      image: 10 * 1024 * 1024, // 10MB
-      video: 100 * 1024 * 1024, // 100MB
-      audio: 50 * 1024 * 1024, // 50MB
+      image: 100 * 1024 * 1024, // 100MB
+      video: 200 * 1024 * 1024, // 200MB
+      audio: 100 * 1024 * 1024, // 100MB
     }
 
     const maxSize = maxSizes[type] || maxSizes.image
