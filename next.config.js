@@ -60,7 +60,7 @@ const nextConfig = {
     appDir: true,
   },
   // Отключаем static generation полностью
-  output: 'standalone',
+  // output: 'standalone', // 🔧 ИСПРАВЛЕНО: Убрано т.к. ломает static file serving в subdirectories (/posts/images/)
   // Ignore pre-render errors for standalone generation
   onDemandEntries: {
     maxInactiveAge: 25 * 1000,
