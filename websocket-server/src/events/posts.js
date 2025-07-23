@@ -1,6 +1,6 @@
 const { prisma } = require('../db');
-const { broadcastToSubscribers } = require('../server');
-const { publishEvent } = require('../redis');
+const { sendToUser, broadcastToSubscribers } = require('../server');
+const { publishToChannel } = require('../redis'); // Исправленный импорт
 
 // Обновление лайков поста
 async function updatePostLikes(postId, userId, isLiked) {
@@ -28,8 +28,8 @@ async function updatePostLikes(postId, userId, isLiked) {
     );
     
     // Публикуем в Redis
-    await publishEvent(
-      { type: 'post', postId },
+    await publishToChannel(
+      `ws:post:${postId}`,
       event
     );
     
@@ -40,41 +40,116 @@ async function updatePostLikes(postId, userId, isLiked) {
   }
 }
 
-// Новый пост создан
-async function notifyNewPost(post) {
+// Уведомление о новом посте
+async function notifyNewPost(post, subscriberIds) {
   try {
-    // Формируем событие
+    console.log(`📢 Notifying ${subscriberIds.length} subscribers about new post ${post.id}`);
+    
+    // Формируем событие для подписчиков
     const event = {
-      type: 'post_created',
-      creatorId: post.creatorId,
+      type: 'new_post_from_subscription',
       post: {
         id: post.id,
         title: post.title,
         type: post.type,
-        thumbnail: post.thumbnail,
+        creatorId: post.creatorId,
         createdAt: post.createdAt
       }
     };
     
-    // Рассылаем подписчикам создателя
-    broadcastToSubscribers(
-      { type: 'creator', id: post.creatorId },
-      event
-    );
+    // Отправляем каждому подписчику
+    for (const subscriberId of subscriberIds) {
+      broadcastToSubscribers(
+        { type: 'feed', userId: subscriberId },
+        event
+      );
+      
+      // Публикуем в Redis для других серверов
+      await publishToChannel(
+        `ws:feed:${subscriberId}`,
+        event
+      );
+    }
     
-    // Публикуем в Redis
-    await publishEvent(
-      { type: 'creator', id: post.creatorId },
-      event
-    );
-    
-    // Также отправляем в ленты подписчиков
-    await notifySubscribersFeeds(post.creatorId, event);
-    
-    console.log(`📝 New post created by ${post.creatorId}`);
+    console.log(`✅ Notified ${subscriberIds.length} subscribers successfully`);
     
   } catch (error) {
-    console.error('❌ Failed to notify new post:', error);
+    console.error('❌ Failed to notify subscribers:', error);
+  }
+}
+
+// NEW: Уведомление автора о созданном посте
+async function notifyPostAuthor(post, authorId) {
+  try {
+    console.log(`📢 Notifying post author ${authorId} about new post ${post.id}`);
+    
+    // Нормализуем данные поста для консистентности
+    const normalizedPost = {
+      id: post.id,
+      content: {
+        title: post.title || '',
+        text: post.content || ''
+      },
+      media: {
+        type: post.type || 'text',
+        url: post.mediaUrl || null,
+        thumbnail: post.thumbnail || null
+      },
+      access: {
+        isLocked: post.isLocked || false,
+        price: post.price || null,
+        currency: post.currency || null,
+        tier: post.minSubscriptionTier || null
+      },
+      creator: post.creator || {
+        id: authorId,
+        nickname: 'Unknown',
+        fullName: 'Unknown',
+        avatar: null,
+        isCreator: true
+      },
+      engagement: {
+        likesCount: 0,
+        commentsCount: 0,
+        viewsCount: 0
+      },
+      metadata: {
+        createdAt: post.createdAt || new Date().toISOString(),
+        updatedAt: post.updatedAt || post.createdAt || new Date().toISOString(),
+        category: post.category || 'General'
+      }
+    };
+    
+    // Формируем событие для автора
+    const event = {
+      type: 'post_created',
+      post: normalizedPost,
+      userId: authorId,
+      timestamp: new Date().toISOString()
+    };
+    
+    // Отправляем напрямую автору если он онлайн
+    const sent = sendToUser(authorId, event);
+    
+    // Также рассылаем в канал ленты автора
+    broadcastToSubscribers(
+      { type: 'feed', userId: authorId },
+      event
+    );
+    
+    // Публикуем в Redis для других серверов
+    await publishToChannel(
+      `ws:feed:${authorId}`,
+      event
+    );
+    
+    console.log(`✅ Post author notification sent: ${sent ? 'direct' : 'channel-only'}`);
+    
+    return true;
+    
+  } catch (error) {
+    console.error('❌ Failed to notify post author:', error);
+    return false;
   }
 }
 
@@ -93,8 +168,8 @@ async function notifyPostDeleted(postId, creatorId) {
     );
     
     // Публикуем в Redis
-    await publishEvent(
-      { type: 'post', postId },
+    await publishToChannel(
+      `ws:post:${postId}`,
       event
     );
     
@@ -126,8 +201,8 @@ async function notifyNewComment(postId, comment) {
     );
     
     // Публикуем в Redis
-    await publishEvent(
-      { type: 'post', postId },
+    await publishToChannel(
+      `ws:post:${postId}`,
       event
     );
     
@@ -154,8 +229,8 @@ async function notifyCommentDeleted(postId, commentId) {
     );
     
     // Публикуем в Redis
-    await publishEvent(
-      { type: 'post', postId },
+    await publishToChannel(
+      `ws:post:${postId}`,
       event
     );
     
@@ -197,6 +272,7 @@ async function notifySubscribersFeeds(creatorId, event) {
 module.exports = {
   updatePostLikes,
   notifyNewPost,
+  notifyPostAuthor,
   notifyPostDeleted,
   notifyNewComment,
   notifyCommentDeleted

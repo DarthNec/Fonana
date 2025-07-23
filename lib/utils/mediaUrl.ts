@@ -1,24 +1,39 @@
 export function transformMediaUrl(url: string | null | undefined): string {
   if (!url) return '/placeholder.jpg';
   
+  // 🔧 КРИТИЧЕСКИЙ ФИКС: обработка старых JPG путей
+  if (url.includes('/media/tests/posts/') && (url.endsWith('.jpg') || url.endsWith('.JPG'))) {
+    console.warn('[transformMediaUrl] Converting old test JPG to placeholder:', url);
+    return '/placeholder.jpg'; // Используем placeholder для старых test images
+  }
+  
+  // 🔧 ФИКС: конвертация JPG путей в posts/images в WebP
+  if (url.includes('/posts/images/') && (url.endsWith('.jpg') || url.endsWith('.JPG'))) {
+    const webpUrl = url.replace(/\.(jpg|JPG)$/, '.webp');
+    console.warn('[transformMediaUrl] Converting JPG to WebP:', url, '->', webpUrl);
+    return webpUrl;
+  }
+  
   // Check if it's a Supabase URL
   if (url.includes('supabase.co/storage')) {
     // Extract filename from Supabase URL
     const match = url.match(/\/([^\/]+\.(jpg|jpeg|png|webp|gif))$/i);
     if (match) {
       const filename = match[1];
-      // Return local path
-      return `/posts/images/${filename}`;
+      // Convert JPG to WebP for new uploads
+      const webpFilename = filename.replace(/\.(jpg|jpeg)$/i, '.webp');
+      return `/posts/images/${webpFilename}`;
     }
     
     // Extract from thumb_ pattern in nested path
     const thumbMatch = url.match(/thumb_([a-f0-9]+)\.(webp|jpg)/i);
     if (thumbMatch) {
-      return `/posts/images/thumb_${thumbMatch[1]}.${thumbMatch[2]}`;
+      // Always use WebP for thumbnails
+      return `/posts/images/thumb_${thumbMatch[1]}.webp`;
     }
   }
   
-  // Return original URL if not Supabase
+  // Return original URL if not problematic
   return url;
 }
 

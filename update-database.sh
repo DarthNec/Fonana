@@ -46,7 +46,7 @@ GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 NC='\033[0m'
 
-cd /var/www/fonana
+cd /var/www/Fonana
 
 echo -e "\${YELLOW}Создание бэкапа текущей БД...${NC}"
 if [ -f "prisma/dev.db" ]; then
@@ -92,4 +92,4 @@ echo ""
 echo "Полезные команды:"
 echo "  Проверить статус: ssh -p $SSH_PORT $SERVER 'systemctl status fonana'"
 echo "  Посмотреть логи:  ssh -p $SSH_PORT $SERVER 'journalctl -u fonana -f'"
-echo "  Тест БД:          ssh -p $SSH_PORT $SERVER 'cd /var/www/fonana && npx prisma studio'" 
+echo "  Тест БД:          ssh -p $SSH_PORT $SERVER 'cd /var/www/Fonana && npx prisma studio'" 

@@ -1,0 +1,17 @@
+#!/bin/bash
+
+echo "🚀 Manual Deployment Commands for Fonana"
+echo "======================================="
+echo ""
+echo "Run these commands on the server:"
+echo ""
+echo "cd /var/www/fonana"
+echo "git pull origin main"
+echo "npm install"
+echo "npx prisma migrate deploy"
+echo "npx prisma generate" 
+echo "npm run build"
+echo "pm2 restart fonana"
+echo ""
+echo "To connect to server:"
+echo "ssh -p 43988 root@69.10.59.234" 

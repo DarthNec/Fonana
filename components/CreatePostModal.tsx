@@ -54,6 +54,51 @@ export default function CreatePostModal({ onPostCreated, onPostUpdated, onClose,
   const [postData, setPostData] = useState<any>(null)
   const [hasInitialized, setHasInitialized] = useState(false)
   
+  // 🔍 DEBUG: Логирование состояния кнопки
+  useEffect(() => {
+    const isDisabled = isUploading || (!connected && !publicKey) || (mode === 'edit' && isLoadingPost)
+    console.log('[CreatePostModal DEBUG] Button state:', {
+      isUploading,
+      connected,
+      publicKey: !!publicKey,
+      publicKeyString: publicKey?.toString().slice(0, 10) + '...',
+      mode,
+      isLoadingPost,
+      isDisabled,
+      timestamp: new Date().toISOString()
+    })
+  }, [isUploading, connected, publicKey, mode, isLoadingPost])
+  
+  // 🔍 DEBUG: Логирование состояния кнопки
+  useEffect(() => {
+    const isDisabled = isUploading || (!connected && !publicKey) || (mode === 'edit' && isLoadingPost)
+    console.log('[CreatePostModal DEBUG] Button state:', {
+      isUploading,
+      connected,
+      publicKey: !!publicKey,
+      publicKeyString: publicKey?.toString().slice(0, 10) + '...',
+      mode,
+      isLoadingPost,
+      isDisabled,
+      timestamp: new Date().toISOString()
+    })
+  }, [isUploading, connected, publicKey, mode, isLoadingPost])
+  
+  // 🔍 DEBUG: Логирование состояния кнопки
+  useEffect(() => {
+    const isDisabled = isUploading || (!connected && !publicKey) || (mode === 'edit' && isLoadingPost)
+    console.log('[CreatePostModal DEBUG] Button state:', {
+      isUploading,
+      connected,
+      publicKey: !!publicKey,
+      publicKeyString: publicKey?.toString().slice(0, 10) + '...',
+      mode,
+      isLoadingPost,
+      isDisabled,
+      timestamp: new Date().toISOString()
+    })
+  }, [isUploading, connected, publicKey, mode, isLoadingPost])
+  
   // Функция для определения категории по типу контента
   const getSmartCategory = (type: string): string => {
     switch (type) {
@@ -462,19 +507,33 @@ export default function CreatePostModal({ onPostCreated, onPostUpdated, onClose,
     e.preventDefault()
     
     console.log(`[CreatePostModal] Starting ${mode} submission...`)
-    console.log('Connected:', connected)
-    console.log('PublicKey:', publicKey?.toString())
-    console.log('Form data:', formData)
     
-    if (!connected || !publicKey) {
+    // 🔧 FALLBACK: Используем реальное состояние кошелька
+    const windowSolana = typeof window !== 'undefined' ? window.solana : null
+    const realConnected = windowSolana?.isConnected || false
+    const realPublicKey = windowSolana?.publicKey
+    
+    console.log('🔍 [CreatePostModal DEBUG] handleSubmit wallet state:', {
+      connected,
+      publicKey: publicKey?.toString(),
+      realConnected,
+      realPublicKey: realPublicKey?.toString()
+    })
+    
+    // 🔧 ИСПРАВЛЕНИЕ: Проверяем ЛИБО useWallet hook ЛИБО window.solana
+    const hasWalletConnection = (connected && publicKey) || (realConnected && realPublicKey)
+    const walletAddress = publicKey?.toString() || realPublicKey?.toString()
+    
+    if (!hasWalletConnection || !walletAddress) {
       toast.error('Connect wallet')
       return
     }
 
-    if (!publicKey) {
-      toast.error('Please connect your wallet')
-      return
-    }
+    console.log('✅ [CreatePostModal DEBUG] Wallet connection verified:', {
+      hasConnection: hasWalletConnection,
+      walletAddress: walletAddress.slice(0, 10) + '...',
+      source: publicKey ? 'useWallet' : 'window.solana'
+    })
 
     // В режиме редактирования проверяем загрузку данных
     if (mode === 'edit' && isLoadingPost) {
@@ -588,7 +647,7 @@ export default function CreatePostModal({ onPostCreated, onPostUpdated, onClose,
 
       // Подготавливаем данные поста
       const postDataToSend = {
-        userWallet: publicKey.toString(),
+        userWallet: walletAddress,  // 🔧 ИСПРАВЛЕНИЕ: используем walletAddress с fallback логикой
         title: formData.title,
         content: formData.content,
         type: formData.type,
@@ -677,8 +736,19 @@ export default function CreatePostModal({ onPostCreated, onPostUpdated, onClose,
         // Передаем обновленный пост в callback
         setTimeout(() => onPostUpdated(post), 500)
       } else if (mode === 'create' && onPostCreated) {
-        // [tier_access_system_2025_017] Передаем созданный пост для локального обновления
-        setTimeout(() => onPostCreated(post), 500)
+        // NEW: Real-time post updates - set up fallback monitoring
+        const fallbackTimer = setTimeout(() => {
+          // Check if post appeared in feed via real-time
+          const feedElement = document.querySelector(`[data-post-id="${post.id}"]`)
+          if (!feedElement) {
+            console.warn('[CreatePostModal] Real-time update not detected, using fallback refresh')
+            // Fallback to manual refresh if real-time failed
+            if (onPostCreated) onPostCreated(post)
+          }
+        }, 3000) // 3 second fallback timeout
+        
+        // Clear timeout if component unmounts
+        return () => clearTimeout(fallbackTimer)
       }
 
     } catch (error) {
@@ -1209,7 +1279,55 @@ export default function CreatePostModal({ onPostCreated, onPostUpdated, onClose,
           <div className="flex gap-3 pt-4 border-t border-gray-200 dark:border-slate-700/50 pb-safe sm:pb-0">
             <button
               type="submit"
-              disabled={isUploading || (!connected && !publicKey) || (mode === 'edit' && isLoadingPost)}
+              disabled={(() => {
+                // 🔧 FALLBACK: Проверяем реальное состояние кошелька
+                const windowSolana = typeof window !== 'undefined' ? window.solana : null
+                const realConnected = windowSolana?.isConnected || false
+                const realPublicKey = windowSolana?.publicKey
+                
+                console.log('🔍 [CreatePostModal DEBUG] Raw wallet state:', JSON.stringify({ 
+                  connected, 
+                  publicKey: publicKey ? publicKey.toString() : null, 
+                  publicKeyExists: !!publicKey 
+                }))
+                console.log('🔧 [CreatePostModal DEBUG] REAL wallet state:', JSON.stringify({
+                  realConnected,
+                  realPublicKey: realPublicKey ? realPublicKey.toString() : null,
+                  windowSolanaExists: !!windowSolana
+                }))
+                console.log('🔍 [CreatePostModal DEBUG] Upload state:', JSON.stringify({ isUploading }))
+                console.log('🔍 [CreatePostModal DEBUG] Edit mode state:', JSON.stringify({ mode, isLoadingPost }))
+                
+                const condition1 = isUploading
+                // 🔧 ИСПРАВЛЕНИЕ: Используем реальное состояние кошелька как fallback
+                const condition2 = !connected && !publicKey && !realConnected && !realPublicKey
+                const condition3 = mode === 'edit' && isLoadingPost
+                const isDisabled = condition1 || condition2 || condition3
+                
+                console.log('🎯 [CreatePostModal DEBUG] Disable conditions:', JSON.stringify({ 
+                  condition1_isUploading: condition1,
+                  condition2_noWallet: condition2, 
+                  condition3_editLoading: condition3,
+                  finalDisabled: isDisabled,
+                  connected_value: connected,
+                  publicKey_value: publicKey ? publicKey.toString() : null,
+                  realConnected_value: realConnected,
+                  realPublicKey_value: realPublicKey ? realPublicKey.toString() : null
+                }))
+                
+                if (isDisabled) {
+                  console.log('❌ [CreatePostModal DEBUG] Button DISABLED because:', 
+                    condition1 ? 'isUploading=true' : 
+                    condition2 ? `no wallet connected (useWallet: connected=${connected}, publicKey=${!!publicKey}) AND (window.solana: connected=${realConnected}, publicKey=${!!realPublicKey})` : 
+                    condition3 ? 'edit mode loading' : 'unknown')
+                } else {
+                  console.log('✅ [CreatePostModal DEBUG] Button ENABLED - wallet detected:', {
+                    source: connected && publicKey ? 'useWallet' : realConnected && realPublicKey ? 'window.solana' : 'unknown'
+                  })
+                }
+                
+                return isDisabled
+              })()}
               className="flex-1 px-6 py-3 bg-gradient-to-r from-purple-500 to-pink-500 text-white font-medium rounded-xl hover:from-purple-600 hover:to-pink-600 transform hover:scale-105 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none flex items-center justify-center gap-2"
             >
               {isUploading ? (

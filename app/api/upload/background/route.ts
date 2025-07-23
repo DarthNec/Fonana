@@ -32,7 +32,7 @@ export async function POST(request: NextRequest) {
     let uploadDir: string
     
     if (process.env.NODE_ENV === 'production') {
-      uploadDir = '/var/www/fonana/public/media/backgrounds'
+      uploadDir = '/var/www/Fonana/public/media/backgrounds'
     } else {
       // Для локальной разработки используем путь относительно корня проекта
       uploadDir = path.join(process.cwd(), 'public', 'media', 'backgrounds')

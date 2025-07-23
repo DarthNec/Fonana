@@ -3,7 +3,7 @@
 echo "🚀 Запускаем создание Flash Sales на сервере..."
 
 ssh root@fonana.me << 'ENDSSH'
-cd /var/www/fonana
+cd /var/www/Fonana
 
 # Создаем временный скрипт на сервере
 cat > /tmp/create-flash-sales.js << 'EOF'

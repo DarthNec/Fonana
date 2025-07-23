@@ -1,66 +1,70 @@
 #!/bin/bash
 
-# Скрипт для настройки переменных окружения Solana на продакшн сервере
-# Использование: ./scripts/setup-env-production.sh
+# Скрипт настройки переменных окружения Solana для продакшна
 
 echo "🔧 Настройка переменных окружения Solana для Fonana..."
 
 # Проверяем, что мы на сервере
-if [ ! -f "/var/www/fonana/.env" ]; then
-    echo "❌ Ошибка: .env файл не найден в /var/www/fonana/"
+if [ ! -f "/var/www/Fonana/.env" ]; then
+    echo "❌ Ошибка: .env файл не найден в /var/www/Fonana/"
     echo "Убедитесь, что вы запускаете скрипт на сервере"
     exit 1
 fi
 
 # Переходим в директорию проекта
-cd /var/www/fonana || exit 1
+cd /var/www/Fonana || exit 1
 
 # Создаем бекап .env файла
 cp .env .env.backup_before_solana_$(date +%Y%m%d_%H%M%S)
 echo "✅ Создан бекап .env файла"
 
-# Функция для добавления или обновления переменной в .env
-update_env_var() {
-    local key=$1
-    local value=$2
-    
-    if grep -q "^${key}=" .env; then
-        # Переменная существует, обновляем
-        sed -i "s|^${key}=.*|${key}=\"${value}\"|" .env
-        echo "✅ Обновлено: ${key}"
-    else
-        # Переменная не существует, добавляем
-        echo "" >> .env
-        echo "${key}=\"${value}\"" >> .env
-        echo "✅ Добавлено: ${key}"
-    fi
-}
+# Удаляем существующие переменные Solana (если есть)
+sed -i '/NEXT_PUBLIC_SOLANA_RPC_ENDPOINT/d' .env
+sed -i '/NEXT_PUBLIC_SOLANA_NETWORK/d' .env
+sed -i '/SOLANA_NETWORK/d' .env
+sed -i '/PLATFORM_WALLET_PRIVATE_KEY/d' .env
+sed -i '/NEXT_PUBLIC_PLATFORM_WALLET/d' .env
+
+# Добавляем новые переменные Solana
+echo "" >> .env
+echo "# === SOLANA CONFIGURATION ===" >> .env
+echo "NEXT_PUBLIC_SOLANA_RPC_ENDPOINT=https://tame-smart-panorama.solana-mainnet.quiknode.pro/0e70fc875702b126bf8b93cdcd626680e9c48894/" >> .env
+echo "NEXT_PUBLIC_SOLANA_NETWORK=mainnet-beta" >> .env
+echo "SOLANA_NETWORK=mainnet-beta" >> .env
+
+# Эти значения должны быть заполнены администратором
+echo "PLATFORM_WALLET_PRIVATE_KEY=" >> .env
+echo "NEXT_PUBLIC_PLATFORM_WALLET=npzAZaN9fDMgLV63b3kv3FF8cLSd8dQSLxyMXASA5T4" >> .env
 
 echo ""
-echo "📡 Настройка Solana RPC и кошельков..."
+echo "✅ Переменные Solana добавлены в .env"
+echo ""
+echo "⚠️  ВАЖНО: Необходимо установить значение PLATFORM_WALLET_PRIVATE_KEY"
+echo "    Это должен быть приватный ключ кошелька платформы"
+echo ""
+echo "📝 Текущие переменные Solana:"
+grep -E "(SOLANA|PLATFORM_WALLET)" .env
+echo ""
+echo "🔧 Для завершения настройки:"
+echo "   1. Откройте файл .env"
+echo "   2. Установите значение PLATFORM_WALLET_PRIVATE_KEY"
+echo "   3. Перезапустите приложение: pm2 restart fonana"
+echo ""
+echo "🔒 Убедитесь, что приватный ключ хранится в безопасности!"
 
-# QuickNode RPC endpoints
-update_env_var "NEXT_PUBLIC_SOLANA_RPC_HOST" "https://tame-smart-panorama.solana-mainnet.quiknode.pro/0e70fc875702b126bf8b93cdcd626680e9c48894/"
-update_env_var "NEXT_PUBLIC_SOLANA_WS_ENDPOINT" "wss://tame-smart-panorama.solana-mainnet.quiknode.pro/0e70fc875702b126bf8b93cdcd626680e9c48894/"
+# Проверяем, что все необходимые переменные установлены
+echo ""
+echo "🔍 Проверка переменных окружения..."
 
-# Platform wallet
-update_env_var "NEXT_PUBLIC_PLATFORM_WALLET" "npzAZaN9fDMgLV63b3kv3FF8cLSd8dQSLxyMXASA5T4"
+if grep -q "PLATFORM_WALLET_PRIVATE_KEY=$" .env; then
+    echo "⚠️  PLATFORM_WALLET_PRIVATE_KEY не установлен"
+else
+    echo "✅ PLATFORM_WALLET_PRIVATE_KEY установлен"
+fi
 
-# Network
-update_env_var "NEXT_PUBLIC_SOLANA_NETWORK" "mainnet-beta"
+if grep -q "NEXT_PUBLIC_PLATFORM_WALLET=npzAZaN9fDMgLV63b3kv3FF8cLSd8dQSLxyMXASA5T4" .env; then
+    echo "✅ NEXT_PUBLIC_PLATFORM_WALLET установлен"
+fi
 
 echo ""
-echo "📋 Проверка установленных переменных:"
-echo "-------------------------------------"
-grep -E "SOLANA|PLATFORM_WALLET" .env | grep -v "^#"
-echo "-------------------------------------"
-
-echo ""
-echo "✅ Переменные окружения настроены!"
-echo ""
-echo "⚠️  ВАЖНО: Не забудьте перезапустить приложение:"
-echo "   pm2 restart fonana --update-env"
-echo ""
-echo "💡 Совет: В будущем вы можете изменить NEXT_PUBLIC_PLATFORM_WALLET"
-echo "   на отдельный кошелек для платформы вместо личного."
-echo "" 
+echo "🎉 Настройка завершена!" 

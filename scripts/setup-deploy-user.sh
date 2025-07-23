@@ -35,9 +35,9 @@ deploy ALL=(ALL) NOPASSWD: /bin/systemctl status postgresql
 EOF
 
 # Create deployment directory with proper permissions
-mkdir -p /var/www/fonana
-chown -R deploy:www-data /var/www/fonana
-chmod -R 775 /var/www/fonana
+mkdir -p /var/www/Fonana
+chown -R deploy:www-data /var/www/Fonana
+chmod -R 775 /var/www/Fonana
 
 # Ensure PM2 runs as deploy user
 pm2 stop all || true

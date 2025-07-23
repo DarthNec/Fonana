@@ -182,8 +182,10 @@ export async function POST(request: NextRequest) {
       throw writeError
     }
 
-    // Возвращаем URL файла
-    const fileUrl = `/posts/${mediaType}/${fileName}`
+    // Возвращаем URL файла - для изображений используем WebP!
+    const fileUrl = type === 'image' 
+      ? `/posts/${mediaType}/thumb_${fileName.replace(ext, '.webp')}` 
+      : `/posts/${mediaType}/${fileName}`
     let thumbUrl = type === 'image' ? `/posts/${mediaType}/thumb_${fileName.replace(ext, '.webp')}` : null
     let previewUrl = type === 'image' ? `/posts/${mediaType}/preview_${fileName.replace(ext, '.webp')}` : null
 

@@ -158,7 +158,7 @@ async function restoreBackgrounds() {
     
     // Создаем директорию для фонов если её нет
     const backgroundsDir = process.env.NODE_ENV === 'production' 
-      ? '/var/www/fonana/public/backgrounds'
+      ? '/var/www/Fonana/public/backgrounds'
       : path.join(process.cwd(), 'public', 'backgrounds')
     
     try {

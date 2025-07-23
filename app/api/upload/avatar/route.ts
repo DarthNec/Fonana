@@ -43,7 +43,7 @@ export async function POST(request: NextRequest) {
     let uploadDir: string
     
     if (process.env.NODE_ENV === 'production') {
-      uploadDir = '/var/www/fonana/public/media/avatars'
+      uploadDir = '/var/www/Fonana/public/media/avatars'
     } else {
       // Для локальной разработки используем __dirname и path.resolve
       // В Next.js API routes process.cwd() может быть неправильным

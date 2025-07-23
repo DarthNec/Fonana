@@ -7,7 +7,7 @@ echo "📊 Setting up log forwarding for Fonana..."
 
 # Option 1: Simple file-based log rotation and archiving
 cat << 'EOF' > /etc/logrotate.d/fonana
-/var/www/fonana/logs/*.log {
+/var/www/Fonana/logs/*.log {
     daily
     rotate 7
     compress
@@ -26,10 +26,10 @@ EOF
 # pm2 install pm2-syslog
 
 # Option 3: Simple webhook for critical errors (replace URL)
-cat << 'EOF' > /var/www/fonana/scripts/log-monitor.sh
+cat << 'EOF' > /var/www/Fonana/scripts/log-monitor.sh
 #!/bin/bash
 # Monitor error logs and send webhooks for critical errors
-tail -F /var/www/fonana/logs/pm2-error.log | while read line; do
+tail -F /var/www/Fonana/logs/pm2-error.log | while read line; do
     if echo "$line" | grep -E "(CRITICAL|FATAL|Error:.*at.*\.js)" > /dev/null; then
         # Send to webhook (replace with your endpoint)
         # curl -X POST -H "Content-Type: application/json" \
@@ -40,11 +40,11 @@ tail -F /var/www/fonana/logs/pm2-error.log | while read line; do
 done
 EOF
 
-chmod +x /var/www/fonana/scripts/log-monitor.sh
+chmod +x /var/www/Fonana/scripts/log-monitor.sh
 
 echo "✅ Log forwarding setup complete!"
 echo ""
 echo "Options available:"
 echo "1. Logrotate configured for daily rotation"
 echo "2. PM2 syslog module can be enabled with: pm2 install pm2-syslog" 
-echo "3. Basic error monitoring script created at /var/www/fonana/scripts/log-monitor.sh" 
+echo "3. Basic error monitoring script created at /var/www/Fonana/scripts/log-monitor.sh" 

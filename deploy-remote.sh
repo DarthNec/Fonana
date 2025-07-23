@@ -20,7 +20,7 @@ sleep 2
 
 # Clear cache
 echo "🗑️  Clearing Next.js cache..."
-cd /var/www/fonana
+cd /var/www/Fonana
 rm -rf .next
 
 # Update code

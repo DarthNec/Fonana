@@ -40,7 +40,7 @@ server {
     
     # Serve posts (images, videos, audio) directly from filesystem
     location /posts/ {
-        alias /var/www/fonana/public/posts/;
+        alias /var/www/Fonana/public/posts/;
         expires 30d;
         add_header Cache-Control "public, immutable";
         
@@ -63,14 +63,14 @@ server {
     
     # Serve avatars directly from filesystem
     location /avatars/ {
-        alias /var/www/fonana/public/avatars/;
+        alias /var/www/Fonana/public/avatars/;
         expires 7d;
         add_header Cache-Control "public";
     }
     
     # Serve backgrounds directly from filesystem
     location /backgrounds/ {
-        alias /var/www/fonana/public/backgrounds/;
+        alias /var/www/Fonana/public/backgrounds/;
         expires 7d;
         add_header Cache-Control "public";
     }
@@ -189,24 +189,24 @@ fi
 
 # Создаем директории если их нет
 echo "📁 Проверка директорий..."
-sudo mkdir -p /var/www/fonana/public/posts/videos
-sudo mkdir -p /var/www/fonana/public/posts/images
-sudo mkdir -p /var/www/fonana/public/posts/audio
-sudo mkdir -p /var/www/fonana/public/avatars
-sudo mkdir -p /var/www/fonana/public/backgrounds
+sudo mkdir -p /var/www/Fonana/public/posts/videos
+sudo mkdir -p /var/www/Fonana/public/posts/images
+sudo mkdir -p /var/www/Fonana/public/posts/audio
+sudo mkdir -p /var/www/Fonana/public/avatars
+sudo mkdir -p /var/www/Fonana/public/backgrounds
 
 # Устанавливаем правильные права доступа
 echo "🔐 Установка прав доступа..."
-sudo chown -R www-data:www-data /var/www/fonana/public/
-sudo chmod -R 755 /var/www/fonana/public/posts/
-sudo chmod -R 755 /var/www/fonana/public/avatars/
-sudo chmod -R 755 /var/www/fonana/public/backgrounds/
+sudo chown -R www-data:www-data /var/www/Fonana/public/
+sudo chmod -R 755 /var/www/Fonana/public/posts/
+sudo chmod -R 755 /var/www/Fonana/public/avatars/
+sudo chmod -R 755 /var/www/Fonana/public/backgrounds/
 
 echo "✨ Готово! Nginx настроен для обслуживания видео файлов."
 echo "📹 Видео файлы теперь доступны по адресу: https://fonana.me/posts/videos/"
 
 # Проверяем наличие видео файлов
-VIDEO_COUNT=$(find /var/www/fonana/public/posts/videos -type f -name "*.mp4" -o -name "*.webm" | wc -l)
+VIDEO_COUNT=$(find /var/www/Fonana/public/posts/videos -type f -name "*.mp4" -o -name "*.webm" | wc -l)
 if [ "$VIDEO_COUNT" -gt 0 ]; then
     echo "📊 Найдено видео файлов: $VIDEO_COUNT"
 else

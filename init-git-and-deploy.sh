@@ -5,7 +5,7 @@ echo "🚀 Инициализация Git и деплой Fonana..."
 ssh -p 43988 root@fonana.me << 'ENDSSH'
 set -e
 
-cd /var/www/fonana
+cd /var/www/Fonana
 
 echo "📍 Текущая директория: $(pwd)"
 

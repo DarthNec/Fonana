@@ -3,10 +3,12 @@
 # Fonana Safe Production Deployment Script
 # Usage: ./deploy-safe.sh
 
+set -e
+
 echo "🚀 Starting Fonana SAFE deployment..."
 
-# Define SSH command with timeout
-SSH_CMD="ssh -o ConnectTimeout=10 -o ServerAliveInterval=5 -p 43988 root@69.10.59.234"
+# SSH Configuration
+SSH_CMD="ssh -o ConnectTimeout=10 -o ServerAliveInterval=5 -p 22 root@64.20.37.222"
 
 # Function to execute commands with error handling
 execute_ssh() {
@@ -33,31 +35,31 @@ execute_ssh "pkill -f 'pm2.*fonana' 2>/dev/null || true" "🔪 Killing PM2 for F
 sleep 2
 
 # Clear cache
-execute_ssh "cd /var/www/fonana && rm -rf .next" "🗑️  Clearing Next.js cache..."
+execute_ssh "cd /var/www/Fonana && rm -rf .next" "🗑️  Clearing Next.js cache..."
 
 # Update code
-execute_ssh "cd /var/www/fonana && git pull origin main" "🔄 Updating code on server..."
+execute_ssh "cd /var/www/Fonana && git pull origin main" "🔄 Updating code on server..."
 
 # Generate version file
 VERSION=$(date +%Y%m%d-%H%M%S)
 COMMIT=$(git rev-parse --short HEAD)
-execute_ssh "cd /var/www/fonana && echo 'export const APP_VERSION = \"$VERSION-$COMMIT\";' > lib/version.ts" "📝 Generating version information..."
+execute_ssh "cd /var/www/Fonana && echo 'export const APP_VERSION = \"$VERSION-$COMMIT\";' > lib/version.ts" "📝 Generating version information..."
 
 # Install dependencies
-execute_ssh "cd /var/www/fonana && npm ci --production" "📦 Installing dependencies..."
+execute_ssh "cd /var/www/Fonana && npm ci --production" "📦 Installing dependencies..."
 
 # Database operations
-execute_ssh "cd /var/www/fonana && npx prisma migrate deploy" "🗄️  Running database migrations..."
-execute_ssh "cd /var/www/fonana && npx prisma generate" "🔧 Generating Prisma Client..."
+execute_ssh "cd /var/www/Fonana && npx prisma migrate deploy" "🗄️  Running database migrations..."
+execute_ssh "cd /var/www/Fonana && npx prisma generate" "🔧 Generating Prisma Client..."
 
 # Build application
 echo "🔨 Building application (this may take a while)..."
-$SSH_CMD "cd /var/www/fonana && npm run build" || {
+$SSH_CMD "cd /var/www/Fonana && npm run build" || {
     echo "❌ Build failed! Trying to restart anyway..."
 }
 
 # Start with PM2
-execute_ssh "cd /var/www/fonana && pm2 start ecosystem.config.js" "🚀 Starting application with PM2..."
+execute_ssh "cd /var/www/Fonana && pm2 start ecosystem.config.js" "🚀 Starting application with PM2..."
 
 # Wait and reload nginx
 sleep 5
@@ -72,4 +74,4 @@ echo "✅ Deployment complete!"
 echo "🌐 Application is live at: https://fonana.me"
 echo "📋 Version deployed: $VERSION-$COMMIT"
 echo ""
-echo "🔍 To check logs: ssh -p 43988 root@69.10.59.234 'pm2 logs fonana --lines 50'" 
+echo "🔍 To check logs: ssh -p 22 root@64.20.37.222 'pm2 logs fonana --lines 50'" 

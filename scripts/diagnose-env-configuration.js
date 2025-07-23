@@ -12,7 +12,7 @@ console.log('\n📄 Проверка .env файлов:');
 const envFiles = ['.env', '.env.local', '.env.production', 'websocket-server/.env'];
 
 envFiles.forEach(file => {
-  const filePath = path.join('/var/www/fonana', file);
+  const filePath = path.join('/var/www/Fonana', file);
   if (fs.existsSync(filePath)) {
     const content = fs.readFileSync(filePath, 'utf8');
     const hasNextAuthSecret = content.includes('NEXTAUTH_SECRET=');
@@ -34,7 +34,7 @@ envFiles.forEach(file => {
 // 2. Проверка PM2 конфигурации
 console.log('\n\n📋 Проверка PM2 конфигурации:');
 try {
-  const ecosystemPath = '/var/www/fonana/ecosystem.config.js';
+  const ecosystemPath = '/var/www/Fonana/ecosystem.config.js';
   const ecosystemContent = fs.readFileSync(ecosystemPath, 'utf8');
   
   console.log('✅ ecosystem.config.js найден');

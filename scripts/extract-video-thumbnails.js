@@ -123,7 +123,7 @@ async function extractVideoThumbnails() {
       
       // Extract filename from mediaUrl
       const videoFileName = path.basename(post.mediaUrl)
-      const videoPath = path.join('/var/www/fonana/public', post.mediaUrl)
+      const videoPath = path.join('/var/www/Fonana/public', post.mediaUrl)
       
       // Check if video file exists
       if (!fs.existsSync(videoPath)) {
@@ -135,7 +135,7 @@ async function extractVideoThumbnails() {
       // Generate thumbnail filename
       const hash = path.basename(videoFileName, path.extname(videoFileName))
       const thumbFileName = `thumb_${hash}.jpg`
-      const thumbPath = path.join('/var/www/fonana/public/posts/videos', thumbFileName)
+      const thumbPath = path.join('/var/www/Fonana/public/posts/videos', thumbFileName)
       
       console.log(`📸 Extracting thumbnail for: ${post.title}`)
       
@@ -149,7 +149,7 @@ async function extractVideoThumbnails() {
       if (success) {
         // Optimize the thumbnail
         try {
-          const optimizedThumbPath = path.join('/var/www/fonana/public/posts/videos', `thumb_${hash}.webp`)
+          const optimizedThumbPath = path.join('/var/www/Fonana/public/posts/videos', `thumb_${hash}.webp`)
           await sharp(thumbPath)
             .resize(800, null, { 
               withoutEnlargement: true,

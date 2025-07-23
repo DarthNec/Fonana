@@ -4,7 +4,7 @@ module.exports = {
       name: 'fonana-debug',
       script: 'node_modules/next/dist/bin/next',
       args: 'start -p 3011',
-      cwd: '/var/www/fonana',
+      cwd: '/var/www/Fonana',
       env: {
         NODE_ENV: 'production',
         PORT: 3011,
