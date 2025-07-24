@@ -133,35 +133,31 @@ export default function ConversationPage() {
     // Reset counter every 60 seconds
     if (now - lastResetTime > 60000) {
       // 🔥 CRITICAL FIX: Check if component is still mounted before setState
-      setTimeout(() => {
-        if (!isMountedRef.current) {
-          console.log('[Circuit Breaker] Component unmounted, skipping setState')
-          return
-        }
-        setCircuitBreakerState({
-          callCount: 0,
-          lastResetTime: now,
-          isBlocked: false,
-          blockUntil: 0
-        });
-      }, 0)
+      if (!isMountedRef.current) {
+        console.log('[Circuit Breaker] Component unmounted, skipping reset setState')
+        return false
+      }
+      setCircuitBreakerState({
+        callCount: 0,
+        lastResetTime: now,
+        isBlocked: false,
+        blockUntil: 0
+      });
       return true;
     }
     
     // Check rate limit (max 10 calls per minute)
     if (callCount >= 10) {
       const blockDuration = 60000; // Block for 1 minute
-      setTimeout(() => {
-        if (!isMountedRef.current) {
-          console.log('[Circuit Breaker] Component unmounted, skipping block setState')
-          return
-        }
-        setCircuitBreakerState(prev => ({
-          ...prev,
-          isBlocked: true,
-          blockUntil: now + blockDuration
-        }));
-      }, 0)
+      if (!isMountedRef.current) {
+        console.log('[Circuit Breaker] Component unmounted, skipping block setState')
+        return false
+      }
+      setCircuitBreakerState(prev => ({
+        ...prev,
+        isBlocked: true,
+        blockUntil: now + blockDuration
+      }));
       console.error(`[Circuit Breaker] ${endpoint} rate limited. Blocked for ${blockDuration/1000}s`);
       return false;
     }
@@ -171,16 +167,14 @@ export default function ConversationPage() {
 
   const incrementCallCounter = useCallback(() => {
     // 🔥 CRITICAL FIX: Check if component is still mounted before setState
-    setTimeout(() => {
-      if (!isMountedRef.current) {
-        console.log('[Circuit Breaker] Component unmounted, skipping increment setState')
-        return
-      }
-      setCircuitBreakerState(prev => ({
-        ...prev,
-        callCount: prev.callCount + 1
-      }));
-    }, 0)
+    if (!isMountedRef.current) {
+      console.log('[Circuit Breaker] Component unmounted, skipping increment setState')
+      return
+    }
+    setCircuitBreakerState(prev => ({
+      ...prev,
+      callCount: prev.callCount + 1
+    }));
   }, []);
 
   // 🚀 PHASE 1 FIX: Stable useEffect dependencies to prevent infinite loop

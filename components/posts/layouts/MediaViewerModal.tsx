@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import { UnifiedPost, PostAction } from '@/types/posts'
 import { 
   XMarkIcon, 
@@ -39,6 +39,13 @@ export default function MediaViewerModal({
   const [isPlaying, setIsPlaying] = useState(false)
   const [isMuted, setIsMuted] = useState(false)
   const [showControls, setShowControls] = useState(true)
+  const isMountedRef = useRef(true)
+
+  useEffect(() => {
+    return () => {
+      isMountedRef.current = false
+    }
+  }, [])
 
   const currentPost = posts[currentIndex]
   const canGoPrevious = currentIndex > 0
@@ -71,7 +78,13 @@ export default function MediaViewerModal({
 
   // Скрываем контролы после бездействия
   useEffect(() => {
-    const timer = setTimeout(() => setShowControls(false), 3000)
+    const timer = setTimeout(() => {
+      if (!isMountedRef.current) {
+        console.log('[MediaViewerModal] Component unmounted, skipping setShowControls')
+        return
+      }
+      setShowControls(false)
+    }, 3000)
     return () => clearTimeout(timer)
   }, [showControls])
 

@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import { UnifiedPost, PostAction, PostCardVariant } from '@/types/posts'
 import { cn } from '@/lib/utils'
 
@@ -23,6 +23,13 @@ export function PostActions({
   const [optimisticLikes, setOptimisticLikes] = useState(post.engagement.likes)
   const [isLiked, setIsLiked] = useState(post.engagement.isLiked)
   const [isProcessing, setIsProcessing] = useState(false)
+  const isMountedRef = useRef(true)
+
+  useEffect(() => {
+    return () => {
+      isMountedRef.current = false
+    }
+  }, [])
 
   // Обновляем локальное состояние при изменении пропсов
   useEffect(() => {
@@ -55,7 +62,13 @@ export function PostActions({
     })
 
     // Сбрасываем флаг обработки через небольшую задержку
-    setTimeout(() => setIsProcessing(false), 1000)
+    setTimeout(() => {
+      if (!isMountedRef.current) {
+        console.log('[PostActions] Component unmounted, skipping setIsProcessing')
+        return
+      }
+      setIsProcessing(false)
+    }, 1000)
   }
 
   const handleComment = () => {

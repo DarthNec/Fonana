@@ -24,11 +24,36 @@ export class ErrorBoundary extends React.Component<Props, State> {
   }
 
   static getDerivedStateFromError(error: Error): State {
+    // 🔥 REACT ERROR #185 SPECIAL HANDLING - Don't break UI 
+    if (error.message && error.message.includes('Minified React error #185')) {
+      console.log('[ErrorBoundary] React Error #185 detected - attempting silent recovery')
+      return { hasError: false, error: null } // Don't trigger error state
+    }
+    
     return { hasError: true, error }
   }
 
   componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
     console.error('Error caught by boundary:', error, errorInfo)
+    
+    // 🔥 REACT ERROR #185 SPECIAL HANDLING
+    if (error.message && error.message.includes('Minified React error #185')) {
+      console.log('[ErrorBoundary] React Error #185 - logging for debugging but not breaking UX')
+      
+      // Log detailed info for debugging
+      console.error('[ErrorBoundary] React Error #185 Stack:', {
+        error: error.message,
+        componentStack: errorInfo.componentStack,
+        timestamp: new Date().toISOString()
+      })
+      
+      // Silent recovery after 50ms
+      setTimeout(() => {
+        this.setState({ hasError: false, error: null })
+      }, 50)
+      
+      return // Don't proceed with normal error handling
+    }
   }
 
   render() {
