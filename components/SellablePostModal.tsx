@@ -52,6 +52,7 @@ interface SellablePostModalProps {
 
 export default function SellablePostModal({ isOpen, onClose, post }: SellablePostModalProps) {
   const { connected, publicKey, sendTransaction } = useWallet()
+  const publicKeyString = publicKey?.toBase58() ?? null // 🔥 ALTERNATIVE FIX: Stable string
   const user = useUser()
   const [isProcessing, setIsProcessing] = useState(false)
   const { retryWithToast } = useRetry()
@@ -173,7 +174,7 @@ export default function SellablePostModal({ isOpen, onClose, post }: SellablePos
   }, [isOpen, post.sellType, post.auctionEndAt])
 
   const handleBuyNow = async () => {
-    if (!connected || !publicKey) {
+    if (!connected || !publicKeyString) {
       toast.error('Please connect your wallet')
       return
     }
@@ -183,7 +184,7 @@ export default function SellablePostModal({ isOpen, onClose, post }: SellablePos
     try {
       // Check that it's not the platform wallet
       const PLATFORM_WALLET = 'EEqsmopVfTuaiJrh8xL7ZsZbUctckY6S5WyHYR66wjpw'
-      if (publicKey.toBase58() === PLATFORM_WALLET) {
+      if (publicKeyString === PLATFORM_WALLET) {
         toast.error('❌ You cannot buy from the platform wallet!')
         return
       }
@@ -213,7 +214,7 @@ export default function SellablePostModal({ isOpen, onClose, post }: SellablePos
       }
 
       // Check that creator is not buying from themselves
-      if (creatorWallet === publicKey.toBase58()) {
+      if (creatorWallet === publicKeyString) {
         toast.error('You cannot buy your own post')
         return
       }
@@ -400,7 +401,7 @@ export default function SellablePostModal({ isOpen, onClose, post }: SellablePos
               'Authorization': `Bearer ${jwtToken}`
             },
             body: JSON.stringify({
-              buyerWallet: publicKey.toString(),
+              buyerWallet: publicKeyString,
               txSignature: signature,
               price: currentPrice,
               hasReferrer,
@@ -459,7 +460,7 @@ export default function SellablePostModal({ isOpen, onClose, post }: SellablePos
   }
 
   const handlePlaceBid = async () => {
-    if (!connected || !publicKey) {
+    if (!connected || !publicKeyString) {
       toast.error('Подключите кошелек')
       return
     }

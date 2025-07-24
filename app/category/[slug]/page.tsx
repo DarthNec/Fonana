@@ -9,6 +9,7 @@ import { StarIcon, CheckBadgeIcon } from '@heroicons/react/24/solid'
 import { UsersIcon, CurrencyDollarIcon } from '@heroicons/react/24/outline'
 import { toast } from 'react-hot-toast'
 import { getProfileLink } from '@/lib/utils/links'
+import { useQuery } from '@tanstack/react-query'
 
 interface CategoryPageProps {
   params: {
@@ -54,20 +55,15 @@ const categoryDescriptions: { [key: string]: string } = {
 export default function CategoryPage({ params }: CategoryPageProps) {
   const categorySlug = params.slug.toLowerCase()
   const [creators, setCreators] = useState<any[]>([])
-  const [isLoading, setIsLoading] = useState(true)
+  const [isLoading, setIsLoading] = useState(true) // Will be replaced by React Query
   
   const title = categoryTitles[categorySlug] || `${categorySlug} Creators`
   const description = categoryDescriptions[categorySlug] || `Discover talented ${categorySlug} creators`
 
-  // 🔥 M7 HEAVY ROUTE FIX: Memoized loadCreators function to prevent infinite loops
-  // ROOT CAUSE: Function recreation every render → unstable useEffect dependency → infinite API calls
-  // SOLUTION: useCallback with stable dependencies ensures function only created once
-  const loadCreators = useCallback(async () => {
-    try {
-      setIsLoading(true)
-      
-      // For now, load all creators and filter by posts in category
-      // In future, add category field to User model or use tags
+  // 🔥 ALTERNATIVE SOLUTION - PHASE 2: React Query for creators
+  const { data: creatorsData, isLoading: isLoadingCreators } = useQuery({
+    queryKey: ['creators', categorySlug],
+    queryFn: async () => {
       const response = await fetch('/api/creators')
       
       if (!response.ok) {
@@ -80,18 +76,18 @@ export default function CategoryPage({ params }: CategoryPageProps) {
       // This is a temporary solution until we add categories to creators
       const filteredCreators = data.creators || []
       
-      setCreators(filteredCreators)
-    } catch (error) {
-      console.error('Error loading creators:', error)
-      toast.error('Error loading creators')
-    } finally {
+      return filteredCreators
+    },
+    staleTime: 5 * 60 * 1000, // 5 minutes
+  })
+
+  // Update local state when data changes
+  useEffect(() => {
+    if (creatorsData) {
+      setCreators(creatorsData)
       setIsLoading(false)
     }
-  }, []) // 🔥 M7 FIX: Empty dependencies - function only created once
-
-  useEffect(() => {
-    loadCreators() // 🔥 M7 FIX: Now stable function reference
-  }, [categorySlug, loadCreators]) // 🔥 M7 FIX: Stable dependencies
+  }, [creatorsData])
 
   if (isLoading) {
     return (

@@ -6,6 +6,9 @@ import { ChatBubbleLeftEllipsisIcon, UserIcon } from '@heroicons/react/24/outlin
 import { jwtManager } from '@/lib/utils/jwt'
 import Link from 'next/link'
 import Avatar from './Avatar'
+import { useQuery } from '@tanstack/react-query'
+import { EnterpriseErrorBoundary } from '@/components/ui/EnterpriseErrorBoundary'
+import { EnterpriseError } from '@/components/ui/EnterpriseError'
 
 interface Conversation {
   id: string
@@ -25,72 +28,76 @@ interface Conversation {
   unreadCount?: number
 }
 
-export default function MessagesPageClient() {
+function MessagesPageClientInner() {
   const user = useUser()
   const isJwtReady = useJwtReady()
   const [conversations, setConversations] = useState<Conversation[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
-  useEffect(() => {
-    if (!user?.id) {
-      setIsLoading(false)
-      return
-    }
-    
-    // NEW: Wait for JWT ready
-    if (!isJwtReady) {
-      console.log('[MessagesPageClient] Waiting for JWT token ready...')
-      return
-    }
-    
-    console.log('[MessagesPageClient] JWT ready, loading conversations')
-    loadConversations()
-  }, [user?.id, isJwtReady])
-
-  const loadConversations = async () => {
-    try {
-      setError(null)
+  // 🔥 ENTERPRISE PHASE 1.3: Enhanced React Query with error handling
+  const { data: conversationsData, isLoading: isLoadingConversations, error: queryError, refetch: refetchConversations } = useQuery({
+    queryKey: ['conversations', user?.id],
+    queryFn: async () => {
+      console.info('[ENTERPRISE QUERY] Loading conversations for user:', user?.id)
       const token = await jwtManager.getToken()
       
       if (!token) {
-        console.error('[MessagesPageClient] No JWT token available')
-        setError('Authentication required')
-        setIsLoading(false)
-        return
+        throw new Error('Authentication required - no JWT token available')
       }
 
-      console.log('[MessagesPageClient] Loading conversations...')
-      
       const response = await fetch('/api/conversations', {
         headers: {
           'Authorization': `Bearer ${token}`
         }
       })
 
-      if (response.ok) {
-        const data = await response.json()
-        console.log('[MessagesPageClient] API response:', data)
-        
-        if (data.conversations && Array.isArray(data.conversations)) {
-          setConversations(data.conversations)
-          console.log(`[MessagesPageClient] Loaded ${data.conversations.length} conversations`)
-        } else {
-          console.log('[MessagesPageClient] No conversations array in response')
-          setConversations([])
-        }
-      } else {
-        const errorText = await response.text()
-        console.error('[MessagesPageClient] API error:', response.status, errorText)
-        setError(`Failed to load conversations: ${response.status}`)
+      if (!response.ok) {
+        throw new Error(`Failed to load conversations: HTTP ${response.status}`)
       }
-    } catch (error) {
-      console.error('[MessagesPageClient] Error loading conversations:', error)
-      setError('Network error loading conversations')
-    } finally {
+
+      const data = await response.json()
+      
+      if (!Array.isArray(data)) {
+        throw new Error('Invalid API response format: expected conversations array')
+      }
+
+      console.info(`[ENTERPRISE QUERY] Successfully loaded ${data.length} conversations`)
+      return data
+    },
+    enabled: !!user?.id && isJwtReady,
+    staleTime: 1 * 60 * 1000,
+    refetchInterval: 30 * 1000,
+    retry: 3,
+    retryDelay: attemptIndex => Math.min(1000 * 2 ** attemptIndex, 30000),
+  })
+
+  // 🔥 ENTERPRISE ERROR HANDLING: Show error if conversations failed to load
+  if (queryError) {
+    return (
+      <EnterpriseError
+        error={queryError}
+        context="MessagesPageClient"
+        onRetry={refetchConversations}
+        queryKey={['conversations', user?.id]}
+        fallbackData={[]}
+      />
+    )
+  }
+
+  // 🔥 DUPLICATE STATE BUG: This should be removed in Phase 2
+  useEffect(() => {
+    if (conversationsData) {
+      setConversations(conversationsData)
       setIsLoading(false)
     }
-  }
+    if (queryError) {
+      setError(queryError.message)
+      setIsLoading(false)
+    }
+  }, [conversationsData, queryError])
+
+  // 🔥 M7: loadConversations removed - using React Query
 
   const formatLastMessageTime = (dateString: string) => {
     const date = new Date(dateString)
@@ -253,5 +260,16 @@ export default function MessagesPageClient() {
         )}
       </div>
     </div>
+  )
+}
+
+export default function MessagesPageClient() {
+  return (
+    <EnterpriseErrorBoundary 
+      context="MessagesPageClient"
+      queryKey={['conversations']}
+    >
+      <MessagesPageClientInner />
+    </EnterpriseErrorBoundary>
   )
 }

@@ -36,6 +36,7 @@ export function SubscriptionPayment({
   plans
 }: SubscriptionPaymentProps) {
   const { publicKey, connected, sendTransaction } = useWallet()
+  const publicKeyString = publicKey?.toBase58() ?? null // 🔥 ALTERNATIVE FIX: Stable string
   const [selectedPlan, setSelectedPlan] = useState<string>('')
   const [isProcessing, setIsProcessing] = useState(false)
   const [creatorData, setCreatorData] = useState<any>(null)
@@ -59,14 +60,14 @@ export function SubscriptionPayment({
   }, [creatorId])
 
   const handleSubscribe = async () => {
-    if (!publicKey || !connected) {
+    if (!publicKeyString || !connected) {
       toast.error('Пожалуйста, подключите ваш Solana кошелек')
       return
     }
     
     // КРИТИЧЕСКАЯ ПРОВЕРКА: запрещаем подписки с кошелька платформы
     const PLATFORM_WALLET = 'EEqsmopVfTuaiJrh8xL7ZsZbUctckY6S5WyHYR66wjpw'
-    if (publicKey.toBase58() === PLATFORM_WALLET) {
+    if (publicKeyString === PLATFORM_WALLET) {
       toast.error('❌ Вы не можете оформлять подписку с кошелька платформы!')
       return
     }
@@ -77,7 +78,7 @@ export function SubscriptionPayment({
     }
     
     // Дополнительная проверка: создатель не может подписаться сам на себя
-    if (creatorWallet === publicKey.toBase58()) {
+          if (creatorWallet === publicKeyString) {
       toast.error('Вы не можете подписаться сами на себя')
       return
     }

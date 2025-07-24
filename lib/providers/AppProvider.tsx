@@ -158,7 +158,7 @@ export function AppProvider({ children }: AppProviderProps) {
 
   // 🔥 M7 PHASE 2: JWT операции только после app stability - FIXED DEPENDENCIES
   useEffect(() => {
-    // 🔥 Only proceed if app is stable
+    // 🔥 CRITICAL FIX: Check isStable INSIDE useEffect to prevent infinite loop
     if (!isStable || initializationPhase !== 'stable') {
       console.log('[AppProvider] Deferring JWT operations - app not stable yet', {
         isStable,
@@ -214,7 +214,7 @@ export function AppProvider({ children }: AppProviderProps) {
         abortControllerRef.current.abort()
       }
     }
-  }, [connected, publicKeyString, isInitialized, isStable, initializationPhase])
+  }, [connected, publicKeyString, isInitialized]) // 🔥 M7 CRITICAL FIX: Remove isStable/initializationPhase to prevent infinite loop
 
   /**
    * Обеспечивает существование JWT токена для подключенного кошелька

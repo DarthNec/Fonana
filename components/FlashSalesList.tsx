@@ -20,6 +20,7 @@ interface FlashSalesListProps {
 
 export default function FlashSalesList({ isOwner = false }: FlashSalesListProps) {
   const { publicKey } = useWallet()
+  const publicKeyString = publicKey?.toBase58() ?? null // 🔥 ALTERNATIVE FIX: Stable string
   const user = useUser()
   const [flashSales, setFlashSales] = useState<any[]>([])
   const [isLoading, setIsLoading] = useState(true)
@@ -52,7 +53,7 @@ export default function FlashSalesList({ isOwner = false }: FlashSalesListProps)
   }
 
   const handleDelete = async (flashSaleId: string) => {
-    if (!publicKey) return
+    if (!publicKeyString) return
     
     const confirmed = window.confirm('Are you sure you want to cancel this flash sale?')
     if (!confirmed) return
@@ -60,7 +61,7 @@ export default function FlashSalesList({ isOwner = false }: FlashSalesListProps)
     try {
       const params = new URLSearchParams({
         id: flashSaleId,
-        userWallet: publicKey.toString()
+        userWallet: publicKeyString
       })
       
       const response = await fetch(`/api/flash-sales?${params}`, {

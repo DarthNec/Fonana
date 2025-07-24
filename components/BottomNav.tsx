@@ -42,6 +42,7 @@ export default function BottomNav() {
   const pathname = usePathname()
   const router = useRouter()
   const { publicKey, disconnect } = useWallet()
+  const publicKeyString = publicKey?.toBase58() ?? null // 🔥 ALTERNATIVE FIX: Stable string
   const { setVisible } = useSafeWalletModal()
   const [unreadMessages, setUnreadMessages] = useState(0)
   const [isMenuOpen, setIsMenuOpen] = useState(false)
@@ -87,7 +88,7 @@ export default function BottomNav() {
       icon: PlusCircleIcon,
       activeIcon: PlusCircleSolidIcon,
       onClick: () => {
-        if (!publicKey) {
+        if (!publicKeyString) {
           toast.error('Подключите кошелек для создания поста')
           return
         }
@@ -260,7 +261,7 @@ export default function BottomNav() {
                 )}
 
                 {/* Wallet Connection */}
-                {publicKey ? (
+                {publicKeyString ? (
                   <button
                     onClick={handleDisconnect}
                     className="w-full flex items-center gap-4 p-4 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-2xl transition-colors"

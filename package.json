@@ -39,6 +39,7 @@
     "@supabase/supabase-js": "^2.39.3",
     "@tailwindcss/aspect-ratio": "^0.4.2",
     "@tailwindcss/forms": "^0.5.10",
+    "@tanstack/react-query": "^5.83.0",
     "@types/jsonwebtoken": "^9.0.10",
     "@types/lodash": "^4.17.18",
     "@types/lodash-es": "^4.17.12",
@@ -65,6 +66,7 @@
     "react-chartjs-2": "^5.3.0",
     "react-dom": "^18",
     "react-easy-crop": "^5.4.2",
+    "react-error-boundary": "^6.0.0",
     "react-hot-toast": "^2.5.2",
     "react-intersection-observer": "^9.16.0",
     "sharp": "^0.34.2",
@@ -72,7 +74,7 @@
     "uuid": "^8.3.2",
     "viem": "^2.7.15",
     "wagmi": "^2.5.7",
-    "zod": "^3.25.67",
+    "zod": "^3.25.76",
     "zustand": "^5.0.6"
   },
   "devDependencies": {

@@ -96,7 +96,7 @@ export default function CreateFlashSale({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     
-    if (!publicKey) {
+    if (!publicKeyString) {
       toast.error('Connect wallet first')
       return
     }
