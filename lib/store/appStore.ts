@@ -424,7 +424,7 @@ export const useAppStore = create<AppStore>()(
           } finally {
             set({ creatorLoading: false })
           }
-        }
+        }, 5000) // 🔥 M7 FIX: Throttle to once per 5 seconds
       }),
       {
         name: 'fonana-app-store',
