@@ -40,15 +40,42 @@ export function AppProvider({ children }: AppProviderProps) {
   // 🔥 CRITICAL FIX: Stable publicKey string for dependencies
   const publicKeyString = publicKey?.toBase58()
   
-  const { 
-    user, 
-    setUser, 
-    setUserLoading, 
-    setUserError,
-    refreshUser,
-    setNotifications,
-    userLoading
-  } = useAppStore()
+  // 🔥 M7 JUNIOR FIX: Replace wide selector with narrow selectors to prevent cascade rerenders
+  const user = useAppStore((state: any) => {
+    console.log('[AppProvider][DEBUG] user selector called')
+    return state.user
+  })
+
+  const userLoading = useAppStore((state: any) => {
+    console.log('[AppProvider][DEBUG] userLoading selector called')
+    return state.userLoading
+  })
+
+  const setUser = useAppStore((state: any) => {
+    console.log('[AppProvider][DEBUG] setUser selector called')
+    return state.setUser
+  })
+
+  const setUserLoading = useAppStore((state: any) => {
+    console.log('[AppProvider][DEBUG] setUserLoading selector called')
+    return state.setUserLoading
+  })
+
+  const setUserError = useAppStore((state: any) => {
+    console.log('[AppProvider][DEBUG] setUserError selector called')
+    return state.setUserError
+  })
+
+  const refreshUser = useAppStore((state: any) => {
+    console.log('[AppProvider][DEBUG] refreshUser selector called')
+    return state.refreshUser
+  })
+
+  const setNotifications = useAppStore((state: any) => {
+    console.log('[AppProvider][DEBUG] setNotifications selector called')
+    return state.setNotifications
+  })
+  
   const { setJwtReady } = useUserActions()
   
   // 🔥 M7 PHASE 2: Enhanced lifecycle management 
