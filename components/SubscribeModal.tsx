@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, Fragment } from 'react'
 import { useWallet } from '@/lib/hooks/useSafeWallet'
+import { useStableWallet } from '@/lib/hooks/useStableWallet' // 🔥 M7 FIX: Stable wallet hook
 import { connection } from '@/lib/solana/connection'
 import Avatar from '@/components/Avatar'
 import { 
@@ -119,7 +120,8 @@ const getSubscriptionTiers = (creatorCategory?: string): SubscriptionTier[] => {
 }
 
 export default function SubscribeModal({ creator, preferredTier, onClose, onSuccess }: SubscribeModalProps) {
-  const { connected, publicKey, sendTransaction } = useWallet()
+  const { connected, sendTransaction } = useWallet()
+  const { publicKeyString } = useStableWallet() // 🔥 M7 FIX: Stable wallet
   const [subscriptionTiers, setSubscriptionTiers] = useState<SubscriptionTier[]>([])
   const [loading, setLoading] = useState(true)
   const [selectedTier, setSelectedTier] = useState(preferredTier || 'basic')
@@ -309,7 +311,7 @@ export default function SubscribeModal({ creator, preferredTier, onClose, onSucc
   }
 
   const handleSubscribe = async () => {
-    if (!connected || !publicKey) {
+    if (!connected || !publicKeyString) { // 🔥 M7 FIX
       toast.error('Please connect your wallet')
       return
     }
@@ -330,7 +332,7 @@ export default function SubscribeModal({ creator, preferredTier, onClose, onSucc
     try {
       // Check that it's not the platform wallet
       const PLATFORM_WALLET = 'EEqsmopVfTuaiJrh8xL7ZsZbUctckY6S5WyHYR66wjpw'
-      if (publicKey.toBase58() === PLATFORM_WALLET) {
+      if (publicKeyString === PLATFORM_WALLET) { // 🔥 M7 FIX: Stable comparison
         toast.error('❌ You cannot subscribe from the platform wallet!')
         return
       }
@@ -350,7 +352,7 @@ export default function SubscribeModal({ creator, preferredTier, onClose, onSucc
       }
 
       // Check that creator is not subscribing to themselves
-      if (creatorWallet === publicKey.toBase58()) {
+      if (creatorWallet === publicKeyString) { // 🔥 M7 FIX: Stable comparison
         toast.error('You cannot subscribe to yourself')
         return
       }
@@ -395,7 +397,7 @@ export default function SubscribeModal({ creator, preferredTier, onClose, onSucc
 
       // Create transaction
       const transaction = await createSubscriptionTransaction(
-        publicKey,
+        publicKeyString, // 🔥 M7 FIX: Need to convert back to PublicKey in createSubscriptionTransaction
         distribution
       )
 
@@ -512,7 +514,7 @@ export default function SubscribeModal({ creator, preferredTier, onClose, onSucc
     
     try {
       // Get current user ID
-      const userResponse = await fetch(`/api/user?wallet=${publicKey!.toString()}`)
+      const userResponse = await fetch(`/api/user?wallet=${publicKeyString}`) // 🔥 M7 FIX
       let userData = await userResponse.json()
       
       // If user not found, create new user
@@ -525,7 +527,7 @@ export default function SubscribeModal({ creator, preferredTier, onClose, onSucc
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({
-            wallet: publicKey!.toString()
+            wallet: publicKeyString // 🔥 M7 FIX
           })
         })
         

@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react'
 import { Fragment } from 'react'
 import Avatar from '@/components/Avatar'
+import { useStableWallet } from '@/lib/hooks/useStableWallet' // 🔥 M7 FIX: Stable wallet hook
 import { 
   SafeDialog as Dialog,
   SafeDialogPanel,
@@ -74,7 +75,7 @@ interface PurchaseModalProps {
 export default function PurchaseModal({ post, onClose, onSuccess }: PurchaseModalProps) {
   const [isProcessing, setIsProcessing] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const { publicKey, connected, sendTransaction } = useWallet()
+  const { publicKeyString, connected, sendTransaction } = useStableWallet() // 🔥 M7 FIX: Stable wallet
   const user = useUser()
   const isUserLoading = useUserLoading()
   const [creatorData, setCreatorData] = useState<any>(null)
@@ -103,7 +104,7 @@ export default function PurchaseModal({ post, onClose, onSuccess }: PurchaseModa
   }, [post.creator.id])
 
   const handlePurchase = async () => {
-    if (!publicKey || !connected) {
+    if (!publicKeyString || !connected) {
       toast.error('Пожалуйста, подключите кошелек')
       return
     }
@@ -116,7 +117,7 @@ export default function PurchaseModal({ post, onClose, onSuccess }: PurchaseModa
     
     // КРИТИЧЕСКАЯ ПРОВЕРКА: запрещаем покупки с кошелька платформы
     const PLATFORM_WALLET = 'EEqsmopVfTuaiJrh8xL7ZsZbUctckY6S5WyHYR66wjpw'
-    if (publicKey.toBase58() === PLATFORM_WALLET) {
+    if (publicKeyString === PLATFORM_WALLET) { // 🔥 M7 FIX: Stable string comparison
       toast.error('❌ Вы не можете покупать контент с кошелька платформы!')
       return
     }
@@ -133,7 +134,7 @@ export default function PurchaseModal({ post, onClose, onSuccess }: PurchaseModa
     }
     
     // Дополнительная проверка: создатель не может покупать свой контент
-    if (creatorWallet === publicKey.toBase58()) {
+          if (creatorWallet === publicKeyString) { // 🔥 M7 FIX: Stable string comparison
       toast.error('Вы не можете покупать свой собственный контент')
       return
     }
@@ -148,7 +149,7 @@ export default function PurchaseModal({ post, onClose, onSuccess }: PurchaseModa
       if (post.flashSale) {
         try {
           // Проверяем доступность Flash Sale
-          const checkResponse = await fetch(`/api/flash-sales/apply/check?flashSaleId=${post.flashSale.id}&userId=${publicKey.toBase58()}&price=${post.price}`)
+          const checkResponse = await fetch(`/api/flash-sales/apply/check?flashSaleId=${post.flashSale.id}&userId=${publicKeyString}&price=${post.price}`) // 🔥 M7 FIX
           const checkData = await checkResponse.json()
           
           if (checkData.canApply) {
@@ -176,10 +177,10 @@ export default function PurchaseModal({ post, onClose, onSuccess }: PurchaseModa
       )
 
       // Проверяем что feePayer установлен правильно
-      if (transaction.feePayer?.toBase58() !== publicKey.toBase58()) {
+              if (transaction.feePayer?.toBase58() !== publicKeyString) { // 🔥 M7 FIX: Stable comparison
         console.error('CRITICAL: Fee payer mismatch!', {
           transactionFeePayer: transaction.feePayer?.toBase58(),
-          userPublicKey: publicKey.toBase58()
+                      userPublicKey: publicKeyString // 🔥 M7 FIX
         })
         // Принудительно устанавливаем правильный feePayer
         transaction.feePayer = publicKey
@@ -263,7 +264,7 @@ export default function PurchaseModal({ post, onClose, onSuccess }: PurchaseModa
           'Authorization': `Bearer ${jwtToken}`
         },
         body: JSON.stringify({
-          buyerWallet: publicKey.toString(),
+          buyerWallet: publicKeyString, // 🔥 M7 FIX
           txSignature: signature,
           price: actualPrice,
           hasReferrer,
