@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react'
 import { useWallet } from '@/lib/hooks/useSafeWallet'
+import { useStableWallet } from '@/lib/hooks/useStableWallet' // 🔥 M7 FIX: Stable wallet hook
 import { useUser } from '@/lib/store/appStore'
 import { toast } from 'react-hot-toast'
 import { 
@@ -33,7 +34,8 @@ export default function CreateFlashSale({
   onClose, 
   onCreated 
 }: CreateFlashSaleProps) {
-  const { connected, publicKey } = useWallet()
+  const { connected } = useWallet()
+  const { publicKeyString } = useStableWallet() // 🔥 M7 FIX: Stable wallet
   const user = useUser()
   const [isCreating, setIsCreating] = useState(false)
   const [saleType, setSaleType] = useState<'post' | 'subscription'>('post')
@@ -66,11 +68,11 @@ export default function CreateFlashSale({
 
   // Load user's posts
   useEffect(() => {
-    if (!publicKey) return
+    if (!publicKeyString) return
     
     const loadPosts = async () => {
       try {
-        const response = await fetch(`/api/posts?creatorId=${publicKey.toString()}`)
+        const response = await fetch(`/api/posts?creatorId=${publicKeyString}`) // 🔥 M7 FIX
         if (response.ok) {
           const data = await response.json()
           // Filter only paid posts
@@ -89,7 +91,7 @@ export default function CreateFlashSale({
     }
     
     loadPosts()
-  }, [publicKey])
+  }, [publicKeyString]) // 🔥 M7 FIX: Stable dependency
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -111,7 +113,7 @@ export default function CreateFlashSale({
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          creatorWallet: publicKey.toString(),
+          creatorWallet: publicKeyString, // 🔥 M7 FIX
           postId: saleType === 'post' ? selectedPostId : undefined,
           subscriptionPlan: saleType === 'subscription' ? selectedPlan : undefined,
           discount: formData.discount,

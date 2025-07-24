@@ -1,7 +1,7 @@
 'use client'
 
+import React, { useState, useEffect, useCallback } from 'react'
 import { notFound } from 'next/navigation'
-import { useState, useEffect } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
 import Avatar from '@/components/Avatar'
@@ -16,36 +16,39 @@ interface CategoryPageProps {
   }
 }
 
+// Category metadata
 const categoryTitles: { [key: string]: string } = {
-  'defi': 'DeFi Creators',
-  'nft': 'NFT Creators', 
-  'trading': 'Trading Experts',
-  'gamefi': 'GameFi Creators',
-  'blockchain': 'Blockchain Educators',
-  'metaverse': 'Metaverse Pioneers',
-  'analytics': 'Analytics Experts',
-  'education': 'Web3 Educators',
-  'investing': 'Investment Advisors',
-  'technology': 'Tech Innovators',
-  'startups': 'Startup Founders',
-  'intimate': 'Intimate Collection',
-  'lifestyle': 'Lifestyle Creators'
+  art: 'Art Creators',
+  music: 'Music Artists', 
+  gaming: 'Gaming Streamers',
+  lifestyle: 'Lifestyle Influencers',
+  fitness: 'Fitness Trainers',
+  tech: 'Tech Innovators',
+  defi: 'DeFi Experts',
+  nft: 'NFT Artists',
+  trading: 'Trading Professionals',
+  gamefi: 'GameFi Pioneers',
+  blockchain: 'Blockchain Developers',
+  intimate: 'Intimate Content',
+  education: 'Educational Content',
+  comedy: 'Comedy Creators'
 }
 
 const categoryDescriptions: { [key: string]: string } = {
-  'defi': 'Discover creators sharing DeFi strategies, yield farming tips, and protocol analysis',
-  'nft': 'Artists and collectors creating unique NFT collections and digital art',
-  'trading': 'Professional traders sharing signals, analysis, and market insights',
-  'gamefi': 'Gaming experts covering blockchain games and play-to-earn opportunities',
-  'blockchain': 'Educators explaining blockchain technology and Web3 concepts',
-  'metaverse': 'Pioneers exploring virtual worlds and metaverse experiences',
-  'analytics': 'Data analysts providing market insights and on-chain analytics',
-  'education': 'Teachers and educators sharing Web3 knowledge and tutorials',
-  'investing': 'Investment professionals sharing crypto and traditional market strategies',
-  'technology': 'Tech experts covering the latest in blockchain and Web3 development',
-  'startups': 'Entrepreneurs building the future of Web3 and blockchain technology',
-  'intimate': 'Artistic and creative content in an intimate, premium setting',
-  'lifestyle': 'Lifestyle and personal content creators sharing exclusive moments'
+  art: 'Discover talented artists sharing their creative process and artwork',
+  music: 'Connect with musicians, producers, and music creators',
+  gaming: 'Follow your favorite streamers and gaming content creators',
+  lifestyle: 'Get inspired by lifestyle influencers and their daily content',
+  fitness: 'Train with professional fitness coaches and athletes',
+  tech: 'Stay updated with the latest tech insights and innovations',
+  defi: 'Learn from DeFi experts and cryptocurrency professionals',
+  nft: 'Explore the world of NFT art and digital collectibles',
+  trading: 'Follow professional traders and market analysts',
+  gamefi: 'Discover the latest in blockchain gaming and GameFi',
+  blockchain: 'Learn from blockchain developers and crypto experts',
+  intimate: 'Adult content creators sharing exclusive intimate content',
+  education: 'Educational content from teachers and subject matter experts',
+  comedy: 'Laugh with comedians and entertainment creators'
 }
 
 export default function CategoryPage({ params }: CategoryPageProps) {
@@ -56,11 +59,10 @@ export default function CategoryPage({ params }: CategoryPageProps) {
   const title = categoryTitles[categorySlug] || `${categorySlug} Creators`
   const description = categoryDescriptions[categorySlug] || `Discover talented ${categorySlug} creators`
 
-  useEffect(() => {
-    loadCreators()
-  }, [categorySlug])
-
-  const loadCreators = async () => {
+  // 🔥 M7 HEAVY ROUTE FIX: Memoized loadCreators function to prevent infinite loops
+  // ROOT CAUSE: Function recreation every render → unstable useEffect dependency → infinite API calls
+  // SOLUTION: useCallback with stable dependencies ensures function only created once
+  const loadCreators = useCallback(async () => {
     try {
       setIsLoading(true)
       
@@ -85,7 +87,11 @@ export default function CategoryPage({ params }: CategoryPageProps) {
     } finally {
       setIsLoading(false)
     }
-  }
+  }, []) // 🔥 M7 FIX: Empty dependencies - function only created once
+
+  useEffect(() => {
+    loadCreators() // 🔥 M7 FIX: Now stable function reference
+  }, [categorySlug, loadCreators]) // 🔥 M7 FIX: Stable dependencies
 
   if (isLoading) {
     return (

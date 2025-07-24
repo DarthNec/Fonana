@@ -7,6 +7,7 @@ import { create } from 'zustand'
 import { devtools, persist } from 'zustand/middleware'
 import { UnifiedPost } from '@/types/posts'
 import { useCallback, useMemo } from 'react'
+import { throttle } from 'lodash-es' // 🔥 M7 FIX: Throttle for store actions
 
 // Типы пользователя
 export interface User {
@@ -369,7 +370,7 @@ export const useAppStore = create<AppStore>()(
         setCreatorLoading: (creatorLoading) => set({ creatorLoading }),
         setCreatorError: (creatorError) => set({ creatorError }),
 
-        refreshCreator: async () => {
+        refreshCreator: throttle(async () => {
           const { creator } = get()
           if (!creator?.id) return
 
@@ -386,9 +387,9 @@ export const useAppStore = create<AppStore>()(
           } finally {
             set({ creatorLoading: false })
           }
-        },
+        }, 5000), // 🔥 M7 FIX: Throttle to once per 5 seconds
 
-        loadCreator: async (creatorId: string) => {
+        loadCreator: throttle(async (creatorId: string) => {
           try {
             set({ creatorLoading: true, creatorError: null })
             
@@ -404,9 +405,9 @@ export const useAppStore = create<AppStore>()(
           } finally {
             set({ creatorLoading: false })
           }
-        },
+        }, 5000), // 🔥 M7 FIX: Throttle to once per 5 seconds
 
-        loadPosts: async () => {
+        loadPosts: throttle(async () => { // 🔥 M7 FIX: Throttle posts loading
           const { creator } = get()
           if (!creator?.id) return
 
