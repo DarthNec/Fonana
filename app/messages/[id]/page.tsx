@@ -24,6 +24,7 @@ import { useConnection } from '@solana/wallet-adapter-react'
 import { PublicKey } from '@solana/web3.js'
 import toast from 'react-hot-toast'
 import { useUser } from '@/lib/store/appStore'
+import { useQuery } from '@tanstack/react-query'
 import { 
   createPostPurchaseTransaction,
   createTipTransaction,
@@ -73,6 +74,7 @@ interface Participant {
 
 export default function ConversationPage() {
   const { publicKey, sendTransaction } = useWallet()
+  const publicKeyString = publicKey?.toBase58() ?? null // 🔥 ALTERNATIVE FIX: Stable string
   
   const user = useUser()
   const isUserLoading = false // Zustand не имеет отдельного состояния загрузки пользователя
@@ -543,7 +545,7 @@ export default function ConversationPage() {
   }
 
   const sendTip = async () => {
-    if (!publicKey || !participant || !tipAmount || isSendingTip) return
+    if (!publicKeyString || !participant || !tipAmount || isSendingTip) return
 
     const amount = parseFloat(tipAmount)
     if (isNaN(amount) || amount <= 0) {
@@ -705,7 +707,7 @@ export default function ConversationPage() {
   }
 
   const purchaseMessage = async (message: Message) => {
-    if (!publicKey || !participant || !message.price) return
+    if (!publicKeyString || !participant || !message.price) return
 
     setIsPurchasing(message.id)
     
@@ -828,7 +830,7 @@ export default function ConversationPage() {
     await sendTip()
   }
 
-  if (!publicKey) {
+  if (!publicKeyString) {
     return (
       <div className="min-h-screen bg-gray-50 dark:bg-slate-900 pt-24 flex items-center justify-center">
         <div className="text-center">

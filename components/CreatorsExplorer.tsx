@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState, useEffect, useMemo } from 'react'
+import React, { useState, useEffect, useMemo, useTransition } from 'react'
 import { HeartIcon, UserPlusIcon, MagnifyingGlassIcon } from '@heroicons/react/24/outline'
 import { HeartIcon as HeartSolidIcon } from '@heroicons/react/24/solid'
 import Avatar from './Avatar'
@@ -13,6 +13,9 @@ import { useWallet } from '@/lib/hooks/useSafeWallet'
 import Image from 'next/image'
 import { CheckBadgeIcon, PlayIcon, UsersIcon, SparklesIcon, Squares2X2Icon } from '@heroicons/react/24/outline'
 import SubscribeModal from './SubscribeModal'
+import { useQuery } from '@tanstack/react-query'
+import { EnterpriseErrorBoundary } from '@/components/ui/EnterpriseErrorBoundary'
+import { EnterpriseError } from '@/components/ui/EnterpriseError'
 
 import { useRouter } from 'next/navigation'
 import { getProfileLink } from '@/lib/utils/links'
@@ -24,42 +27,143 @@ const categories = ['All', 'Art', 'Music', 'Gaming', 'Lifestyle', 'Fitness', 'Te
 // Alias for backwards compatibility
 type Creator = ComponentCreator
 
-export default function CreatorsExplorer() {
+function CreatorsExplorerInner() {
   const [selectedCategory, setSelectedCategory] = useState('All')
   const [favorites, setFavorites] = useState<string[]>([])
   const [showSubscribeModal, setShowSubscribeModal] = useState(false)
   const [selectedCreator, setSelectedCreator] = useState<Creator | null>(null)
   const [creators, setCreators] = useState<Creator[]>([])
-  const [loading, setLoading] = useState(true)
+  const [loading, setLoading] = useState(true) // Will be replaced by React Query isLoading
   const [subscribedCreatorIds, setSubscribedCreatorIds] = useState<string[]>([])
   const [hiddenCreatorIds, setHiddenCreatorIds] = useState<string[]>([])
   const router = useRouter()
   const [showInfoBlocks, setShowInfoBlocks] = useState(true)
   const [activeTab, setActiveTab] = useState<'recommendations' | 'subscriptions' | 'all'>('recommendations')
+  
+  // 🔥 M7 PHASE 3: React 18 useTransition for non-blocking tab switches
+  const [isPending, startTransition] = useTransition()
 
   const { publicKey } = useWallet()
   
   // 🔥 EMERGENCY FIX: Stable publicKey string for dependencies
   const publicKeyString = publicKey?.toBase58()
 
-  // Load creators list
-  useEffect(() => {
-    fetchCreators()
-  }, [])
+  // 🔥 ENTERPRISE PHASE 1.3: Enhanced React Query with error handling
+  const { data: creatorsData, isLoading: isLoadingCreators, error: creatorsError, refetch: refetchCreators } = useQuery({
+    queryKey: ['creators'],
+    queryFn: async () => {
+      console.info('[ENTERPRISE QUERY] Loading creators')
+      const response = await fetch('/api/creators')
+      
+      if (!response.ok) {
+        throw new Error(`Failed to load creators: HTTP ${response.status}`)
+      }
+      
+      const data: ApiCreatorsResponse = await response.json()
+      
+      if (!data.creators || !Array.isArray(data.creators)) {
+        throw new Error('Invalid API response format: missing creators array')
+      }
+      
+      console.info(`[ENTERPRISE QUERY] Successfully loaded ${data.creators.length} creators`)
+      return mapApiCreatorsToComponent(data.creators)
+    },
+    staleTime: 5 * 60 * 1000,
+    retry: 3,
+    retryDelay: attemptIndex => Math.min(1000 * 2 ** attemptIndex, 30000),
+  })
 
-  // 🔥 FIXED: Load user subscriptions with stable dependency
+  // 🔥 ENTERPRISE ERROR HANDLING: Show error if creators failed to load
+  if (creatorsError) {
+    return (
+      <EnterpriseError
+        error={creatorsError}
+        context="CreatorsExplorer"
+        onRetry={refetchCreators}
+        queryKey={['creators']}
+        fallbackData={[]}
+      />
+    )
+  }
+
+  // Update local state when data changes
   useEffect(() => {
-    if (publicKeyString) {
-      fetchUserSubscriptions()
+    if (creatorsData) {
+      setCreators(creatorsData)
+      setLoading(false)
     }
-  }, [publicKeyString])
+  }, [creatorsData])
+
+  // 🔥 ENTERPRISE PHASE 1.3: Enhanced subscriptions query with error handling
+  const { data: subscriptionsData, error: subscriptionsError } = useQuery({
+    queryKey: ['userSubscriptions', publicKeyString],
+    queryFn: async () => {
+      if (!publicKeyString) return null
+      
+      console.info('[ENTERPRISE QUERY] Loading user subscriptions')
+      const response = await fetch(`/api/user?wallet=${publicKeyString}`)
+      
+      if (!response.ok) {
+        throw new Error(`Failed to load user data: HTTP ${response.status}`)
+      }
+      
+      const userData = await response.json()
+      
+      if (!userData.user?.id) return null
+      
+      const subsResponse = await fetch(`/api/subscriptions/check?userId=${userData.user.id}`)
+      
+      if (!subsResponse.ok) {
+        throw new Error(`Failed to load subscriptions: HTTP ${subsResponse.status}`)
+      }
+      
+      const subsData = await subsResponse.json()
+      
+      console.info(`[ENTERPRISE QUERY] Successfully loaded subscriptions for user ${userData.user.id}`)
+      return {
+        userId: userData.user.id,
+        subscribedCreatorIds: subsData.subscribedCreatorIds || []
+      }
+    },
+    enabled: !!publicKeyString,
+    staleTime: 5 * 60 * 1000,
+    retry: 2,
+    retryDelay: attemptIndex => Math.min(1000 * 2 ** attemptIndex, 10000),
+  })
+
+  // Handle subscriptions error gracefully (non-critical)
+  useEffect(() => {
+    if (subscriptionsError) {
+      console.warn('[ENTERPRISE WARNING] Subscriptions failed to load, continuing with defaults:', subscriptionsError.message)
+      // Don't block the UI, just log the warning
+    }
+  }, [subscriptionsError])
+
+  // Update local state when data changes
+  useEffect(() => {
+    if (subscriptionsData) {
+      setSubscribedCreatorIds(subscriptionsData.subscribedCreatorIds)
+      
+      // Load hidden subscription IDs from localStorage
+      const savedVisibility = localStorage.getItem(`sub_visibility_${subscriptionsData.userId}`)
+      if (savedVisibility) {
+        try {
+          const hiddenSubIds = JSON.parse(savedVisibility)
+          // For now, just set hidden IDs - full implementation can be added later
+          setHiddenCreatorIds(hiddenSubIds)
+        } catch (e) {
+          console.error('Error parsing hidden subscriptions:', e)
+        }
+      }
+    }
+  }, [subscriptionsData])
 
   // Automatically switch to the right tab
   useEffect(() => {
     if (!publicKeyString) {
       setActiveTab('all')
     } else if (subscribedCreatorIds.length === 0) {
-      setActiveTab('recommendations')
+      startTransition(() => setActiveTab('recommendations'))
     }
   }, [publicKeyString, subscribedCreatorIds])
 
@@ -72,35 +176,11 @@ export default function CreatorsExplorer() {
     return () => clearTimeout(timer)
   }, [])
 
-  const fetchCreators = async () => {
-    try {
-      setLoading(true)
-      const response = await fetch('/api/creators')
-      
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}: ${response.statusText}`)
-      }
-      
-      const data: ApiCreatorsResponse = await response.json()
-      
-      if (!data.creators || !Array.isArray(data.creators)) {
-        throw new Error('Invalid API response format')
-      }
-      
-      // Map API data to component format with fallback values
-      const mappedCreators = mapApiCreatorsToComponent(data.creators)
-      setCreators(mappedCreators)
-      
-    } catch (error) {
-      console.error('Error fetching creators:', error)
-      toast.error(error instanceof Error ? error.message : 'Error loading creators')
-      setCreators([]) // Clear existing data on error
-    } finally {
-      setLoading(false)
-    }
-  }
+  // 🔥 ALTERNATIVE SOLUTION - PHASE 2: fetchCreators removed, using React Query
 
+  // Keep fetchUserSubscriptions for manual refresh (e.g., after subscription)
   const fetchUserSubscriptions = async () => {
+    // This function is now deprecated - using React Query refetch instead
     try {
       const response = await fetch(`/api/user?wallet=${publicKeyString}`)
       const userData = await response.json()
@@ -434,7 +514,7 @@ export default function CreatorsExplorer() {
                 {publicKey && (
                   <>
                     <button
-                      onClick={() => setActiveTab('subscriptions')}
+                      onClick={() => startTransition(() => setActiveTab('subscriptions'))}
                       className={`flex items-center gap-2 px-3 sm:px-6 py-2 sm:py-3 rounded-xl font-medium sm:font-semibold text-sm sm:text-base transition-all duration-300 whitespace-nowrap ${
                         activeTab === 'subscriptions'
                           ? 'bg-gradient-to-r from-purple-600 to-pink-600 text-white shadow-lg shadow-purple-500/25'
@@ -450,7 +530,7 @@ export default function CreatorsExplorer() {
                       )}
                     </button>
                     <button
-                      onClick={() => setActiveTab('recommendations')}
+                      onClick={() => startTransition(() => setActiveTab('recommendations'))}
                       className={`flex items-center gap-2 px-3 sm:px-6 py-2 sm:py-3 rounded-xl font-medium sm:font-semibold text-sm sm:text-base transition-all duration-300 whitespace-nowrap ${
                         activeTab === 'recommendations'
                           ? 'bg-gradient-to-r from-purple-600 to-pink-600 text-white shadow-lg shadow-purple-500/25'
@@ -464,7 +544,7 @@ export default function CreatorsExplorer() {
                   </>
                 )}
                 <button
-                  onClick={() => setActiveTab('all')}
+                  onClick={() => startTransition(() => setActiveTab('all'))}
                   className={`flex items-center gap-2 px-3 sm:px-6 py-2 sm:py-3 rounded-xl font-medium sm:font-semibold text-sm sm:text-base transition-all duration-300 whitespace-nowrap ${
                     activeTab === 'all'
                       ? 'bg-gradient-to-r from-purple-600 to-pink-600 text-white shadow-lg shadow-purple-500/25'
@@ -548,7 +628,14 @@ export default function CreatorsExplorer() {
             )}
           </div>
         ) : (
-                        <div className="grid gap-6 md:gap-8 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4" data-testid="creators-grid">
+          <div 
+            className="grid gap-6 md:gap-8 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4" 
+            data-testid="creators-grid"
+            style={{ 
+              opacity: isPending ? 0.6 : 1,
+              transition: 'opacity 0.2s ease-in-out'
+            }}
+          >
             {filteredCreators.map((creator, index) => renderCreatorCard(creator, index))}
           </div>
         )}
@@ -574,5 +661,17 @@ export default function CreatorsExplorer() {
         />
       )}
     </section>
+  )
+}
+
+// 🔥 ENTERPRISE WRAPPER: Export component with error boundary
+export default function CreatorsExplorer() {
+  return (
+    <EnterpriseErrorBoundary 
+      context="CreatorsExplorer" 
+      queryKey={['creators', 'userSubscriptions']}
+    >
+      <CreatorsExplorerInner />
+    </EnterpriseErrorBoundary>
   )
 } 

@@ -44,6 +44,7 @@ interface UserSubscriptionsProps {
 export default function UserSubscriptions({ compact = false }: UserSubscriptionsProps) {
   const user = useUser()
   const { publicKey } = useWallet()
+  const publicKeyString = publicKey?.toBase58() ?? null // 🔥 ALTERNATIVE FIX: Stable string
   const [subscriptions, setSubscriptions] = useState<Subscription[]>([])
   const [loading, setLoading] = useState(true)
   const [selectedSub, setSelectedSub] = useState<string | null>(null)

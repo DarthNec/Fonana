@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useRef, useMemo, useCallback } from 'react'
+import { useState, useEffect, useRef, useMemo, useCallback, useTransition } from 'react'
 import { useUser, useUserLoading } from '@/lib/store/appStore'
 import { useOptimizedPosts } from '@/lib/hooks/useOptimizedPosts'
 import { useOptimizedRealtimePosts } from '@/lib/hooks/useOptimizedRealtimePosts'
@@ -50,6 +50,9 @@ export default function FeedPageClient() {
   const [selectedCategory, setSelectedCategory] = useState('All')
   const [sortBy, setSortBy] = useState<'latest' | 'popular' | 'trending' | 'subscribed'>('latest')
   const categoryScrollRef = useRef<HTMLDivElement>(null)
+  
+  // 🔥 M7 PHASE 3: React 18 useTransition for filter updates
+  const [isPending, startTransition] = useTransition()
   
   // Флаг для отслеживания первой загрузки
   const [isInitialized, setIsInitialized] = useState(false)
@@ -246,7 +249,7 @@ export default function FeedPageClient() {
               {categories.map((category) => (
                 <button
                   key={category}
-                  onClick={() => setSelectedCategory(category)}
+                  onClick={() => startTransition(() => setSelectedCategory(category))}
                   className={`
                     px-4 py-2 rounded-full font-medium whitespace-nowrap transition-all
                     ${selectedCategory === category
@@ -274,7 +277,7 @@ export default function FeedPageClient() {
                 onClick={() => {
                   const newSortBy = option.value as 'latest' | 'popular' | 'trending' | 'subscribed'
                   console.log('[FeedPage] Sort filter clicked:', { from: sortBy, to: newSortBy })
-                  setSortBy(newSortBy)
+                  startTransition(() => setSortBy(newSortBy))
                 }}
                 className={`
                   flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-all whitespace-nowrap
@@ -292,13 +295,17 @@ export default function FeedPageClient() {
         </div>
 
         {/* Posts Container */}
-        <PostsContainer
-          posts={filteredAndSortedPosts}
-          layout="list"
-          variant="feed"
-          showCreator={true}
-          onAction={handlePostAction}
-          isLoading={isLoading}
+        <div style={{ 
+          opacity: isPending ? 0.6 : 1,
+          transition: 'opacity 0.2s ease-in-out'
+        }}>
+          <PostsContainer
+            posts={filteredAndSortedPosts}
+            layout="list"
+            variant="feed"
+            showCreator={true}
+            onAction={handlePostAction}
+            isLoading={isLoading}
           emptyComponent={
             <div className="text-center py-20 px-4">
               <SparklesIcon className="w-16 h-16 text-gray-400 dark:text-slate-600 mx-auto mb-4" />
@@ -313,7 +320,8 @@ export default function FeedPageClient() {
               </button>
             </div>
           }
-        />
+          />
+        </div>
 
         {/* Infinite scroll trigger */}
         {hasMore && !isLoadingMore && (

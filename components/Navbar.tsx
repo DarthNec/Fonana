@@ -48,6 +48,7 @@ export function Navbar() {
   const [showCreateModal, setShowCreateModal] = useState(false)
   const [showSearchModal, setShowSearchModal] = useState(false)
   const { connected, disconnect, publicKey } = useWallet()
+  const publicKeyString = publicKey?.toBase58() ?? null // 🔥 ALTERNATIVE FIX: Stable string
   const user = useUser()
   const [apiUser, setApiUser] = useState(null)
   const pathname = usePathname()
