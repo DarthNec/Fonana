@@ -67,6 +67,9 @@ export function WalletStoreSync() {
     stableSetAdapter(walletAdapter)
   }, [walletAdapter]) // 🔥 ONLY walletAdapter dependency
   
+  // 🔥 M7 PHASE 3 FIX: Stable publicKey string
+  const publicKeyString = walletAdapter.publicKey?.toString() || null
+  
   useEffect(() => {
     if (!isCircuitOpenRef.current && isMountedRef.current) {
       const walletState = {
@@ -82,7 +85,7 @@ export function WalletStoreSync() {
     } else {
       console.log('[WalletStoreSync] M7 Phase 1 - State update skipped (circuit open or unmounted)')
     }
-  }, [walletAdapter.connected, walletAdapter.publicKey]) // 🔥 MINIMAL dependencies
+  }, [walletAdapter.connected, publicKeyString]) // 🔥 M7 PHASE 3 FIX: Stable string dependency!
   
   // 🔥 CLEANUP
   useEffect(() => {
