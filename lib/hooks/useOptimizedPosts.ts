@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useUser } from '@/lib/store/appStore'
 import { useStableWallet } from './useStableWallet' // 🔥 M7 FIX: STABLE WALLET HOOK
-import { PostNormalizer } from '@/lib/services/posts/normalizer'
+import { PostNormalizer } from '@/services/posts/normalizer' // 🔥 FIX: Correct path
 import type { UnifiedPost } from '@/types/posts/unified'
 
 interface UseOptimizedPostsOptions {
