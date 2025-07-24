@@ -1,41 +1,49 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-import { UnifiedPost, PostAction } from '@/types/posts'
-import { PostNormalizer } from '@/services/posts/normalizer'
-import { useWallet } from '@solana/wallet-adapter-react'
 import { useUser } from '@/lib/store/appStore'
+import { useStableWallet } from './useStableWallet' // 🔥 M7 FIX: STABLE WALLET HOOK
+import { PostNormalizer } from '@/lib/services/posts/normalizer'
+import type { UnifiedPost } from '@/types/posts/unified'
 
 interface UseOptimizedPostsOptions {
-  creatorId?: string
   category?: string
-  pageSize?: number
-  variant?: 'feed' | 'profile' | 'creator' | 'search' | 'dashboard'
+  creatorId?: string
+  variant?: 'feed' | 'creator' | 'search'
   sortBy?: 'latest' | 'popular' | 'trending' | 'subscribed'
-  enableCache?: boolean
-  cacheKey?: string
+  pageSize?: number
+}
+
+interface PostAction {
+  type: 'like' | 'purchase' | 'subscribe'
+  postId: string
+  data?: any
 }
 
 interface UseOptimizedPostsReturn {
   posts: UnifiedPost[]
   isLoading: boolean
-  isLoadingMore: boolean
   error: Error | null
   hasMore: boolean
+  isLoadingMore: boolean
   loadMore: () => void
   refresh: (clearCache?: boolean) => void
   handleAction: (action: PostAction) => Promise<void>
-  addNewPost: (newPost: UnifiedPost) => void
+  addNewPost: (post: UnifiedPost) => void
 }
 
 /**
  * Simplified useOptimizedPosts hook with proper AbortController pattern
  * Phase 1: Core functionality - load posts without race conditions
  * [feed_loading_2025_001]
+ * 
+ * 🔥 M7 HEAVY ROUTE FIX: Eliminated infinite loop via stable wallet dependencies
+ * ROOT CAUSE: publicKey?.toBase58() created new string each render → infinite useEffect
+ * SOLUTION: Use useStableWallet() hook with memoized publicKeyString
  */
 export function useOptimizedPosts(options: UseOptimizedPostsOptions = {}): UseOptimizedPostsReturn {
   const user = useUser()
-  const { publicKey } = useWallet()
+  const { publicKeyString } = useStableWallet() // 🔥 M7 FIX: STABLE DEPENDENCY!
   
   // Core state
   const [posts, setPosts] = useState<UnifiedPost[]>([])
@@ -65,7 +73,7 @@ export function useOptimizedPosts(options: UseOptimizedPostsOptions = {}): UseOp
         params.append('page', '1')
         params.append('limit', '20')
         
-        if (publicKey) params.append('userWallet', publicKey.toBase58())
+        if (publicKeyString) params.append('userWallet', publicKeyString) // 🔥 M7 FIX: STABLE STRING
         if (user?.id) params.append('userId', user.id)
         
         // Choose endpoint based on sortBy
@@ -116,7 +124,7 @@ export function useOptimizedPosts(options: UseOptimizedPostsOptions = {}): UseOp
     options.sortBy, 
     options.category, 
     options.creatorId,
-    publicKey?.toBase58(),
+    publicKeyString, // 🔥 M7 FIX: STABLE STRING DEPENDENCY!
     user?.id
   ])
   
@@ -138,29 +146,20 @@ export function useOptimizedPosts(options: UseOptimizedPostsOptions = {}): UseOp
   // [tier_access_system_2025_017] Добавляем функцию для локального добавления нового поста
   // [post_content_render_2025_017] Исправлено: нормализуем пост перед добавлением
   const addNewPost = useCallback((newPost: UnifiedPost) => {
-    console.log('[useOptimizedPosts] Adding new post locally:', newPost.id, newPost.content.title)
-    
-    // Нормализуем пост перед добавлением чтобы избежать ошибок рендеринга
+    console.log('[useOptimizedPosts] Adding new post locally:', newPost.id)
     const normalizedPost = PostNormalizer.normalize(newPost)
-    console.log('[useOptimizedPosts] Normalized post structure:', {
-      id: normalizedPost.id,
-      content: normalizedPost.content,
-      hasText: !!normalizedPost.content?.text
-    })
-    
-    // Добавляем нормализованный пост в начало списка
     setPosts(prevPosts => [normalizedPost, ...prevPosts])
   }, [])
   
   return {
     posts,
     isLoading,
-    isLoadingMore: false,  // Simplified for Phase 1
     error,
-    hasMore: false,       // Simplified for Phase 1
+    hasMore: false, // Phase 1: No pagination
+    isLoadingMore: false,
     loadMore,
     refresh,
     handleAction,
-    addNewPost  // [tier_access_system_2025_017] Экспортируем функцию локального добавления
+    addNewPost
   }
 } 

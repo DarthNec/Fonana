@@ -7,6 +7,7 @@ import { useWallet } from '@solana/wallet-adapter-react'
 import { useUser } from '@/lib/store/appStore'
 import toast from 'react-hot-toast'
 import { checkPostAccess, hasAccessToTier } from '@/lib/utils/access'
+import { useStableWallet } from './useStableWallet'
 
 interface UseUnifiedPostsOptions {
   creatorId?: string
@@ -26,11 +27,16 @@ interface UseUnifiedPostsReturn {
 
 /**
  * Хук для работы с унифицированными постами
+ * [Enhanced Posts System - Unified Interface 2025]
+ * 
+ * 🔥 M7 HEAVY ROUTE FIX: Eliminated infinite loop via stable wallet dependencies
+ * ROOT CAUSE: publicKey object in fetchPosts useCallback dependencies → infinite re-creation
+ * SOLUTION: Use useStableWallet() hook with memoized publicKeyString
  */
 export function useUnifiedPosts(options: UseUnifiedPostsOptions = {}): UseUnifiedPostsReturn {
   const user = useUser()
   const isUserLoading = false // Zustand не имеет отдельного состояния загрузки
-  const { publicKey } = useWallet()
+  const { publicKeyString } = useStableWallet() // 🔥 M7 FIX: STABLE DEPENDENCY!
   const [posts, setPosts] = useState<UnifiedPost[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [hasMore, setHasMore] = useState(true)
@@ -53,7 +59,7 @@ export function useUnifiedPosts(options: UseUnifiedPostsOptions = {}): UseUnifie
       if (options.creatorId) params.append('creatorId', options.creatorId)
       if (options.category) params.append('category', options.category)
       if (options.limit) params.append('limit', options.limit.toString())
-      if (publicKey) params.append('userWallet', publicKey.toBase58())
+      if (publicKeyString) params.append('userWallet', publicKeyString) // 🔥 M7 FIX: STABLE STRING
       if (user?.id) params.append('userId', user.id)
 
       const response = await fetch(`/api/posts?${params}`)
@@ -73,7 +79,7 @@ export function useUnifiedPosts(options: UseUnifiedPostsOptions = {}): UseUnifie
     } finally {
       setIsLoading(false)
     }
-  }, [options.creatorId, options.category, options.limit, publicKey, user?.id])
+  }, [options.creatorId, options.category, options.limit, publicKeyString, user?.id]) // 🔥 M7 FIX: STABLE STRING!
 
   // Загрузка постов при монтировании и изменении параметров
   useEffect(() => {
@@ -132,12 +138,12 @@ export function useUnifiedPosts(options: UseUnifiedPostsOptions = {}): UseUnifie
     if (!userId) {
       if (isUserLoading) {
         toast('Загружаем данные пользователя...', { icon: '⏳' })
-      } else if (!publicKey) {
+      } else if (!publicKeyString) {
         toast.error('Подключите кошелек')
       } else {
         // Попытаемся получить userId через API
         try {
-          const response = await fetch(`/api/user?wallet=${publicKey.toBase58()}`)
+          const response = await fetch(`/api/user?wallet=${publicKeyString}`)
           if (response.ok) {
             const data = await response.json()
             if (data.user?.id) {
@@ -222,12 +228,12 @@ export function useUnifiedPosts(options: UseUnifiedPostsOptions = {}): UseUnifie
     if (!userId) {
       if (isUserLoading) {
         toast('Загружаем данные пользователя...', { icon: '⏳' })
-      } else if (!publicKey) {
+      } else if (!publicKeyString) {
         toast.error('Подключите кошелек')
       } else {
         // Попытаемся получить userId через API
         try {
-          const response = await fetch(`/api/user?wallet=${publicKey.toBase58()}`)
+          const response = await fetch(`/api/user?wallet=${publicKeyString}`)
           if (response.ok) {
             const data = await response.json()
             if (data.user?.id) {
@@ -363,12 +369,12 @@ export function useUnifiedPosts(options: UseUnifiedPostsOptions = {}): UseUnifie
     if (user?.id) return user.id
     
     // Если user загружается и есть кошелек, проверяем localStorage
-    if (isUserLoading && publicKey) {
+    if (isUserLoading && publicKeyString) {
       try {
         const savedData = localStorage.getItem('fonana_user_data')
         const savedWallet = localStorage.getItem('fonana_user_wallet')
         
-        if (savedData && savedWallet === publicKey.toBase58()) {
+        if (savedData && savedWallet === publicKeyString) {
           const userData = JSON.parse(savedData)
           if (userData.id) return userData.id
         }
@@ -378,7 +384,7 @@ export function useUnifiedPosts(options: UseUnifiedPostsOptions = {}): UseUnifie
     }
     
     return null
-  }, [user, isUserLoading, publicKey])
+  }, [user, isUserLoading, publicKeyString]) // 🔥 M7 FIX: STABLE publicKeyString
 
   // Обработчик событий обновления подписки
   const handleSubscriptionUpdate = useCallback((event: CustomEvent) => {

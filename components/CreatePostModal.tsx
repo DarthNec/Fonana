@@ -3,6 +3,7 @@
 import React, { useState, useRef, useEffect } from 'react'
 import { useUser } from '@/lib/store/appStore'
 import { useWallet } from '@/lib/hooks/useSafeWallet'
+import { useStableWallet } from '@/lib/hooks/useStableWallet' // 🔥 M7 FIX
 import { toast } from 'react-hot-toast'
 import { 
   PhotoIcon,
@@ -37,7 +38,7 @@ interface CreatePostModalProps {
 }
 
 export default function CreatePostModal({ onPostCreated, onPostUpdated, onClose, mode = 'create', postId }: CreatePostModalProps) {
-  const { connected, publicKey } = useWallet()
+  const { connected, publicKeyString } = useStableWallet() // 🔥 M7 FIX: STABLE DEPENDENCIES
   const user = useUser()
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [isUploading, setIsUploading] = useState(false)
@@ -54,50 +55,20 @@ export default function CreatePostModal({ onPostCreated, onPostUpdated, onClose,
   const [postData, setPostData] = useState<any>(null)
   const [hasInitialized, setHasInitialized] = useState(false)
   
-  // 🔍 DEBUG: Логирование состояния кнопки
+  // 🔥 M7 FIX: SINGLE DEBUG useEffect WITH STABLE DEPENDENCIES (removed triple duplicates)
   useEffect(() => {
-    const isDisabled = isUploading || (!connected && !publicKey) || (mode === 'edit' && isLoadingPost)
+    const isDisabled = isUploading || (!connected && !publicKeyString) || (mode === 'edit' && isLoadingPost)
     console.log('[CreatePostModal DEBUG] Button state:', {
       isUploading,
       connected,
-      publicKey: !!publicKey,
-      publicKeyString: publicKey?.toString().slice(0, 10) + '...',
+      hasPublicKey: !!publicKeyString,
+      publicKeyPreview: publicKeyString?.slice(0, 10) + '...',
       mode,
       isLoadingPost,
       isDisabled,
       timestamp: new Date().toISOString()
     })
-  }, [isUploading, connected, publicKey, mode, isLoadingPost])
-  
-  // 🔍 DEBUG: Логирование состояния кнопки
-  useEffect(() => {
-    const isDisabled = isUploading || (!connected && !publicKey) || (mode === 'edit' && isLoadingPost)
-    console.log('[CreatePostModal DEBUG] Button state:', {
-      isUploading,
-      connected,
-      publicKey: !!publicKey,
-      publicKeyString: publicKey?.toString().slice(0, 10) + '...',
-      mode,
-      isLoadingPost,
-      isDisabled,
-      timestamp: new Date().toISOString()
-    })
-  }, [isUploading, connected, publicKey, mode, isLoadingPost])
-  
-  // 🔍 DEBUG: Логирование состояния кнопки
-  useEffect(() => {
-    const isDisabled = isUploading || (!connected && !publicKey) || (mode === 'edit' && isLoadingPost)
-    console.log('[CreatePostModal DEBUG] Button state:', {
-      isUploading,
-      connected,
-      publicKey: !!publicKey,
-      publicKeyString: publicKey?.toString().slice(0, 10) + '...',
-      mode,
-      isLoadingPost,
-      isDisabled,
-      timestamp: new Date().toISOString()
-    })
-  }, [isUploading, connected, publicKey, mode, isLoadingPost])
+  }, [isUploading, connected, publicKeyString, mode, isLoadingPost]) // 🔥 M7 FIX: STABLE DEPS
   
   // Функция для определения категории по типу контента
   const getSmartCategory = (type: string): string => {
