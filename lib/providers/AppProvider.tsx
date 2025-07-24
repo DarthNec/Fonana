@@ -31,6 +31,10 @@ interface AppProviderProps {
 
 export function AppProvider({ children }: AppProviderProps) {
   const [isInitialized, setIsInitialized] = useState(false)
+  // 🔥 M7 PHASE 2: Global App State Coordination
+  const [isStable, setIsStable] = useState(false)
+  const [initializationPhase, setInitializationPhase] = useState<'mounting' | 'initializing' | 'stable'>('mounting')
+  
   const { publicKey, connected } = useWallet()
   const { 
     user, 
@@ -59,9 +63,9 @@ export function AppProvider({ children }: AppProviderProps) {
     })
   }, [user, userLoading, connected, publicKey, isInitialized])
 
-  // Инициализация приложения
+  // 🔥 M7 PHASE 2: Coordinated initialization sequence
   useEffect(() => {
-    console.log('[AppProvider] Initializing application...')
+    console.log('[AppProvider] Starting coordinated initialization sequence...')
     
     // Проверяем, что мы на клиенте
     if (typeof window === 'undefined') {
@@ -69,11 +73,40 @@ export function AppProvider({ children }: AppProviderProps) {
       return
     }
     
-    // Настройка WebSocket Event Manager
-    setupDefaultHandlers()
+    const initSequence = async () => {
+      try {
+        console.log('[AppProvider] Phase: mounting → initializing')
+        setInitializationPhase('initializing')
+        
+        // 🔥 Wait for critical dependencies (wallet sync)
+        await new Promise(resolve => setTimeout(resolve, 500))
+        
+        // 🔥 Initialize core services in order
+        console.log('[AppProvider] Setting up WebSocket handlers...')
+        setupDefaultHandlers()
+        
+        console.log('[AppProvider] Initializing user from cache...')
+        await initializeUserFromCache()
+        
+        // 🔥 Mark as stable and signal to DOM
+        console.log('[AppProvider] Phase: initializing → stable')
+        setInitializationPhase('stable')
+        setIsStable(true)
+        
+        // 🔥 Signal to ServiceWorker that app is ready
+        document.body.setAttribute('data-app-initialized', 'true')
+        console.log('[AppProvider] Initialization complete - app stable and ready')
+        
+      } catch (error) {
+        console.error('[AppProvider] Initialization failed:', error)
+        // Still mark as stable to prevent hanging
+        setInitializationPhase('stable')
+        setIsStable(true)
+        document.body.setAttribute('data-app-initialized', 'true')
+      }
+    }
     
-    // Инициализация пользователя из кеша
-    initializeUserFromCache()
+    initSequence()
     
     // 🔥 M7 PHASE 2: Enhanced cleanup при размонтировании
     return () => {
@@ -85,12 +118,24 @@ export function AppProvider({ children }: AppProviderProps) {
         abortControllerRef.current.abort()
       }
       
+      // Clear stability signal
+      document.body.removeAttribute('data-app-initialized')
+      
       cacheManager.cleanup()
     }
   }, [])
 
-  // 🔥 M7 PHASE 2: JWT токен creation с AbortController protection
+  // 🔥 M7 PHASE 2: JWT операции только после app stability
   useEffect(() => {
+    // 🔥 Only proceed if app is stable
+    if (!isStable || initializationPhase !== 'stable') {
+      console.log('[AppProvider] Deferring JWT operations - app not stable yet', {
+        isStable,
+        initializationPhase
+      })
+      return
+    }
+
     // Abort previous operation if running
     if (abortControllerRef.current) {
       console.log('[AppProvider] Aborting previous JWT operation')
@@ -102,7 +147,8 @@ export function AppProvider({ children }: AppProviderProps) {
     const signal = abortControllerRef.current.signal
 
     if (connected && publicKey && isInitialized) {
-      console.log('[AppProvider] Wallet connected, ensuring JWT token exists...')
+      console.log('[AppProvider] App stable - proceeding with JWT creation for wallet:', 
+        publicKey.toBase58().substring(0, 8) + '...')
       
       const performJWTWithAbort = async () => {
         try {
@@ -137,7 +183,7 @@ export function AppProvider({ children }: AppProviderProps) {
         abortControllerRef.current.abort()
       }
     }
-  }, [connected, publicKey, isInitialized])
+  }, [connected, publicKey, isInitialized, isStable, initializationPhase])
 
   /**
    * Обеспечивает существование JWT токена для подключенного кошелька

@@ -32,7 +32,15 @@ export default function ServiceWorkerRegistration() {
 
       // 🔥 M7 SESSION THROTTLING: Check if we already processed SW in this session
       const sessionKey = 'fonana_sw_processed'
-      const lastProcessed = sessionStorage.getItem(sessionKey)
+      let lastProcessed = null
+      
+      // 🛡️ SAFE STORAGE: Handle private browsing and quota limits
+      try {
+        lastProcessed = sessionStorage.getItem(sessionKey)
+      } catch (error) {
+        console.warn('[SW] SessionStorage not available (private browsing?), continuing without throttling:', error.message)
+      }
+      
       const now = Date.now()
       
       if (lastProcessed && (now - parseInt(lastProcessed)) < 300000) { // 5 minutes
@@ -47,8 +55,12 @@ export default function ServiceWorkerRegistration() {
           console.log('[SW] Starting controlled update process...');
           hasRegisteredRef.current = true
           
-          // Mark session to prevent repeated attempts
-          sessionStorage.setItem(sessionKey, now.toString())
+          // 🛡️ SAFE STORAGE: Mark session to prevent repeated attempts
+          try {
+            sessionStorage.setItem(sessionKey, now.toString())
+          } catch (error) {
+            console.warn('[SW] Unable to store session throttling (private browsing?), continuing:', error.message)
+          }
           
           // Получаем текущую регистрацию
           const registration = await navigator.serviceWorker.getRegistration();
@@ -89,8 +101,13 @@ export default function ServiceWorkerRegistration() {
               console.log('[SW] Fallback registration successful:', !!registration);
             } catch (fallbackError) {
               console.error('[SW] Fallback registration failed:', fallbackError);
-              // Clear session flag to allow retry later
-              sessionStorage.removeItem(sessionKey)
+              
+              // 🛡️ SAFE STORAGE: Clear session flag to allow retry later
+              try {
+                sessionStorage.removeItem(sessionKey)
+              } catch (storageError) {
+                console.warn('[SW] Unable to clear session storage (private browsing?), ignoring:', storageError.message)
+              }
             }
           }
         }
