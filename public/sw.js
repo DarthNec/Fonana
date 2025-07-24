@@ -1,7 +1,7 @@
 // Service Worker для Fonana PWA v7 - УПРОЩЕННАЯ ВЕРСИЯ
 // БЕЗ АВТОМАТИЧЕСКИХ ОБНОВЛЕНИЙ - ТОЛЬКО КЕШИРОВАНИЕ
-const SW_VERSION = 'v7-simple-20250702';
-const CACHE_NAME = 'fonana-v7';
+const SW_VERSION = 'v10-webpack-hoisting-fix-20250124';
+const CACHE_NAME = 'fonana-v10-hoisting-fix';
 
 // Ресурсы для предварительного кеширования
 const urlsToCache = [

@@ -43,8 +43,9 @@ export function AppProvider({ children }: AppProviderProps) {
   } = useAppStore()
   const { setJwtReady } = useUserActions()
   
-  // 🔥 PRODUCTION MODE FIX: Unmount protection для async operations
+  // 🔥 M7 PHASE 2: Enhanced lifecycle management 
   const isMountedRef = useRef(true)
+  const abortControllerRef = useRef<AbortController | null>(null)
 
   // Debug логирование для отслеживания race conditions
   useEffect(() => {
@@ -74,19 +75,52 @@ export function AppProvider({ children }: AppProviderProps) {
     // Инициализация пользователя из кеша
     initializeUserFromCache()
     
-    // Очистка при размонтировании
+    // 🔥 M7 PHASE 2: Enhanced cleanup при размонтировании
     return () => {
       console.log('[AppProvider] Cleaning up...')
       isMountedRef.current = false // 🔥 Mark as unmounted
+      
+      // 🔥 M7 PHASE 2: Abort any running operations
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort()
+      }
+      
       cacheManager.cleanup()
     }
   }, [])
 
-  // JWT токен creation при подключении кошелька
+  // 🔥 M7 PHASE 2: JWT токен creation с AbortController protection
   useEffect(() => {
+    // Abort previous operation if running
+    if (abortControllerRef.current) {
+      console.log('[AppProvider] Aborting previous JWT operation')
+      abortControllerRef.current.abort()
+    }
+
+    // Create new AbortController for this operation  
+    abortControllerRef.current = new AbortController()
+    const signal = abortControllerRef.current.signal
+
     if (connected && publicKey && isInitialized) {
       console.log('[AppProvider] Wallet connected, ensuring JWT token exists...')
-      ensureJWTTokenForWallet(publicKey.toBase58())
+      
+      const performJWTWithAbort = async () => {
+        try {
+          if (signal.aborted || !isMountedRef.current) {
+            console.log('[AppProvider] JWT operation cancelled due to abort/unmount')
+            return
+          }
+          await ensureJWTTokenForWallet(publicKey.toBase58())
+        } catch (error: any) {
+          if (error.name === 'AbortError') {
+            console.log('[AppProvider] JWT operation was aborted')
+          } else {
+            console.error('[AppProvider] JWT operation failed:', error)
+          }
+        }
+      }
+      
+      performJWTWithAbort()
     } else if (!connected && isInitialized) {
       console.log('[AppProvider] Wallet disconnected, clearing JWT token...')
       // Clear JWT ready state on disconnect
@@ -96,16 +130,31 @@ export function AppProvider({ children }: AppProviderProps) {
       localStorage.removeItem('fonana_user_wallet')
       jwtManager.logout()
     }
+
+    // 🔥 M7 PHASE 2: Enhanced cleanup
+    return () => {
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort()
+      }
+    }
   }, [connected, publicKey, isInitialized])
 
   /**
    * Обеспечивает существование JWT токена для подключенного кошелька
+   * 🔥 M7 PHASE 2: Enhanced with AbortController support
    */
   const ensureJWTTokenForWallet = async (walletAddress: string) => {
+    const signal = abortControllerRef.current?.signal
     try {
       // 🔥 PRODUCTION MODE FIX: Check if component is still mounted
       if (!isMountedRef.current) {
         console.log('[AppProvider] Component unmounted, aborting JWT creation')
+        return
+      }
+      
+      // 🔥 M7 PHASE 2: Check for abort before setState
+      if (signal?.aborted) {
+        console.log('[AppProvider] Operation aborted before setJwtReady(false)')
         return
       }
       
@@ -119,6 +168,13 @@ export function AppProvider({ children }: AppProviderProps) {
           const tokenData = JSON.parse(savedToken)
           if (tokenData.token && tokenData.expiresAt > Date.now() && tokenData.wallet === walletAddress) {
             console.log('[AppProvider] Valid JWT token already exists for this wallet')
+            
+            // 🔥 M7 PHASE 2: Check for abort before setState
+            if (signal?.aborted) {
+              console.log('[AppProvider] Operation aborted before setJwtReady(true)')
+              return
+            }
+            
             setJwtReady(true) // Set ready immediately for existing valid token
             return
           }
@@ -139,7 +195,8 @@ export function AppProvider({ children }: AppProviderProps) {
         headers: {
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify({ wallet: walletAddress })
+        body: JSON.stringify({ wallet: walletAddress }),
+        signal // 🔥 M7 PHASE 2: AbortController integration
       })
       
       const response = await Promise.race([tokenPromise, timeoutPromise])
