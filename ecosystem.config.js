@@ -2,9 +2,10 @@ module.exports = {
   apps: [
     {
       name: 'fonana',
-      script: './start-production-final.js',
+      script: 'npm',
+      args: 'start',
       instances: 1,
-      exec_mode: 'cluster',
+      exec_mode: 'fork',
       max_memory_restart: '500M',
       error_file: '/var/www/Fonana/logs/pm2-error.log',
       out_file: '/var/www/Fonana/logs/pm2-out.log',
