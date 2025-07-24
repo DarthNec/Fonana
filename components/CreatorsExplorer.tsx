@@ -38,27 +38,30 @@ export default function CreatorsExplorer() {
   const [activeTab, setActiveTab] = useState<'recommendations' | 'subscriptions' | 'all'>('recommendations')
 
   const { publicKey } = useWallet()
+  
+  // 🔥 EMERGENCY FIX: Stable publicKey string for dependencies
+  const publicKeyString = publicKey?.toBase58()
 
   // Load creators list
   useEffect(() => {
     fetchCreators()
   }, [])
 
-  // Load user subscriptions and visibility preferences
+  // 🔥 FIXED: Load user subscriptions with stable dependency
   useEffect(() => {
-    if (publicKey) {
+    if (publicKeyString) {
       fetchUserSubscriptions()
     }
-  }, [publicKey])
+  }, [publicKeyString])
 
   // Automatically switch to the right tab
   useEffect(() => {
-    if (!publicKey) {
+    if (!publicKeyString) {
       setActiveTab('all')
     } else if (subscribedCreatorIds.length === 0) {
       setActiveTab('recommendations')
     }
-  }, [publicKey, subscribedCreatorIds])
+  }, [publicKeyString, subscribedCreatorIds])
 
   useEffect(() => {
     // Hide info blocks after 3 seconds
@@ -99,7 +102,7 @@ export default function CreatorsExplorer() {
 
   const fetchUserSubscriptions = async () => {
     try {
-      const response = await fetch(`/api/user?wallet=${publicKey?.toBase58()}`)
+      const response = await fetch(`/api/user?wallet=${publicKeyString}`)
       const userData = await response.json()
       
       console.log('[CreatorsExplorer] User data:', userData)
@@ -150,7 +153,7 @@ export default function CreatorsExplorer() {
   }
 
   const handleSubscribeClick = (creator: Creator) => {
-    if (!publicKey) {
+    if (!publicKeyString) {
       toast.error('Connect wallet to subscribe')
       return
     }
