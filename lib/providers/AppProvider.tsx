@@ -36,6 +36,10 @@ export function AppProvider({ children }: AppProviderProps) {
   const [initializationPhase, setInitializationPhase] = useState<'mounting' | 'initializing' | 'stable'>('mounting')
   
   const { publicKey, connected } = useWallet()
+  
+  // 🔥 CRITICAL FIX: Stable publicKey string for dependencies
+  const publicKeyString = publicKey?.toBase58()
+  
   const { 
     user, 
     setUser, 
@@ -51,17 +55,17 @@ export function AppProvider({ children }: AppProviderProps) {
   const isMountedRef = useRef(true)
   const abortControllerRef = useRef<AbortController | null>(null)
 
-  // Debug логирование для отслеживания race conditions
+  // 🔥 FIXED: Debug логирование с stable dependencies
   useEffect(() => {
     console.log('[AppProvider][Debug] State update:', {
       user: user?.id ? `User ${user.id}` : 'No user',
       userLoading,
       connected,
-      publicKey: publicKey?.toBase58() || 'No publicKey',
+      publicKey: publicKeyString || 'No publicKey',
       isInitialized,
       window: typeof window !== 'undefined' ? 'Client' : 'SSR'
     })
-  }, [user, userLoading, connected, publicKey, isInitialized])
+  }, [user?.id, userLoading, connected, publicKeyString, isInitialized])
 
   // 🔥 M7 PHASE 2: Coordinated initialization sequence
   useEffect(() => {
@@ -125,7 +129,7 @@ export function AppProvider({ children }: AppProviderProps) {
     }
   }, [])
 
-  // 🔥 M7 PHASE 2: JWT операции только после app stability
+  // 🔥 M7 PHASE 2: JWT операции только после app stability - FIXED DEPENDENCIES
   useEffect(() => {
     // 🔥 Only proceed if app is stable
     if (!isStable || initializationPhase !== 'stable') {
@@ -146,9 +150,9 @@ export function AppProvider({ children }: AppProviderProps) {
     abortControllerRef.current = new AbortController()
     const signal = abortControllerRef.current.signal
 
-    if (connected && publicKey && isInitialized) {
+    if (connected && publicKeyString && isInitialized) {
       console.log('[AppProvider] App stable - proceeding with JWT creation for wallet:', 
-        publicKey.toBase58().substring(0, 8) + '...')
+        publicKeyString.substring(0, 8) + '...')
       
       const performJWTWithAbort = async () => {
         try {
@@ -156,7 +160,7 @@ export function AppProvider({ children }: AppProviderProps) {
             console.log('[AppProvider] JWT operation cancelled due to abort/unmount')
             return
           }
-          await ensureJWTTokenForWallet(publicKey.toBase58())
+          await ensureJWTTokenForWallet(publicKeyString)
         } catch (error: any) {
           if (error.name === 'AbortError') {
             console.log('[AppProvider] JWT operation was aborted')
@@ -183,7 +187,7 @@ export function AppProvider({ children }: AppProviderProps) {
         abortControllerRef.current.abort()
       }
     }
-  }, [connected, publicKey, isInitialized, isStable, initializationPhase])
+  }, [connected, publicKeyString, isInitialized, isStable, initializationPhase])
 
   /**
    * Обеспечивает существование JWT токена для подключенного кошелька
