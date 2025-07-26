@@ -6,7 +6,7 @@
 
 'use client'
 
-import { useEffect, ReactNode, useState, useRef } from 'react'
+import { useEffect, ReactNode, useState, useRef, useCallback } from 'react'
 import dynamic from 'next/dynamic'
 import { useAppStore, useUserActions } from '@/lib/store/appStore'
 import { setupDefaultHandlers } from '@/lib/services/WebSocketEventManager'
@@ -40,14 +40,20 @@ export function AppProvider({ children }: AppProviderProps) {
   // 🔥 CRITICAL FIX: Stable publicKey string for dependencies
   const publicKeyString = publicKey?.toBase58()
   
-  // 🔥 EMERGENCY FIX: Clean selectors without console.log to prevent infinite loops
-  const user = useAppStore((state: any) => state.user)
-  const userLoading = useAppStore((state: any) => state.userLoading)
-  const setUser = useAppStore((state: any) => state.setUser)
-  const setUserLoading = useAppStore((state: any) => state.setUserLoading)
-  const setUserError = useAppStore((state: any) => state.setUserError)
-  const refreshUser = useAppStore((state: any) => state.refreshUser)
-  const setNotifications = useAppStore((state: any) => state.setNotifications)
+  // 🔥 M7 CRITICAL FIX: Proper Zustand v5 patterns - individual selectors for single values
+  const user = useAppStore((state) => state.user)
+  const userLoading = useAppStore((state) => state.userLoading)
+
+  // 🔥 M7 CRITICAL FIX: useShallow for multiple related values
+  const { setUser, setUserLoading, setUserError, refreshUser, setNotifications } = useAppStore(
+    useShallow((state) => ({
+      setUser: state.setUser,
+      setUserLoading: state.setUserLoading,
+      setUserError: state.setUserError,
+      refreshUser: state.refreshUser,
+      setNotifications: state.setNotifications,
+    })),
+  )
   
   const { setJwtReady } = useUserActions()
   
@@ -55,17 +61,20 @@ export function AppProvider({ children }: AppProviderProps) {
   const isMountedRef = useRef(true)
   const abortControllerRef = useRef<AbortController | null>(null)
 
-  // 🔥 FIXED: Debug логирование с stable dependencies
+  // 🔥 M7 CRITICAL FIX: REMOVED dangerous useEffect dependency chain
+  // (No more logging that triggers infinite loops)
+
+  // 🔥 M7 CRITICAL FIX: Guaranteed stabilization timeout fallback
   useEffect(() => {
-    console.log('[AppProvider][Debug] State update:', {
-      user: user?.id ? `User ${user.id}` : 'No user',
-      userLoading,
-      connected,
-      publicKey: publicKeyString || 'No publicKey',
-      isInitialized,
-      window: typeof window !== 'undefined' ? 'Client' : 'SSR'
-    })
-  }, [user?.id, userLoading, connected, publicKeyString, isInitialized])
+    const stabilizationTimeout = setTimeout(() => {
+      console.warn('[AppProvider] Force stabilization after 5s timeout')
+      setInitializationPhase('stable')
+      setIsStable(true)
+      document.body.setAttribute('data-app-initialized', 'true')
+    }, 5000) // 5 second maximum initialization time
+    
+    return () => clearTimeout(stabilizationTimeout)
+  }, []) // Empty deps - runs once on mount
 
   // 🔥 M7 PHASE 2: Coordinated initialization sequence
   useEffect(() => {
@@ -129,13 +138,30 @@ export function AppProvider({ children }: AppProviderProps) {
     }
   }, [])
 
-  // 🔥 M7 PHASE 2: JWT операции только после app stability - FIXED DEPENDENCIES
+  // 🔥 M7 CRITICAL FIX: JWT операции с COMPLETE DEPENDENCIES для устранения infinite loop
   useEffect(() => {
-    // 🔥 CRITICAL FIX: Check isStable INSIDE useEffect to prevent infinite loop
+    console.log('[AppProvider][Dependencies] Effect triggered by:', {
+      connected, 
+      publicKeyString: publicKeyString?.substring(0, 8) + '...', 
+      isInitialized, 
+      isStable, 
+      initializationPhase,
+      timestamp: Date.now()
+    })
+
+    // 🔥 ABORT if app not stable yet
     if (!isStable || initializationPhase !== 'stable') {
       console.log('[AppProvider] Deferring JWT operations - app not stable yet', {
         isStable,
         initializationPhase
+      })
+      return
+    }
+
+    // 🔥 ABORT if no wallet connection
+    if (!connected || !publicKeyString || !isInitialized) {
+      console.log('[AppProvider] Skipping JWT operations - missing requirements:', {
+        connected, hasPublicKey: !!publicKeyString, isInitialized
       })
       return
     }
@@ -150,28 +176,38 @@ export function AppProvider({ children }: AppProviderProps) {
     abortControllerRef.current = new AbortController()
     const signal = abortControllerRef.current.signal
 
-    if (connected && publicKeyString && isInitialized) {
-      console.log('[AppProvider] App stable - proceeding with JWT creation for wallet:', 
-        publicKeyString.substring(0, 8) + '...')
-      
-      const performJWTWithAbort = async () => {
-        try {
-          if (signal.aborted || !isMountedRef.current) {
-            console.log('[AppProvider] JWT operation cancelled due to abort/unmount')
-            return
-          }
-          await ensureJWTTokenForWallet(publicKeyString)
-        } catch (error: any) {
-          if (error.name === 'AbortError') {
-            console.log('[AppProvider] JWT operation was aborted')
-          } else {
-            console.error('[AppProvider] JWT operation failed:', error)
-          }
+    console.log('[AppProvider] App stable - proceeding with JWT creation for wallet:', 
+      publicKeyString.substring(0, 8) + '...')
+    
+    const performJWTWithAbort = async () => {
+      try {
+        if (signal.aborted || !isMountedRef.current) {
+          console.log('[AppProvider] JWT operation cancelled due to abort/unmount')
+          return
+        }
+        await ensureJWTTokenForWallet(publicKeyString)
+      } catch (error: any) {
+        if (error.name === 'AbortError') {
+          console.log('[AppProvider] JWT operation was aborted')
+        } else {
+          console.error('[AppProvider] JWT operation failed:', error)
         }
       }
-      
-      performJWTWithAbort()
-    } else if (!connected && isInitialized) {
+    }
+    
+    performJWTWithAbort()
+
+    // 🔥 M7 PHASE 2: Enhanced cleanup
+    return () => {
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort()
+      }
+    }
+  }, [connected, publicKeyString, isInitialized, isStable, initializationPhase]) // 🔥 M7 CRITICAL FIX: COMPLETE DEPENDENCIES
+
+  // 🔥 Handle disconnection separately to avoid conflicts
+  useEffect(() => {
+    if (!connected && isInitialized) {
       console.log('[AppProvider] Wallet disconnected, clearing JWT token...')
       // Clear JWT ready state on disconnect
       setJwtReady(false)
@@ -180,14 +216,7 @@ export function AppProvider({ children }: AppProviderProps) {
       localStorage.removeItem('fonana_user_wallet')
       jwtManager.logout()
     }
-
-    // 🔥 M7 PHASE 2: Enhanced cleanup
-    return () => {
-      if (abortControllerRef.current) {
-        abortControllerRef.current.abort()
-      }
-    }
-  }, [connected, publicKeyString, isInitialized]) // 🔥 M7 CRITICAL FIX: Remove isStable/initializationPhase to prevent infinite loop
+  }, [connected, isInitialized, setJwtReady])
 
   /**
    * Обеспечивает существование JWT токена для подключенного кошелька
@@ -422,14 +451,28 @@ export function AppProvider({ children }: AppProviderProps) {
   )
 }
 
-// Хук для доступа к состоянию приложения
+// 🔥 M7 CRITICAL FIX: Consistent useShallow patterns for export hooks
 export const useApp = () => {
-  return useAppStore()
+  return useAppStore(
+    useShallow((state) => ({
+      user: state.user,
+      userLoading: state.userLoading,
+      userError: state.userError,
+      connected: state.connected,
+      isInitialized: state.isInitialized,
+    })),
+  )
 }
 
-// Хук для проверки готовности приложения
+// 🔥 M7 CRITICAL FIX: useShallow pattern for useAppReady
 export const useAppReady = () => {
-  const { user, userLoading, userError } = useAppStore()
+  const { user, userLoading, userError } = useAppStore(
+    useShallow((state) => ({
+      user: state.user,
+      userLoading: state.userLoading,
+      userError: state.userError,
+    })),
+  )
   
   return {
     isReady: !userLoading && (user !== null || userError !== null),

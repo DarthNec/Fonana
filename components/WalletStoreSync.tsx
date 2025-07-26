@@ -1,12 +1,12 @@
 /**
- * 🔥 M7 PHASE 1: ULTRA-CONSERVATIVE WALLETSTONESYNC STABILIZATION
+ * 🔥 M7 PHASE 1 + OPTIMIZATION: WALLETSTONESYNC STABILIZATION
  * 
  * CRITICAL CHANGES:
- * - Empty dependency arrays for useCallback (prevent re-renders)
- * - Ultra-low circuit breaker threshold (3 updates vs 15)
- * - Ref-based state (no setState on unmounted components)
- * - Minimal useEffect dependencies
+ * - Reasonable circuit breaker threshold (10 vs 3)
+ * - Debounced state updates to prevent rapid firing  
+ * - Auto-reset circuit breaker mechanism
  * - Enhanced logging for debugging
+ * - Stable callbacks with minimal dependencies
  */
 
 'use client'
@@ -14,58 +14,71 @@
 import { useCallback, useEffect, useRef } from 'react'
 import { useWallet as useOriginalWallet } from '@solana/wallet-adapter-react'
 import { useWalletStore } from '@/lib/store/walletStore'
+import { debounce } from 'lodash-es'
 
 export function WalletStoreSync() {
   const walletAdapter = useOriginalWallet()
   const { setAdapter, updateState } = useWalletStore()
   
-  // 🔥 M7 ULTRA-CONSERVATIVE CIRCUIT BREAKER
+  // 🔥 M7 OPTIMIZED CIRCUIT BREAKER
   const updateCountRef = useRef(0)
   const isCircuitOpenRef = useRef(false)
   const isMountedRef = useRef(true)
   
-  console.log('[WalletStoreSync] M7 Phase 1 - Component mounted with ultra-conservative circuit breaker')
+  console.log('[WalletStoreSync] M7 Optimized - Component mounted with reasonable circuit breaker (10 updates)')
   
   // 🔥 STABLE CALLBACKS WITH EMPTY DEPENDENCIES
   const stableSetAdapter = useCallback((adapter: any) => {
     if (isCircuitOpenRef.current || !isMountedRef.current) {
-      console.log('[WalletStoreSync] M7 Phase 1 - setAdapter blocked (circuit open or unmounted)')
+      console.log('[WalletStoreSync] setAdapter blocked (circuit open or unmounted)')
       return
     }
-    console.log('[WalletStoreSync] M7 Phase 1 - Setting adapter:', !!adapter)
+    console.log('[WalletStoreSync] Setting adapter:', !!adapter)
     setAdapter(adapter)
   }, []) // 🔥 EMPTY DEPENDENCIES!
 
-  const stableUpdateState = useCallback((newState: any) => {
-    if (isCircuitOpenRef.current || !isMountedRef.current) {
-      console.log('[WalletStoreSync] M7 Phase 1 - updateState blocked (circuit open or unmounted)')
-      return
-    }
-    
-    updateCountRef.current++
-    console.log(`[WalletStoreSync] M7 Phase 1 - Update ${updateCountRef.current}/3`)
-    
-    if (updateCountRef.current >= 3) { // 🔥 ULTRA-LOW THRESHOLD (was 15)
-      console.warn('[WalletStoreSync] M7 Phase 1 - CIRCUIT BREAKER: 3 updates reached, stopping all further updates')
-      isCircuitOpenRef.current = true
-      return
-    }
-    
-    console.log('[WalletStoreSync] M7 Phase 1 - Updating state:', {
-      connected: newState.connected,
-      publicKey: !!newState.publicKey,
-      connecting: newState.connecting,
-      disconnecting: newState.disconnecting,
-      wallet: !!newState.wallet
-    })
-    updateState(newState)
-  }, []) // 🔥 EMPTY DEPENDENCIES!
+  // 🔥 M7 OPTIMIZATION: Debounced state updates with reasonable circuit breaker
+  const debouncedUpdateState = useCallback(
+    debounce((newState: any) => {
+      if (isCircuitOpenRef.current || !isMountedRef.current) {
+        console.log('[WalletStoreSync] Debounced update blocked (circuit open or unmounted)')
+        return
+      }
+      
+      updateCountRef.current++
+      console.log(`[WalletStoreSync] Debounced update ${updateCountRef.current}/10`)
+      
+      // 🔥 REASONABLE CIRCUIT BREAKER (10 vs 3)
+      if (updateCountRef.current >= 10) {
+        console.warn('[WalletStoreSync] Circuit breaker activated after 10 updates')
+        isCircuitOpenRef.current = true
+        
+        // 🔥 AUTO-RESET CIRCUIT BREAKER after 30 seconds
+        setTimeout(() => {
+          console.log('[WalletStoreSync] Resetting circuit breaker after 30s')
+          updateCountRef.current = 0
+          isCircuitOpenRef.current = false
+        }, 30000)
+        return
+      }
+      
+      console.log('[WalletStoreSync] Updating state:', {
+        connected: newState.connected,
+        publicKey: !!newState.publicKey,
+        connecting: newState.connecting,
+        disconnecting: newState.disconnecting,
+        wallet: !!newState.wallet
+      })
+      updateState(newState)
+    }, 250), // 🔥 250ms debounce to prevent rapid firing
+    []
+  )
   
   // 🔥 MINIMAL useEffect PATTERNS
   useEffect(() => {
-    console.log('[WalletStoreSync] M7 Phase 1 - Adapter changed, setting adapter')
+    console.log('[WalletStoreSync] Adapter changed, setting adapter')
     stableSetAdapter(walletAdapter)
-  }, [walletAdapter]) // 🔥 ONLY walletAdapter dependency
+  }, [walletAdapter, stableSetAdapter]) // Add stableSetAdapter to deps for completeness
   
   // 🔥 M7 PHASE 3 FIX: Stable publicKey string
   const publicKeyString = walletAdapter.publicKey?.toString() || null
@@ -80,20 +93,23 @@ export function WalletStoreSync() {
         wallet: walletAdapter.wallet
       }
       
-      console.log('[WalletStoreSync] M7 Phase 1 - Wallet state changed, updating store')
-      stableUpdateState(walletState)
+      console.log('[WalletStoreSync] Wallet state changed, triggering debounced update')
+      debouncedUpdateState(walletState)
     } else {
-      console.log('[WalletStoreSync] M7 Phase 1 - State update skipped (circuit open or unmounted)')
+      console.log('[WalletStoreSync] State update skipped (circuit open or unmounted)')
     }
-  }, [walletAdapter.connected, publicKeyString]) // 🔥 M7 PHASE 3 FIX: Stable string dependency!
+  }, [walletAdapter.connected, publicKeyString, debouncedUpdateState]) // Include debouncedUpdateState in deps
   
   // 🔥 CLEANUP
   useEffect(() => {
     return () => {
-      console.log('[WalletStoreSync] M7 Phase 1 - Component unmounting, setting isMountedRef to false')
+      console.log('[WalletStoreSync] Component unmounting, setting isMountedRef to false')
       isMountedRef.current = false
+      
+      // 🔥 Cancel any pending debounced updates
+      debouncedUpdateState.cancel()
     }
-  }, [])
+  }, [debouncedUpdateState])
   
   return null
 } 
