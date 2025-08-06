@@ -12,10 +12,10 @@ function getSolanaRpcUrl(): string {
     return customRpcUrl;
   }
   
-  // Иначе используем стандартные endpoints Solana
+  // Иначе используем Helius для mainnet или стандартные endpoints
   if (network === 'mainnet-beta') {
-    const url = clusterApiUrl('mainnet-beta');
-    console.log('[Solana Config] Using mainnet-beta RPC:', url);
+    const url = 'https://rpc.helius.xyz/?api-key=29fc7f17-2a08-48da-9c14-88780e1fedd0';
+    console.log('[Solana Config] Using Helius mainnet RPC:', url);
     return url;
   } else if (network === 'testnet') {
     const url = clusterApiUrl('testnet');
@@ -36,7 +36,7 @@ console.log('[Solana Config] Final RPC URL:', rpcUrl);
 
 export const connection = new Connection(rpcUrl, 'confirmed');
 
-// Экспортируем также платформенный кошелек
+// Экспортируем также платформенный кошелек - используем основной для mainnet
 export const PLATFORM_WALLET = process.env.NEXT_PUBLIC_PLATFORM_WALLET || 'EEqsmopVfTuaiJrh8xL7ZsZbUctckY6S5WyHYR66wjpw';
 
 console.log('[Solana Config] Platform wallet:', PLATFORM_WALLET);
@@ -51,11 +51,11 @@ export const SOLANA_CONFIG = {
   // Network configuration
   NETWORK: process.env.NEXT_PUBLIC_SOLANA_NETWORK || 'mainnet-beta',
   RPC_HOST: process.env.NEXT_PUBLIC_SOLANA_RPC_HOST || 
-    'https://tame-smart-panorama.solana-mainnet.quiknode.pro/0e70fc875702b126bf8b93cdcd626680e9c48894/',
+    'https://rpc.helius.xyz/?api-key=29fc7f17-2a08-48da-9c14-88780e1fedd0',
   WS_ENDPOINT: process.env.NEXT_PUBLIC_SOLANA_WS_ENDPOINT ||
-    'wss://tame-smart-panorama.solana-mainnet.quiknode.pro/0e70fc875702b126bf8b93cdcd626680e9c48894/',
+    'wss://rpc.helius.xyz/?api-key=29fc7f17-2a08-48da-9c14-88780e1fedd0',
   
-  // Platform configuration
+  // Platform configuration - используем основной кошелек для mainnet
   PLATFORM_WALLET: process.env.NEXT_PUBLIC_PLATFORM_WALLET || 'EEqsmopVfTuaiJrh8xL7ZsZbUctckY6S5WyHYR66wjpw',
   
   // Таймауты

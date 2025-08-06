@@ -1,8 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { prisma } from '@/lib/prisma'
+import { PrismaClient } from '@prisma/client'
 import { waitForTransactionConfirmation } from '@/lib/solana/validation'
 import jwt from 'jsonwebtoken'
 import { ENV } from '@/lib/constants/env'
+
+const prisma = new PrismaClient()
 
 // Purchase a paid message
 export async function POST(
@@ -10,18 +12,27 @@ export async function POST(
   { params }: { params: { id: string } }
 ) {
   try {
+    console.log('[API/messages/purchase] Starting purchase process...')
+    
     // Проверяем JWT токен
     const authHeader = request.headers.get('authorization')
+    console.log('[API/messages/purchase] Auth header:', authHeader ? 'present' : 'missing')
+    
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      console.log('[API/messages/purchase] No valid auth header')
       return NextResponse.json({ error: 'No token provided' }, { status: 401 })
     }
 
     const token = authHeader.split(' ')[1]
+    console.log('[API/messages/purchase] Token received:', token ? 'yes' : 'no')
+    
     let decoded: any
     
     try {
       decoded = jwt.verify(token, ENV.NEXTAUTH_SECRET)
+      console.log('[API/messages/purchase] Token verified, userId:', decoded.userId)
     } catch (error) {
+      console.log('[API/messages/purchase] Token verification failed:', error)
       return NextResponse.json({ error: 'Invalid token' }, { status: 401 })
     }
     
@@ -63,16 +74,30 @@ export async function POST(
       return NextResponse.json({ error: 'Message is not paid' }, { status: 400 })
     }
     
-    // Check if user is participant of the conversation using raw query
-    const isParticipant = await prisma.$queryRaw<{count: bigint}[]>`
-      SELECT COUNT(*) as count
-      FROM "_UserConversations"
-      WHERE "A" = ${message.conversationId} AND "B" = ${user.id}
+    // Check if user is participant of the conversation using new structure
+    console.log('[API/messages/purchase] Checking conversation participation...')
+    const conversation = await prisma.$queryRaw<{fromUserId: string, toUserId: string}[]>`
+      SELECT "fromUserId", "toUserId"
+      FROM "Conversation"
+      WHERE id = ${message.conversationId}
     `
     
-    if (!isParticipant[0] || Number(isParticipant[0].count) === 0) {
+    console.log('[API/messages/purchase] Conversation query result:', conversation)
+    
+    if (!conversation || conversation.length === 0) {
+      console.log('[API/messages/purchase] Conversation not found')
+      return NextResponse.json({ error: 'Conversation not found' }, { status: 404 })
+    }
+    
+    const conv = conversation[0]
+    console.log('[API/messages/purchase] User ID:', user.id, 'Conversation participants:', conv.fromUserId, conv.toUserId)
+    
+    if (conv.fromUserId !== user.id && conv.toUserId !== user.id) {
+      console.log('[API/messages/purchase] Access denied - user not participant')
       return NextResponse.json({ error: 'Access denied' }, { status: 403 })
     }
+    
+    console.log('[API/messages/purchase] User is participant, continuing...')
     
     // Check if already purchased
     const existingPurchase = await prisma.messagePurchase.findUnique({

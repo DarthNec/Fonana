@@ -3,11 +3,13 @@
  * Заменяет UserContext, NotificationContext, CreatorContext
  */
 
+'use client'
+
 import { create } from 'zustand'
 import { devtools, persist } from 'zustand/middleware'
 import { UnifiedPost } from '@/types/posts'
-import { useCallback, useMemo } from 'react'
 import { throttle } from 'lodash-es' // 🔥 M7 FIX: Throttle for store actions
+import { useState, useEffect, useMemo } from 'react'
 
 // Типы пользователя
 export interface User {
@@ -182,6 +184,35 @@ export const useAppStore = create<AppStore>()(
             nickname: user?.nickname,
             timestamp: Date.now() 
           })
+          
+          // 🔥 ДЕТАЛЬНОЕ ЛОГИРОВАНИЕ В ZUSTAND STORE
+          if (user) {
+            console.log('🎯 [ZUSTAND STORE] Setting user in global store:')
+            console.log('📊 User Object in Store:', {
+              id: user.id,
+              wallet: user.wallet,
+              solanaWallet: user.solanaWallet,
+              nickname: user.nickname,
+              fullName: user.fullName,
+              bio: user.bio,
+              avatar: user.avatar,
+              backgroundImage: user.backgroundImage,
+              isVerified: user.isVerified,
+              isCreator: user.isCreator,
+              followersCount: user.followersCount,
+              followingCount: user.followingCount,
+              postsCount: user.postsCount,
+              createdAt: user.createdAt,
+              updatedAt: user.updatedAt,
+              referrerId: user.referrerId,
+              referrer: user.referrer
+            })
+            console.log('🔍 Complete User Object:', JSON.stringify(user, null, 2))
+            console.log('🎯 [ZUSTAND STORE] User set successfully')
+          } else {
+            console.log('🎯 [ZUSTAND STORE] Clearing user from store (user = null)')
+          }
+          
           set({ user })
         },
         setUserLoading: (userLoading) => set({ userLoading }),
@@ -190,8 +221,10 @@ export const useAppStore = create<AppStore>()(
         setUserError: (userError) => set({ userError }),
         
         setJwtReady: (isJwtReady) => {
-          console.log('[AppStore] setJwtReady:', isJwtReady)
+          console.log('[AppStore] setJwtReady called with:', isJwtReady)
+          console.log('[AppStore] Previous isJwtReady state:', get().isJwtReady)
           set({ isJwtReady })
+          console.log('[AppStore] New isJwtReady state:', get().isJwtReady)
         },
 
         updateProfile: async (profileData) => {
@@ -461,7 +494,141 @@ export const useUserError = () => {
 // JWT Ready State Hook
 export const useJwtReady = () => {
   if (typeof window === 'undefined') return false // SSR guard
-  return useAppStore(state => state.isJwtReady)
+  
+  const { setJwtReady, user, isJwtReady: storeJwtReady } = useAppStore(state => ({
+    setJwtReady: state.setJwtReady,
+    user: state.user,
+    isJwtReady: state.isJwtReady
+  }))
+  
+  // 🔥 ИСПОЛЬЗУЕМ useState И useEffect ДЛЯ АСИНХРОННОЙ ПРОВЕРКИ
+  const [isReady, setIsReady] = useState(false)
+  const [hasChecked, setHasChecked] = useState(false)
+  
+  useEffect(() => {
+    // 🔥 ЖДЕМ, ПОКА ПОЛЬЗОВАТЕЛЬ ЗАГРУЗИТСЯ
+    if (!user) {
+      console.log('[useJwtReady] Waiting for user to load...')
+      return
+    }
+    
+    if (hasChecked) {
+      console.log('[useJwtReady] Already checked, skipping...')
+      return // Уже проверили
+    }
+    
+    // 🔥 ПРОВЕРЯЕМ, НЕ ГОТОВ ЛИ УЖЕ JWT В STORE
+    if (storeJwtReady) {
+      console.log('[useJwtReady] JWT already ready in store, setting local state...')
+      setIsReady(true)
+      setHasChecked(true)
+      return
+    }
+    
+    console.log('[useJwtReady] User loaded, starting token check and creation...')
+    
+    const createOrValidateToken = async () => {
+      try {
+        // 🔥 ПРОВЕРЯЕМ ТОКЕН В LOCALSTORAGE
+        const savedToken = localStorage.getItem('fonana_jwt_token')
+        console.log('[useJwtReady] Checking existing token:', !!savedToken)
+        
+        let isValidToken = false
+        
+                  if (savedToken) {
+            try {
+              const tokenData = JSON.parse(savedToken)
+              
+              // 🔥 ПРОВЕРЯЕМ ТОЛЬКО НАЛИЧИЕ ТОКЕНА И ВАЛИДНОСТЬ ПО ВРЕМЕНИ
+              isValidToken = tokenData.token && tokenData.expiresAt > Date.now()
+              
+              console.log('[useJwtReady] Token validation:', {
+                hasToken: !!tokenData.token,
+                isValid: tokenData.expiresAt > Date.now(),
+                isValidToken
+              })
+            } catch (error) {
+              console.warn('[useJwtReady] Error parsing token:', error)
+            }
+          }
+        
+        // 🔥 ЕСЛИ ТОКЕН НЕВАЛИДЕН - СОЗДАЕМ НОВЫЙ
+        if (!isValidToken) {
+          const currentWallet = localStorage.getItem('fonana_user_wallet')
+          if (currentWallet) {
+            // 🔥 ПРОВЕРЯЕМ, НЕ СОЗДАЕМ ЛИ МЫ УЖЕ ТОКЕН
+            if (hasChecked) {
+              console.log('[useJwtReady] Already tried to create token, skipping...')
+              return
+            }
+            
+            console.log('[useJwtReady] Creating new token for wallet:', currentWallet.substring(0, 8) + '...')
+            
+            const response = await fetch(`/api/auth/token?wallet=${currentWallet}`, {
+              method: 'GET',
+              headers: { 'Content-Type': 'application/json' }
+            })
+            
+            if (response.ok) {
+              const tokenData = await response.json()
+              if (tokenData.token) {
+                // 🔥 СОХРАНЯЕМ НОВЫЙ ТОКЕН
+                const tokenToSave = {
+                  token: tokenData.token,
+                  expiresAt: Date.now() + (30 * 24 * 60 * 60 * 1000), // 30 дней
+                  userId: tokenData.user.id,
+                  wallet: tokenData.user.wallet
+                }
+                localStorage.setItem('fonana_jwt_token', JSON.stringify(tokenToSave))
+                console.log('[useJwtReady] New token created and saved!')
+                setJwtReady(true)
+                setIsReady(true)
+                setHasChecked(true)
+                return
+              }
+            } else {
+              console.error('[useJwtReady] Failed to create token:', response.status)
+            }
+          } else {
+            console.log('[useJwtReady] No wallet found, cannot create token')
+          }
+        } else {
+          // 🔥 ТОКЕН ВАЛИДЕН - ИСПОЛЬЗУЕМ ЕГО
+          console.log('[useJwtReady] Valid token found! Setting ready to true')
+          setJwtReady(true)
+          setIsReady(true)
+          setHasChecked(true)
+          return
+        }
+        
+        // 🔥 ЕСЛИ НЕ УДАЛОСЬ СОЗДАТЬ ТОКЕН - ПРОБУЕМ ЕЩЕ РАЗ ЧЕРЕЗ 1 СЕКУНДУ
+        if (!hasChecked) {
+          console.log('[useJwtReady] Token creation failed, retrying in 1s...')
+          setTimeout(createOrValidateToken, 1000)
+        }
+        
+      } catch (error) {
+        console.warn('[useJwtReady] Error in token creation:', error)
+        // Повторяем попытку через 1 секунду
+        if (!hasChecked) {
+          setTimeout(createOrValidateToken, 1000)
+        }
+      }
+    }
+    
+    // Запускаем создание/проверку токена
+    createOrValidateToken()
+    
+    // Останавливаем через 10 секунд
+    const timeout = setTimeout(() => {
+      console.log('[useJwtReady] Token creation timeout, giving up')
+      setHasChecked(true)
+    }, 10000)
+    
+    return () => clearTimeout(timeout)
+  }, [setJwtReady, hasChecked, user])
+  
+  return isReady
 }
 
 // ✅ ИСПРАВЛЕНО: Мемоизируем selector для userActions

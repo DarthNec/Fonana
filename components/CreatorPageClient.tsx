@@ -11,6 +11,7 @@ import ProfileSetupModal from './ProfileSetupModal'
 import CreatePostModal from './CreatePostModal'
 import SubscribeModal from './SubscribeModal'
 import PurchaseModal from './PurchaseModal'
+import { useSafeWalletModal } from '@/lib/hooks/useSafeWalletModal'
 import { CheckBadgeIcon, UsersIcon, DocumentTextIcon, CurrencyDollarIcon, PencilIcon, ShareIcon, PhotoIcon, ChatBubbleLeftIcon } from '@heroicons/react/24/outline'
 import { HeartIcon as HeartSolidIcon } from '@heroicons/react/24/solid'
 import Link from 'next/link'
@@ -56,6 +57,8 @@ export default function CreatorPageClient({ creatorId }: CreatorPageClientProps)
   const [activeTab, setActiveTab] = useState<'all' | 'media'>('all')
   const [isUploadingBackground, setIsUploadingBackground] = useState(false)
   const [isCreatingConversation, setIsCreatingConversation] = useState(false)
+  const [isFollowing, setIsFollowing] = useState(false)
+  const [isFollowLoading, setIsFollowLoading] = useState(false)
   const backgroundInputRef = useRef<HTMLInputElement>(null)
   
   // Posts модалки
@@ -67,9 +70,37 @@ export default function CreatorPageClient({ creatorId }: CreatorPageClientProps)
   
   const user = useUser()
   const router = useRouter()
+  const { setVisible } = useSafeWalletModal()
 
   // Определяем, является ли текущий пользователь владельцем профиля
   const isOwner = user?.id === creatorId
+
+  // Проверяем статус фолловинга
+  useEffect(() => {
+    const checkFollowStatus = async () => {
+      if (!user || !creator || isOwner) return
+      
+      try {
+        const token = await jwtManager.getToken()
+        if (!token) return
+        
+        const response = await fetch(`/api/follow?followingId=${creator.id}`, {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        })
+        
+        if (response.ok) {
+          const data = await response.json()
+          setIsFollowing(data.isFollowing)
+        }
+      } catch (error) {
+        console.error('Error checking follow status:', error)
+      }
+    }
+    
+    checkFollowStatus()
+  }, [user, creator, isOwner])
 
   // Posts data с фильтрацией по создателю
   const postsData = useOptimizedPosts({
@@ -260,6 +291,22 @@ export default function CreatorPageClient({ creatorId }: CreatorPageClientProps)
   const handlePostAction = async (action: PostAction) => {
     console.log('[CreatorPageClient] Post action:', action)
     
+    // Проверяем аутентификацию для действий, требующих подключения кошелька
+    if (['subscribe', 'purchase', 'like'].includes(action.type)) {
+      if (!user) {
+        setVisible(true)
+        toast.success('Подключите кошелек для выполнения этого действия')
+        return
+      }
+      
+      const token = await jwtManager.getToken()
+      if (!token) {
+        setVisible(true)
+        toast.success('Подключите кошелек для выполнения этого действия')
+        return
+      }
+    }
+    
     switch (action.type) {
       case 'subscribe':
         if (action.data?.creator) {
@@ -309,10 +356,73 @@ export default function CreatorPageClient({ creatorId }: CreatorPageClientProps)
     }
   }
 
+  // Функция для фолловинга/анфолловинга
+  const handleFollow = async () => {
+    if (!user || !creator) {
+      // 🔥 Открываем модальное окно подключения кошелька вместо ошибки
+      setVisible(true)
+      toast.success('Подключите кошелек для подписки')
+      return
+    }
+
+    if (isOwner) {
+      toast.error('You cannot follow yourself')
+      return
+    }
+
+    setIsFollowLoading(true)
+    
+    try {
+      const token = await jwtManager.getToken()
+      if (!token) {
+        // 🔥 Открываем модальное окно подключения кошелька вместо ошибки
+        setVisible(true)
+        toast.success('Подключите кошелек для подписки')
+        return
+      }
+
+      const response = await fetch('/api/follow', {
+        method: isFollowing ? 'DELETE' : 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          followingId: creator.id
+        })
+      })
+
+      if (response.ok) {
+        const data = await response.json()
+        setIsFollowing(!isFollowing)
+        
+        // Обновляем счетчик фолловеров в локальном состоянии
+        setCreator(prev => prev ? {
+          ...prev,
+          followersCount: isFollowing 
+            ? prev.followersCount - 1 
+            : prev.followersCount + 1
+        } : null)
+        
+        toast.success(isFollowing ? 'Unfollowed successfully!' : 'Followed successfully!')
+      } else {
+        const errorData = await response.json()
+        toast.error(errorData.error || 'Failed to follow/unfollow')
+      }
+    } catch (error) {
+      console.error('Error following/unfollowing:', error)
+      toast.error('Failed to follow/unfollow')
+    } finally {
+      setIsFollowLoading(false)
+    }
+  }
+
   // Функция для создания или получения диалога
   const handleStartConversation = async () => {
     if (!user || !creator) {
-      toast.error('Please connect your wallet first')
+      // 🔥 Открываем модальное окно подключения кошелька вместо ошибки
+      setVisible(true)
+      toast.success('Подключите кошелек для отправки сообщений')
       return
     }
 
@@ -326,7 +436,9 @@ export default function CreatorPageClient({ creatorId }: CreatorPageClientProps)
     try {
       const token = await jwtManager.getToken()
       if (!token) {
-        toast.error('No authentication token')
+        // 🔥 Открываем модальное окно подключения кошелька вместо ошибки
+        setVisible(true)
+        toast.success('Подключите кошелек для отправки сообщений')
         return
       }
 
@@ -539,9 +651,17 @@ export default function CreatorPageClient({ creatorId }: CreatorPageClientProps)
                   </button>
                 ) : (
                   <>
-                    <button className="flex items-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors">
+                    <button 
+                      onClick={handleFollow}
+                      disabled={isFollowLoading}
+                      className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
+                        isFollowing 
+                          ? 'bg-gray-600 text-white hover:bg-gray-700' 
+                          : 'bg-purple-600 text-white hover:bg-purple-700'
+                      }`}
+                    >
                       <HeartSolidIcon className="w-4 h-4" />
-                      Subscribe
+                      {isFollowLoading ? 'Loading...' : isFollowing ? 'Unfollow' : 'Follow'}
                     </button>
                     
                     <button 

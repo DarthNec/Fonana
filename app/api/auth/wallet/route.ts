@@ -13,6 +13,8 @@ export async function POST(req: NextRequest) {
     const body = await req.json()
     const { wallet } = body
     
+    console.log('🎯 [API AUTH] /api/auth/wallet POST called with wallet:', wallet?.substring(0, 8) + '...')
+    
     if (!wallet) {
       return NextResponse.json(
         { error: 'Wallet address is required' },
@@ -33,18 +35,55 @@ export async function POST(req: NextRequest) {
     }
     
     // Find or create user
+    console.log('🎯 [API AUTH] Searching for existing user with wallet:', wallet)
     let user = await prisma.user.findUnique({
       where: { wallet }
     })
     
+    console.log('🎯 [API AUTH] Existing user search result:', {
+      found: !!user,
+      userId: user?.id,
+      userWallet: user?.wallet,
+      userSolanaWallet: user?.solanaWallet
+    })
+    
+    // 🔥 ДОПОЛНИТЕЛЬНЫЙ ПОИСК ПО SOLANAWALLET
     if (!user) {
-      user = await prisma.user.create({
-        data: {
-          wallet,
-          nickname: `user_${wallet.slice(0, 8).toLowerCase()}`,
-          solanaWallet: wallet
-        }
+      console.log('🎯 [API AUTH] User not found by wallet, searching by solanaWallet:', wallet)
+      user = await prisma.user.findFirst({
+        where: { solanaWallet: wallet }
       })
+      console.log('🎯 [API AUTH] SolanaWallet search result:', {
+        found: !!user,
+        userId: user?.id,
+        userWallet: user?.wallet,
+        userSolanaWallet: user?.solanaWallet
+      })
+    }
+    
+    if (!user) {
+      console.log('🎯 [API AUTH] Creating new user with wallet:', wallet)
+      try {
+        user = await prisma.user.create({
+          data: {
+            wallet,
+            nickname: `user_${wallet.slice(0, 8).toLowerCase()}`,
+            solanaWallet: wallet
+          }
+        })
+        console.log('🎯 [API AUTH] New user created successfully:', {
+          userId: user.id,
+          userWallet: user.wallet,
+          userSolanaWallet: user.solanaWallet,
+          userNickname: user.nickname
+        })
+      } catch (error) {
+        console.error('🎯 [API AUTH] Failed to create user:', error)
+        return NextResponse.json(
+          { error: 'Failed to create user' },
+          { status: 500 }
+        )
+      }
     }
     
     // Генерируем JWT токен для использования в API
@@ -67,8 +106,8 @@ export async function POST(req: NextRequest) {
     );
 
     console.log('✅ JWT token created successfully');
-
-    return NextResponse.json({
+    
+    const responseData = {
       token,
       user: {
         id: user.id,
@@ -79,7 +118,20 @@ export async function POST(req: NextRequest) {
         avatar: user.avatar,
         fullName: user.fullName
       }
+    }
+    
+    console.log('🎯 [API AUTH] Response data:', {
+      hasToken: !!responseData.token,
+      tokenLength: responseData.token?.length,
+      userId: responseData.user.id,
+      userWallet: responseData.user.wallet,
+      userNickname: responseData.user.nickname,
+      userIsCreator: responseData.user.isCreator,
+      userIsVerified: responseData.user.isVerified
     })
+    console.log('🔍 Complete API Response:', JSON.stringify(responseData, null, 2))
+
+    return NextResponse.json(responseData)
   } catch (error) {
     console.error('Auth error:', error)
     return NextResponse.json(

@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test localStorage</title>
+</head>
+<body>
+    <h1>Test localStorage</h1>
+    <button onclick="checkLocalStorage()">Check localStorage</button>
+    <button onclick="clearLocalStorage()">Clear localStorage</button>
+    <button onclick="testJWT()">Test JWT</button>
+    <div id="output"></div>
+
+    <script>
+        function checkLocalStorage() {
+            const output = document.getElementById('output');
+            const wallet = localStorage.getItem('fonana_user_wallet');
+            const jwtToken = localStorage.getItem('fonana_jwt_token');
+            
+            let html = '<h2>localStorage Contents:</h2>';
+            html += '<p><strong>Wallet:</strong> ' + (wallet || 'not found') + '</p>';
+            html += '<p><strong>JWT Token:</strong> ' + (jwtToken ? 'found' : 'not found') + '</p>';
+            
+            if (jwtToken) {
+                try {
+                    const tokenData = JSON.parse(jwtToken);
+                    html += '<p><strong>Token Data:</strong></p>';
+                    html += '<pre>' + JSON.stringify(tokenData, null, 2) + '</pre>';
+                    
+                    // Проверяем истечение
+                    const now = Date.now();
+                    const expiresAt = tokenData.expiresAt;
+                    const isValid = expiresAt > now;
+                    html += '<p><strong>Token Status:</strong> ' + (isValid ? 'Valid' : 'Expired') + '</p>';
+                    html += '<p><strong>Expires:</strong> ' + new Date(expiresAt).toLocaleString() + '</p>';
+                    html += '<p><strong>Current Time:</strong> ' + new Date(now).toLocaleString() + '</p>';
+                } catch (e) {
+                    html += '<p><strong>Error parsing token:</strong> ' + e.message + '</p>';
+                }
+            }
+            
+            output.innerHTML = html;
+        }
+        
+        function clearLocalStorage() {
+            localStorage.removeItem('fonana_user_wallet');
+            localStorage.removeItem('fonana_jwt_token');
+            document.getElementById('output').innerHTML = '<p>localStorage cleared</p>';
+        }
+        
+        async function testJWT() {
+            const output = document.getElementById('output');
+            const wallet = localStorage.getItem('fonana_user_wallet');
+            
+            if (!wallet) {
+                output.innerHTML = '<p>No wallet found in localStorage</p>';
+                return;
+            }
+            
+            try {
+                output.innerHTML = '<p>Testing JWT token...</p>';
+                
+                const response = await fetch(`/api/auth/token?wallet=${wallet}`);
+                const data = await response.json();
+                
+                if (data.token) {
+                    output.innerHTML = '<p>✅ JWT token received from API</p>';
+                    
+                    // Сохраняем токен
+                    const tokenToSave = {
+                        token: data.token,
+                        expiresAt: Date.now() + (30 * 24 * 60 * 60 * 1000),
+                        userId: data.user.id,
+                        wallet: data.user.wallet
+                    };
+                    localStorage.setItem('fonana_jwt_token', JSON.stringify(tokenToSave));
+                    
+                    output.innerHTML += '<p>✅ Token saved to localStorage</p>';
+                    output.innerHTML += '<p><strong>User:</strong> ' + data.user.nickname + '</p>';
+                } else {
+                    output.innerHTML = '<p>❌ No token in API response</p>';
+                }
+            } catch (error) {
+                output.innerHTML = '<p>❌ Error: ' + error.message + '</p>';
+            }
+        }
+        
+        // Check on load
+        checkLocalStorage();
+    </script>
+</body>
+</html> 

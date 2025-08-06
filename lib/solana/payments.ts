@@ -6,8 +6,40 @@ import {
   ComputeBudgetProgram,
   Connection
 } from '@solana/web3.js'
-import { getConnection } from './connection'
+import { getConnection, getConnectionWithFallback } from './connection'
 import { SOLANA_CONFIG } from './config'
+
+// 🔥 НАДЕЖНОЕ ПОЛУЧЕНИЕ BLOCKHASH с повторными попытками
+async function getReliableBlockhash(connection: Connection): Promise<{ blockhash: string; lastValidBlockHeight: number }> {
+  let attempts = 0
+  const maxAttempts = 5
+  
+  while (attempts < maxAttempts) {
+    try {
+      const result = await connection.getLatestBlockhash('confirmed')
+      console.log(`[getReliableBlockhash] Blockhash obtained on attempt ${attempts + 1}:`, result.blockhash.substring(0, 8) + '...')
+      return result
+    } catch (error: any) {
+      attempts++
+      console.error(`[getReliableBlockhash] Failed to get blockhash on attempt ${attempts}:`, error.message)
+      
+      // Если это 403 или rate limit, ждем дольше
+      if (error?.message?.includes('403') || error?.message?.includes('rate limit')) {
+        console.log(`[getReliableBlockhash] Rate limit detected, waiting longer...`)
+        await new Promise(resolve => setTimeout(resolve, 2000 * attempts))
+      } else {
+        // Обычная ошибка - ждем меньше
+        await new Promise(resolve => setTimeout(resolve, 1000 * attempts))
+      }
+      
+      if (attempts >= maxAttempts) {
+        throw new Error(`Failed to get blockhash after ${maxAttempts} attempts: ${error.message}`)
+      }
+    }
+  }
+  
+  throw new Error('Failed to get blockhash after all attempts')
+}
 
 // Получаем рекомендуемую приоритетную комиссию на основе текущей загрузки сети
 async function getRecommendedPriorityFee(connection: Connection): Promise<number> {
@@ -112,12 +144,23 @@ export async function createSubscriptionTransaction(
   payerPublicKey: PublicKey,
   distribution: PaymentDistribution
 ): Promise<Transaction> {
+  // 🔥 КРИТИЧЕСКАЯ ПРОВЕРКА: убеждаемся что payerPublicKey это объект PublicKey
+  if (!payerPublicKey || typeof payerPublicKey.toBase58 !== 'function') {
+    console.error('🔥 CRITICAL ERROR: payerPublicKey is not a valid PublicKey object:', {
+      payerPublicKey,
+      type: typeof payerPublicKey,
+      hasToBase58: typeof payerPublicKey?.toBase58,
+      constructor: payerPublicKey?.constructor?.name
+    })
+    throw new Error('Invalid payerPublicKey: must be a PublicKey object')
+  }
+  
   console.log('Creating subscription transaction with:', {
     payerPublicKey: payerPublicKey.toBase58(),
     distribution
   })
 
-  const connection = getConnection()
+  const connection = await getConnectionWithFallback()
   const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash('confirmed')
   
   const transaction = new Transaction()
@@ -197,12 +240,23 @@ export async function createPostPurchaseTransaction(
   payerPublicKey: PublicKey,
   distribution: PaymentDistribution
 ): Promise<Transaction> {
+  // 🔥 КРИТИЧЕСКАЯ ПРОВЕРКА: убеждаемся что payerPublicKey это объект PublicKey
+  if (!payerPublicKey || typeof payerPublicKey.toBase58 !== 'function') {
+    console.error('🔥 CRITICAL ERROR: payerPublicKey is not a valid PublicKey object:', {
+      payerPublicKey,
+      type: typeof payerPublicKey,
+      hasToBase58: typeof payerPublicKey?.toBase58,
+      constructor: payerPublicKey?.constructor?.name
+    })
+    throw new Error('Invalid payerPublicKey: must be a PublicKey object')
+  }
+  
   console.log('Creating post purchase transaction with:', {
     payerPublicKey: payerPublicKey.toBase58(),
     distribution
   })
   
-  const connection = getConnection()
+  const connection = await getConnectionWithFallback()
   const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash('confirmed')
   
   const transaction = new Transaction()
@@ -331,7 +385,7 @@ export async function createTipTransaction(
     amount
   })
   
-  const connection = getConnection()
+  const connection = await getConnectionWithFallback()
   const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash('confirmed')
   
   const transaction = new Transaction()

@@ -132,21 +132,29 @@ export function useUnifiedPosts(options: UseUnifiedPostsOptions = {}): UseUnifie
 
   // Лайк поста
   const handleLike = async (postId: string) => {
+    console.log('🎯 [LIKE HOOK] handleLike called for post:', postId)
+    
     // Используем быстрое получение userId
     const userId = await getUserId()
+    console.log('🎯 [LIKE HOOK] getUserId result:', userId)
     
     if (!userId) {
+      console.log('🎯 [LIKE HOOK] No userId, checking alternatives...')
       if (isUserLoading) {
+        console.log('🎯 [LIKE HOOK] User is loading...')
         toast('Загружаем данные пользователя...', { icon: '⏳' })
       } else if (!publicKeyString) {
+        console.log('🎯 [LIKE HOOK] No publicKeyString')
         toast.error('Подключите кошелек')
       } else {
         // Попытаемся получить userId через API
+        console.log('🎯 [LIKE HOOK] Trying to fetch user via API...')
         try {
           const response = await fetch(`/api/user?wallet=${publicKeyString}`)
           if (response.ok) {
             const data = await response.json()
             if (data.user?.id) {
+              console.log('🎯 [LIKE HOOK] Got user from API:', data.user.id)
               await performLike(postId, data.user.id)
               return
             }
@@ -159,12 +167,16 @@ export function useUnifiedPosts(options: UseUnifiedPostsOptions = {}): UseUnifie
       return
     }
 
+    console.log('🎯 [LIKE HOOK] Proceeding with performLike...')
     await performLike(postId, userId)
   }
 
   // Выполнение лайка
   const performLike = async (postId: string, userId: string) => {
+    console.log('🎯 [LIKE HOOK] performLike called:', { postId, userId })
+    
     try {
+      console.log('🎯 [LIKE HOOK] Sending request to API...')
       const response = await fetch(`/api/posts/${postId}/like`, {
         method: 'POST',
         headers: {
@@ -173,9 +185,16 @@ export function useUnifiedPosts(options: UseUnifiedPostsOptions = {}): UseUnifie
         body: JSON.stringify({ userId }),
       })
 
-      if (!response.ok) throw new Error('Failed to like post')
+      console.log('🎯 [LIKE HOOK] API response status:', response.status)
+      
+      if (!response.ok) {
+        const errorText = await response.text()
+        console.error('🎯 [LIKE HOOK] API error response:', errorText)
+        throw new Error(`Failed to like post: ${response.status} ${errorText}`)
+      }
 
       const data = await response.json()
+      console.log('🎯 [LIKE HOOK] API response data:', data)
       
       // Обновляем локальное состояние на основе ответа сервера
       setPosts(prevPosts => 
@@ -365,24 +384,45 @@ export function useUnifiedPosts(options: UseUnifiedPostsOptions = {}): UseUnifie
 
   // getUserId function that tries context first, then API
   const getUserId = useCallback(async (): Promise<string | null> => {
+    console.log('🎯 [getUserId] Called with:', { 
+      hasUser: !!user, 
+      userId: user?.id, 
+      isUserLoading, 
+      hasPublicKey: !!publicKeyString 
+    })
+    
     // Сначала проверяем user из контекста
-    if (user?.id) return user.id
+    if (user?.id) {
+      console.log('🎯 [getUserId] Returning user.id from context:', user.id)
+      return user.id
+    }
     
     // Если user загружается и есть кошелек, проверяем localStorage
     if (isUserLoading && publicKeyString) {
+      console.log('🎯 [getUserId] Checking localStorage...')
       try {
         const savedData = localStorage.getItem('fonana_user_data')
         const savedWallet = localStorage.getItem('fonana_user_wallet')
         
+        console.log('🎯 [getUserId] localStorage data:', { 
+          hasSavedData: !!savedData, 
+          savedWallet, 
+          currentWallet: publicKeyString 
+        })
+        
         if (savedData && savedWallet === publicKeyString) {
           const userData = JSON.parse(savedData)
-          if (userData.id) return userData.id
+          if (userData.id) {
+            console.log('🎯 [getUserId] Returning user.id from localStorage:', userData.id)
+            return userData.id
+          }
         }
       } catch (e) {
         console.error('[getUserId] Failed to parse saved user data', e)
       }
     }
     
+    console.log('🎯 [getUserId] No userId found, returning null')
     return null
   }, [user, isUserLoading, publicKeyString]) // 🔥 M7 FIX: STABLE publicKeyString
 

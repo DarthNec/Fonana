@@ -30,6 +30,8 @@ model User {
   name                 String?
   email                String?
   solanaWallet         String?               @map("solana_wallet")
+  token                String?               // JWT token for API authentication
+  tokenExpiresAt       DateTime?             // Token expiration date
   accounts             Account[]
   auctionBids          AuctionBid[]
   auctionDeposits      AuctionDeposit[]
@@ -47,7 +49,8 @@ model User {
   settings             UserSettings?
   referrer             User?                 @relation("UserReferrer", fields: [referrerId], references: [id])
   referrals            User[]                @relation("UserReferrer")
-  conversations        Conversation[]        @relation("UserConversations")
+  conversationsFrom    Conversation[]        @relation("UserConversationsFrom")
+  conversationsTo      Conversation[]        @relation("UserConversationsTo")
   sentMessages         Message[]             @relation("UserMessages")
   tierSettings         CreatorTierSettings?  @relation("UserTierSettings")
   postPurchases        PostPurchase[]        @relation("UserPostPurchases")
@@ -385,11 +388,21 @@ model FlashSaleRedemption {
 
 model Conversation {
   id            String    @id @default(cuid())
+  fromUserId    String
+  toUserId      String
   lastMessageAt DateTime?
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
-  participants  User[]    @relation("UserConversations")
+  
+  // Relations
+  fromUser      User      @relation("UserConversationsFrom", fields: [fromUserId], references: [id], onDelete: Cascade)
+  toUser        User      @relation("UserConversationsTo", fields: [toUserId], references: [id], onDelete: Cascade)
   messages      Message[] @relation("ConversationMessages")
+  
+  // Unique constraint to prevent duplicate conversations
+  @@unique([fromUserId, toUserId])
+  @@index([fromUserId])
+  @@index([toUserId])
 }
 
 model Message {
@@ -425,14 +438,7 @@ model MessagePurchase {
   @@index([userId])
 }
 
-model UserConversations {
-  A String
-  B String
-
-  @@id([A, B], map: "_UserConversations_AB_pkey")
-  @@index([B], map: "_UserConversations_B_index")
-  @@map("_UserConversations")
-}
+// Удаляем старую таблицу UserConversations - теперь используем fromUserId и toUserId
 
 enum TransactionType {
   SUBSCRIPTION

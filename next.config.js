@@ -39,6 +39,8 @@ const nextConfig = {
         pathname: '/posts/*',
       },
     ],
+    // 🔧 ФИКС: Отключаем оптимизацию для BunnyStorage чтобы сохранить оригинальный формат
+    unoptimized: true,
   },
   
   // 🔧 ФИКС M7: App Router body size limit для file uploads
@@ -49,6 +51,39 @@ const nextConfig = {
   },
 
   webpack: (config, { isServer, dev }) => {
+    // 🔧 ФИКС: Исправление проблемы с tr46.js и другими webpack ошибками
+    config.resolve.fallback = {
+      ...config.resolve.fallback,
+      fs: false,
+      net: false,
+      tls: false,
+      crypto: false,
+      stream: false,
+      url: false,
+      zlib: false,
+      http: false,
+      https: false,
+      assert: false,
+      os: false,
+      path: false,
+    }
+
+    // 🔧 ФИКС: Добавляем alias для проблемных модулей
+    config.resolve.alias = {
+      ...config.resolve.alias,
+      'tr46': false,
+      'web-streams-polyfill': false,
+    }
+
+    // 🔧 ФИКС: Игнорируем проблемные модули
+    config.externals = config.externals || []
+    if (isServer) {
+      config.externals.push({
+        'tr46': 'commonjs tr46',
+        'web-streams-polyfill': 'commonjs web-streams-polyfill',
+      })
+    }
+
     // Не загружать определенные модули на клиенте
     if (!isServer) {
       config.resolve.fallback = {

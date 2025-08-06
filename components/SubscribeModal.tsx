@@ -4,6 +4,7 @@ import React, { useState, useEffect, Fragment } from 'react'
 import { useWallet } from '@/lib/hooks/useSafeWallet'
 import { useStableWallet } from '@/lib/hooks/useStableWallet' // 🔥 M7 FIX: Stable wallet hook
 import { connection } from '@/lib/solana/connection'
+import { PublicKey } from '@solana/web3.js' // 🔥 FIX: Add PublicKey import
 import Avatar from '@/components/Avatar'
 import { 
   CheckIcon,
@@ -120,7 +121,7 @@ const getSubscriptionTiers = (creatorCategory?: string): SubscriptionTier[] => {
 }
 
 export default function SubscribeModal({ creator, preferredTier, onClose, onSuccess }: SubscribeModalProps) {
-  const { connected, sendTransaction } = useWallet()
+  const { connected, sendTransaction, publicKey } = useWallet()
   const { publicKeyString } = useStableWallet() // 🔥 M7 FIX: Stable wallet
   const [subscriptionTiers, setSubscriptionTiers] = useState<SubscriptionTier[]>([])
   const [loading, setLoading] = useState(true)
@@ -396,8 +397,33 @@ export default function SubscribeModal({ creator, preferredTier, onClose, onSucc
       )
 
       // Create transaction
+      if (!publicKey) {
+        throw new Error('Public key is not available')
+      }
+      
+      // 🔥 ДОПОЛНИТЕЛЬНАЯ ПРОВЕРКА: убеждаемся что publicKey это объект PublicKey
+      if (!(publicKey instanceof PublicKey)) {
+        console.error('🔥 CRITICAL ERROR: publicKey is not a PublicKey instance:', {
+          publicKey,
+          type: typeof publicKey,
+          constructor: publicKey?.constructor?.name,
+          isPublicKeyInstance: publicKey instanceof PublicKey
+        })
+        throw new Error('Public key must be a PublicKey instance')
+      }
+      
+      // 🔥 ДЕТАЛЬНОЕ ЛОГИРОВАНИЕ: проверяем что передаем в createSubscriptionTransaction
+      console.log('🔥 [SubscribeModal] About to call createSubscriptionTransaction with:', {
+        publicKey,
+        publicKeyType: typeof publicKey,
+        publicKeyConstructor: publicKey?.constructor?.name,
+        hasToBase58: typeof publicKey?.toBase58,
+        publicKeyString: publicKey?.toBase58?.(),
+        distribution
+      })
+      
       const transaction = await createSubscriptionTransaction(
-        publicKeyString, // 🔥 M7 FIX: Need to convert back to PublicKey in createSubscriptionTransaction
+        publicKey,
         distribution
       )
 
@@ -424,6 +450,7 @@ export default function SubscribeModal({ creator, preferredTier, onClose, onSucc
       // Process payment on backend
       const jwtToken = await jwtManager.getToken()
       if (!jwtToken) {
+        console.log("[SubscribeModal] Not authenticated");
         throw new Error('Not authenticated')
       }
 

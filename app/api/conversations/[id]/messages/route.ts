@@ -1,7 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { prisma } from '@/lib/prisma'
+import { PrismaClient } from '@prisma/client'
 import jwt from 'jsonwebtoken'
 import { ENV } from '@/lib/constants/env'
+
+const prisma = new PrismaClient()
 
 // Получение сообщений
 export async function GET(
@@ -36,13 +38,18 @@ export async function GET(
     }
     
     // Проверяем что пользователь участник чата через raw query
-    const isParticipant = await prisma.$queryRaw<{count: bigint}[]>`
-      SELECT COUNT(*) as count
-      FROM "_UserConversations"
-      WHERE "A" = ${conversationId} AND "B" = ${user.id}
+    const conversation = await prisma.$queryRaw<{fromUserId: string, toUserId: string}[]>`
+      SELECT "fromUserId", "toUserId"
+      FROM "Conversation"
+      WHERE id = ${conversationId}
     `
     
-    if (!isParticipant[0] || Number(isParticipant[0].count) === 0) {
+    if (!conversation || conversation.length === 0) {
+      return NextResponse.json({ error: 'Conversation not found' }, { status: 404 })
+    }
+    
+    const conv = conversation[0]
+    if (conv.fromUserId !== user.id && conv.toUserId !== user.id) {
       return NextResponse.json({ error: 'Access denied' }, { status: 403 })
     }
     
@@ -136,6 +143,7 @@ export async function POST(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
+  let message: any
   try {
     // Проверяем JWT токен
     const authHeader = request.headers.get('authorization')
@@ -173,16 +181,19 @@ export async function POST(
       return NextResponse.json({ error: 'User not found' }, { status: 404 })
     }
     
-    // NOTE: Conversation model is @@ignore in schema, skip validation for now
-    
     // Проверяем что пользователь участник чата через raw query
-    const isParticipant = await prisma.$queryRaw<{count: bigint}[]>`
-      SELECT COUNT(*) as count
-      FROM "_UserConversations"
-      WHERE "A" = ${conversationId} AND "B" = ${user.id}
+    const conversation = await prisma.$queryRaw<{fromUserId: string, toUserId: string}[]>`
+      SELECT "fromUserId", "toUserId"
+      FROM "Conversation"
+      WHERE id = ${conversationId}
     `
     
-    if (!isParticipant[0] || Number(isParticipant[0].count) === 0) {
+    if (!conversation || conversation.length === 0) {
+      return NextResponse.json({ error: 'Conversation not found' }, { status: 404 })
+    }
+    
+    const conv = conversation[0]
+    if (conv.fromUserId !== user.id && conv.toUserId !== user.id) {
       return NextResponse.json({ error: 'Access denied' }, { status: 403 })
     }
     
@@ -203,19 +214,13 @@ export async function POST(
     
     // NOTE: Conversation model is @@ignore in schema, skip lastMessageAt update
     
-    // Получаем участников чата для создания уведомления
-    const participants = await prisma.$queryRaw<{id: string}[]>`
-      SELECT "B" as id
-      FROM "_UserConversations"
-      WHERE "A" = ${conversationId} AND "B" != ${user.id}
-    `
+    // Получаем получателя сообщения для создания уведомления
+    const recipientId = conv.fromUserId === user.id ? conv.toUserId : conv.fromUserId
     
     // Создаем уведомление для получателя
-    if (participants.length > 0) {
-      const recipient = participants[0]
-      await prisma.notification.create({
-        data: {
-          userId: recipient.id,
+    await prisma.notification.create({
+      data: {
+        userId: recipientId,
           type: 'NEW_MESSAGE',
           title: 'New message',
           message: isPaid 
@@ -231,7 +236,6 @@ export async function POST(
           }
         }
       })
-    }
     
     return NextResponse.json({ message })
   } catch (error) {
