@@ -102,9 +102,11 @@ function CreatorsExplorerInner() {
       
       console.info('[ENTERPRISE QUERY] Loading user subscriptions')
       const response = await fetch(`/api/user?wallet=${publicKeyString}`)
-      
+      console.log(response);
       if (!response.ok) {
-        throw new Error(`Failed to load user data: HTTP ${response.status}`)
+        console.warn(`[ENTERPRISE WARNING] Failed to load user data: HTTP ${response.status}`)
+        // Return null instead of throwing error to prevent UI crash
+        return null
       }
       
       const userData = await response.json()

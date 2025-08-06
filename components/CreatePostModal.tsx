@@ -46,6 +46,7 @@ export default function CreatePostModal({ onPostCreated, onPostUpdated, onClose,
   const [originalImage, setOriginalImage] = useState<string>('')
   
   // ✅ КРИТИЧЕСКАЯ ПРОВЕРКА: предотвращаем React Error #185
+  console.log(user);
   if (!user) {
     return null
   }
@@ -448,13 +449,19 @@ export default function CreatePostModal({ onPostCreated, onPostUpdated, onClose,
     }))
   }
 
-  const uploadMedia = async (file: File): Promise<{ url: string, thumbUrl?: string, previewUrl?: string } | null> => {
+  const uploadMedia = async (file: File): Promise<{ fileUrl: string, thumbUrl?: string, previewUrl?: string } | null> => {
     const formData = new FormData()
     formData.append('file', file)
     formData.append('type', file.type.startsWith('video/') ? 'video' : 
                             file.type.startsWith('audio/') ? 'audio' : 'image')
 
     try {
+      console.log('🎯 [CreatePostModal] Starting file upload to BunnyStorage:', {
+        fileName: file.name,
+        fileType: file.type,
+        fileSize: file.size
+      })
+
       const response = await fetch('/api/posts/upload', {
         method: 'POST',
         body: formData
@@ -466,9 +473,10 @@ export default function CreatePostModal({ onPostCreated, onPostUpdated, onClose,
       }
 
       const data = await response.json()
+      console.log('🎯 [CreatePostModal] Upload response:', data)
       return data
     } catch (error) {
-      console.error('Upload error:', error)
+      console.error('🎯 [CreatePostModal] Upload error:', error)
       toast.error(error instanceof Error ? error.message : 'Error uploading file')
       return null
     }
@@ -480,20 +488,20 @@ export default function CreatePostModal({ onPostCreated, onPostUpdated, onClose,
     console.log(`[CreatePostModal] Starting ${mode} submission...`)
     
     // 🔧 FALLBACK: Используем реальное состояние кошелька
-    const windowSolana = typeof window !== 'undefined' ? window.solana : null
+    const windowSolana = typeof window !== 'undefined' ? (window as any).solana : null
     const realConnected = windowSolana?.isConnected || false
     const realPublicKey = windowSolana?.publicKey
     
     console.log('🔍 [CreatePostModal DEBUG] handleSubmit wallet state:', {
       connected,
-      publicKey: publicKey?.toString(),
+      publicKeyString: publicKeyString || null,
       realConnected,
       realPublicKey: realPublicKey?.toString()
     })
     
     // 🔧 ИСПРАВЛЕНИЕ: Проверяем ЛИБО useWallet hook ЛИБО window.solana
-    const hasWalletConnection = (connected && publicKey) || (realConnected && realPublicKey)
-    const walletAddress = publicKey?.toString() || realPublicKey?.toString()
+    const hasWalletConnection = (connected && publicKeyString) || (realConnected && realPublicKey)
+    const walletAddress = publicKeyString || realPublicKey?.toString()
     
     if (!hasWalletConnection || !walletAddress) {
       toast.error('Connect wallet')
@@ -503,7 +511,7 @@ export default function CreatePostModal({ onPostCreated, onPostUpdated, onClose,
     console.log('✅ [CreatePostModal DEBUG] Wallet connection verified:', {
       hasConnection: hasWalletConnection,
       walletAddress: walletAddress.slice(0, 10) + '...',
-      source: publicKey ? 'useWallet' : 'window.solana'
+      source: publicKeyString ? 'useWallet' : 'window.solana'
     })
 
     // В режиме редактирования проверяем загрузку данных
@@ -576,19 +584,19 @@ export default function CreatePostModal({ onPostCreated, onPostUpdated, onClose,
       // Upload media file if present (только для новых файлов)
       if (formData.file) {
         const uploadResult = await uploadMedia(formData.file)
-        if (!uploadResult || !uploadResult.url) {
+        if (!uploadResult || !uploadResult.fileUrl) {
           throw new Error('Failed to upload file')
         }
         
         console.log('[CreatePostModal] 🔥 UPLOAD RESULT DEBUG:', {
           uploadResult,
-          url: uploadResult.url,
+          fileUrl: uploadResult.fileUrl,
           thumbUrl: uploadResult.thumbUrl,
-          isWebP: uploadResult.url.includes('.webp'),
-          isJPG: uploadResult.url.includes('.JPG')
+          previewUrl: uploadResult.previewUrl,
+          isCDN: uploadResult.fileUrl?.includes('b-cdn.net')
         })
         
-        mediaUrl = uploadResult.url
+        mediaUrl = uploadResult.fileUrl
         
         // Use thumbUrl from upload result or fallback to placeholder
         if (uploadResult.thumbUrl) {
@@ -599,7 +607,7 @@ export default function CreatePostModal({ onPostCreated, onPostUpdated, onClose,
           thumbnail = '/placeholder-audio.png'
         } else {
           // For images use optimized version or original
-          thumbnail = uploadResult.thumbUrl || uploadResult.url
+          thumbnail = uploadResult.thumbUrl || uploadResult.fileUrl
         }
       } else if (mode === 'edit' && postData) {
         // В режиме редактирования используем существующие медиа
@@ -612,8 +620,8 @@ export default function CreatePostModal({ onPostCreated, onPostUpdated, onClose,
         thumbnail,
         mode,
         hasFile: !!formData.file,
-        isMediaUrlWebP: mediaUrl?.includes('.webp'),
-        isMediaUrlJPG: mediaUrl?.includes('.JPG')
+        isCDN: mediaUrl?.includes('b-cdn.net'),
+        isBunnyStorage: mediaUrl?.includes('fonanastorage.b-cdn.net')
       })
 
       // Подготавливаем данные поста
@@ -1251,15 +1259,16 @@ export default function CreatePostModal({ onPostCreated, onPostUpdated, onClose,
             <button
               type="submit"
               disabled={(() => {
-                // 🔧 FALLBACK: Проверяем реальное состояние кошелька
-                const windowSolana = typeof window !== 'undefined' ? window.solana : null
-                const realConnected = windowSolana?.isConnected || false
-                const realPublicKey = windowSolana?.publicKey
+                    // 🔧 FALLBACK: Проверяем реальное состояние кошелька
+    const windowSolana = typeof window !== 'undefined' ? (window as any).solana : null
+    const realConnected = windowSolana?.isConnected || false
+    const realPublicKey = windowSolana?.publicKey
+                console.log(windowSolana);
                 
                 console.log('🔍 [CreatePostModal DEBUG] Raw wallet state:', JSON.stringify({ 
                   connected, 
-                  publicKey: publicKey ? publicKey.toString() : null, 
-                  publicKeyExists: !!publicKey 
+                  publicKeyString: publicKeyString || null, 
+                  publicKeyExists: !!publicKeyString 
                 }))
                 console.log('🔧 [CreatePostModal DEBUG] REAL wallet state:', JSON.stringify({
                   realConnected,
@@ -1271,7 +1280,7 @@ export default function CreatePostModal({ onPostCreated, onPostUpdated, onClose,
                 
                 const condition1 = isUploading
                 // 🔧 ИСПРАВЛЕНИЕ: Используем реальное состояние кошелька как fallback
-                const condition2 = !connected && !publicKey && !realConnected && !realPublicKey
+                const condition2 = !connected && !publicKeyString && !realConnected && !realPublicKey
                 const condition3 = mode === 'edit' && isLoadingPost
                 const isDisabled = condition1 || condition2 || condition3
                 
@@ -1281,7 +1290,7 @@ export default function CreatePostModal({ onPostCreated, onPostUpdated, onClose,
                   condition3_editLoading: condition3,
                   finalDisabled: isDisabled,
                   connected_value: connected,
-                  publicKey_value: publicKey ? publicKey.toString() : null,
+                  publicKeyString_value: publicKeyString || null,
                   realConnected_value: realConnected,
                   realPublicKey_value: realPublicKey ? realPublicKey.toString() : null
                 }))
@@ -1289,11 +1298,11 @@ export default function CreatePostModal({ onPostCreated, onPostUpdated, onClose,
                 if (isDisabled) {
                   console.log('❌ [CreatePostModal DEBUG] Button DISABLED because:', 
                     condition1 ? 'isUploading=true' : 
-                    condition2 ? `no wallet connected (useWallet: connected=${connected}, publicKey=${!!publicKey}) AND (window.solana: connected=${realConnected}, publicKey=${!!realPublicKey})` : 
+                    condition2 ? `no wallet connected (useWallet: connected=${connected}, publicKeyString=${!!publicKeyString}) AND (window.solana: connected=${realConnected}, publicKey=${!!realPublicKey})` : 
                     condition3 ? 'edit mode loading' : 'unknown')
                 } else {
                   console.log('✅ [CreatePostModal DEBUG] Button ENABLED - wallet detected:', {
-                    source: connected && publicKey ? 'useWallet' : realConnected && realPublicKey ? 'window.solana' : 'unknown'
+                    source: connected && publicKeyString ? 'useWallet' : realConnected && realPublicKey ? 'window.solana' : 'unknown'
                   })
                 }
                 

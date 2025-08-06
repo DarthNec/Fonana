@@ -1,7 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { prisma } from '@/lib/prisma'
 import jwt from 'jsonwebtoken'
+import { prisma } from '@/lib/prisma'
 import { ENV } from '@/lib/constants/env'
+
+// 🔥 ДОБАВЛЯЕМ ПРЯМОЙ ИМПОРТ СЕКРЕТА
+const JWT_SECRET = process.env.JWT_SECRET || process.env.NEXTAUTH_SECRET || 'rFbhMWHvRfv9AacQlVquu9JnY1jCoioNdpaPfIkAK9U='
 
 export async function GET(request: NextRequest) {
   console.log('[Conversations API] Starting GET request')
@@ -9,19 +12,32 @@ export async function GET(request: NextRequest) {
   try {
     // Проверяем JWT токен
     const authHeader = request.headers.get('authorization')
+    console.log('[Conversations API] Authorization header:', authHeader ? 'present' : 'missing')
+    
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
       console.log('[Conversations API] No token provided')
       return NextResponse.json({ error: 'No token provided' }, { status: 401 })
     }
 
     const token = authHeader.split(' ')[1]
+    console.log('[Conversations API] JWT token received:', token.substring(0, 20) + '...')
+    console.log('[Conversations API] Using secret:', JWT_SECRET.substring(0, 20) + '...')
+    
     let decoded: any
     
     try {
-      decoded = jwt.verify(token, ENV.NEXTAUTH_SECRET)
-      console.log('[Conversations API] Token verified:', decoded.userId)
+      decoded = jwt.verify(token, JWT_SECRET)
+      console.log('[Conversations API] Token verified successfully:', {
+        userId: decoded.userId,
+        wallet: decoded.wallet,
+        exp: decoded.exp ? new Date(decoded.exp * 1000) : 'no exp'
+      })
     } catch (error) {
-      console.log('[Conversations API] Invalid token')
+      console.error('[Conversations API] JWT verification failed:', {
+        error: error instanceof Error ? error.message : 'Unknown error',
+        tokenLength: token.length,
+        secretLength: JWT_SECRET.length
+      })
       return NextResponse.json({ error: 'Invalid token' }, { status: 401 })
     }
     
@@ -37,71 +53,80 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'User not found' }, { status: 404 })
     }
     
-    // Получаем все чаты пользователя используя raw query для обхода проблем с типами
+    // Получаем все чаты пользователя используя новую структуру
     console.log('[Conversations API] Fetching conversations...')
     
-    // Сначала получаем ID всех conversations где участвует пользователь
-    const conversationIds = await prisma.$queryRaw<{conversation_id: string}[]>`
-      SELECT "A" as conversation_id 
-      FROM "_UserConversations" 
-      WHERE "B" = ${user.id}
+    // Получаем чаты где пользователь является fromUserId или toUserId
+    const conversations = await prisma.$queryRaw<{
+      id: string
+      fromUserId: string
+      toUserId: string
+      lastMessageAt: Date | null
+      createdAt: Date
+      updatedAt: Date
+      fromUser: any
+      toUser: any
+      lastMessage: any
+    }[]>`
+      SELECT 
+        c.id,
+        c."fromUserId",
+        c."toUserId",
+        c."lastMessageAt",
+        c."createdAt",
+        c."updatedAt",
+        json_build_object(
+          'id', fu.id,
+          'wallet', fu.wallet,
+          'nickname', fu.nickname,
+          'fullName', fu."fullName",
+          'avatar', fu.avatar
+        ) as "fromUser",
+        json_build_object(
+          'id', tu.id,
+          'wallet', tu.wallet,
+          'nickname', tu.nickname,
+          'fullName', tu."fullName",
+          'avatar', tu.avatar
+        ) as "toUser",
+        (
+          SELECT json_build_object(
+            'id', m.id,
+            'content', m.content,
+            'senderId', m."senderId",
+            'isPaid', m."isPaid",
+            'price', m.price,
+            'createdAt', m."createdAt",
+            'sender', json_build_object(
+              'id', s.id,
+              'nickname', s.nickname
+            ),
+            'purchases', COALESCE(
+              (SELECT json_agg(json_build_object('userId', mp."userId"))
+               FROM "MessagePurchase" mp
+               WHERE mp."messageId" = m.id), 
+              '[]'::json
+            )
+          )
+          FROM "Message" m
+          INNER JOIN users s ON m."senderId" = s.id
+          WHERE m."conversationId" = c.id
+          ORDER BY m."createdAt" DESC
+          LIMIT 1
+        ) as "lastMessage"
+      FROM "Conversation" c
+      INNER JOIN users fu ON c."fromUserId" = fu.id
+      INNER JOIN users tu ON c."toUserId" = tu.id
+      WHERE c."fromUserId" = ${user.id} OR c."toUserId" = ${user.id}
+      ORDER BY c."lastMessageAt" DESC NULLS LAST, c."createdAt" DESC
     `
-    console.log('[Conversations API] Found conversation IDs:', conversationIds.length)
     
-    if (conversationIds.length === 0) {
+    console.log('[Conversations API] Found conversations:', conversations.length)
+    
+    if (conversations.length === 0) {
       console.log('[Conversations API] No conversations found for user')
       return NextResponse.json({ conversations: [] })
     }
-    
-    // Теперь получаем полные данные conversations
-    const conversations = await prisma.conversation.findMany({
-      where: {
-        id: {
-          in: conversationIds.map(c => c.conversation_id)
-        }
-      },
-      include: {
-        messages: {
-          orderBy: { createdAt: 'desc' },
-          take: 1,
-          include: {
-            sender: {
-              select: {
-                id: true,
-                nickname: true
-              }
-            },
-            purchases: {
-              select: {
-                userId: true
-              }
-            }
-          }
-        }
-      },
-      orderBy: {
-        lastMessageAt: 'desc'
-      }
-    })
-    console.log('[Conversations API] Found conversations with details:', conversations.length)
-    
-    // Получаем участников для каждого conversation
-    const conversationsWithParticipants = await Promise.all(
-      conversations.map(async (conv) => {
-        // Получаем участников через raw query
-        const participants = await prisma.$queryRaw<{id: string, wallet: string | null, nickname: string | null, fullName: string | null, avatar: string | null}[]>`
-          SELECT u.id, u.wallet, u.nickname, u."fullName", u.avatar
-          FROM users u
-          INNER JOIN "_UserConversations" uc ON u.id = uc."B"
-          WHERE uc."A" = ${conv.id}
-        `
-        
-        return {
-          ...conv,
-          participants
-        }
-      })
-    )
     
     // Получаем непрочитанные сообщения для каждого чата
     const unreadCounts = await prisma.message.groupBy({
@@ -124,9 +149,10 @@ export async function GET(request: NextRequest) {
     
     // Форматируем данные
     console.log('[Conversations API] Formatting conversations...')
-    const formattedConversations = conversationsWithParticipants.map((conv: any) => {
-      const otherParticipant = conv.participants.find((p: any) => p.id !== user.id)
-      const lastMessage = conv.messages[0]
+    const formattedConversations = conversations.map((conv: any) => {
+      // Определяем другого участника
+      const otherParticipant = conv.fromUserId === user.id ? conv.toUser : conv.fromUser
+      const lastMessage = conv.lastMessage
       
       // Убедимся что participant всегда существует
       if (!otherParticipant) {
@@ -160,6 +186,11 @@ export async function GET(request: NextRequest) {
     }).filter(Boolean) // Фильтруем null значения
     
     console.log('[Conversations API] Successfully formatted', formattedConversations.length, 'conversations')
+    console.log('[Conversations API] Returning response with conversations:', formattedConversations.map(c => ({
+      id: c.id,
+      participant: c.participant.nickname,
+      hasLastMessage: !!c.lastMessage
+    })))
     return NextResponse.json({ conversations: formattedConversations })
   } catch (error: any) {
     console.error('[Conversations API] Error details:', error)
@@ -201,7 +232,25 @@ export async function POST(request: NextRequest) {
     
     try {
       console.log('[API/conversations] Starting JWT verification')
-      decoded = jwt.verify(token, ENV.NEXTAUTH_SECRET)
+      console.log('[API/conversations] Token length:', token.length)
+      console.log('[API/conversations] Token preview:', token)
+      console.log('[API/conversations] Using secret:', JWT_SECRET.substring(0, 20) + '...')
+      console.log('[API/conversations] Full secret length:', JWT_SECRET.length)
+      
+      // 🔥 ДОБАВЛЯЕМ ДЕКОДИРОВАНИЕ БЕЗ ПРОВЕРКИ ПОДПИСИ
+      try {
+        const decodedWithoutVerify = jwt.decode(token) as any
+        console.log('[API/conversations] Decoded without verify:', {
+          userId: decodedWithoutVerify?.userId,
+          wallet: decodedWithoutVerify?.wallet,
+          exp: decodedWithoutVerify?.exp,
+          iat: decodedWithoutVerify?.iat
+        })
+      } catch (decodeError: any) {
+        console.log('[API/conversations] Failed to decode token:', decodeError?.message || 'Unknown error')
+      }
+      
+      decoded = jwt.verify(token, JWT_SECRET)
       console.log('[API/conversations] JWT verified successfully, userId:', decoded.userId)
       console.log('[API/conversations] JWT payload:', { userId: decoded.userId, wallet: decoded.wallet, sub: decoded.sub })
     } catch (jwtError) {
@@ -266,49 +315,68 @@ export async function POST(request: NextRequest) {
     
     // Enhanced existing conversation check with error handling
     console.log('[API/conversations] Checking for existing conversations')
-    let existingConversations: {conversation_id: string}[] = []
     
-    try {
-      console.log('[API/conversations] Executing existing conversation query')
-      existingConversations = await prisma.$queryRaw<{conversation_id: string}[]>`
-        SELECT DISTINCT c1."A" as conversation_id
-        FROM "_UserConversations" c1
-        INNER JOIN "_UserConversations" c2 ON c1."A" = c2."A"
-        WHERE c1."B" = ${user.id} AND c2."B" = ${participant.id}
-        LIMIT 1
-      `
-      console.log('[API/conversations] Existing conversations found:', existingConversations.length)
-    } catch (queryError) {
-      console.error('[API/conversations] Error checking existing conversations:', {
-        error: queryError instanceof Error ? queryError.message : 'Unknown query error',
-        stack: queryError instanceof Error ? queryError.stack : undefined,
-        userId: user.id,
-        participantId: participant.id
-      })
-      // Continue with creation - don't fail on check error
-      console.log('[API/conversations] Continuing with new conversation creation despite check error')
-    }
+    // Проверяем существующий чат в обеих направлениях используя raw SQL
+    const existingConversations = await prisma.$queryRaw<{
+      id: string
+      fromUserId: string
+      toUserId: string
+      lastMessageAt: Date | null
+      createdAt: Date
+      updatedAt: Date
+      fromUser: any
+      toUser: any
+    }[]>`
+      SELECT 
+        c.id,
+        c."fromUserId",
+        c."toUserId",
+        c."lastMessageAt",
+        c."createdAt",
+        c."updatedAt",
+        json_build_object(
+          'id', fu.id,
+          'wallet', fu.wallet,
+          'nickname', fu.nickname,
+          'fullName', fu."fullName",
+          'avatar', fu.avatar
+        ) as "fromUser",
+        json_build_object(
+          'id', tu.id,
+          'wallet', tu.wallet,
+          'nickname', tu.nickname,
+          'fullName', tu."fullName",
+          'avatar', tu.avatar
+        ) as "toUser"
+      FROM "Conversation" c
+      INNER JOIN users fu ON c."fromUserId" = fu.id
+      INNER JOIN users tu ON c."toUserId" = tu.id
+      WHERE (c."fromUserId" = ${user.id} AND c."toUserId" = ${participant.id})
+         OR (c."fromUserId" = ${participant.id} AND c."toUserId" = ${user.id})
+      LIMIT 1
+    `
+    
+    console.log('[API/conversations] Existing conversation check result:', existingConversations.length > 0 ? 'found' : 'not found')
     
     if (existingConversations.length > 0) {
+      const existingConversation = existingConversations[0]
       console.log('[API/conversations] Found existing conversation, returning it')
       
-      const existingConversation = await prisma.conversation.findUnique({
-        where: { id: existingConversations[0].conversation_id }
-      })
-      
-      // Получаем участников
-      const participants = await prisma.$queryRaw<{id: string, wallet: string | null, nickname: string | null, fullName: string | null, avatar: string | null}[]>`
-        SELECT u.id, u.wallet, u.nickname, u."fullName", u.avatar
-        FROM users u
-        INNER JOIN "_UserConversations" uc ON u.id = uc."B"
-        WHERE uc."A" = ${existingConversations[0].conversation_id}
-      `
+      const participants = [
+        existingConversation.fromUser,
+        existingConversation.toUser
+      ]
       
       console.log('[API/conversations] Existing conversation returned with participants:', participants.length)
       
       return NextResponse.json({ 
         conversation: {
-          ...existingConversation,
+          id: existingConversation.id,
+          fromUserId: existingConversation.fromUserId,
+          toUserId: existingConversation.toUserId,
+          lastMessageAt: existingConversation.lastMessageAt,
+          createdAt: existingConversation.createdAt,
+          updatedAt: existingConversation.updatedAt,
           participants
         }
       })
@@ -318,12 +386,39 @@ export async function POST(request: NextRequest) {
     
     let conversation
     try {
-      // Создаем новый чат без участников сначала
-      console.log('[API/conversations] Starting simple conversation creation')
+      // Создаем новый чат с fromUserId и toUserId
+      console.log('[API/conversations] Starting conversation creation with participants')
       conversation = await prisma.conversation.create({
-        data: {}
+        data: {
+          fromUserId: user.id,
+          toUserId: participant.id
+        }
       })
+      
       console.log('[API/conversations] Conversation created with ID:', conversation.id)
+      
+      // Получаем участников для ответа
+      const participants = await prisma.$queryRaw<{id: string, wallet: string | null, nickname: string | null, fullName: string | null, avatar: string | null}[]>`
+        SELECT u.id, u.wallet, u.nickname, u."fullName", u.avatar
+        FROM users u
+        WHERE u.id IN (${user.id}, ${participant.id})
+        ORDER BY u.id
+      `
+      
+      console.log('[API/conversations] Successfully created conversation, returning response')
+      
+      return NextResponse.json({ 
+        conversation: {
+          id: conversation.id,
+          fromUserId: conversation.fromUserId,
+          toUserId: conversation.toUserId,
+          lastMessageAt: conversation.lastMessageAt,
+          createdAt: conversation.createdAt,
+          updatedAt: conversation.updatedAt,
+          participants
+        }
+      })
+      
     } catch (createError) {
       console.error('[API/conversations] Error creating conversation:', {
         error: createError instanceof Error ? createError.message : 'Unknown create error',
@@ -331,59 +426,6 @@ export async function POST(request: NextRequest) {
       })
       return NextResponse.json({ error: 'Failed to create conversation' }, { status: 500 })
     }
-    
-    // Добавляем участников через raw SQL
-    try {
-      console.log('[API/conversations] Adding participants via raw SQL')
-      await prisma.$executeRaw`
-        INSERT INTO "_UserConversations" ("A", "B")
-        VALUES 
-          (${conversation.id}, ${user.id}),
-          (${conversation.id}, ${participant.id})
-      `
-      console.log('[API/conversations] Participants added successfully via raw SQL')
-    } catch (participantsError) {
-      console.error('[API/conversations] Error adding participants via raw SQL:', {
-        error: participantsError instanceof Error ? participantsError.message : 'Unknown participants error',
-        stack: participantsError instanceof Error ? participantsError.stack : undefined,
-        conversationId: conversation.id,
-        userId: user.id,
-        participantId: participant.id
-      })
-      return NextResponse.json({ error: 'Failed to add participants to conversation' }, { status: 500 })
-    }
-    
-    // Получаем участников для ответа
-    let participants = []
-    try {
-      console.log('[API/conversations] Getting participants for response')
-      participants = await prisma.$queryRaw<{id: string, wallet: string | null, nickname: string | null, fullName: string | null, avatar: string | null}[]>`
-        SELECT u.id, u.wallet, u.nickname, u."fullName", u.avatar
-        FROM users u
-        WHERE u.id IN (${user.id}, ${participant.id})
-      `
-      console.log('[API/conversations] Participants retrieved for response:', participants.length)
-    } catch (participantsResponseError) {
-      console.error('[API/conversations] Error getting participants for response:', {
-        error: participantsResponseError instanceof Error ? participantsResponseError.message : 'Unknown response error',
-        stack: participantsResponseError instanceof Error ? participantsResponseError.stack : undefined
-      })
-      // Use fallback participants data from user lookup
-      participants = [
-        { id: user.id, nickname: user.nickname, fullName: user.fullName, wallet: user.wallet, avatar: user.avatar },
-        { id: participant.id, nickname: participant.nickname, fullName: participant.fullName, wallet: participant.wallet, avatar: participant.avatar }
-      ]
-      console.log('[API/conversations] Using fallback participants data')
-    }
-    
-    console.log('[API/conversations] Successfully created conversation, returning response')
-    
-    return NextResponse.json({ 
-      conversation: {
-        ...conversation,
-        participants
-      }
-    })
   } catch (error: any) {
     console.error('[API/conversations] ERROR creating conversation:', error)
     console.error('[API/conversations] Error stack:', error.stack)

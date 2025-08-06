@@ -8,6 +8,17 @@ import type { WalletContextState } from '@solana/wallet-adapter-react'
 export function useSafeWallet(): WalletContextState {
   const store = useWalletStore()
   
+  // 🔥 ЛОГИРОВАНИЕ СОСТОЯНИЯ КОШЕЛЬКА
+  console.log('🎯 [USE SAFE WALLET] Wallet state:', {
+    connected: store.connected,
+    hasPublicKey: !!store.publicKey,
+    publicKey: store.publicKey?.toBase58(),
+    connecting: store.connecting,
+    disconnecting: store.disconnecting,
+    hasWallet: !!store.wallet,
+    walletName: store.wallet?.adapter?.name
+  })
+  
   // Return store state that matches WalletContextState interface
   return {
     publicKey: store.publicKey,

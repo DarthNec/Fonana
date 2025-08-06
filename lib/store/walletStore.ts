@@ -57,6 +57,13 @@ export const useWalletStore = create<WalletState>()(
       
       // Actions
       setAdapter: (adapter) => {
+        console.log('🎯 [WALLET STORE] setAdapter called:', {
+          hasAdapter: !!adapter,
+          adapterName: adapter?.name,
+          adapterConnected: adapter?.connected,
+          adapterPublicKey: adapter?.publicKey?.toBase58()
+        })
+        
         set({ 
           _adapter: adapter,
           _isSSR: false 
@@ -64,6 +71,7 @@ export const useWalletStore = create<WalletState>()(
         
         // Sync state from adapter
         if (adapter) {
+          console.log('🎯 [WALLET STORE] Syncing state from adapter')
           set({
             publicKey: adapter.publicKey,
             connected: adapter.connected,
@@ -74,7 +82,16 @@ export const useWalletStore = create<WalletState>()(
         }
       },
       
-      updateState: (updates) => set(updates),
+      updateState: (updates) => {
+        console.log('🎯 [WALLET STORE] updateState called:', {
+          connected: updates.connected,
+          hasPublicKey: !!updates.publicKey,
+          publicKey: updates.publicKey?.toBase58(),
+          connecting: updates.connecting,
+          disconnecting: updates.disconnecting
+        })
+        set(updates)
+      },
       
       // Proxy methods with SSR safety
       connect: async () => {

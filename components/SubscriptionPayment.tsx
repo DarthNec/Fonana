@@ -108,6 +108,10 @@ export function SubscriptionPayment({
       )
 
       // Create transaction
+      if (!publicKey) {
+        throw new Error('Public key is not available')
+      }
+      
       const transaction = await createSubscriptionTransaction(
         publicKey,
         distribution

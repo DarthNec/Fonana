@@ -110,12 +110,11 @@ class AuthService {
     try {
       console.log('[AuthService] Requesting new token for wallet:', wallet.substring(0, 8) + '...')
 
-      const response = await fetch('/api/auth/wallet', {
-        method: 'POST',
+      const response = await fetch(`/api/auth/token?wallet=${wallet}`, {
+        method: 'GET',
         headers: {
           'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ wallet })
+        }
       })
 
       if (!response.ok) {
