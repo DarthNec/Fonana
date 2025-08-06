@@ -1,13 +1,14 @@
 import { Connection, ConnectionConfig } from '@solana/web3.js'
 
-// Основной RPC endpoint - обновленный QuickNode
+// Основной RPC endpoint - используем Helius (надежный RPC провайдер)
 const PRIMARY_RPC = process.env.NEXT_PUBLIC_SOLANA_RPC_URL || 
-  'https://tame-smart-panorama.solana-mainnet.quiknode.pro/0e70fc875702b126bf8b93cdcd626680e9c48894/'
+  'https://rpc.helius.xyz/?api-key=29fc7f17-2a08-48da-9c14-88780e1fedd0'
 
-// Резервные RPC endpoints - тоже обновленные
+// Резервные RPC endpoints - надежные публичные endpoints
 const FALLBACK_RPCS = [
-  'https://tame-smart-panorama.solana-mainnet.quiknode.pro/0e70fc875702b126bf8b93cdcd626680e9c48894/',  
-  'https://api.devnet.solana.com' // fallback на devnet если mainnet не работает
+  'https://api.mainnet-beta.solana.com',
+  'https://solana.public-rpc.com',
+  'https://rpc.ankr.com/solana'
 ]
 
 const connectionConfig: ConnectionConfig = {
@@ -46,13 +47,24 @@ export async function getConnectionWithFallback(): Promise<Connection> {
     // Проверяем текущее соединение
     await connection.getSlot()
     return connection
-  } catch (error) {
+  } catch (error: any) {
     console.error('[Solana Connection] RPC connection error, trying fallback:', error)
-    await switchToFallbackRpc()
+    
+    // Если это 403 ошибка или Failed to fetch, переключаемся на fallback
+    if (error?.message?.includes('403') || 
+        error?.message?.includes('Access forbidden') ||
+        error?.message?.includes('Failed to fetch') ||
+        error?.message?.includes('rate limit') ||
+        error?.message?.includes('too many requests') ||
+        error?.name === 'TypeError') {
+      console.log('[Solana Connection] Network error detected, switching to fallback RPC:', error.message)
+      await switchToFallbackRpc()
+    }
     
     // Проверяем новое соединение
     try {
       await connection.getSlot()
+      console.log('[Solana Connection] Fallback RPC connection successful')
       return connection
     } catch (fallbackError) {
       console.error('[Solana Connection] Fallback RPC also failed:', fallbackError)

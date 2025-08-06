@@ -52,7 +52,10 @@ export async function POST(
   { params }: { params: { id: string } }
 ) {
   try {
+    console.log('🎯 [LIKE API] POST request received for post:', params.id)
+    
     const body = await request.json()
+    console.log('🎯 [LIKE API] Request body:', body)
     
     // Валидация входных данных
     const validatedData = validateApiRequest(likePostSchema, {
@@ -61,8 +64,10 @@ export async function POST(
     })
 
     const { userId } = validatedData
+    console.log('🎯 [LIKE API] Validated userId:', userId)
     
     if (!userId) {
+      console.error('🎯 [LIKE API] No userId provided')
       return NextResponse.json(
         { error: 'User ID is required' },
         { status: 400 }
@@ -77,7 +82,15 @@ export async function POST(
       }
     })
 
+    console.log('🎯 [LIKE API] Post found:', {
+      postId: post?.id,
+      postTitle: post?.title,
+      creatorId: post?.creatorId,
+      currentLikesCount: post?.likesCount
+    })
+
     if (!post) {
+      console.error('🎯 [LIKE API] Post not found:', params.id)
       return NextResponse.json(
         { error: 'Post not found' },
         { status: 404 }
@@ -94,7 +107,16 @@ export async function POST(
       }
     })
 
+    console.log('🎯 [LIKE API] Existing like check:', {
+      userId,
+      postId: params.id,
+      existingLike: !!existingLike,
+      likeId: existingLike?.id
+    })
+
     if (existingLike) {
+      console.log('🎯 [LIKE API] Removing like...')
+      
       // Удаляем лайк
       await prisma.$transaction([
         prisma.like.delete({
@@ -106,20 +128,28 @@ export async function POST(
         })
       ])
 
+      const newLikesCount = post.likesCount - 1
+      console.log('🎯 [LIKE API] Like removed successfully. New count:', newLikesCount)
+
       // Отправляем WebSocket событие об удалении лайка
       try {
-        await updatePostLikes(params.id, post.likesCount - 1, userId)
+        await updatePostLikes(params.id, newLikesCount, userId)
       } catch (error) {
         console.error('WebSocket notification failed:', error)
       }
 
-      return NextResponse.json({
+      const response = {
         success: true,
         isLiked: false,
-        likesCount: post.likesCount - 1,
+        likesCount: newLikesCount,
         action: 'unliked'
-      })
+      }
+      
+      console.log('🎯 [LIKE API] Returning response:', response)
+      return NextResponse.json(response)
     } else {
+      console.log('🎯 [LIKE API] Adding like...')
+      
       // Добавляем лайк
       await prisma.$transaction([
         prisma.like.create({
@@ -133,6 +163,9 @@ export async function POST(
           data: { likesCount: { increment: 1 } }
         })
       ])
+
+      const newLikesCount = post.likesCount + 1
+      console.log('🎯 [LIKE API] Like added successfully. New count:', newLikesCount)
 
       // Создаем уведомление для автора поста (если это не его собственный пост)
       if (post.creatorId !== userId) {
@@ -171,17 +204,20 @@ export async function POST(
 
       // Отправляем WebSocket событие о новом лайке
       try {
-        await updatePostLikes(params.id, post.likesCount + 1, userId)
+        await updatePostLikes(params.id, newLikesCount, userId)
       } catch (error) {
         console.error('WebSocket notification failed:', error)
       }
 
-      return NextResponse.json({
+      const response = {
         success: true,
         isLiked: true,
-        likesCount: post.likesCount + 1,
+        likesCount: newLikesCount,
         action: 'liked'
-      })
+      }
+      
+      console.log('🎯 [LIKE API] Returning response:', response)
+      return NextResponse.json(response)
     }
   } catch (error) {
     console.error('Error toggling like:', error)

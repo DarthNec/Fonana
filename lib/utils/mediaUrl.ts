@@ -1,13 +1,22 @@
 export function transformMediaUrl(url: string | null | undefined): string {
   if (!url) return '/placeholder.jpg';
   
+  console.log('[transformMediaUrl] Processing URL:', url);
+  
   // 🔧 КРИТИЧЕСКИЙ ФИКС: обработка старых JPG путей
   if (url.includes('/media/tests/posts/') && (url.endsWith('.jpg') || url.endsWith('.JPG'))) {
     console.warn('[transformMediaUrl] Converting old test JPG to placeholder:', url);
     return '/placeholder.jpg'; // Используем placeholder для старых test images
   }
   
-  // 🔧 ФИКС: конвертация JPG путей в posts/images в WebP
+  // 🔧 НОВЫЙ ФИКС: обработка URL от BunnyStorage (ПЕРВЫМ!)
+  if (url.includes('b-cdn.net') || url.includes('storage.bunnycdn.com')) {
+    console.log('[transformMediaUrl] Processing BunnyStorage URL:', url);
+    // Возвращаем URL как есть - это уже полный CDN URL
+    return url;
+  }
+  
+  // 🔧 ФИКС: конвертация JPG путей в posts/images в WebP (только для локальных файлов)
   if (url.includes('/posts/images/') && (url.endsWith('.jpg') || url.endsWith('.JPG'))) {
     const webpUrl = url.replace(/\.(jpg|JPG)$/, '.webp');
     console.warn('[transformMediaUrl] Converting JPG to WebP:', url, '->', webpUrl);

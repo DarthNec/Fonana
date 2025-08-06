@@ -25,6 +25,8 @@ class ConversationsService {
   async getUnreadCount(): Promise<number> {
     const now = Date.now()
     
+    console.log('[ConversationsService] getUnreadCount called, time since last call:', now - this.lastCall)
+    
     // Rate limiting - если прошло меньше 5 секунд, возвращаем кеш
     if (now - this.lastCall < this.RATE_LIMIT) {
       console.log('[ConversationsService] Rate limited, returning cached count:', this.cache?.unreadCount || 0)
@@ -43,6 +45,7 @@ class ConversationsService {
       return this.cache.unreadCount
     }
     
+    console.log('[ConversationsService] Cache invalid or missing, fetching fresh data')
     return this.fetchUnreadCount()
   }
   

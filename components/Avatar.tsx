@@ -25,7 +25,7 @@ export default function Avatar({
   
   // Сбрасываем ошибки при изменении src
   useEffect(() => {
-    console.log(`[Avatar] Src changed: ${src}`)
+    // console.log(`[Avatar] Src changed: ${src}`)
     setImageError(false)
     setGeneratorError(false)
   }, [src])
@@ -125,7 +125,7 @@ export default function Avatar({
           setImageError(true)
         }}
         onLoad={() => {
-          console.log(`[Avatar] Image loaded successfully: ${normalizedSrc} (original: ${src})`)
+          // console.log(`[Avatar] Image loaded successfully: ${normalizedSrc} (original: ${src})`)
         }}
       />
     </div>

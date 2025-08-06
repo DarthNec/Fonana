@@ -69,13 +69,15 @@ export async function GET(request: NextRequest) {
         return NextResponse.json({ error: 'Invalid wallet format' }, { status: 400 })
       }
       
+      console.log('🎯 [API USER] Searching for user with wallet:', wallet)
+      
       // Получаем пользователя по wallet с полной информацией
-      // [critical_regression_2025_017] Убрано solanaWallet - поле не существует в БД
+      // 🔥 ИСПРАВЛЕНО: Добавлен поиск по solanaWallet
       user = await prisma.user.findFirst({
         where: {
           OR: [
             { wallet: wallet },
-            // УБРАНО: { solanaWallet: wallet } - поле не существует в БД
+            { solanaWallet: wallet } // 🔥 ВОССТАНОВЛЕНО: Поиск по solanaWallet
           ]
         },
         include: {
@@ -88,10 +90,48 @@ export async function GET(request: NextRequest) {
           },
         },
       })
+      
+      console.log('🎯 [API USER] Search result:', {
+        found: !!user,
+        userId: user?.id,
+        userWallet: user?.wallet,
+        userSolanaWallet: user?.solanaWallet,
+        userNickname: user?.nickname
+      })
     }
     
     if (!user) {
-      return NextResponse.json({ error: 'User not found' }, { status: 404 })
+      console.log('🎯 [API USER] User not found, creating new user with wallet:', wallet)
+      
+      try {
+        // Создаем нового пользователя
+        user = await prisma.user.create({
+          data: {
+            wallet: wallet!,
+            nickname: `user_${wallet!.slice(0, 8).toLowerCase()}`,
+            solanaWallet: wallet!
+          },
+          include: {
+            _count: {
+              select: {
+                posts: true,
+                followers: true,
+                follows: true,
+              },
+            },
+          },
+        })
+        
+        console.log('🎯 [API USER] New user created successfully:', {
+          userId: user.id,
+          userWallet: user.wallet,
+          userSolanaWallet: user.solanaWallet,
+          userNickname: user.nickname
+        })
+      } catch (error) {
+        console.error('🎯 [API USER] Failed to create user:', error)
+        return NextResponse.json({ error: 'Failed to create user' }, { status: 500 })
+      }
     }
 
     const response = NextResponse.json({ user })

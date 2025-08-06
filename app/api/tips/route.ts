@@ -1,9 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { prisma } from '@/lib/prisma'
+import { PrismaClient } from '@prisma/client'
 import { waitForTransactionConfirmation } from '@/lib/solana/validation'
 import { getConnection } from '@/lib/solana/connection'
 import jwt from 'jsonwebtoken'
 import { ENV } from '@/lib/constants/env'
+
+const prisma = new PrismaClient()
 
 // WebSocket события
 import { sendNotification } from '@/lib/services/websocket-client'

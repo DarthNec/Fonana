@@ -12,6 +12,8 @@ import PurchaseModal from '@/components/PurchaseModal'
 import SellablePostModal from '@/components/SellablePostModal'
 import FloatingActionButton from '@/components/ui/FloatingActionButton'
 import { hasAccessToTier } from '@/lib/utils/access'
+import { useSafeWalletModal } from '@/lib/hooks/useSafeWalletModal'
+import { jwtManager } from '@/lib/utils/jwt'
 import { 
   SparklesIcon, 
   FireIcon, 
@@ -47,6 +49,7 @@ const sortOptions = [
 export default function FeedPageClient() {
   const user = useUser()
   const userLoading = useUserLoading()
+  const { setVisible } = useSafeWalletModal()
   const [selectedCategory, setSelectedCategory] = useState('All')
   const [sortBy, setSortBy] = useState<'latest' | 'popular' | 'trending' | 'subscribed'>('latest')
   const categoryScrollRef = useRef<HTMLDivElement>(null)
@@ -65,6 +68,26 @@ export default function FeedPageClient() {
   const [showSellableModal, setShowSellableModal] = useState(false)
   const [selectedPost, setSelectedPost] = useState<any>(null)
   const [selectedCreator, setSelectedCreator] = useState<any>(null)
+
+  // Функция для проверки аутентификации перед созданием поста
+  const handleCreatePost = async () => {
+    if (!user) {
+      // 🔥 Открываем модальное окно подключения кошелька вместо ошибки
+      setVisible(true)
+      toast.success('Подключите кошелек для создания поста')
+      return
+    }
+
+    const token = await jwtManager.getToken()
+    if (!token) {
+      // 🔥 Открываем модальное окно подключения кошелька вместо ошибки
+      setVisible(true)
+      toast.success('Подключите кошелек для создания поста')
+      return
+    }
+
+    setShowCreateModal(true)
+  }
 
   // Оптимизированная загрузка постов с пагинацией
   const {
@@ -220,6 +243,10 @@ export default function FeedPageClient() {
         // Обрабатываем через handleAction от useOptimizedPosts
         handleAction(action)
         break
+      case 'delete':
+        // Обрабатываем через handleAction от useOptimizedPosts
+        handleAction(action)
+        break
     }
   }, [filteredAndSortedPosts, handleAction])
 
@@ -312,7 +339,7 @@ export default function FeedPageClient() {
               <h3 className="text-xl font-bold text-gray-700 dark:text-slate-300 mb-2">No posts yet</h3>
               <p className="text-gray-600 dark:text-slate-400 mb-6">Be the first to create content!</p>
               <button
-                onClick={() => setShowCreateModal(true)}
+                onClick={handleCreatePost}
                 className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-purple-600 to-pink-600 text-white font-bold rounded-xl hover:from-purple-700 hover:to-pink-700 transform hover:scale-105 transition-all duration-300"
               >
                 <PlusIcon className="w-5 h-5" />
@@ -342,7 +369,7 @@ export default function FeedPageClient() {
 
       {/* Floating Action Button */}
       <FloatingActionButton
-        onClick={() => setShowCreateModal(true)}
+        onClick={handleCreatePost}
         label="Create Post"
         hideOnScroll={true}
       />

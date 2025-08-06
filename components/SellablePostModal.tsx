@@ -312,6 +312,10 @@ export default function SellablePostModal({ isOpen, onClose, post }: SellablePos
       }
       
       // Create transaction
+      if (!publicKey) {
+        throw new Error('Public key is not available')
+      }
+      
       const transaction = await createPostPurchaseTransaction(
         publicKey,
         distribution
