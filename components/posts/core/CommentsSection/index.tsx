@@ -120,7 +120,7 @@ export function CommentsSection({ postId, className, onClose }: CommentsSectionP
 
   return (
     <div className={cn(
-      'border-t border-gray-200 dark:border-slate-700/50 pt-4',
+      'border-t border-gray-200 dark:border-slate-700/50 pt-4 pb-4 px-3 sm:px-6',
       className
     )}>
       {/* Header */}

@@ -24,6 +24,7 @@ import {
 } from '@heroicons/react/24/outline'
 import { MobileWalletConnect } from './MobileWalletConnect'
 import { useWallet } from '@/lib/hooks/useSafeWallet'
+import { useSafeWalletModal } from '@/lib/hooks/useSafeWalletModal'
 import { useUser } from '@/lib/store/appStore'
 import SearchModal from './SearchModal'
 import { unreadMessagesService } from '@/lib/services/UnreadMessagesService'
@@ -49,8 +50,28 @@ export function Navbar() {
   const [showSearchModal, setShowSearchModal] = useState(false)
   const { connected, disconnect, publicKey } = useWallet()
   const publicKeyString = publicKey?.toBase58() ?? null // 🔥 ALTERNATIVE FIX: Stable string
+  const { setVisible } = useSafeWalletModal()
   const user = useUser()
   const [apiUser, setApiUser] = useState(null)
+  
+  // 🔥 ЛОГИРОВАНИЕ ПОЛЬЗОВАТЕЛЯ В NAVBAR (только при изменении)
+  useEffect(() => {
+    // console.log('🎯 [NAVBAR] User state changed:')
+    // console.log('📊 Global User from Zustand:', {
+    //   hasUser: !!user,
+    //   id: user?.id,
+    //   wallet: user?.wallet,
+    //   nickname: user?.nickname,
+    //   fullName: user?.fullName,
+    //   avatar: user?.avatar,
+    //   isCreator: user?.isCreator,
+    //   isVerified: user?.isVerified
+    // })
+    // if (user) {
+    //   console.log('🔍 Complete User Object in Navbar:', JSON.stringify(user, null, 2))
+    // }
+    // console.log('🎯 [NAVBAR] End of user logging')
+  }, [user])
   const pathname = usePathname()
   const router = useRouter()
 
@@ -64,14 +85,43 @@ export function Navbar() {
 
   // Subscribe to unread messages - FIXED: [critical_regression_infinite_loop_2025_017]
   useEffect(() => {
-    if (!user?.id) return
+    console.log('[Navbar] useEffect triggered, user?.id:', user?.id)
     
-    console.log('[Navbar] Subscribing to unread messages service')
-    const unsubscribe = unreadMessagesService.subscribe(setUnreadMessages)
+    if (!user?.id) {
+      console.log('[Navbar] No user ID, skipping subscription')
+      return
+    }
+    
+    console.log('[Navbar] Subscribing to unread messages service for user:', user.id)
+    const unsubscribe = unreadMessagesService.subscribe((count) => {
+      console.log('[Navbar] Received unread count update:', count)
+      setUnreadMessages(count)
+    })
+    
+    // Принудительно обновляем счетчик при загрузке
+    console.log('[Navbar] Forcing initial refresh')
+    unreadMessagesService.refresh()
+    
+    // Обновляем счетчик при фокусе на окне (когда пользователь возвращается на вкладку)
+    const handleFocus = () => {
+      console.log('[Navbar] Window focused, refreshing unread count')
+      unreadMessagesService.refresh()
+    }
+    
+    window.addEventListener('focus', handleFocus)
+    
+    // 🔥 DEBUG: Добавляем кнопку для тестирования в development
+    if (process.env.NODE_ENV === 'development') {
+      (window as any).testUnreadMessages = () => {
+        console.log('[Navbar] Manual test triggered')
+        unreadMessagesService.refresh()
+      }
+    }
     
     return () => {
       console.log('[Navbar] Unsubscribing from unread messages service')
       unsubscribe()
+      window.removeEventListener('focus', handleFocus)
     }
   }, [user?.id])
 
@@ -85,6 +135,26 @@ export function Navbar() {
         .then(data => {
           if (data.user) {
             console.log('[Navbar] Got fresh user data from API:', data.user.avatar)
+            
+            // 🔥 ЛОГИРОВАНИЕ СВЕЖИХ ДАННЫХ ИЗ API
+            console.log('🎯 [NAVBAR API REFRESH] Fresh user data from API:')
+            console.log('📊 API User Object:', {
+              id: data.user.id,
+              wallet: data.user.wallet,
+              nickname: data.user.nickname,
+              fullName: data.user.fullName,
+              avatar: data.user.avatar,
+              isCreator: data.user.isCreator,
+              isVerified: data.user.isVerified,
+              bio: data.user.bio,
+              backgroundImage: data.user.backgroundImage,
+              followersCount: data.user.followersCount,
+              followingCount: data.user.followingCount,
+              postsCount: data.user.postsCount
+            })
+            console.log('🔍 Complete API User Object:', JSON.stringify(data.user, null, 2))
+            console.log('🎯 [NAVBAR API REFRESH] End of API user logging')
+            
             setApiUser(data.user)
           }
         })
@@ -98,16 +168,16 @@ export function Navbar() {
     ? `${currentUser.avatar}?t=${Date.now()}` 
     : undefined
 
-  // Диагностическое логирование
+  // Диагностическое логирование (только при изменении)
   useEffect(() => {
-    console.log('[Navbar Debug] Avatar data:', { 
-      hasGlobalUser: !!user,
-      hasApiUser: !!apiUser, 
-      globalAvatar: user?.avatar,
-      apiAvatar: apiUser && typeof apiUser === 'object' && 'avatar' in apiUser ? (apiUser as any).avatar : null,
-      finalAvatarUrl: avatarUrl,
-      timestamp: Date.now() 
-    })
+    // console.log('[Navbar Debug] Avatar data:', { 
+    //   hasGlobalUser: !!user,
+    //   hasApiUser: !!apiUser, 
+    //   globalAvatar: user?.avatar,
+    //   apiAvatar: apiUser && typeof apiUser === 'object' && 'avatar' in apiUser ? (apiUser as any).avatar : null,
+    //   finalAvatarUrl: avatarUrl,
+    //   timestamp: Date.now() 
+    // })
   }, [user?.avatar, apiUser, avatarUrl])
 
   // Check if it's PWA mode
@@ -116,10 +186,15 @@ export function Navbar() {
   const handleNavClick = (item: any, e?: React.MouseEvent) => {
     if (item.isAction && item.name === 'Create') {
       e?.preventDefault()
-      if (!connected && !(isPlaywrightTestMode() && user)) {
-        toast.error('Подключите кошелек для создания поста')
+      console.log(connected);
+      console.log(user);
+      if (!connected) {  
+        // 🔥 Открываем модальное окно подключения кошелька вместо ошибки
+        setVisible(true)
+        toast.success('Подключите кошелек для создания поста')
         return
       }
+        
       setShowCreateModal(true)
       setIsOpen(false) // Close mobile menu if open
     }

@@ -57,29 +57,23 @@ class UnreadMessagesService {
   
   /**
    * Запустить автоматический polling
-   * ВРЕМЕННО ОТКЛЮЧЕНО [critical_regression_2025_017]
+   * ВОССТАНОВЛЕНО с безопасными настройками [critical_regression_2025_017]
    */
   private startPolling(): void {
-    // ВРЕМЕННО ОТКЛЮЧЕНО для остановки infinite Conversations API loop
-    console.log('[UnreadMessagesService] Polling disabled for emergency stabilization [critical_regression_2025_017]')
-    return
-    
-    /* ОТКЛЮЧЕННЫЙ КОД:
     if (this.isPolling || this.intervalId) {
       return // Уже запущен
     }
     
-    console.log('[UnreadMessagesService] Starting polling')
+    console.log('[UnreadMessagesService] Starting polling with safe settings')
     this.isPolling = true
     
     // Сразу делаем первый запрос
     this.fetchAndNotify()
     
-    // Затем каждые 30 секунд
+    // Затем каждые 60 секунд (увеличено с 30 для безопасности)
     this.intervalId = setInterval(() => {
       this.fetchAndNotify()
-    }, 30000)
-    */
+    }, 60000)
   }
   
   /**
@@ -109,19 +103,25 @@ class UnreadMessagesService {
       // Используем существующий ConversationsService с rate limiting
       const count = await conversationsService.getUnreadCount()
       
+      console.log('[UnreadMessagesService] ConversationsService returned count:', count)
+      
       // Обновляем локальный счетчик
       if (count !== this.unreadCount) {
         this.unreadCount = count
-        console.log('[UnreadMessagesService] Count updated:', count)
+        console.log('[UnreadMessagesService] Count updated from', this.unreadCount, 'to', count)
         
         // Уведомляем всех подписчиков
+        console.log('[UnreadMessagesService] Notifying', this.listeners.size, 'listeners')
         this.listeners.forEach(callback => {
           try {
+            console.log('[UnreadMessagesService] Calling listener with count:', count)
             callback(count)
           } catch (error) {
             console.error('[UnreadMessagesService] Callback error:', error)
           }
         })
+      } else {
+        console.log('[UnreadMessagesService] Count unchanged:', count)
       }
       
       return count

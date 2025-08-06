@@ -73,6 +73,12 @@ class JWTManager {
   
   private saveToStorage(token: StoredToken) {
     try {
+      console.log('[JWT] saveToStorage called with token:', {
+        hasToken: !!token.token,
+        userId: token.userId,
+        wallet: token.wallet
+      })
+      
       // Сохраняем через StorageService (зашифровано)
       storageService.setJWTToken(JSON.stringify(token))
       
@@ -81,6 +87,10 @@ class JWTManager {
       localStorage.setItem('fonana_user_wallet', token.wallet)
       
       console.log('[JWT] Token saved to both encrypted storage and localStorage')
+      
+      // 🔥 DEBUG: Проверяем, что токен действительно сохранился
+      const savedToken = localStorage.getItem('fonana_jwt_token')
+      console.log('[JWT] Verification - saved token exists:', !!savedToken)
     } catch (error) {
       console.error('[JWT] Error saving token to storage:', error)
     }
@@ -112,59 +122,73 @@ class JWTManager {
   }
   
     async getToken(): Promise<string | null> {
-    console.log('[JWT] getToken called, checking current token...')
+    console.log('[JWT] getToken called, checking existing token...')
     
-    // Проверяем, есть ли валидный токен
-    if (this.token && this.token.expiresAt > Date.now()) {
-      console.log('[JWT] Valid token found in memory')
-      return this.token.token
-    }
-
-    console.log('[JWT] No valid token in memory, checking localStorage...')
-    
-    // Сначала пытаемся найти сохраненный JWT токен напрямую
-    const savedToken = localStorage.getItem('fonana_jwt_token')
-    if (savedToken) {
-      try {
-        const tokenData = JSON.parse(savedToken)
-        if (tokenData.token && tokenData.expiresAt > Date.now()) {
-          console.log('[JWT] Found valid saved JWT token')
-          this.token = tokenData
-          return tokenData.token
-        }
-      } catch (error) {
-        console.warn('[JWT] Invalid saved token format:', error)
-      }
-    }
-    
-    // Fallback на поиск через wallet
     const wallet = localStorage.getItem('fonana_user_wallet')
+    console.log('[JWT] Wallet in localStorage:', wallet ? wallet.substring(0, 8) + '...' : 'not found')
+    
     if (!wallet) {
       console.log('[JWT] No wallet found in localStorage, cannot get token')
       return null
     }
 
-    console.log('[JWT] Wallet found:', wallet.substring(0, 8) + '...')
-    
+    // 🔥 ПРОВЕРЯЕМ СУЩЕСТВУЮЩИЙ ТОКЕН
+    const savedToken = localStorage.getItem('fonana_jwt_token')
+    if (savedToken) {
+      try {
+        const tokenData = JSON.parse(savedToken)
+        console.log('[JWT] Found saved token:', {
+          hasToken: !!tokenData.token,
+          expiresAt: tokenData.expiresAt,
+          currentTime: Date.now(),
+          isValid: tokenData.expiresAt > Date.now(),
+          wallet: tokenData.wallet
+        })
+        
+        // 🔥 ЕСЛИ ТОКЕН ВАЛИДЕН - ВОЗВРАЩАЕМ ЕГО
+        if (tokenData.token && tokenData.expiresAt > Date.now()) {
+          console.log('[JWT] Using existing valid token')
+          return tokenData.token
+        } else {
+          console.log('[JWT] Token expired, requesting new one...')
+        }
+      } catch (error) {
+        console.warn('[JWT] Invalid saved token format:', error)
+      }
+    } else {
+      console.log('[JWT] No saved token found, requesting new one...')
+    }
+
+    console.log('[JWT] Requesting fresh token...')
     return this.requestNewToken(wallet)
   }
   
   async requestNewToken(wallet: string): Promise<string | null> {
+    console.log('[JWT] requestNewToken called for wallet:', wallet.substring(0, 8) + '...')
     try {
-      const response = await fetch('/api/auth/wallet', {
-        method: 'POST',
+      console.log('[JWT] Making request to /api/auth/token...')
+      const response = await fetch(`/api/auth/token?wallet=${wallet}`, {
+        method: 'GET',
         headers: {
           'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ wallet })
+        }
       })
+      
+      console.log('[JWT] Response status:', response.status)
       
       if (!response.ok) {
         console.error('[JWT] Failed to get token:', response.status)
+        const errorText = await response.text()
+        console.error('[JWT] Error response:', errorText)
         return null
       }
       
       const data = await response.json()
+      console.log('[JWT] Response data:', {
+        hasToken: !!data.token,
+        hasUser: !!data.user,
+        tokenLength: data.token?.length
+      })
       
       if (!data.token) {
         console.error('[JWT] Invalid response:', data)
@@ -182,6 +206,13 @@ class JWTManager {
         userId: data.user.id,
         wallet: data.user.wallet
       }
+      
+      console.log('[JWT] Token object created:', {
+        hasToken: !!this.token.token,
+        expiresAt: this.token.expiresAt,
+        userId: this.token.userId,
+        wallet: this.token.wallet
+      })
       
       this.saveToStorage(this.token)
       this.scheduleRefresh()

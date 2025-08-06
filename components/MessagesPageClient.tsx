@@ -9,6 +9,7 @@ import Avatar from './Avatar'
 import { useQuery } from '@tanstack/react-query'
 import { EnterpriseErrorBoundary } from '@/components/ui/EnterpriseErrorBoundary'
 import { EnterpriseError } from '@/components/ui/EnterpriseError'
+import { unreadMessagesService } from '@/lib/services/UnreadMessagesService'
 
 interface Conversation {
   id: string
@@ -30,40 +31,65 @@ interface Conversation {
 
 function MessagesPageClientInner() {
   const user = useUser()
-  const isJwtReady = useJwtReady()
+  const isJwtReady = true;
   const [conversations, setConversations] = useState<Conversation[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
+  // 🔥 DEBUG: Добавляем отладочную информацию
+  console.log('[MessagesPageClient] Debug state:', {
+    hasUser: !!user,
+    userId: user?.id,
+    isJwtReady,
+    isLoading,
+    error
+  })
+
+  // Обновляем счетчик непрочитанных сообщений при загрузке страницы
+  useEffect(() => {
+    if (user?.id) {
+      console.log('[MessagesPageClient] Refreshing unread count on page load')
+      unreadMessagesService.refresh()
+    }
+  }, [user?.id])
+
   // 🔥 ENTERPRISE PHASE 1.3: Enhanced React Query with error handling
   const { data: conversationsData, isLoading: isLoadingConversations, error: queryError, refetch: refetchConversations } = useQuery({
-    queryKey: ['conversations', user?.id],
+    queryKey: ['conversations', user?.id || ''],
     queryFn: async () => {
       console.info('[ENTERPRISE QUERY] Loading conversations for user:', user?.id)
       const token = await jwtManager.getToken()
+      
+      console.info('[ENTERPRISE QUERY] JWT token:', token ? token.substring(0, 20) + '...' : 'null')
       
       if (!token) {
         throw new Error('Authentication required - no JWT token available')
       }
 
+      console.info('[ENTERPRISE QUERY] Making API request to /api/conversations')
       const response = await fetch('/api/conversations', {
         headers: {
           'Authorization': `Bearer ${token}`
         }
       })
 
+      console.info('[ENTERPRISE QUERY] API response status:', response.status)
+      
       if (!response.ok) {
-        throw new Error(`Failed to load conversations: HTTP ${response.status}`)
+        const errorText = await response.text()
+        console.error('[ENTERPRISE QUERY] API error response:', errorText)
+        throw new Error(`Failed to load conversations: HTTP ${response.status} - ${errorText}`)
       }
 
       const data = await response.json()
+      console.info('[ENTERPRISE QUERY] API response data:', data)
       
-      if (!Array.isArray(data)) {
+      if (!data.conversations || !Array.isArray(data.conversations)) {
         throw new Error('Invalid API response format: expected conversations array')
       }
 
-      console.info(`[ENTERPRISE QUERY] Successfully loaded ${data.length} conversations`)
-      return data
+      console.info(`[ENTERPRISE QUERY] Successfully loaded ${data.conversations.length} conversations`)
+      return data.conversations
     },
     enabled: !!user?.id && isJwtReady,
     staleTime: 1 * 60 * 1000,
@@ -76,10 +102,10 @@ function MessagesPageClientInner() {
   if (queryError) {
     return (
       <EnterpriseError
-        error={queryError}
+        error={queryError as Error}
         context="MessagesPageClient"
         onRetry={refetchConversations}
-        queryKey={['conversations', user?.id]}
+        queryKey={['conversations', user?.id || '']}
         fallbackData={[]}
       />
     )
@@ -92,7 +118,7 @@ function MessagesPageClientInner() {
       setIsLoading(false)
     }
     if (queryError) {
-      setError(queryError.message)
+      setError((queryError as Error).message)
       setIsLoading(false)
     }
   }, [conversationsData, queryError])
@@ -137,34 +163,39 @@ function MessagesPageClientInner() {
   }
 
   if (!user) {
-    console.log('[MessagesPageClient] Rendering "Connect Your Wallet" - no user')
+    console.log('[MessagesPageClient] Rendering "Loading chats" - no user yet')
     return (
       <div className="flex items-center justify-center min-h-screen pt-20">
         <div className="text-center">
-          <ChatBubbleLeftEllipsisIcon className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+          <ChatBubbleLeftEllipsisIcon className="w-16 h-16 text-gray-400 mx-auto mb-4 animate-pulse" />
           <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">
-            Connect Your Wallet
+            Прогружаем ваши чаты...
           </h2>
           <p className="text-gray-600 dark:text-gray-400">
-            Please connect your wallet to access messages
+            Подождите, загружаем ваши сообщения
           </p>
         </div>
       </div>
     )
   }
 
-  // NEW: Add JWT waiting state
+  // 🔥 ПРОВЕРЯЕМ JWT ТОЛЬКО ПОСЛЕ ЗАГРУЗКИ ПОЛЬЗОВАТЕЛЯ
   if (user && !isJwtReady) {
+    console.log('[MessagesPageClient] User loaded, checking JWT token...')
     return (
       <div className="flex items-center justify-center min-h-screen pt-20">
         <div className="text-center">
           <ChatBubbleLeftEllipsisIcon className="w-16 h-16 text-gray-400 mx-auto mb-4 animate-pulse" />
           <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">
-            Initializing Authentication
+            Проверяем авторизацию
           </h2>
           <p className="text-gray-600 dark:text-gray-400">
-            Setting up secure connection...
+            Настраиваем безопасное соединение...
           </p>
+          {/* 🔥 DEBUG: Добавляем отладочную информацию */}
+          <div className="mt-4 text-xs text-gray-500">
+            Debug: User ID: {user?.id}, JWT Ready: {isJwtReady ? 'true' : 'false'}
+          </div>
         </div>
       </div>
     )
@@ -188,7 +219,7 @@ function MessagesPageClientInner() {
               <h3 className="text-red-800 dark:text-red-400 font-medium mb-2">Error Loading Messages</h3>
               <p className="text-red-600 dark:text-red-400 text-sm">{error}</p>
               <button
-                onClick={loadConversations}
+                onClick={() => refetchConversations()}
                 className="mt-4 px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg text-sm transition-colors"
               >
                 Try Again

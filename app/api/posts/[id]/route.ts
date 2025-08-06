@@ -260,38 +260,61 @@ export async function DELETE(
   { params }: { params: { id: string } }
 ) {
   try {
+    console.log('🎯 [DELETE API] DELETE request received for post:', params.id)
+    
     const { searchParams } = new URL(request.url)
     const userWallet = searchParams.get('userWallet')
+    
+    console.log('🎯 [DELETE API] userWallet from query params:', userWallet)
 
     if (!userWallet) {
+      console.error('🎯 [DELETE API] No userWallet provided')
       return NextResponse.json({ error: 'User wallet required' }, { status: 400 })
     }
 
     // Получаем пользователя
     const user = await getUserByWallet(userWallet)
+    console.log('🎯 [DELETE API] User found:', { userId: user?.id, userWallet: user?.wallet })
+    
     if (!user) {
+      console.error('🎯 [DELETE API] User not found for wallet:', userWallet)
       return NextResponse.json({ error: 'User not found' }, { status: 404 })
     }
 
     // Проверяем, что пользователь - автор поста
     const post = await prisma.post.findUnique({
       where: { id: params.id },
-      select: { creatorId: true },
+      select: { id: true, creatorId: true, title: true },
+    })
+
+    console.log('🎯 [DELETE API] Post found:', { 
+      postId: post?.id, 
+      postTitle: post?.title,
+      postCreatorId: post?.creatorId,
+      userIsCreator: post?.creatorId === user.id
     })
 
     if (!post) {
+      console.error('🎯 [DELETE API] Post not found:', params.id)
       return NextResponse.json({ error: 'Post not found' }, { status: 404 })
     }
 
     if (post.creatorId !== user.id) {
+      console.error('🎯 [DELETE API] User not authorized to delete post:', {
+        userId: user.id,
+        postCreatorId: post.creatorId
+      })
       return NextResponse.json({ error: 'Not authorized to delete this post' }, { status: 403 })
     }
 
+    console.log('🎯 [DELETE API] Deleting post from database...')
+    
     // Удаляем пост (связанные данные удалятся каскадно)
     await prisma.post.delete({
       where: { id: params.id },
     })
 
+    console.log('🎯 [DELETE API] Post deleted successfully')
     return NextResponse.json({ success: true, message: 'Post deleted successfully' })
   } catch (error) {
     console.error('Error deleting post:', error)

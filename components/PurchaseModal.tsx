@@ -76,6 +76,7 @@ export default function PurchaseModal({ post, onClose, onSuccess }: PurchaseModa
   const [isProcessing, setIsProcessing] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const { publicKeyString, connected, sendTransaction } = useStableWallet() // 🔥 M7 FIX: Stable wallet
+  const { publicKey } = useWallet() // 🔥 FIX: Add publicKey for transaction creation
   const user = useUser()
   const isUserLoading = useUserLoading()
   const [creatorData, setCreatorData] = useState<any>(null)
@@ -171,6 +172,10 @@ export default function PurchaseModal({ post, onClose, onSuccess }: PurchaseModa
       )
 
       // Create transaction
+      if (!publicKey) {
+        throw new Error('Public key is not available')
+      }
+      
       const transaction = await createPostPurchaseTransaction(
         publicKey,
         distribution

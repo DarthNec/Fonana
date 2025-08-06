@@ -36,6 +36,7 @@ import { useSolRate } from '@/lib/hooks/useSolRate'
 import { jwtManager } from '@/lib/utils/jwt'
 import { refreshPostAccess } from '@/lib/utils/subscriptions'
 import { formatSolToUsd, safeToFixed } from '@/lib/utils/format'
+import { unreadMessagesService } from '@/lib/services/UnreadMessagesService'
 
 interface Message {
   id: string
@@ -75,6 +76,7 @@ interface Participant {
 export default function ConversationPage() {
   const { publicKey, sendTransaction } = useWallet()
   const publicKeyString = publicKey?.toBase58() ?? null // 🔥 ALTERNATIVE FIX: Stable string
+  const { connection } = useConnection() // 🔥 FIX: Add connection from useConnection
   
   const user = useUser()
   const isUserLoading = false // Zustand не имеет отдельного состояния загрузки пользователя
@@ -84,6 +86,14 @@ export default function ConversationPage() {
   
   // 🔥 CRITICAL FIX: Unmount protection для async operations
   const isMountedRef = useRef(true)
+
+  // Обновляем счетчик непрочитанных сообщений при загрузке чата
+  useEffect(() => {
+    if (user?.id && conversationId) {
+      console.log('[ConversationPage] Refreshing unread count on chat load')
+      unreadMessagesService.refresh()
+    }
+  }, [user?.id, conversationId])
   
   const [messages, setMessages] = useState<Message[]>([])
   const [participant, setParticipant] = useState<Participant | null>(null)
@@ -183,6 +193,89 @@ export default function ConversationPage() {
   const userId = user?.id;
   const isUserReady = Boolean(userId && !isUserLoading);
 
+  // 🚀 PHASE 1 FIX: Protected loadConversationInfo with circuit breaker and guards
+  const loadConversationInfo = useCallback(async () => {
+    const now = Date.now();
+    const { isLoaded, isLoading, lastAttempt } = conversationLoadState;
+    
+    // Prevent multiple simultaneous calls
+    if (isLoading) {
+      console.log('[loadConversationInfo] Already loading, skipping');
+      return;
+    }
+    
+    // Prevent rapid successive calls (min 5 seconds between attempts)
+    if (now - lastAttempt < 5000) {
+      console.log('[loadConversationInfo] Too soon, skipping');
+      return;
+    }
+    
+    // Already loaded and successful
+    if (isLoaded) {
+      console.log('[loadConversationInfo] Already loaded, skipping');
+      return;
+    }
+    
+    // Circuit breaker check
+    if (!checkCircuitBreaker('conversations')) {
+      return;
+    }
+    
+    setConversationLoadState(prev => ({
+      ...prev,
+      isLoading: true,
+      lastAttempt: now
+    }));
+    
+    try {
+      incrementCallCounter();
+      
+      const token = await jwtManager.getToken()
+      if (!token) {
+        console.error('No JWT token available')
+        return
+      }
+
+      const response = await fetch('/api/conversations', {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      })
+
+      if (response.ok) {
+        const data = await response.json()
+        console.log('[loadConversationInfo] API response:', data);
+        
+        const conversation = data.conversations.find((c: any) => c.id === conversationId)
+        if (conversation && conversation.participant) {
+          console.log('[loadConversationInfo] Participant found:', conversation.participant);
+          setParticipant(conversation.participant);
+          setConversationLoadState(prev => ({
+            ...prev,
+            isLoaded: true
+          }));
+        } else {
+          console.log('[loadConversationInfo] No matching conversation or participant found');
+          // Mark as loaded even if no participant found to prevent infinite retries
+          setConversationLoadState(prev => ({
+            ...prev,
+            isLoaded: true
+          }));
+        }
+      } else {
+        console.error('Failed to load conversations:', await response.text());
+      }
+    } catch (error) {
+      console.error('Error loading conversation info:', error)
+    } finally {
+      setConversationLoadState(prev => ({
+        ...prev,
+        isLoading: false
+      }));
+    }
+  }, [conversationId, conversationLoadState, checkCircuitBreaker, incrementCallCounter])
+
+
   useEffect(() => {
     if (!isUserReady || !conversationId) {
       if (!isUserLoading && !userId) {
@@ -205,7 +298,7 @@ export default function ConversationPage() {
       // Mark component as unmounted
       isMountedRef.current = false
     }
-  }, [userId, isUserReady, conversationId]) // ✅ Only stable primitives
+  }, [userId, isUserReady, conversationId]) // ✅ Убираем loadConversationInfo из зависимостей
 
   useEffect(() => {
     scrollToBottom()
@@ -237,8 +330,9 @@ export default function ConversationPage() {
         console.log(`[${timestamp}] [Participant Effect] Setting participant:`, otherParticipant);
         setParticipant(otherParticipant) // ✅ Safe - in useEffect after render
       } else {
-        console.log(`[${timestamp}] [Participant Effect] No participant from messages, need conversation info`);
-        // Fallback to loadConversationInfo если нужно (для own messages)
+        console.log(`[${timestamp}] [Participant Effect] No participant from messages, loading conversation info`);
+        // Fallback to loadConversationInfo для own messages
+        loadConversationInfo()
       }
     } else {
       console.log(`[${timestamp}] [Participant Effect] Skipping:`, {
@@ -316,88 +410,7 @@ export default function ConversationPage() {
     }
   }
 
-  // 🚀 PHASE 1 FIX: Protected loadConversationInfo with circuit breaker and guards
-  const loadConversationInfo = useCallback(async () => {
-    const now = Date.now();
-    const { isLoaded, isLoading, lastAttempt } = conversationLoadState;
-    
-    // Prevent multiple simultaneous calls
-    if (isLoading) {
-      console.log('[loadConversationInfo] Already loading, skipping');
-      return;
-    }
-    
-    // Prevent rapid successive calls (min 5 seconds between attempts)
-    if (now - lastAttempt < 5000) {
-      console.log('[loadConversationInfo] Too soon, skipping');
-      return;
-    }
-    
-    // Already loaded and successful
-    if (isLoaded) {
-      console.log('[loadConversationInfo] Already loaded, skipping');
-      return;
-    }
-    
-    // Circuit breaker check
-    if (!checkCircuitBreaker('conversations')) {
-      return;
-    }
-    
-    setConversationLoadState(prev => ({
-      ...prev,
-      isLoading: true,
-      lastAttempt: now
-    }));
-    
-    try {
-      incrementCallCounter();
-      
-      const token = await jwtManager.getToken()
-      if (!token) {
-        console.error('No JWT token available')
-        return
-      }
 
-      const response = await fetch('/api/conversations', {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      })
-
-      if (response.ok) {
-        const data = await response.json()
-        console.log('[loadConversationInfo] API response:', data);
-        
-        const conversation = data.conversations.find((c: any) => c.id === conversationId)
-        if (conversation && conversation.participant) {
-          // 🚀 PHASE 3: Participant logic REMOVED - handled by useEffect now
-          console.log('[loadConversationInfo] Participant found, will be set by useEffect');
-          setConversationLoadState(prev => ({
-            ...prev,
-            isLoaded: true
-          }));
-        } else {
-          console.log('[loadConversationInfo] No matching conversation or participant found');
-          // Mark as loaded even if no participant found to prevent infinite retries
-          setConversationLoadState(prev => ({
-            ...prev,
-            isLoaded: true
-          }));
-        }
-      } else {
-        console.error('Failed to load conversations:', await response.text());
-      }
-    } catch (error) {
-      console.error('Error loading conversation info:', error)
-    } finally {
-      // 🚀 PHASE 3: setTimeout removed - direct setState is safe here
-      setConversationLoadState(prev => ({
-        ...prev,
-        isLoading: false
-      }));
-    }
-  }, [conversationId, conversationLoadState, checkCircuitBreaker, incrementCallCounter])
 
   const handleMediaSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0]
@@ -545,6 +558,7 @@ export default function ConversationPage() {
   }
 
   const sendTip = async () => {
+    console.log('sendTip', publicKeyString, participant, tipAmount, isSendingTip)
     if (!publicKeyString || !participant || !tipAmount || isSendingTip) return
 
     const amount = parseFloat(tipAmount)
@@ -572,6 +586,10 @@ export default function ConversationPage() {
       }
 
       // Create transaction using the same pattern as working purchases
+      if (!publicKey) {
+        throw new Error('Public key is not available')
+      }
+      
       const transaction = await createTipTransaction(
         publicKey,
         creatorWallet,
@@ -739,6 +757,10 @@ export default function ConversationPage() {
       )
 
       // Create transaction using the payment system
+      if (!publicKey) {
+        throw new Error('Public key is not available')
+      }
+      
       const transaction = await createPostPurchaseTransaction(
         publicKey,
         distribution

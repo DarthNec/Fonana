@@ -14,10 +14,12 @@ export const walletSchema = z
   .max(44, 'Wallet address must be at most 44 characters')
   .regex(/^[A-Za-z0-9]+$/, 'Wallet address must contain only alphanumeric characters')
 
-// UUID для ID
+// ID для Prisma (более гибкий формат)
 export const idSchema = z
   .string()
-  .uuid('Invalid ID format')
+  .min(1, 'ID cannot be empty')
+  .max(50, 'ID must be at most 50 characters')
+  .regex(/^[a-zA-Z0-9_-]+$/, 'ID can only contain letters, numbers, underscores, and hyphens')
 
 // Email (опционально)
 export const emailSchema = z

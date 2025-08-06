@@ -110,8 +110,8 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
           console.error('Wallet error:', error)
         }}
       >
+        <WalletStoreSync />
         <WalletModalProvider>
-          <WalletStoreSync />
           {children}
         </WalletModalProvider>
       </SolanaWalletProvider>
