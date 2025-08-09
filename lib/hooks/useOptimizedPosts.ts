@@ -249,7 +249,7 @@ export function useOptimizedPosts(options: UseOptimizedPostsOptions = {}): UseOp
 
     try {
       console.log('🎯 [useOptimizedPosts] Sending delete request to API...')
-      
+      console.log(publicKeyString);
       if (!publicKeyString) {
         console.error('🎯 [useOptimizedPosts] No publicKeyString available for delete')
         toast.error('Подключите кошелек для удаления поста')

@@ -89,7 +89,8 @@ export default function BottomNav() {
       activeIcon: PlusCircleSolidIcon,
       onClick: () => {
         if (!publicKeyString) {
-          toast.error('Подключите кошелек для создания поста')
+          setVisible(true)
+          toast.success('Подключите кошелек для создания поста')
           return
         }
         setShowCreateModal(true)
