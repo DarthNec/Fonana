@@ -24,6 +24,7 @@ import { isValidSolanaAddress } from '@/lib/solana/config'
 import { useSolRate } from '@/lib/hooks/useSolRate'
 import { refreshSubscriptionStatus } from '@/lib/utils/subscriptions'
 import { jwtManager } from '@/lib/utils/jwt'
+import { useSafeWalletModal } from '@/lib/hooks/useSafeWalletModal'
 
 interface SubscriptionTier {
   id: string
@@ -123,12 +124,13 @@ const getSubscriptionTiers = (creatorCategory?: string): SubscriptionTier[] => {
 export default function SubscribeModal({ creator, preferredTier, onClose, onSuccess }: SubscribeModalProps) {
   const { connected, sendTransaction, publicKey } = useWallet()
   const { publicKeyString } = useStableWallet() // 🔥 M7 FIX: Stable wallet
+  const { setVisible } = useSafeWalletModal()
   const [subscriptionTiers, setSubscriptionTiers] = useState<SubscriptionTier[]>([])
   const [loading, setLoading] = useState(true)
   const [selectedTier, setSelectedTier] = useState(preferredTier || 'basic')
   const [showInCarousel, setShowInCarousel] = useState(true)
   const [isProcessing, setIsProcessing] = useState(false)
-  const [expandedTiers, setExpandedTiers] = useState<Set<string>>(new Set())
+  const [expandedTiers, setExpandedTiers] = useState<Set<string>>(new Set<string>())
   const [activeFlashSale, setActiveFlashSale] = useState<any>(null)
   const [allFlashSales, setAllFlashSales] = useState<Record<string, any>>({})
   const { rate: solRate } = useSolRate()
@@ -313,7 +315,8 @@ export default function SubscribeModal({ creator, preferredTier, onClose, onSucc
 
   const handleSubscribe = async () => {
     if (!connected || !publicKeyString) { // 🔥 M7 FIX
-      toast.error('Please connect your wallet')
+      setVisible(true)
+      toast.success('Подключите кошелёк для оформления подписки')
       return
     }
 
@@ -333,11 +336,12 @@ export default function SubscribeModal({ creator, preferredTier, onClose, onSucc
     try {
       // Check that it's not the platform wallet
       const PLATFORM_WALLET = 'EEqsmopVfTuaiJrh8xL7ZsZbUctckY6S5WyHYR66wjpw'
+      /*
       if (publicKeyString === PLATFORM_WALLET) { // 🔥 M7 FIX: Stable comparison
         toast.error('❌ You cannot subscribe from the platform wallet!')
         return
       }
-
+      */
       // Get full creator data
       const creatorResponse = await fetch(`/api/creators/${creator.id}`)
       const creatorData = await creatorResponse.json()
@@ -401,24 +405,20 @@ export default function SubscribeModal({ creator, preferredTier, onClose, onSucc
         throw new Error('Public key is not available')
       }
       
-      // 🔥 ДОПОЛНИТЕЛЬНАЯ ПРОВЕРКА: убеждаемся что publicKey это объект PublicKey
-      if (!(publicKey instanceof PublicKey)) {
-        console.error('🔥 CRITICAL ERROR: publicKey is not a PublicKey instance:', {
+      // Validate publicKey shape without relying on instanceof
+      const hasToBase58 = typeof (publicKey as any)?.toBase58 === 'function'
+      if (!hasToBase58) {
+        console.error('🔥 CRITICAL ERROR: publicKey is invalid:', {
           publicKey,
-          type: typeof publicKey,
-          constructor: publicKey?.constructor?.name,
-          isPublicKeyInstance: publicKey instanceof PublicKey
+          type: typeof publicKey
         })
-        throw new Error('Public key must be a PublicKey instance')
+        throw new Error('Public key is invalid')
       }
       
-      // 🔥 ДЕТАЛЬНОЕ ЛОГИРОВАНИЕ: проверяем что передаем в createSubscriptionTransaction
+      // Detailed logging before creating transaction
       console.log('🔥 [SubscribeModal] About to call createSubscriptionTransaction with:', {
-        publicKey,
-        publicKeyType: typeof publicKey,
-        publicKeyConstructor: publicKey?.constructor?.name,
-        hasToBase58: typeof publicKey?.toBase58,
-        publicKeyString: publicKey?.toBase58?.(),
+        hasToBase58: typeof (publicKey as any)?.toBase58,
+        publicKeyString: (publicKey as any)?.toBase58?.(),
         distribution
       })
       
@@ -777,7 +777,7 @@ export default function SubscribeModal({ creator, preferredTier, onClose, onSucc
                       <button
                         onClick={(e) => {
                           e.stopPropagation()
-                          setExpandedTiers(prev => {
+                                                     setExpandedTiers((prev: Set<string>) => {
                             const newSet = new Set(prev)
                             if (newSet.has(tier.id)) {
                               newSet.delete(tier.id)
@@ -823,7 +823,7 @@ export default function SubscribeModal({ creator, preferredTier, onClose, onSucc
           <div className="flex gap-4">
             <button
               onClick={handleSubscribe}
-              disabled={isProcessing || !connected}
+              disabled={isProcessing}
               className={`flex-1 py-4 px-8 rounded-xl font-bold text-lg transition-all duration-300 transform hover:scale-105 text-white ${
                 selectedTier === 'free'
                   ? 'bg-gradient-to-r from-gray-500 to-gray-600 hover:from-gray-600 hover:to-gray-700'
