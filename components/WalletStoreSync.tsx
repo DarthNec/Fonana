@@ -56,48 +56,153 @@ export function WalletStoreSync() {
         localStorage.setItem('fonana_user_wallet', wallet)
         console.log('🎯 [WALLET STORE SYNC] Wallet saved to localStorage:', wallet.substring(0, 8) + '...')
         
-        // 🔥 ОЧИЩАЕМ СТАРЫЕ ТОКЕНЫ ПЕРЕД ПОЛУЧЕНИЕМ НОВОГО
-        console.log('🎯 [WALLET STORE SYNC] Clearing old tokens before getting fresh one...')
-        localStorage.removeItem('fonana_jwt_token')
-        
-        // 🔥 ПОЛУЧАЕМ НОВЫЙ JWT ТОКЕН ДЛЯ ПОЛЬЗОВАТЕЛЯ
-        console.log('🎯 [WALLET STORE SYNC] Getting fresh JWT token for wallet...')
-        const tokenResponse = await fetch(`/api/auth/token?wallet=${wallet}`, {
-          method: 'GET',
-          headers: {
-            'Content-Type': 'application/json'
-          }
-        })
-        
-        if (tokenResponse.ok) {
-          const tokenData = await tokenResponse.json()
-          console.log('🎯 [WALLET STORE SYNC] Token response received:', {
-            hasToken: !!tokenData.token,
-            hasUser: !!tokenData.user,
-            tokenLength: tokenData.token?.length
-          })
-          
-          if (tokenData.token) {
-            // 🔥 СОХРАНЯЕМ НОВЫЙ JWT ТОКЕН В LOCALSTORAGE
-            const tokenToSave = {
-              token: tokenData.token,
-              expiresAt: Date.now() + (30 * 24 * 60 * 60 * 1000), // 30 дней
-              userId: tokenData.user.id,
-              wallet: tokenData.user.wallet
-            }
-            localStorage.setItem('fonana_jwt_token', JSON.stringify(tokenToSave))
-            console.log('🎯 [WALLET STORE SYNC] Fresh JWT token saved to localStorage')
+        // 🔥 OPTIMIZATION: Check if we already have a valid JWT token for this wallet
+        const existingToken = localStorage.getItem('fonana_jwt_token')
+        if (existingToken) {
+          try {
+            const tokenData = JSON.parse(existingToken)
+            const isTokenValid = tokenData.token && 
+                                tokenData.expiresAt > Date.now() && 
+                                tokenData.wallet === wallet
             
-            // 🔥 ПРОВЕРЯЕМ, ЧТО ТОКЕН ДЕЙСТВИТЕЛЬНО СОХРАНИЛСЯ
-            const savedToken = localStorage.getItem('fonana_jwt_token')
-            console.log('🎯 [WALLET STORE SYNC] Verification - saved token exists:', !!savedToken)
-          } else {
-            console.warn('🎯 [WALLET STORE SYNC] No token in response')
+            if (isTokenValid) {
+              console.log('🎯 [WALLET STORE SYNC] Found existing valid JWT token, using it instead of creating new one')
+              console.log('🎯 [WALLET STORE SYNC] Token expires at:', new Date(tokenData.expiresAt).toISOString())
+              
+              // Skip token creation, just fetch user data if needed
+              console.log('🎯 [WALLET STORE SYNC] Skipping JWT token creation, using existing valid token')
+            } else {
+              console.log('🎯 [WALLET STORE SYNC] Existing token is invalid or expired, will create new one')
+              // 🔥 ОЧИЩАЕМ СТАРЫЕ ТОКЕНЫ ПЕРЕД ПОЛУЧЕНИЕМ НОВОГО
+              localStorage.removeItem('fonana_jwt_token')
+              
+              // 🔥 ПОЛУЧАЕМ НОВЫЙ JWT ТОКЕН ДЛЯ ПОЛЬЗОВАТЕЛЯ
+              console.log('🎯 [WALLET STORE SYNC] Getting fresh JWT token for wallet...')
+              const tokenResponse = await fetch(`/api/auth/token?wallet=${wallet}`, {
+                method: 'GET',
+                headers: {
+                  'Content-Type': 'application/json'
+                }
+              })
+              
+              if (tokenResponse.ok) {
+                const tokenData = await tokenResponse.json()
+                console.log('🎯 [WALLET STORE SYNC] Token response received:', {
+                  hasToken: !!tokenData.token,
+                  hasUser: !!tokenData.user,
+                  tokenLength: tokenData.token?.length
+                })
+                
+                if (tokenData.token) {
+                  // 🔥 СОХРАНЯЕМ НОВЫЙ JWT ТОКЕН В LOCALSTORAGE
+                  const tokenToSave = {
+                    token: tokenData.token,
+                    expiresAt: Date.now() + (30 * 24 * 60 * 60 * 1000), // 30 дней
+                    userId: tokenData.user.id,
+                    wallet: tokenData.user.wallet
+                  }
+                  localStorage.setItem('fonana_jwt_token', JSON.stringify(tokenToSave))
+                  console.log('🎯 [WALLET STORE SYNC] Fresh JWT token saved to localStorage')
+                  
+                  // 🔥 ПРОВЕРЯЕМ, ЧТО ТОКЕН ДЕЙСТВИТЕЛЬНО СОХРАНИЛСЯ
+                  const savedToken = localStorage.getItem('fonana_jwt_token')
+                  console.log('🎯 [WALLET STORE SYNC] Verification - saved token exists:', !!savedToken)
+                } else {
+                  console.warn('🎯 [WALLET STORE SYNC] No token in response')
+                }
+              } else {
+                console.error('🎯 [WALLET STORE SYNC] Failed to get JWT token:', tokenResponse.status)
+                const errorText = await tokenResponse.text()
+                console.error('🎯 [WALLET STORE SYNC] Error response:', errorText)
+              }
+            }
+          } catch (error) {
+            console.warn('🎯 [WALLET STORE SYNC] Error parsing existing token, will create new one:', error)
+            // Fallback to creating new token
+            localStorage.removeItem('fonana_jwt_token')
+            
+            // 🔥 ПОЛУЧАЕМ НОВЫЙ JWT ТОКЕН ДЛЯ ПОЛЬЗОВАТЕЛЯ
+            console.log('🎯 [WALLET STORE SYNC] Getting fresh JWT token for wallet...')
+            const tokenResponse = await fetch(`/api/auth/token?wallet=${wallet}`, {
+              method: 'GET',
+              headers: {
+                'Content-Type': 'application/json'
+              }
+            })
+            
+            if (tokenResponse.ok) {
+              const tokenData = await tokenResponse.json()
+              console.log('🎯 [WALLET STORE SYNC] Token response received:', {
+                hasToken: !!tokenData.token,
+                hasUser: !!tokenData.user,
+                tokenLength: tokenData.token?.length
+              })
+              
+              if (tokenData.token) {
+                // 🔥 СОХРАНЯЕМ НОВЫЙ JWT ТОКЕН В LOCALSTORAGE
+                const tokenToSave = {
+                  token: tokenData.token,
+                  expiresAt: Date.now() + (30 * 24 * 60 * 60 * 1000), // 30 дней
+                  userId: tokenData.user.id,
+                  wallet: tokenData.user.wallet
+                }
+                localStorage.setItem('fonana_jwt_token', JSON.stringify(tokenToSave))
+                console.log('🎯 [WALLET STORE SYNC] Fresh JWT token saved to localStorage')
+                
+                // 🔥 ПРОВЕРЯЕМ, ЧТО ТОКЕН ДЕЙСТВИТЕЛЬНО СОХРАНИЛСЯ
+                const savedToken = localStorage.getItem('fonana_jwt_token')
+                console.log('🎯 [WALLET STORE SYNC] Verification - saved token exists:', !!savedToken)
+              } else {
+                console.warn('🎯 [WALLET STORE SYNC] No token in response')
+              }
+            } else {
+              console.error('🎯 [WALLET STORE SYNC] Failed to get JWT token:', tokenResponse.status)
+              const errorText = await tokenResponse.text()
+              console.error('🎯 [WALLET STORE SYNC] Error response:', errorText)
+            }
           }
         } else {
-          console.error('🎯 [WALLET STORE SYNC] Failed to get JWT token:', tokenResponse.status)
-          const errorText = await tokenResponse.text()
-          console.error('🎯 [WALLET STORE SYNC] Error response:', errorText)
+          console.log('🎯 [WALLET STORE SYNC] No existing token found, creating new one...')
+          
+          // 🔥 ПОЛУЧАЕМ НОВЫЙ JWT ТОКЕН ДЛЯ ПОЛЬЗОВАТЕЛЯ
+          console.log('🎯 [WALLET STORE SYNC] Getting fresh JWT token for wallet...')
+          const tokenResponse = await fetch(`/api/auth/token?wallet=${wallet}`, {
+            method: 'GET',
+            headers: {
+              'Content-Type': 'application/json'
+            }
+          })
+          
+          if (tokenResponse.ok) {
+            const tokenData = await tokenResponse.json()
+            console.log('🎯 [WALLET STORE SYNC] Token response received:', {
+              hasToken: !!tokenData.token,
+              hasUser: !!tokenData.user,
+              tokenLength: tokenData.token?.length
+            })
+            
+            if (tokenData.token) {
+              // 🔥 СОХРАНЯЕМ НОВЫЙ JWT ТОКЕН В LOCALSTORAGE
+              const tokenToSave = {
+                token: tokenData.token,
+                expiresAt: Date.now() + (30 * 24 * 60 * 60 * 1000), // 30 дней
+                userId: tokenData.user.id,
+                wallet: tokenData.user.wallet
+              }
+              localStorage.setItem('fonana_jwt_token', JSON.stringify(tokenToSave))
+              console.log('🎯 [WALLET STORE SYNC] Fresh JWT token saved to localStorage')
+              
+              // 🔥 ПРОВЕРЯЕМ, ЧТО ТОКЕН ДЕЙСТВИТЕЛЬНО СОХРАНИЛСЯ
+              const savedToken = localStorage.getItem('fonana_jwt_token')
+              console.log('🎯 [WALLET STORE SYNC] Verification - saved token exists:', !!savedToken)
+            } else {
+              console.warn('🎯 [WALLET STORE SYNC] No token in response')
+            }
+          } else {
+            console.error('🎯 [WALLET STORE SYNC] Failed to get JWT token:', tokenResponse.status)
+            const errorText = await tokenResponse.text()
+            console.error('🎯 [WALLET STORE SYNC] Error response:', errorText)
+          }
         }
         
         // 🔥 ПОЛУЧАЕМ ДАННЫЕ ПОЛЬЗОВАТЕЛЯ (только если еще не загружен)

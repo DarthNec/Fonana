@@ -563,11 +563,21 @@ model FlashSaleRedemption {
 // Direct Messages
 model Conversation {
   id            String    @id @default(cuid())
-  participants  User[]    @relation("UserConversations")
-  messages      Message[]
+  fromUserId    String
+  toUserId      String
   lastMessageAt DateTime?
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
+  
+  // Relations
+  fromUser      User      @relation("UserConversationsFrom", fields: [fromUserId], references: [id], onDelete: Cascade)
+  toUser        User      @relation("UserConversationsTo", fields: [toUserId], references: [id], onDelete: Cascade)
+  messages      Message[] @relation("ConversationMessages")
+  
+  // Unique constraint to prevent duplicate conversations
+  @@unique([fromUserId, toUserId])
+  @@index([fromUserId])
+  @@index([toUserId])
 }
 
 model Message {

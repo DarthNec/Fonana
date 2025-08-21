@@ -129,14 +129,84 @@ export function useOptimizedPosts(options: UseOptimizedPostsOptions = {}): UseOp
     user?.id
   ])
   
+  // 🔥 IMPLEMENTED: Refresh functionality for real-time updates
+  const refresh = useCallback(async (clearCache?: boolean) => {
+    console.log('[useOptimizedPosts] refresh called, clearCache:', clearCache)
+    
+    try {
+      setIsLoading(true)
+      setError(null)
+      
+      // Build API params
+      const params = new URLSearchParams()
+      if (options.category) params.append('category', options.category)
+      if (options.creatorId) params.append('creatorId', options.creatorId)
+      params.append('sortBy', options.sortBy || 'latest')
+      params.append('page', '1')
+      params.append('limit', '20')
+      
+      if (publicKeyString) params.append('userWallet', publicKeyString)
+      if (user?.id) params.append('userId', user.id)
+      
+      // 🔥 SAFETY: Fallback на localStorage если publicKeyString недоступен
+      if (!publicKeyString && typeof window !== 'undefined') {
+        const savedWallet = localStorage.getItem('fonana_user_wallet')
+        if (savedWallet) {
+          console.log('[useOptimizedPosts] Using localStorage fallback for refresh wallet address:', savedWallet.substring(0, 8) + '...')
+          params.append('userWallet', savedWallet)
+        }
+      }
+      
+      // Choose endpoint based on sortBy
+      let endpoint = '/api/posts'
+      if (options.sortBy === 'subscribed') {
+        endpoint = '/api/posts/following'
+      }
+      
+      console.log('[useOptimizedPosts] Refreshing posts from:', endpoint)
+      
+      const response = await fetch(`${endpoint}?${params}`)
+      
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`)
+      }
+      
+      const data = await response.json()
+      const rawPosts = data.posts || []
+      
+      console.log(`[useOptimizedPosts] Refresh received ${rawPosts.length} posts from API`)
+      
+      // Normalize posts
+      const normalizedPosts = PostNormalizer.normalizeMany(rawPosts)
+      
+      console.log(`[useOptimizedPosts] Refresh normalized ${normalizedPosts.length} posts successfully`)
+      
+      // Update posts state
+      setPosts(normalizedPosts)
+      
+      // Clear any pending posts if clearCache is true
+      if (clearCache) {
+        console.log('[useOptimizedPosts] Clearing cache as requested')
+        // Reset any cached state if needed
+      }
+      
+    } catch (err: any) {
+      console.error('[useOptimizedPosts] Refresh error:', err)
+      setError(err)
+    } finally {
+      setIsLoading(false)
+    }
+  }, [
+    options.sortBy, 
+    options.category, 
+    options.creatorId,
+    publicKeyString,
+    user?.id
+  ])
+  
   // Placeholder functions for Phase 1
   const loadMore = useCallback(() => {
     console.log('[useOptimizedPosts] loadMore not implemented in Phase 1')
-  }, [])
-  
-  const refresh = useCallback((clearCache?: boolean) => {
-    console.log('[useOptimizedPosts] refresh not implemented in Phase 1', { clearCache })
-    // TODO Phase 2: Implement refresh functionality
   }, [])
   
   // Функция для получения userId
@@ -152,10 +222,20 @@ export function useOptimizedPosts(options: UseOptimizedPostsOptions = {}): UseOp
       return user.id
     }
     
-    if (publicKeyString) {
+    // 🔥 SAFETY: Fallback на localStorage если publicKeyString недоступен
+    let walletAddress = publicKeyString
+    if (!walletAddress && typeof window !== 'undefined') {
+      const savedWallet = localStorage.getItem('fonana_user_wallet')
+      if (savedWallet) {
+        walletAddress = savedWallet
+        console.log('🎯 [useOptimizedPosts] Using localStorage fallback for getUserId wallet address:', walletAddress.substring(0, 8) + '...')
+      }
+    }
+    
+    if (walletAddress) {
       console.log('🎯 [useOptimizedPosts] Trying to fetch user via API...')
       try {
-        const response = await fetch(`/api/user?wallet=${publicKeyString}`)
+        const response = await fetch(`/api/user?wallet=${walletAddress}`)
         if (response.ok) {
           const data = await response.json()
           if (data.user?.id) {
@@ -168,9 +248,9 @@ export function useOptimizedPosts(options: UseOptimizedPostsOptions = {}): UseOp
       }
     }
     
-    console.log('🎯 [useOptimizedPosts] No userId found, returning null')
+    console.log('🎯 [useOptimizedPosts] No user ID available')
     return null
-  }, [user, publicKeyString])
+  }, [user?.id, publicKeyString])
 
   // Обработка лайка
   const handleLike = useCallback(async (postId: string) => {
@@ -249,14 +329,25 @@ export function useOptimizedPosts(options: UseOptimizedPostsOptions = {}): UseOp
 
     try {
       console.log('🎯 [useOptimizedPosts] Sending delete request to API...')
-      console.log(publicKeyString);
-      if (!publicKeyString) {
-        console.error('🎯 [useOptimizedPosts] No publicKeyString available for delete')
+      console.log('🎯 [useOptimizedPosts] publicKeyString:', publicKeyString)
+      
+      // 🔥 SAFETY: Fallback на localStorage если publicKeyString недоступен
+      let walletAddress: string | undefined = publicKeyString
+      if (!walletAddress && typeof window !== 'undefined') {
+        const savedWallet = localStorage.getItem('fonana_user_wallet')
+        if (savedWallet) {
+          walletAddress = savedWallet
+          console.log('🎯 [useOptimizedPosts] Using localStorage fallback for wallet address:', walletAddress.substring(0, 8) + '...')
+        }
+      }
+      
+      if (!walletAddress) {
+        console.error('🎯 [useOptimizedPosts] No wallet address available for delete')
         toast.error('Подключите кошелек для удаления поста')
         return
       }
       
-      const response = await fetch(`/api/posts/${postId}?userWallet=${publicKeyString}`, {
+      const response = await fetch(`/api/posts/${postId}?userWallet=${walletAddress}`, {
         method: 'DELETE',
       })
 
@@ -279,7 +370,7 @@ export function useOptimizedPosts(options: UseOptimizedPostsOptions = {}): UseOp
       console.error('Delete error:', error)
       toast.error('Ошибка при удалении поста')
     }
-  }, [])
+  }, [publicKeyString])
 
   const handleAction = useCallback(async (action: PostAction) => {
     console.log('[useOptimizedPosts] handleAction called:', action)

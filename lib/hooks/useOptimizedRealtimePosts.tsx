@@ -45,10 +45,24 @@ export function useOptimizedRealtimePosts({
   const updateBatchRef = useRef<Map<string, UnifiedPost>>(new Map())
   const updateTimerRef = useRef<NodeJS.Timeout | null>(null)
 
-  // Обновление локального состояния при изменении posts
+  // 🔥 FIXED: Обновление локального состояния при изменении posts
+  // Теперь не перезаписываем updatedPosts, если там есть изменения
   useEffect(() => {
-    setUpdatedPosts(posts)
-  }, [posts])
+    // Если у нас есть pending посты или новые посты, не перезаписываем
+    if (pendingPosts.length > 0 || newPostsCount > 0) {
+      console.log('[useOptimizedRealtimePosts] Skipping posts update due to pending/new posts')
+      return
+    }
+    
+    // Проверяем, есть ли различия между posts и updatedPosts
+    const hasDifferences = posts.length !== updatedPosts.length || 
+      posts.some((post, index) => post.id !== updatedPosts[index]?.id)
+    
+    if (hasDifferences) {
+      console.log('[useOptimizedRealtimePosts] Posts changed, updating updatedPosts')
+      setUpdatedPosts(posts)
+    }
+  }, [posts, pendingPosts.length, newPostsCount, updatedPosts])
 
   // Батчинг обновлений для оптимизации производительности
   const applyBatchedUpdates = useCallback(() => {
@@ -318,13 +332,44 @@ export function useOptimizedRealtimePosts({
     // Подписываемся на обновления ленты
     wsService.subscribeToFeed(user.id)
 
-    // Подписываемся на WebSocket события через EventManager
-    setupDefaultHandlers()
+    // 🔥 OPTIMIZATION: setupDefaultHandlers() уже вызывается в AppProvider, 
+    // не нужно дублировать вызов здесь
+    // setupDefaultHandlers()
 
     // Также слушаем window события для обратной совместимости
     const handleWindowEvent = (e: Event) => {
       const event = e as CustomEvent
       switch (e.type) {
+        case 'post-created':
+          // 🔥 FIXED: Handle new post creation for immediate feed update
+          console.log('[useOptimizedRealtimePosts] New post created event received:', event.detail)
+          if (event.detail?.post) {
+            const newPost = event.detail.post
+            setUpdatedPosts(prev => {
+              // Проверяем, есть ли уже такой пост
+              const existingPost = prev.find(p => p.id === newPost.id)
+              if (!existingPost) {
+                console.log('[useOptimizedRealtimePosts] Adding new post to feed:', newPost.id)
+                
+                // 🔥 SAFETY: Проверяем, что новый пост имеет все необходимые поля
+                if (!newPost.content || !newPost.mediaUrl) {
+                  console.warn('[useOptimizedRealtimePosts] New post missing required fields, skipping:', {
+                    hasContent: !!newPost.content,
+                    hasMedia: !!newPost.mediaUrl,
+                    postId: newPost.id
+                  })
+                  return prev
+                }
+                
+                // Добавляем новый пост в начало ленты, сохраняя все существующие посты
+                return [newPost, ...prev]
+              } else {
+                console.log('[useOptimizedRealtimePosts] Post already exists in feed:', newPost.id)
+                return prev
+              }
+            })
+          }
+          break
         case 'post-purchased':
           handlePostPurchased(event)
           break
@@ -339,6 +384,7 @@ export function useOptimizedRealtimePosts({
       }
     }
     
+    window.addEventListener('post-created', handleWindowEvent)
     window.addEventListener('post-purchased', handleWindowEvent)
     window.addEventListener('subscription-updated', handleWindowEvent)
     window.addEventListener('post-deleted', handleWindowEvent)
@@ -350,6 +396,7 @@ export function useOptimizedRealtimePosts({
       
       wsService.unsubscribeFromFeed(user.id)
       
+      window.removeEventListener('post-created', handleWindowEvent)
       window.removeEventListener('post-purchased', handleWindowEvent)
       window.removeEventListener('subscription-updated', handleWindowEvent)
       window.removeEventListener('post-deleted', handleWindowEvent)

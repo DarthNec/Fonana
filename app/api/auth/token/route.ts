@@ -37,8 +37,29 @@ export async function GET(req: NextRequest) {
       })
     }
     
-    // 🔥 ВСЕГДА ГЕНЕРИРУЕМ НОВЫЙ ТОКЕН ПРИ ПОДКЛЮЧЕНИИ КОШЕЛЬКА
-    console.log('🎯 [TOKEN API] Always generating new token for wallet connection')
+    // 🔥 OPTIMIZATION: Check if user already has a valid token before generating new one
+    console.log('🎯 [TOKEN API] Checking if user needs new token...')
+    
+    // Проверяем, есть ли у пользователя уже валидный токен
+    if (user.token && user.tokenExpiresAt && user.tokenExpiresAt > new Date()) {
+      console.log('🎯 [TOKEN API] User already has valid token, returning existing one')
+      return NextResponse.json({
+        token: user.token,
+        expiresAt: user.tokenExpiresAt.toISOString(),
+        user: {
+          id: user.id,
+          wallet: user.wallet,
+          nickname: user.nickname,
+          isCreator: user.isCreator,
+          isVerified: user.isVerified,
+          avatar: user.avatar,
+          fullName: user.fullName
+        }
+      })
+    }
+    
+    // 🔥 Генерируем новый токен только если старый истек или отсутствует
+    console.log('🎯 [TOKEN API] User needs new token, generating...')
     
     // Генерируем новый токен
     console.log('🎯 [TOKEN API] Generating new token')
@@ -122,7 +143,35 @@ export async function POST(req: NextRequest) {
       })
     }
     
+    // 🔥 OPTIMIZATION: Check if user already has a valid token before generating new one
+    console.log('🎯 [TOKEN API] POST: Checking if user needs new token...')
+    
+    // Проверяем, есть ли у пользователя уже валидный токен
+    if (user.token && user.tokenExpiresAt && user.tokenExpiresAt > new Date()) {
+      console.log('🎯 [TOKEN API] POST: User already has valid token, returning existing one')
+      return NextResponse.json({
+        token: user.token,
+        expiresAt: user.tokenExpiresAt.toISOString(),
+        user: {
+          id: user.id,
+          wallet: user.wallet,
+          nickname: user.nickname,
+          isCreator: user.isCreator,
+          isVerified: user.isVerified,
+          avatar: user.avatar,
+          fullName: user.fullName
+        }
+      })
+    }
+    
+    // 🔥 Генерируем новый токен только если старый истек или отсутствует
+    console.log('🎯 [TOKEN API] POST: User needs new token, generating...')
+    
     // Генерируем новый токен
+    console.log('🎯 [TOKEN API] Generating new token')
+    console.log('🎯 [TOKEN API] Using secret:', JWT_SECRET.substring(0, 20) + '...')
+    console.log('🎯 [TOKEN API] Secret length:', JWT_SECRET.length)
+    
     const token = jwt.sign(
       {
         userId: user.id,

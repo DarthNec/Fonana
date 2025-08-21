@@ -378,9 +378,30 @@ export default function FeedPageClient() {
       {showCreateModal && (
         <CreatePostModal
           onClose={() => setShowCreateModal(false)}
-          onPostCreated={() => {
+          onPostCreated={(createdPost) => {
+            console.log('[FeedPage] Post created successfully, refreshing feed...')
             setShowCreateModal(false)
-            refresh()
+            
+            // 🔥 OPTIMIZATION: Refresh feed to show new post immediately
+            if (refresh) {
+              console.log('[FeedPage] Calling refresh() to update feed...')
+              
+              // 🔥 SAFETY: Добавляем небольшую задержку перед refresh,
+              // чтобы real-time обновление успело сработать
+              setTimeout(() => {
+                console.log('[FeedPage] Executing delayed refresh...')
+                refresh(true) // clearCache = true для получения свежих данных
+              }, 500) // 500ms задержка
+              
+            } else {
+              console.warn('[FeedPage] refresh function not available')
+            }
+            
+            // Показываем уведомление об успешном создании
+            toast.success('Пост успешно создан! Обновляем ленту...', {
+              duration: 3000,
+              icon: '🎉'
+            })
           }}
         />
       )}

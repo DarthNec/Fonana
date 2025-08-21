@@ -142,18 +142,25 @@ class JWTManager {
           expiresAt: tokenData.expiresAt,
           currentTime: Date.now(),
           isValid: tokenData.expiresAt > Date.now(),
-          wallet: tokenData.wallet
+          wallet: tokenData.wallet,
+          matchesCurrentWallet: tokenData.wallet === wallet
         })
         
-        // 🔥 ЕСЛИ ТОКЕН ВАЛИДЕН - ВОЗВРАЩАЕМ ЕГО
-        if (tokenData.token && tokenData.expiresAt > Date.now()) {
-          console.log('[JWT] Using existing valid token')
+        // 🔥 ЕСЛИ ТОКЕН ВАЛИДЕН И СООТВЕТСТВУЕТ ТЕКУЩЕМУ КОШЕЛЬКУ - ВОЗВРАЩАЕМ ЕГО
+        if (tokenData.token && 
+            tokenData.expiresAt > Date.now() && 
+            tokenData.wallet === wallet) {
+          console.log('[JWT] Using existing valid token for current wallet')
           return tokenData.token
+        } else if (tokenData.wallet !== wallet) {
+          console.log('[JWT] Token exists but for different wallet, clearing old token')
+          localStorage.removeItem('fonana_jwt_token')
         } else {
           console.log('[JWT] Token expired, requesting new one...')
         }
       } catch (error) {
         console.warn('[JWT] Invalid saved token format:', error)
+        localStorage.removeItem('fonana_jwt_token')
       }
     } else {
       console.log('[JWT] No saved token found, requesting new one...')

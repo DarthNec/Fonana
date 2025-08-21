@@ -535,22 +535,35 @@ export const useJwtReady = () => {
         
         let isValidToken = false
         
-                  if (savedToken) {
-            try {
-              const tokenData = JSON.parse(savedToken)
-              
-              // 🔥 ПРОВЕРЯЕМ ТОЛЬКО НАЛИЧИЕ ТОКЕНА И ВАЛИДНОСТЬ ПО ВРЕМЕНИ
-              isValidToken = tokenData.token && tokenData.expiresAt > Date.now()
-              
-              console.log('[useJwtReady] Token validation:', {
-                hasToken: !!tokenData.token,
-                isValid: tokenData.expiresAt > Date.now(),
-                isValidToken
-              })
-            } catch (error) {
-              console.warn('[useJwtReady] Error parsing token:', error)
+        if (savedToken) {
+          try {
+            const tokenData = JSON.parse(savedToken)
+            
+            // 🔥 ПРОВЕРЯЕМ ТОКЕН НА ВАЛИДНОСТЬ И СООТВЕТСТВИЕ КОШЕЛЬКУ
+            const currentWallet = localStorage.getItem('fonana_user_wallet')
+            isValidToken = tokenData.token && 
+                          tokenData.expiresAt > Date.now() && 
+                          tokenData.wallet === currentWallet
+            
+            console.log('[useJwtReady] Token validation:', {
+              hasToken: !!tokenData.token,
+              isValid: tokenData.expiresAt > Date.now(),
+              walletMatches: tokenData.wallet === currentWallet,
+              isValidToken
+            })
+            
+            // 🔥 ЕСЛИ ТОКЕН ВАЛИДЕН - ИСПОЛЬЗУЕМ ЕГО
+            if (isValidToken) {
+              console.log('[useJwtReady] Using existing valid token, setting ready state...')
+              setJwtReady(true)
+              setIsReady(true)
+              setHasChecked(true)
+              return
             }
+          } catch (error) {
+            console.warn('[useJwtReady] Error parsing token:', error)
           }
+        }
         
         // 🔥 ЕСЛИ ТОКЕН НЕВАЛИДЕН - СОЗДАЕМ НОВЫЙ
         if (!isValidToken) {
@@ -592,41 +605,17 @@ export const useJwtReady = () => {
           } else {
             console.log('[useJwtReady] No wallet found, cannot create token')
           }
-        } else {
-          // 🔥 ТОКЕН ВАЛИДЕН - ИСПОЛЬЗУЕМ ЕГО
-          console.log('[useJwtReady] Valid token found! Setting ready to true')
-          setJwtReady(true)
-          setIsReady(true)
-          setHasChecked(true)
-          return
         }
-        
-        // 🔥 ЕСЛИ НЕ УДАЛОСЬ СОЗДАТЬ ТОКЕН - ПРОБУЕМ ЕЩЕ РАЗ ЧЕРЕЗ 1 СЕКУНДУ
-        if (!hasChecked) {
-          console.log('[useJwtReady] Token creation failed, retrying in 1s...')
-          setTimeout(createOrValidateToken, 1000)
-        }
-        
       } catch (error) {
-        console.warn('[useJwtReady] Error in token creation:', error)
-        // Повторяем попытку через 1 секунду
-        if (!hasChecked) {
-          setTimeout(createOrValidateToken, 1000)
-        }
+        console.error('[useJwtReady] Error in token creation:', error)
       }
+      
+      // Если дошли до сюда, значит что-то пошло не так
+      setHasChecked(true)
     }
     
-    // Запускаем создание/проверку токена
     createOrValidateToken()
-    
-    // Останавливаем через 10 секунд
-    const timeout = setTimeout(() => {
-      console.log('[useJwtReady] Token creation timeout, giving up')
-      setHasChecked(true)
-    }, 10000)
-    
-    return () => clearTimeout(timeout)
-  }, [setJwtReady, hasChecked, user])
+  }, [user, storeJwtReady, hasChecked, setJwtReady])
   
   return isReady
 }

@@ -287,12 +287,13 @@ export function AppProvider({ children }: AppProviderProps) {
   /**
    * Обеспечивает существование JWT токена для подключенного кошелька
    * 🔥 M7 PHASE 2: Enhanced with AbortController support
+   * 🔥 OPTIMIZATION: Check existing valid token before creating new one
    */
   const ensureJWTTokenForWallet = async (walletAddress: string) => {
     console.log('🎯 [JWT FUNCTION] ensureJWTTokenForWallet called with wallet:', walletAddress.substring(0, 8) + '...')
-    console.log('🎯 [JWT FUNCTION] Making request to /api/auth/wallet')
     console.log('🎯 [JWT FUNCTION] Starting JWT authentication process...')
     console.log('[AppProvider] 🔥 CRITICAL: ensureJWTTokenForWallet function started!')
+    
     const signal = abortControllerRef.current?.signal
     try {
       // 🔥 PRODUCTION MODE FIX: Check if component is still mounted
@@ -307,19 +308,55 @@ export function AppProvider({ children }: AppProviderProps) {
         return
       }
       
+      // 🔥 OPTIMIZATION: Check if we already have a valid token for this wallet
+      const existingToken = localStorage.getItem('fonana_jwt_token')
+      if (existingToken) {
+        try {
+          const tokenData = JSON.parse(existingToken)
+          const isTokenValid = tokenData.token && 
+                              tokenData.expiresAt > Date.now() && 
+                              tokenData.wallet === walletAddress
+          
+          if (isTokenValid) {
+            console.log('[AppProvider] Found existing valid JWT token, using it instead of creating new one')
+            console.log('[AppProvider] Token expires at:', new Date(tokenData.expiresAt).toISOString())
+            
+            // Set JWT ready with existing token
+            if (!signal?.aborted && isMountedRef.current) {
+              console.log(`[AppProvider][ACTION DEBUG] setJwtReady(true) with existing token called (render #${renderCountRef.current})`)
+              setJwtReady(true)
+            }
+            
+            // Update user if needed
+            if (!user && isMountedRef.current) {
+              console.log(`[AppProvider][ACTION DEBUG] setUser(tokenData) with existing token called (render #${renderCountRef.current})`)
+              setUser({
+                id: tokenData.userId,
+                wallet: tokenData.wallet,
+                // Other fields will be loaded from API when needed
+              })
+            }
+            
+            return // Exit early, no need to create new token
+          } else {
+            console.log('[AppProvider] Existing token is invalid or expired, will create new one')
+          }
+        } catch (error) {
+          console.warn('[AppProvider] Error parsing existing token, will create new one:', error)
+        }
+      }
+      
       // Set JWT as not ready at start (только если не прервано)
       if (!signal?.aborted) {
         console.log(`[AppProvider][ACTION DEBUG] setJwtReady(false) at start called (render #${renderCountRef.current})`)
         setJwtReady(false)
       }
       
-      // 🔥 ВСЕГДА СОЗДАЕМ НОВЫЙ ТОКЕН ПРИ ПОДКЛЮЧЕНИИ КОШЕЛЬКА
-      console.log('[AppProvider] Always creating fresh JWT token for wallet connection')
+      // 🔥 СОЗДАЕМ НОВЫЙ ТОКЕН ТОЛЬКО ЕСЛИ СТАРЫЙ НЕВАЛИДЕН
+      console.log('[AppProvider] Creating new JWT token for wallet:', walletAddress.substring(0, 8) + '...')
       
       // Очищаем старые токены
       localStorage.removeItem('fonana_jwt_token')
-      
-      console.log('[AppProvider] Creating JWT token for wallet:', walletAddress.substring(0, 8) + '...')
       
       // Add timeout protection
       const timeoutPromise = new Promise((_, reject) => 

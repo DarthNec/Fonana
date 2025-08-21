@@ -715,7 +715,32 @@ export default function CreatePostModal({ onPostCreated, onPostUpdated, onClose,
         // Передаем обновленный пост в callback
         setTimeout(() => onPostUpdated(post), 500)
       } else if (mode === 'create' && onPostCreated) {
-        // NEW: Real-time post updates - set up fallback monitoring
+        // 🔥 OPTIMIZATION: Enhanced post creation handling for immediate feed update
+        console.log('[CreatePostModal] Post created successfully, calling onPostCreated callback...')
+        
+        // 🔥 SAFETY: Проверяем, что пост содержит все необходимые данные
+        if (!post.content && !post.mediaUrl) {
+          console.warn('[CreatePostModal] Post missing content and media, skipping real-time update:', {
+            hasContent: !!post.content,
+            hasMedia: !!post.mediaUrl,
+            postId: post.id
+          })
+          // Вызываем callback без real-time обновления
+          onPostCreated(post)
+          return
+        }
+        
+        // Emit custom event for real-time feed updates
+        const postCreatedEvent = new CustomEvent('post-created', {
+          detail: { post }
+        })
+        window.dispatchEvent(postCreatedEvent)
+        console.log('[CreatePostModal] Emitted post-created event for real-time updates')
+        
+        // Immediately call the callback to trigger feed refresh
+        onPostCreated(post)
+        
+        // Set up fallback monitoring for real-time updates
         const fallbackTimer = setTimeout(() => {
           // Check if post appeared in feed via real-time
           const feedElement = document.querySelector(`[data-post-id="${post.id}"]`)
@@ -723,8 +748,10 @@ export default function CreatePostModal({ onPostCreated, onPostUpdated, onClose,
             console.warn('[CreatePostModal] Real-time update not detected, using fallback refresh')
             // Fallback to manual refresh if real-time failed
             if (onPostCreated) onPostCreated(post)
+          } else {
+            console.log('[CreatePostModal] Post detected in feed via real-time update')
           }
-        }, 3000) // 3 second fallback timeout
+        }, 2000) // Reduced to 2 second fallback timeout
         
         // Clear timeout if component unmounts
         return () => clearTimeout(fallbackTimer)
