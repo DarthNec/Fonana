@@ -15,7 +15,8 @@ import {
   ArrowRightOnRectangleIcon,
   Cog6ToothIcon,
   BellIcon,
-  RocketLaunchIcon
+  RocketLaunchIcon,
+  QuestionMarkCircleIcon
 } from '@heroicons/react/24/outline'
 import {
   HomeIcon as HomeSolidIcon,
@@ -248,6 +249,14 @@ export default function BottomNav() {
                 >
                   <UserIcon className="w-6 h-6 text-gray-600 dark:text-slate-400" />
                   <span className="text-gray-900 dark:text-white font-medium">Profile</span>
+                </Link>
+
+                <Link
+                  href="/support"
+                  className="flex items-center gap-4 p-4 hover:bg-gray-50 dark:hover:bg-slate-800/50 rounded-2xl transition-colors"
+                >
+                  <QuestionMarkCircleIcon className="w-5 h-5" />
+                  Support
                 </Link>
 
                 {user?.isCreator && (

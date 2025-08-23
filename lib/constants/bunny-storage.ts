@@ -9,5 +9,8 @@ export const BUNNY_PATHS = {
     images: 'posts/images',
     videos: 'posts/videos', 
     audio: 'posts/audio'
+  },
+  support: {
+    images: 'support/images'
   }
 } as const 

@@ -12,7 +12,7 @@ export interface BunnyUploadResult {
 
 export async function uploadToBunnyStorage(
   file: File, 
-  type: 'image' | 'video' | 'audio'
+  type: 'image' | 'video' | 'audio' | 'support'
 ): Promise<BunnyUploadResult> {
   try {
     console.log('🎯 [BUNNY UPLOAD] Starting upload:', {
@@ -29,8 +29,14 @@ export async function uploadToBunnyStorage(
     const fileName = `${hash}${ext}`
 
     // Определяем путь в BunnyStorage
-    const mediaType = type === 'image' ? 'images' : type === 'video' ? 'videos' : 'audio'
-    const bunnyPath = `${BUNNY_PATHS.posts[mediaType]}/${fileName}`
+    let bunnyPath: string
+    
+    if (type === 'support') {
+      bunnyPath = `${BUNNY_PATHS.support.images}/${fileName}`
+    } else {
+      const mediaType = type === 'image' ? 'images' : type === 'video' ? 'videos' : 'audio'
+      bunnyPath = `${BUNNY_PATHS.posts[mediaType]}/${fileName}`
+    }
     const bunnyUrl = `${BUNNY_STORAGE_HOST}/${BUNNY_STORAGE_ZONE}/${bunnyPath}`
 
     console.log('🎯 [BUNNY UPLOAD] Upload URL:', bunnyUrl)

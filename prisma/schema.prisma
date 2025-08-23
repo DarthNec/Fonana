@@ -54,6 +54,7 @@ model User {
   sentMessages         Message[]             @relation("UserMessages")
   tierSettings         CreatorTierSettings?  @relation("UserTierSettings")
   postPurchases        PostPurchase[]        @relation("UserPostPurchases")
+  supportTickets       SupportTicket[]       @relation("UserSupportTickets")
 
   @@map("users")
 }
@@ -507,4 +508,54 @@ enum AuctionPaymentStatus {
   CONFIRMED
   EXPIRED
   CANCELLED
+}
+
+model SupportTicket {
+  id          String   @id @default(cuid())
+  userId      String
+  userWallet  String
+  username    String
+  subject     String
+  description String
+  images      String[] // Array of image URLs
+  status      SupportTicketStatus @default(OPEN)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  // Relations
+  user        User     @relation("UserSupportTickets", fields: [userId], references: [id], onDelete: Cascade)
+  
+  // Admin responses
+  responses   SupportTicketResponse[]
+  
+  @@index([userId])
+  @@index([status])
+  @@index([createdAt])
+  @@map("support_tickets")
+}
+
+model SupportTicketResponse {
+  id              String   @id @default(cuid())
+  ticketId        String
+  adminId         String
+  adminWallet     String
+  adminUsername   String
+  message         String
+  isAdminResponse Boolean  @default(true)
+  createdAt       DateTime @default(now())
+  
+  // Relations
+  ticket          SupportTicket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  
+  @@index([ticketId])
+  @@index([adminId])
+  @@index([createdAt])
+  @@map("support_ticket_responses")
+}
+
+enum SupportTicketStatus {
+  OPEN
+  IN_PROGRESS
+  RESOLVED
+  CLOSED
 }
