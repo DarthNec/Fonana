@@ -213,7 +213,7 @@ export function PostLocked({
         {tierInfo && variant === 'full' && (
           <p className="mt-3 text-sm text-white/70 max-w-xs">
             {needsUpgrade 
-              ? `Обновите подписку с ${tierInfo.current?.name} до ${tierInfo.required.name}`
+              ? (tierInfo.current?.name !== undefined ?  `Обновите подписку с ${tierInfo.current?.name} до ${tierInfo.required.name}` : `Подпишитесь на уровень ${tierInfo.required.name} для доступа`)
               : `Подпишитесь на уровень ${tierInfo.required.name} для доступа`
             }
           </p>

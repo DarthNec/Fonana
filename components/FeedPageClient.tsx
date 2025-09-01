@@ -119,7 +119,7 @@ export default function FeedPageClient() {
     maxPendingPosts: 50,
     batchUpdateDelay: 100
   })
-
+  
   // Infinite scroll
   const { ref: loadMoreRef, inView } = useInView({
     threshold: 0.1,
@@ -151,7 +151,44 @@ export default function FeedPageClient() {
 
   // Посты уже отсортированы на сервере в зависимости от sortBy
   const filteredAndSortedPosts = useMemo(() => {
-    return [...realtimePosts]
+    // Загружаем подписки из localStorage
+    const subscriptions = JSON.parse(localStorage.getItem('user_subscriptions') || '[]')
+    console.log(`[SUBSCRIPTIONS]`, subscriptions);
+    // Обрабатываем купленные посты
+    const processedPosts = realtimePosts.map(post => {
+      const index = subscriptions.subscriptions.findIndex(sub => sub.creatorId === post.creator.id);
+      console.log(`[SUBSCRIPTION] index:`, index);
+      console.log(`[SUBSCRIPTION] post.creator.id:`, post.creator.id);
+      if(index !== -1) {
+        if(subscriptions.subscriptions[index].isActive) {
+          if(subscriptions.subscriptions[index].plan === 'VIP') {
+            post.access.shouldHideContent = false;
+          }
+          else if(post.access.tier === 'basic' && (subscriptions.subscriptions[index].plan === 'Basic' 
+            || subscriptions.subscriptions[index].plan === 'VIP' || subscriptions.subscriptions[index].plan === 'Premium')) {
+            post.access.shouldHideContent = false;
+          }
+          else if(post.access.tier === 'premium' && (subscriptions.subscriptions[index].plan === 'Premium' 
+            || subscriptions.subscriptions[index].plan === 'VIP')) {
+            post.access.shouldHideContent = false;
+          }
+        }
+      }
+      /*
+      if (subscriptions.includes(post.creator.id)) {
+        return {
+          ...post,
+          access: {
+            ...post.access,
+            shouldHideContent: false
+          }
+        }
+      }
+      */
+      return post
+    })
+    
+    return processedPosts
   }, [realtimePosts])
 
   // Обработка действий с постами

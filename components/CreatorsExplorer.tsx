@@ -122,6 +122,11 @@ function CreatorsExplorerInner() {
       const subsData = await subsResponse.json()
       
       console.info(`[ENTERPRISE QUERY] Successfully loaded subscriptions for user ${userData.user.id}`)
+      console.log(`[SUBSCRIPTIONS DATA]`, subsData);
+      
+      // Сохраняем подписки в localStorage
+      localStorage.setItem('user_subscriptions', JSON.stringify(subsData || null))
+      
       return {
         userId: userData.user.id,
         subscribedCreatorIds: subsData.subscribedCreatorIds || []
