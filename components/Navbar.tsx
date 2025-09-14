@@ -38,9 +38,8 @@ const navigation = [
   { name: 'Creators', href: '/creators', icon: UsersIcon },
   { name: 'Feed', href: '/feed', icon: HomeIcon },
   { name: 'Messages', href: '/messages', icon: ChatBubbleLeftEllipsisIcon, hasIndicator: true },
-  { name: '', href: '/version-check', icon: RocketLaunchIcon, isNew: false },
   { name: 'Create', href: '#', icon: PlusIcon, isAction: true },
-]
+] // { name: '', href: '/version-check', icon: RocketLaunchIcon, isNew: false },
 
 export function Navbar() {
   const [isOpen, setIsOpen] = useState(false)

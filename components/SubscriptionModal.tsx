@@ -46,6 +46,7 @@ export function SubscriptionModal({ isOpen, onClose, creator }: SubscriptionModa
   const creatorWallet = creator.solanaWallet || creator.wallet
   const referrerWallet = creator.referrer?.solanaWallet || creator.referrer?.wallet || undefined
   
+
   if (!creatorWallet) {
     return null
   }

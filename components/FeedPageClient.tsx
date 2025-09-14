@@ -198,7 +198,10 @@ export default function FeedPageClient() {
 
     switch (action.type) {
       case 'subscribe':
+        setSelectedPost(post);
         setSelectedCreator(post.creator)
+        console.log('[FeedPage] post:', post);
+        console.log('[FeedPage] selectedPost:', selectedPost);
         setShowSubscribeModal(true)
         break
       case 'purchase':
@@ -452,6 +455,7 @@ export default function FeedPageClient() {
             refresh()
           }}
           creator={selectedCreator}
+          post={selectedPost}
         />
       )}
 

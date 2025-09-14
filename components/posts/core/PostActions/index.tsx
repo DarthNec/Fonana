@@ -78,7 +78,9 @@ export function PostActions({
   }
 
   const handleShare = () => {
+    console.log('[PostActions] handleShare');
     if (onAction) {
+      console.log('[PostActions] onAction');
       onAction({ type: 'share', postId: post.id })
     }
   }
@@ -150,6 +152,7 @@ export function PostActions({
       </div>
 
       {/* Share button */}
+      {/*
       <button
         onClick={handleShare}
         className="text-gray-600 dark:text-slate-400 hover:text-purple-600 dark:hover:text-purple-400 transition-colors"
@@ -163,6 +166,7 @@ export function PostActions({
           </svg>
         </div>
       </button>
+      */}
     </div>
   )
 } 

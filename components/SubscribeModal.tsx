@@ -53,6 +53,7 @@ interface SubscribeModalProps {
   preferredTier?: string
   onClose: () => void
   onSuccess?: (data?: any) => void
+  post?: any | null
 }
 
 const getSubscriptionTiers = (creatorCategory?: string): SubscriptionTier[] => {
@@ -121,13 +122,14 @@ const getSubscriptionTiers = (creatorCategory?: string): SubscriptionTier[] => {
   return baseTiers
 }
 
-export default function SubscribeModal({ creator, preferredTier, onClose, onSuccess }: SubscribeModalProps) {
+export default function SubscribeModal({ creator, preferredTier, onClose, onSuccess, post = null }: SubscribeModalProps) {
   const { connected, sendTransaction, publicKey } = useWallet()
   const { publicKeyString } = useStableWallet() // 🔥 M7 FIX: Stable wallet
   const { setVisible } = useSafeWalletModal()
   const [subscriptionTiers, setSubscriptionTiers] = useState<SubscriptionTier[]>([])
   const [loading, setLoading] = useState(true)
-  const [selectedTier, setSelectedTier] = useState(preferredTier || 'basic')
+  const initialTierFromPost = typeof post?.access?.tier === 'string' ? post.access.tier.toLowerCase() : undefined
+  const [selectedTier, setSelectedTier] = useState(initialTierFromPost || preferredTier || 'basic')
   const [showInCarousel, setShowInCarousel] = useState(true)
   const [isProcessing, setIsProcessing] = useState(false)
   const [expandedTiers, setExpandedTiers] = useState<Set<string>>(new Set<string>())
@@ -136,6 +138,10 @@ export default function SubscribeModal({ creator, preferredTier, onClose, onSucc
   const { rate: solRate } = useSolRate()
 
   const selectedSubscription = subscriptionTiers.find(tier => tier.id === selectedTier)
+
+  console.log('[SubscribeModal] creator', creator);
+  console.log('[SubscribeModal] preferredTier', preferredTier);
+  console.log('[SubscribeModal] post', post);
 
   // Update flash sale when tier changes
   useEffect(() => {
@@ -168,6 +174,17 @@ export default function SubscribeModal({ creator, preferredTier, onClose, onSucc
       loadFlashSales()
     }
   }, [selectedTier])
+
+  // Если пришёл post с требуемым tier, выбираем его после загрузки тиров
+  useEffect(() => {
+    const tierFromPost = typeof post?.access?.tier === 'string' ? post.access.tier.toLowerCase() : ''
+    if (tierFromPost && subscriptionTiers.length > 0) {
+      const exists = subscriptionTiers.some(t => t.id === tierFromPost)
+      if (exists) {
+        setSelectedTier(tierFromPost)
+      }
+    }
+  }, [post, subscriptionTiers])
 
   const loadCreatorTierSettings = async () => {
     try {
