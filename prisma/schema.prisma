@@ -22,7 +22,7 @@ model User {
   createdAt            DateTime              @default(now())
   updatedAt            DateTime              @updatedAt
   isVerified           Boolean               @default(false)
-  isCreator            Boolean               @default(false)
+  isCreator            Boolean               @default(true)
   followersCount       Int                   @default(0)
   followingCount       Int                   @default(0)
   postsCount           Int                   @default(0)

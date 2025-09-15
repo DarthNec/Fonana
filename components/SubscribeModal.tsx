@@ -439,6 +439,8 @@ export default function SubscribeModal({ creator, preferredTier, onClose, onSucc
         distribution
       })
       
+      console.log(`[SubscribeModal] publicKey: `, publicKey);
+
       const transaction = await createSubscriptionTransaction(
         publicKey,
         distribution

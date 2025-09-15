@@ -193,7 +193,7 @@ export async function createSubscriptionTransaction(
       lamports: creatorTransferAmount
     })
   )
-
+  console.log(`Platform wallet: `, PLATFORM_WALLET);
   // Transfer to platform
   const platformPubkey = new PublicKey(PLATFORM_WALLET)
   const platformTransferAmount = Math.floor(distribution.platformAmount * LAMPORTS_PER_SOL)

@@ -30,7 +30,7 @@ export const authOptions: NextAuthOptions = {
         })
         
         if (dbUser) {
-          session.user.isCreator = dbUser.isCreator
+          session.user.isCreator = true
           session.user.nickname = dbUser.nickname
           session.user.solanaWallet = dbUser.solanaWallet
         }

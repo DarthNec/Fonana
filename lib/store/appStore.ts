@@ -198,7 +198,7 @@ export const useAppStore = create<AppStore>()(
               avatar: user.avatar,
               backgroundImage: user.backgroundImage,
               isVerified: user.isVerified,
-              isCreator: user.isCreator,
+              isCreator: true,
               followersCount: user.followersCount,
               followingCount: user.followingCount,
               postsCount: user.postsCount,
@@ -478,6 +478,7 @@ export const useAppStore = create<AppStore>()(
 
 export const useUser = () => {
   if (typeof window === 'undefined') return null
+  
   return useAppStore(state => state.user)
 }
 
