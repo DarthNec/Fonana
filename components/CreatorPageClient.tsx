@@ -49,6 +49,7 @@ interface CreatorPageClientProps {
   creatorId: string
 }
 
+
 export default function CreatorPageClient({ creatorId }: CreatorPageClientProps) {
   const [creator, setCreator] = useState<CreatorData | null>(null)
   const [loading, setLoading] = useState(true)
@@ -61,12 +62,15 @@ export default function CreatorPageClient({ creatorId }: CreatorPageClientProps)
   const [isFollowLoading, setIsFollowLoading] = useState(false)
   const backgroundInputRef = useRef<HTMLInputElement>(null)
   
+  const { handleAction } = useOptimizedPosts({});
+
   // Posts модалки
   const [showSubscribeModal, setShowSubscribeModal] = useState(false)
   const [showPurchaseModal, setShowPurchaseModal] = useState(false)
   const [showEditPostModal, setShowEditPostModal] = useState(false)
   const [selectedPost, setSelectedPost] = useState<any>(null)
   const [selectedCreator, setSelectedCreator] = useState<any>(null)
+  const [filteredPosts, setFilteredPosts] = useState<any>([]);
   
   const user = useUser()
   const router = useRouter()
@@ -117,8 +121,9 @@ export default function CreatorPageClient({ creatorId }: CreatorPageClientProps)
     enabled: !!creatorId
   })
 
+  /*
   // Фильтрация постов по активной табке
-  const filteredPosts = useMemo(() => {
+  let filteredPosts = useMemo(() => {
     console.log('[CreatorPageClient] FilteredPosts useMemo triggered:')
     console.log('- activeTab:', activeTab)
     console.log('- postsData.posts length:', postsData.posts?.length)
@@ -150,6 +155,11 @@ export default function CreatorPageClient({ creatorId }: CreatorPageClientProps)
     console.log('[CreatorPageClient] Returning all posts:', postsData.posts.length)
     return postsData.posts
   }, [postsData.posts, activeTab])
+  */
+
+  useEffect(() => {
+    setFilteredPosts(postsData.posts);
+  }, [postsData.posts]);
 
   // [media_only_tab_optimization_2025_017] Используем точные счетчики вместо фильтрации загруженных постов
   const tabCounts = useMemo(() => {
@@ -323,8 +333,10 @@ export default function CreatorPageClient({ creatorId }: CreatorPageClientProps)
         break
         
       case 'edit':
-        if (action.data?.post) {
-          setSelectedPost(action.data.post)
+        const post = filteredPosts.find(p => p.id === action.postId);
+        console.log('Edit post:', post);
+        if (post != undefined && post != null) {
+          setSelectedPost(post);
           setShowEditPostModal(true)
         }
         break
@@ -350,7 +362,16 @@ export default function CreatorPageClient({ creatorId }: CreatorPageClientProps)
           }
         }
         break
-        
+      
+      case 'delete':
+          const result = await handleAction(action);
+          console.log('Delete action result:', result);
+          if(result) {
+            setFilteredPosts(filteredPosts.filter(p => p.id !== action.postId));
+            console.log('Filtered posts:', filteredPosts);
+          }
+          console.log('Delete action:', action)
+          break
       default:
         console.warn('[CreatorPageClient] Unhandled post action:', action)
     }
@@ -698,7 +719,7 @@ export default function CreatorPageClient({ creatorId }: CreatorPageClientProps)
           <div className="bg-white dark:bg-slate-800 rounded-lg p-4 text-center">
             <DocumentTextIcon className="w-6 h-6 text-green-500 mx-auto mb-2" />
             <div className="text-2xl font-bold text-gray-900 dark:text-white">
-              {creator.postsCount.toLocaleString()}
+              {filteredPosts.length.toLocaleString()}
             </div>
             <div className="text-sm text-gray-600 dark:text-gray-400">Posts</div>
           </div>
@@ -716,7 +737,7 @@ export default function CreatorPageClient({ creatorId }: CreatorPageClientProps)
         <div className="bg-white dark:bg-slate-800 rounded-xl shadow-lg overflow-hidden">
           {/* Tabs Header */}
           <div className="flex border-b border-gray-200 dark:border-slate-700">
-            {['All Posts', 'Media Only'].map((tab, index) => (
+            {['All Posts'].map((tab, index) => ( // , 'Media Only'
               <button
                 key={tab}
                 onClick={() => setActiveTab(index === 0 ? 'all' : 'media')}
@@ -733,7 +754,7 @@ export default function CreatorPageClient({ creatorId }: CreatorPageClientProps)
                     <span className="animate-pulse">...</span>
                   ) : (
                     index === 0 
-                      ? tabCounts.all 
+                      ? filteredPosts.length.toLocaleString() 
                       : tabCounts.media
                   )}
                 </span>

@@ -163,14 +163,20 @@ export default function FeedPageClient() {
         if(subscriptions.subscriptions[index].isActive) {
           if(subscriptions.subscriptions[index].plan === 'VIP') {
             post.access.shouldHideContent = false;
+            post.access.isLocked = false;
+            return post;
           }
           else if(post.access.tier === 'basic' && (subscriptions.subscriptions[index].plan === 'Basic' 
             || subscriptions.subscriptions[index].plan === 'VIP' || subscriptions.subscriptions[index].plan === 'Premium')) {
             post.access.shouldHideContent = false;
+            post.access.isLocked = false;
+            return post;
           }
           else if(post.access.tier === 'premium' && (subscriptions.subscriptions[index].plan === 'Premium' 
             || subscriptions.subscriptions[index].plan === 'VIP')) {
             post.access.shouldHideContent = false;
+            post.access.isLocked = false;
+            return post;
           }
         }
       }
@@ -289,6 +295,8 @@ export default function FeedPageClient() {
         break
     }
   }, [filteredAndSortedPosts, handleAction])
+
+  console.log(`[FILTERED AND SORTED POSTS]`, filteredAndSortedPosts);
 
   return (
     <div className="min-h-screen bg-white dark:bg-slate-900 pt-16 sm:pt-20">

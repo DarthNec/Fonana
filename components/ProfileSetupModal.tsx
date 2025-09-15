@@ -47,8 +47,8 @@ export default function ProfileSetupModal({
   const [step, setStep] = useState(mode === 'edit' ? 1 : 1)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
-  const user = useUser()
-  const { setUser } = useUserActions()
+  // const user = useUser()
+  // const { setUser } = useUserActions()
   
   const [formData, setFormData] = useState<ProfileData>({
     nickname: initialData.nickname || '',
@@ -60,11 +60,34 @@ export default function ProfileSetupModal({
     telegram: initialData.telegram || ''
   })
 
+  console.log(`рендер компонента ProfileSetupModal`);
+
+  // Синхронизируем formData с initialData при изменении пропсов
+  useEffect(() => {
+    setFormData({
+      nickname: initialData.nickname || '',
+      fullName: initialData.fullName || '',
+      bio: initialData.bio || '',
+      avatar: initialData.avatar || undefined,
+      website: initialData.website || '',
+      twitter: initialData.twitter || '',
+      telegram: initialData.telegram || ''
+    })
+  }, [initialData.nickname, initialData.fullName, initialData.bio, initialData.avatar, initialData.website, initialData.twitter, initialData.telegram])
   // В режиме редактирования сразу проверяем что никнейм доступен (это текущий никнейм)
   const [nicknameStatus, setNicknameStatus] = useState<'idle' | 'checking' | 'available' | 'taken' | 'invalid' | 'reserved'>(
     mode === 'edit' && initialData.nickname ? 'available' : 'idle'
   )
   const [nicknameCheckTimeout, setNicknameCheckTimeout] = useState<NodeJS.Timeout | null>(null)
+
+  // Синхронизируем nicknameStatus с изменениями mode и initialData.nickname
+  useEffect(() => {
+    if (mode === 'edit' && initialData.nickname) {
+      setNicknameStatus('available')
+    } else {
+      setNicknameStatus('idle')
+    }
+  }, [mode, initialData.nickname])
 
   const checkNicknameAvailability = async (nickname: string) => {
     if (!nickname) {
@@ -222,12 +245,7 @@ export default function ProfileSetupModal({
   return (
     <Dialog
       open={isOpen}
-      onClose={() => {
-        // Разрешаем закрытие только если заполнены обязательные поля (после шага 1)
-        if (step > 1 && formData.nickname && formData.fullName) {
-          onClose()
-        }
-      }}
+      onClose={onClose}
       className="relative z-50"
     >
       <div className="fixed inset-0 bg-black/30 backdrop-blur-sm" aria-hidden="true" />
@@ -237,16 +255,14 @@ export default function ProfileSetupModal({
           <div className="p-6">
             {/* Header */}
             <div className="text-center mb-6 relative">
-              {/* Close button - показываем только после шага 1 */}
-              {step > 1 && formData.nickname && formData.fullName && (
-                <button
-                  onClick={onClose}
-                  className="absolute right-0 top-0 p-2 text-gray-400 hover:text-gray-600 dark:text-slate-500 dark:hover:text-slate-300 transition-colors"
-                  aria-label="Close"
-                >
-                  <XMarkIcon className="w-5 h-5" />
-                </button>
-              )}
+              {/* Close button - показываем всегда */}
+              <button
+                onClick={onClose}
+                className="absolute right-0 top-0 p-2 text-gray-400 hover:text-gray-600 dark:text-slate-500 dark:hover:text-slate-300 transition-colors"
+                aria-label="Close"
+              >
+                <XMarkIcon className="w-5 h-5" />
+              </button>
               <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
                 {mode === 'edit' ? 'Edit Your Profile' : 'Welcome to Fonana! 🎉'}
               </h2>

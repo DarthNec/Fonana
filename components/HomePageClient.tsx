@@ -125,12 +125,14 @@ export default function HomePageClient() {
       <section className="relative min-h-screen flex items-center justify-center px-4 py-20">
         <div className="container mx-auto px-4 relative z-10">
           <div className="text-center max-w-5xl mx-auto">
+            {/*
             <div className="inline-flex items-center px-6 py-3 rounded-full bg-gradient-to-r from-purple-500/10 to-blue-500/10 border border-purple-500/20 backdrop-blur-sm mb-8">
               <StarIcon className="w-5 h-5 text-yellow-500 dark:text-yellow-400 mr-3" />
               <span className="text-sm font-medium bg-gradient-to-r from-purple-600 to-blue-600 dark:from-purple-400 dark:to-blue-400 bg-clip-text text-transparent">
                 {version}
               </span>
             </div>
+            */}
             
             <div className={`transition-all duration-500 ${!showInfoBlock ? 'animate-fadeOut' : ''}`}>
               <h1 className="text-6xl md:text-8xl font-black mb-8 leading-tight">
@@ -177,7 +179,7 @@ export default function HomePageClient() {
               </div>
             )}
 
-            <div className="flex flex-col sm:flex-row gap-6 justify-center mb-20">
+            <div className="flex flex-col sm:flex-row gap-6 justify-center mb-20 mt-10">
               <Link href="/creators" className="group">
                 <div className="bg-gradient-to-r from-purple-600 to-blue-600 text-white px-8 py-4 rounded-2xl font-semibold flex items-center justify-center transform group-hover:scale-105 transition-all duration-300 hover:shadow-xl hover:shadow-purple-500/25">
                   <PlayIcon className="w-6 h-6 mr-3" />

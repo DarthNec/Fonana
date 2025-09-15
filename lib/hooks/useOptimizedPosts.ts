@@ -397,6 +397,7 @@ export function useOptimizedPosts(options: UseOptimizedPostsOptions = {}): UseOp
           break
         case 'delete':
           await handleDelete(action.postId)
+          return true;
           break
         case 'edit':
           console.log('Edit action:', action)

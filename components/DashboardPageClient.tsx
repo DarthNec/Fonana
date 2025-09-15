@@ -56,6 +56,7 @@ export default function DashboardPageClient() {
 
 
   useEffect(() => {
+    console.log(`User: `, user);
     if (user?.id) {
       fetchDashboardData()
     }
