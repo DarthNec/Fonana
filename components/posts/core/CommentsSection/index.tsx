@@ -225,9 +225,11 @@ export function CommentsSection({ postId, className, onClose }: CommentsSectionP
                     </svg>
                     {comment.likesCount}
                   </button>
+                  {/* 
                   <button className="text-xs text-gray-500 dark:text-slate-400 hover:text-purple-600 dark:hover:text-purple-400 transition-colors">
                     Ответить
                   </button>
+                  */}
                 </div>
               </div>
             </div>

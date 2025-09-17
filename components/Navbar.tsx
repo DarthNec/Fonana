@@ -222,7 +222,7 @@ export function Navbar() {
             </Link>
 
             {/* Desktop Navigation - скрываем на мобильных из-за BottomNav */}
-            <div className="hidden lg:flex items-center gap-2 flex-1">
+            <div className="hidden lg:flex items-center gap-2 flex-1 ml-4">
               <div className="flex items-center gap-2">
                 {navigation.map((item) => (
                   item.isAction ? (

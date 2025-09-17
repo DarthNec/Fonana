@@ -142,7 +142,7 @@ export default function DashboardPageClient() {
       </div>
     )
   }
-
+  /*
   if (!user.isCreator) {
     return (
       <div className="flex items-center justify-center min-h-screen pt-20">
@@ -157,6 +157,7 @@ export default function DashboardPageClient() {
       </div>
     )
   }
+  */
 
   if (loading) {
     return (
@@ -484,7 +485,7 @@ export default function DashboardPageClient() {
         </div>
 
         {/* My Subscriptions Section - Compact Design */}
-        <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl p-6">
+        <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl p-6 mb-8">
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center">
               <CreditCardIcon className="w-6 h-6 text-purple-600 dark:text-purple-400 mr-2" />
@@ -500,7 +501,7 @@ export default function DashboardPageClient() {
 
         {/* Subscription Tiers Settings */}
         {user?.isCreator && (
-          <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl p-6">
+          <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl p-6 mb-8">
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center">
                 <CogIcon className="w-6 h-6 text-emerald-600 dark:text-emerald-400 mr-2" />
@@ -514,7 +515,7 @@ export default function DashboardPageClient() {
         )}
 
         {/* Referral System - For All Users */}
-        <div className="bg-white dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-slate-700 p-6">
+        <div className="bg-white dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-slate-700 p-6 mb-8">
           <div className="flex items-center justify-between mb-6">
             <div className="flex items-center">
               <UsersIcon className="w-6 h-6 text-orange-600 dark:text-orange-400 mr-2" />
@@ -525,7 +526,7 @@ export default function DashboardPageClient() {
             <span className="text-sm text-gray-500 dark:text-gray-400">Share & Earn</span>
           </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
             {/* Referral Link */}
             <div className="bg-gradient-to-br from-orange-50 to-amber-50 dark:from-orange-900/20 dark:to-amber-900/20 rounded-xl p-4 border border-orange-200 dark:border-orange-800">
               <div className="flex items-center mb-3">
@@ -609,7 +610,7 @@ export default function DashboardPageClient() {
         </div>
 
         {/* AI Portrait Training Section */}
-        <div className="bg-gradient-to-br from-purple-50 to-pink-50 dark:from-purple-900/20 dark:to-pink-900/20 border border-purple-200 dark:border-purple-800 rounded-xl p-6">
+        <div className="bg-gradient-to-br from-purple-50 to-pink-50 dark:from-purple-900/20 dark:to-pink-900/20 border border-purple-200 dark:border-purple-800 rounded-xl p-6 mb-8">
           <div className="flex items-center justify-between mb-6">
             <div className="flex items-center">
               <CpuChipIcon className="w-6 h-6 text-purple-600 dark:text-purple-400 mr-2" />
@@ -672,20 +673,7 @@ export default function DashboardPageClient() {
             </div>
           </div>
         </div>
-
-        {/* Recent Activity Note */}
-        <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-xl p-6">
-          <div className="flex items-center">
-            <CalendarIcon className="w-6 h-6 text-blue-600 dark:text-blue-400 mr-3" />
-            <div>
-              <h4 className="font-semibold text-blue-900 dark:text-blue-100">Dashboard Restored</h4>
-              <p className="text-blue-700 dark:text-blue-300 text-sm">
-                Dashboard functionality has been restored with analytics, revenue tracking, subscriber management, 
-                and subscription management. Full chart integration coming soon.
-              </p>
-            </div>
-          </div>
-        </div>
+        
       </div>
     </div>
   )
