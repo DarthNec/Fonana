@@ -192,6 +192,7 @@ export class PostNormalizer {
    * Нормализует данные вовлеченности
    */
   private static normalizeEngagement(rawPost: any): PostEngagement {
+    console.log(`[PostNormalizer] Normalizing engagement:`, rawPost);
     return {
       likes: rawPost.likes || rawPost._count?.likes || rawPost.likesCount || 0,
       comments: rawPost.comments || rawPost._count?.comments || rawPost.commentsCount || 0,
@@ -221,7 +222,18 @@ export class PostNormalizer {
   /**
    * Нормализует массив постов
    */
-  static normalizeMany(rawPosts: any[]): UnifiedPost[] {
+  static normalizeMany(rawPosts: any[], likesData: any[]): UnifiedPost[] {
+    console.log(`[PostNormalizer] Likes data:`, likesData);
+    if(likesData.length > 0 && likesData != undefined) {
+      rawPosts = rawPosts.map(post => {
+        const like = likesData.find(like => like.postId === post.id);
+        return {
+          ...post,
+          isLiked: like ? true : false
+        }
+      })
+    }
+    console.log(`[PostNormalizer] Raw posts after likes:`, rawPosts);
     return rawPosts.map(post => this.normalize(post))
   }
 } 

@@ -97,7 +97,8 @@ export function useOptimizedPosts(options: UseOptimizedPostsOptions = {}): UseOp
         }
         
         const data = await response.json()
-        const rawPosts = data.posts || []
+        let likesData = []
+        let rawPosts = data.posts || []
 
 
         if(user?.id) {
@@ -108,15 +109,16 @@ export function useOptimizedPosts(options: UseOptimizedPostsOptions = {}): UseOp
           if (!likesResponse.ok) {
             throw new Error(`HTTP ${likesResponse.status}: ${likesResponse.statusText}`)
           }
-          const likesData = await likesResponse.json()
+          likesData = await likesResponse.json()
           console.log(`[useOptimizedPosts] User likes:`, likesData);
 
           if(rawPosts.length > 0) {
-            rawPosts.map(post => {
-              const like = likesData.find(like => like.postId === post.id)
+            rawPosts = rawPosts.map((post: any) => {
+              const like = likesData.find((like: any) => like.postId === post.id);
+              console.log(`[useOptimizedPosts] Like:`, like);
               return {
                 ...post,
-                isLiked: like ? true : false
+                isLiked: true
               }
             })
           }
@@ -125,9 +127,10 @@ export function useOptimizedPosts(options: UseOptimizedPostsOptions = {}): UseOp
 
         
         console.log(`[useOptimizedPosts] Received ${rawPosts.length} posts from API`)
-        
+        console.log(`[useOptimizedPosts] Raw posts2:`, rawPosts);
         // Normalize posts
-        const normalizedPosts = PostNormalizer.normalizeMany(rawPosts)
+        console.log('ПРЯМО ПЕРЕД normalizeMany:', rawPosts[0]);
+        const normalizedPosts = PostNormalizer.normalizeMany(rawPosts, likesData);
         
         console.log(`[useOptimizedPosts] Normalized ${normalizedPosts.length} posts successfully`)
         
