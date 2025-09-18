@@ -82,11 +82,15 @@ export function useOptimizedPosts(options: UseOptimizedPostsOptions = {}): UseOp
         if (options.sortBy === 'subscribed') {
           endpoint = '/api/posts/following'
         }
+
+
+        
         
         // Fetch with abort signal
         const response = await fetch(`${endpoint}?${params}`, {
           signal: controller.signal  // ✅ Proper signal usage
         })
+
         
         if (!response.ok) {
           throw new Error(`HTTP ${response.status}: ${response.statusText}`)
@@ -94,6 +98,31 @@ export function useOptimizedPosts(options: UseOptimizedPostsOptions = {}): UseOp
         
         const data = await response.json()
         const rawPosts = data.posts || []
+
+
+        if(user?.id) {
+        // Fetch with abort signal
+          const likesResponse = await fetch(`/api/likes/user?userId=${user.id}`, {
+              signal: controller.signal  // ✅ Proper signal usage
+          })
+          if (!likesResponse.ok) {
+            throw new Error(`HTTP ${likesResponse.status}: ${likesResponse.statusText}`)
+          }
+          const likesData = await likesResponse.json()
+          console.log(`[useOptimizedPosts] User likes:`, likesData);
+
+          if(rawPosts.length > 0) {
+            rawPosts.map(post => {
+              const like = likesData.find(like => like.postId === post.id)
+              return {
+                ...post,
+                isLiked: like ? true : false
+              }
+            })
+          }
+          console.log(`Raw posts: `, rawPosts);
+        }
+
         
         console.log(`[useOptimizedPosts] Received ${rawPosts.length} posts from API`)
         

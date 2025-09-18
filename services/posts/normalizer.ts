@@ -22,6 +22,7 @@ export class PostNormalizer {
    * Преобразует сырые данные поста в унифицированный формат
    */
   static normalize(rawPost: any): UnifiedPost {
+    console.log('PostNormalizer: Normalizing post', rawPost);
     return {
       id: rawPost.id,
       creator: this.normalizeCreator(rawPost.creator || rawPost),

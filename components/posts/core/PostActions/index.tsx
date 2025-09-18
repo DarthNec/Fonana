@@ -35,6 +35,7 @@ export function PostActions({
   useEffect(() => {
     setOptimisticLikes(post.engagement.likes)
     setIsLiked(post.engagement.isLiked)
+    console.log(`Post engagement`, post);
   }, [post.engagement.likes, post.engagement.isLiked])
 
   // Unified icon and text sizes
