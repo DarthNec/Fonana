@@ -111,18 +111,6 @@ export function useOptimizedPosts(options: UseOptimizedPostsOptions = {}): UseOp
           }
           likesData = await likesResponse.json()
           console.log(`[useOptimizedPosts] User likes:`, likesData);
-
-          if(rawPosts.length > 0) {
-            rawPosts = rawPosts.map((post: any) => {
-              const like = likesData.find((like: any) => like.postId === post.id);
-              console.log(`[useOptimizedPosts] Like:`, like);
-              return {
-                ...post,
-                isLiked: true
-              }
-            })
-          }
-          console.log(`Raw posts: `, rawPosts);
         }
 
         

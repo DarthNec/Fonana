@@ -266,4 +266,76 @@ export async function POST(
       { status: 500 }
     )
   }
+}
+
+export async function DELETE(
+  request: NextRequest,
+  { params }: { params: { id: string } }
+) {
+  try {
+    const { searchParams } = new URL(request.url)
+    const commentId = searchParams.get('commentId')
+    const body = await request.json()
+    const { userId } = body
+
+    if (!commentId) {
+      return NextResponse.json(
+        { error: 'Comment ID is required' },
+        { status: 400 }
+      )
+    }
+
+    if (!userId) {
+      return NextResponse.json(
+        { error: 'User ID is required' },
+        { status: 400 }
+      )
+    }
+
+    // Проверяем, что комментарий существует и принадлежит пользователю
+    const comment = await prisma.comment.findFirst({
+      where: {
+        id: commentId,
+        postId: params.id,
+        userId: userId
+      }
+    })
+
+    if (!comment) {
+      return NextResponse.json(
+        { error: 'Comment not found or access denied' },
+        { status: 404 }
+      )
+    }
+
+    // Удаляем комментарий (каскадное удаление лайков и ответов)
+    await prisma.comment.delete({
+      where: {
+        id: commentId
+      }
+    })
+
+    // Уменьшаем счетчик комментариев в посте
+    await prisma.post.update({
+      where: {
+        id: params.id
+      },
+      data: {
+        commentsCount: {
+          decrement: 1
+        }
+      }
+    })
+
+    return NextResponse.json({
+      success: true,
+      message: 'Comment deleted successfully'
+    })
+  } catch (error) {
+    console.error('Error deleting comment:', error)
+    return NextResponse.json(
+      { error: 'Failed to delete comment' },
+      { status: 500 }
+    )
+  }
 } 

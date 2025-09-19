@@ -51,6 +51,7 @@ export function PostCard({
   className
 }: PostCardProps) {
   const [showComments, setShowComments] = useState(false)
+  const [commentCount, setCommentCount] = useState(post.engagement.comments)
 
   // Обработка действий с добавлением поддержки комментариев
   const handleAction = (action: PostAction) => {
@@ -60,6 +61,15 @@ export function PostCard({
     } else if (onAction) {
       onAction(action)
     }
+  }
+
+  // Callbacks для обновления счетчика комментариев
+  const handleCommentAdded = () => {
+    setCommentCount(prev => prev + 1)
+  }
+
+  const handleCommentDeleted = () => {
+    setCommentCount(prev => Math.max(0, prev - 1))
   }
 
   // Определяем, нужно ли показывать различные элементы
@@ -214,6 +224,7 @@ export function PostCard({
         {variant !== 'minimal' && (
           <PostActions
             post={post}
+            commentCount={commentCount}
             onAction={handleAction}
             variant={variant}
           />
@@ -268,6 +279,9 @@ export function PostCard({
       {showComments && (
         <CommentsSection
           postId={post.id}
+          post={post}
+          onCommentAdded={handleCommentAdded}
+          onCommentDeleted={handleCommentDeleted}
           onClose={() => setShowComments(false)}
           className="animate-fade-in"
         />

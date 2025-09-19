@@ -25,14 +25,17 @@ export interface Comment {
 
 export interface CommentsSectionProps {
   postId: string
+  post: any
   className?: string
   onClose?: () => void
+  onCommentAdded?: () => void
+  onCommentDeleted?: () => void
 }
 
 /**
  * Компонент для отображения и добавления комментариев
  */
-export function CommentsSection({ postId, className, onClose }: CommentsSectionProps) {
+export function CommentsSection({ postId, post, className, onClose, onCommentAdded, onCommentDeleted }: CommentsSectionProps) {
   const user = useUser()
   const [comments, setComments] = useState<Comment[]>([])
   const [loading, setLoading] = useState(true)
@@ -91,6 +94,8 @@ export function CommentsSection({ postId, className, onClose }: CommentsSectionP
         setIsAnonymous(false)
         await fetchComments()
         toast.success('Комментарий добавлен')
+        console.log('post', post);
+        onCommentAdded?.()
       } else {
         throw new Error('Failed to add comment')
       }
@@ -99,6 +104,36 @@ export function CommentsSection({ postId, className, onClose }: CommentsSectionP
       toast.error('Ошибка при добавлении комментария')
     } finally {
       setIsSubmitting(false)
+    }
+  }
+
+  const handleDeleteComment = async (commentId: string) => {
+    if (!user?.id) {
+      toast.error('Подключите кошелек для удаления комментария')
+      return
+    }
+
+    if (!confirm('Вы уверены, что хотите удалить этот комментарий?')) {
+      return
+    }
+
+    try {
+      const response = await fetch(`/api/posts/${postId}/comments?commentId=${commentId}`, {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId: user.id })
+      })
+
+      if (response.ok) {
+        await fetchComments()
+        toast.success('Комментарий удален')
+        onCommentDeleted?.()
+      } else {
+        throw new Error('Failed to delete comment')
+      }
+    } catch (error) {
+      console.error('Error deleting comment:', error)
+      toast.error('Ошибка при удалении комментария')
     }
   }
 
@@ -225,6 +260,18 @@ export function CommentsSection({ postId, className, onClose }: CommentsSectionP
                     </svg>
                     {comment.likesCount}
                   </button>
+                  {comment.userId === user?.id && (
+                    <button 
+                      onClick={() => handleDeleteComment(comment.id)}
+                      className="text-xs text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 transition-colors flex items-center gap-1"
+                      title="Удалить комментарий"
+                    >
+                      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                      </svg>
+                      Удалить
+                    </button>
+                  )}
                   {/* 
                   <button className="text-xs text-gray-500 dark:text-slate-400 hover:text-purple-600 dark:hover:text-purple-400 transition-colors">
                     Ответить

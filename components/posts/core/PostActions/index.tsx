@@ -6,6 +6,7 @@ import { cn } from '@/lib/utils'
 
 export interface PostActionsProps {
   post: UnifiedPost
+  commentCount?: number
   onAction?: (action: PostAction) => void
   variant?: PostCardVariant
   className?: string
@@ -16,6 +17,7 @@ export interface PostActionsProps {
  */
 export function PostActions({
   post,
+  commentCount,
   onAction,
   variant = 'full',
   className
@@ -136,7 +138,7 @@ export function PostActions({
             </svg>
           </div>
           <span className={cn(textSize, 'font-medium group-hover:text-blue-500 dark:group-hover:text-blue-400')}>
-            {post.engagement.comments}
+            {commentCount ?? post.engagement.comments}
           </span>
         </button>
 
