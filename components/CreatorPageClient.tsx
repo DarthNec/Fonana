@@ -554,17 +554,6 @@ export default function CreatorPageClient({ creatorId }: CreatorPageClientProps)
           <div className="w-full h-full bg-gradient-to-br from-purple-100 to-pink-100 dark:from-purple-900/20 dark:to-pink-900/20" />
         )}
         
-        {/* Background Edit Button - only for owner */}
-        {isOwner && (
-          <button
-            onClick={() => backgroundInputRef.current?.click()}
-            disabled={isUploadingBackground}
-            className="absolute top-4 right-4 p-2 bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm rounded-lg hover:bg-white dark:hover:bg-gray-800 transition-all group"
-            title="Change background image"
-          >
-            <PhotoIcon className="w-5 h-5 text-gray-700 dark:text-gray-300 group-hover:text-purple-600 dark:group-hover:text-purple-400" />
-          </button>
-        )}
         
         <input
           ref={backgroundInputRef}

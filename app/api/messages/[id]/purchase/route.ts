@@ -1,10 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { PrismaClient } from '@prisma/client'
+import { prisma } from '@/lib/prisma'
 import { waitForTransactionConfirmation } from '@/lib/solana/validation'
 import jwt from 'jsonwebtoken'
 import { ENV } from '@/lib/constants/env'
-
-const prisma = new PrismaClient()
 
 // Purchase a paid message
 export async function POST(

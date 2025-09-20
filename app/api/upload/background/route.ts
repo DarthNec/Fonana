@@ -1,14 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { writeFile } from 'fs/promises'
-import { existsSync, mkdirSync } from 'fs'
-import path from 'path'
+import { uploadToBunnyStorage } from '@/lib/utils/bunny-upload'
+import sharp from 'sharp'
 
 export const dynamic = 'force-dynamic'
 
 export async function POST(request: NextRequest) {
   try {
     const data = await request.formData()
-    const file: File | null = data.get('file') as unknown as File
+    const file = data.get('file') as unknown as File
 
     if (!file) {
       return NextResponse.json({ error: 'No file received' }, { status: 400 })
@@ -25,43 +24,36 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'File too large (max 100MB)' }, { status: 400 })
     }
 
-    const bytes = await file.arrayBuffer()
-    const buffer = Buffer.from(bytes)
+    // читаем файл в буфер
+    const arrayBuffer = await file.arrayBuffer()
+    const buffer = Buffer.from(arrayBuffer)
 
-    // Определяем директорию для загрузки
-    let uploadDir: string
-    
-    if (process.env.NODE_ENV === 'production') {
-      uploadDir = '/var/www/Fonana/public/media/backgrounds'
-    } else {
-      // Для локальной разработки используем путь относительно корня проекта
-      uploadDir = path.join(process.cwd(), 'public', 'media', 'backgrounds')
+    // сжимаем с помощью sharp для фоновых изображений
+    const compressedBuffer = await sharp(buffer)
+      .resize(1920, 1080, { fit: 'inside', withoutEnlargement: true }) // ограничим размеры для фона
+      .toFormat('webp', { quality: 85 }) // конвертируем в WebP с хорошим качеством для фона
+      .toBuffer()
+
+    console.log(
+      `🎯 [BACKGROUND UPLOAD] Before: ${(buffer.length / 1024 / 1024).toFixed(2)} MB, After: ${(compressedBuffer.length / 1024 / 1024).toFixed(2)} MB`
+    )
+
+    // теперь грузим в Bunny
+    const uploadResult = await uploadToBunnyStorage(
+      new File([new Uint8Array(compressedBuffer)], `${file.name.split('.')[0]}.webp`, { type: 'image/webp' }),
+      'avatars' // используем папку avatars, так как backgrounds не поддерживается
+    )
+
+    if (!uploadResult.success) {
+      return NextResponse.json({ error: uploadResult.error || 'Failed to upload background' }, { status: 500 })
     }
-    
-    // Создаем директорию синхронно с recursive
-    if (!existsSync(uploadDir)) {
-      mkdirSync(uploadDir, { recursive: true })
-    }
 
-    // Создаем уникальное имя файла
-    const extension = file.type.split('/')[1]
-    const uniqueId = Date.now() + '_' + Math.random().toString(36).substring(7)
-    const filename = `bg_${uniqueId}.${extension}`
-    const filepath = path.join(uploadDir, filename)
-
-    // Сохраняем файл
-    await writeFile(filepath, buffer)
-    const backgroundUrl = `/media/backgrounds/${filename}`
-
-    return NextResponse.json({ 
-      success: true, 
-      backgroundUrl 
+    return NextResponse.json({
+      success: true,
+      backgroundUrl: uploadResult.fileUrl
     })
   } catch (error) {
-    console.error('Error uploading background:', error)
-    return NextResponse.json(
-      { error: 'Failed to upload background' },
-      { status: 500 }
-    )
+    console.error('Background upload error:', error)
+    return NextResponse.json({ error: 'Failed to upload background' }, { status: 500 })
   }
 } 

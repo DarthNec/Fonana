@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { PrismaClient } from '@prisma/client'
+import { prisma } from '@/lib/prisma'
 
 // [post_creation_500_error_2025_017] Transformation function for imageAspectRatio
 function transformAspectRatio(value: string | number | null | undefined): number | null {
@@ -16,10 +16,6 @@ function transformAspectRatio(value: string | number | null | undefined): number
   return aspectMap[value] || 1.0; // Default to square if unknown
 }
 import { getUserByWallet } from '@/lib/db'
-
-export const dynamic = 'force-dynamic'
-
-const prisma = new PrismaClient()
 
 export async function GET(request: NextRequest) {
   try {

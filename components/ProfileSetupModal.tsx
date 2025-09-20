@@ -46,7 +46,9 @@ export default function ProfileSetupModal({
 }: ProfileSetupModalProps) {
   const [step, setStep] = useState(mode === 'edit' ? 1 : 1)
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [isUploadingBackground, setIsUploadingBackground] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const backgroundInputRef = useRef<HTMLInputElement>(null)
   // const user = useUser()
   // const { setUser } = useUserActions()
   
@@ -55,6 +57,7 @@ export default function ProfileSetupModal({
     fullName: initialData.fullName || '',
     bio: initialData.bio || '',
     avatar: initialData.avatar || undefined,
+    backgroundImage: initialData.backgroundImage || undefined,
     website: initialData.website || '',
     twitter: initialData.twitter || '',
     telegram: initialData.telegram || ''
@@ -69,11 +72,12 @@ export default function ProfileSetupModal({
       fullName: initialData.fullName || '',
       bio: initialData.bio || '',
       avatar: initialData.avatar || undefined,
+      backgroundImage: initialData.backgroundImage || undefined,
       website: initialData.website || '',
       twitter: initialData.twitter || '',
       telegram: initialData.telegram || ''
     })
-  }, [initialData.nickname, initialData.fullName, initialData.bio, initialData.avatar, initialData.website, initialData.twitter, initialData.telegram])
+  }, [initialData.nickname, initialData.fullName, initialData.bio, initialData.avatar, initialData.backgroundImage, initialData.website, initialData.twitter, initialData.telegram])
   // В режиме редактирования сразу проверяем что никнейм доступен (это текущий никнейм)
   const [nicknameStatus, setNicknameStatus] = useState<'idle' | 'checking' | 'available' | 'taken' | 'invalid' | 'reserved'>(
     mode === 'edit' && initialData.nickname ? 'available' : 'idle'
@@ -200,6 +204,37 @@ export default function ProfileSetupModal({
     }
   }
 
+  const handleBackgroundChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0]
+    if (file) {
+      setIsUploadingBackground(true)
+      try {
+        const formData = new FormData()
+        formData.append('file', file)
+        
+        const response = await fetch('/api/upload/background', {
+          method: 'POST',
+          body: formData
+        })
+        
+        const data = await response.json()
+        
+        if (!response.ok) {
+          throw new Error(data.error || 'Failed to upload background')
+        }
+        
+        setFormData(prev => ({ ...prev, backgroundImage: data.backgroundUrl }))
+        toast.success('Background image uploaded successfully')
+        
+      } catch (error) {
+        console.error('Error uploading background:', error)
+        toast.error('Failed to upload background')
+      } finally {
+        setIsUploadingBackground(false)
+      }
+    }
+  }
+
   const canProceed = () => {
     if (step === 1) {
       return formData.nickname && 
@@ -210,7 +245,7 @@ export default function ProfileSetupModal({
   }
 
   const handleNext = () => {
-    if (step < 3) {
+    if (step < 4) {
       // Если переходим с шага 2 и био пустое, генерируем дефолтное
       if (step === 2 && !formData.bio.trim()) {
         setFormData(prev => ({
@@ -273,7 +308,7 @@ export default function ProfileSetupModal({
 
             {/* Progress indicators */}
             <div className="flex justify-center gap-2 mb-8">
-              {[1, 2, 3].map((i) => (
+              {[1, 2, 3, 4].map((i) => (
                 <div
                   key={i}
                   className={`h-2 w-12 rounded-full transition-all duration-300 ${
@@ -463,6 +498,58 @@ export default function ProfileSetupModal({
               </div>
             )}
 
+            {/* Step 4: Background Image */}
+            {step === 4 && (
+              <div className="space-y-6">
+                <p className="text-sm text-gray-600 dark:text-slate-400 mb-4">
+                  Add a background image to make your profile stand out (optional)
+                </p>
+
+                {/* Background Image Upload */}
+                <div className="text-center">
+                  <div className="relative inline-block">
+                    {formData.backgroundImage ? (
+                      <div className="relative">
+                        <img
+                          src={formData.backgroundImage}
+                          alt="Background preview"
+                          className="w-full h-48 object-cover rounded-2xl border-2 border-gray-200 dark:border-slate-600"
+                        />
+                        <button
+                          onClick={() => backgroundInputRef.current?.click()}
+                          disabled={isUploadingBackground}
+                          className="absolute top-2 right-2 p-2 bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm rounded-lg hover:bg-white dark:hover:bg-gray-800 transition-all group"
+                          title="Change background image"
+                        >
+                          <PhotoIcon className="w-4 h-4 text-gray-700 dark:text-gray-300 group-hover:text-purple-600 dark:group-hover:text-purple-400" />
+                        </button>
+                      </div>
+                    ) : (
+                      <div
+                        onClick={() => backgroundInputRef.current?.click()}
+                        className="w-full h-48 border-2 border-dashed border-gray-300 dark:border-slate-600 rounded-2xl flex flex-col items-center justify-center cursor-pointer hover:border-purple-400 dark:hover:border-purple-400 transition-colors group"
+                      >
+                        <PhotoIcon className="w-12 h-12 text-gray-400 dark:text-slate-500 group-hover:text-purple-500 dark:group-hover:text-purple-400 mb-3" />
+                        <p className="text-sm text-gray-500 dark:text-slate-400 group-hover:text-purple-600 dark:group-hover:text-purple-400">
+                          {isUploadingBackground ? 'Uploading...' : 'Click to add background image'}
+                        </p>
+                        <p className="text-xs text-gray-400 dark:text-slate-500 mt-1">
+                          Recommended: 1920x1080 or similar
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                  <input
+                    ref={backgroundInputRef}
+                    type="file"
+                    className="hidden"
+                    accept="image/*"
+                    onChange={handleBackgroundChange}
+                  />
+                </div>
+              </div>
+            )}
+
             {/* Actions */}
             <div className="flex gap-3 mt-8">
               {step > 1 && (
@@ -487,7 +574,7 @@ export default function ProfileSetupModal({
                     <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
                     Creating...
                   </span>
-                ) : step === 3 ? (
+                ) : step === 4 ? (
                   'Complete Setup'
                 ) : (
                   'Next'
@@ -496,7 +583,7 @@ export default function ProfileSetupModal({
             </div>
 
             {/* Skip option for optional steps */}
-            {(step === 2 || step === 3) && (
+            {(step === 2 || step === 3 || step === 4) && (
               <button
                 onClick={handleNext}
                 className="w-full mt-3 text-sm text-gray-500 dark:text-slate-400 hover:text-gray-700 dark:hover:text-slate-300 transition-colors"

@@ -38,6 +38,7 @@ import { toast } from 'react-hot-toast'
 import SearchModal from '@/components/SearchModal'
 import NotificationsDropdown from './NotificationsDropdown'
 import { useWallet } from '@/lib/hooks/useSafeWallet'
+import { getProfileLink } from '@/lib/utils/links'
 
 export default function BottomNav() {
   const pathname = usePathname()
@@ -97,12 +98,13 @@ export default function BottomNav() {
         setShowCreateModal(true)
       }
     },
-    {
+    // Profile показывается только для авторизованных пользователей
+    ...(user && publicKeyString ? [{
       name: 'Profile',
-      href: '/profile',
+      href: getProfileLink({ id: user.id, nickname: user.nickname }),
       icon: UserIcon,
       activeIcon: UserSolidIcon
-    }
+    }] : [])
   ]
 
   const isActive = (href: string) => {
@@ -219,19 +221,22 @@ export default function BottomNav() {
 
               {/* Menu Items */}
               <div className="space-y-2">
-                <Link
-                  href="/messages"
-                  onClick={() => setIsMenuOpen(false)}
-                  className="flex items-center gap-4 p-4 hover:bg-gray-50 dark:hover:bg-slate-800/50 rounded-2xl transition-colors"
-                >
-                  <ChatBubbleLeftEllipsisIcon className="w-6 h-6 text-gray-600 dark:text-slate-400" />
-                  <span className="text-gray-900 dark:text-white font-medium">Messages</span>
-                  {unreadMessages > 0 && (
-                    <span className="ml-auto bg-red-500 text-white text-xs w-5 h-5 rounded-full flex items-center justify-center">
-                      {unreadMessages > 9 ? '9+' : unreadMessages}
-                    </span>
-                  )}
-                </Link>
+                {/* Messages - только для авторизованных пользователей */}
+                {user && publicKeyString && (
+                  <Link
+                    href="/messages"
+                    onClick={() => setIsMenuOpen(false)}
+                    className="flex items-center gap-4 p-4 hover:bg-gray-50 dark:hover:bg-slate-800/50 rounded-2xl transition-colors"
+                  >
+                    <ChatBubbleLeftEllipsisIcon className="w-6 h-6 text-gray-600 dark:text-slate-400" />
+                    <span className="text-gray-900 dark:text-white font-medium">Messages</span>
+                    {unreadMessages > 0 && (
+                      <span className="ml-auto bg-red-500 text-white text-xs w-5 h-5 rounded-full flex items-center justify-center">
+                        {unreadMessages > 9 ? '9+' : unreadMessages}
+                      </span>
+                    )}
+                  </Link>
+                )}
 
                 <Link
                   href="/search"
@@ -242,24 +247,31 @@ export default function BottomNav() {
                   <span className="text-gray-900 dark:text-white font-medium">Search</span>
                 </Link>
 
-                <Link
-                  href="/profile"
-                  onClick={() => setIsMenuOpen(false)}
-                  className="flex items-center gap-4 p-4 hover:bg-gray-50 dark:hover:bg-slate-800/50 rounded-2xl transition-colors"
-                >
-                  <UserIcon className="w-6 h-6 text-gray-600 dark:text-slate-400" />
-                  <span className="text-gray-900 dark:text-white font-medium">Profile</span>
-                </Link>
+                {/* Profile - только для авторизованных пользователей */}
+                {user && publicKeyString && (
+                  <Link
+                    href={getProfileLink({ id: user.id, nickname: user.nickname })}
+                    onClick={() => setIsMenuOpen(false)}
+                    className="flex items-center gap-4 p-4 hover:bg-gray-50 dark:hover:bg-slate-800/50 rounded-2xl transition-colors"
+                  >
+                    <UserIcon className="w-6 h-6 text-gray-600 dark:text-slate-400" />
+                    <span className="text-gray-900 dark:text-white font-medium">Profile</span>
+                  </Link>
+                )}
 
-                <Link
-                  href="/support"
-                  className="flex items-center gap-4 p-4 hover:bg-gray-50 dark:hover:bg-slate-800/50 rounded-2xl transition-colors"
-                >
-                  <QuestionMarkCircleIcon className="w-5 h-5" />
-                  Support
-                </Link>
+                {/* Support - только для авторизованных пользователей */}
+                {user && publicKeyString && (
+                  <Link
+                    href="/support"
+                    className="flex items-center gap-4 p-4 hover:bg-gray-50 dark:hover:bg-slate-800/50 rounded-2xl transition-colors"
+                  >
+                    <QuestionMarkCircleIcon className="w-5 h-5" />
+                    Support
+                  </Link>
+                )}
 
-                {user?.isCreator && (
+                {/* Dashboard - только для авторизованных пользователей-создателей */}
+                {user?.isCreator && publicKeyString && (
                   <Link
                     href="/dashboard"
                     onClick={() => setIsMenuOpen(false)}

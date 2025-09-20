@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { PrismaClient } from '@prisma/client'
+import { prisma } from '@/lib/prisma'
 import { hasAccessToTier, checkPostAccess, normalizeTierName } from '@/lib/utils/access'
 import { TIER_HIERARCHY } from '@/lib/constants/tiers'
 import { detectPostType } from '@/lib/utils/postTypeDetection'
@@ -21,8 +21,6 @@ function transformAspectRatio(value: string | number | null | undefined): number
 import { getUserByWallet } from '@/lib/db'
 
 export const dynamic = 'force-dynamic'
-
-const prisma = new PrismaClient()
 
 // [tier_access_system_2025_017] GET /api/posts - получить список постов с проверкой доступа по тирам
 export async function GET(request: NextRequest) {
@@ -319,7 +317,7 @@ export async function POST(request: NextRequest) {
       console.log(`[API] ${success ? '✅' : '⚠️'} Author WebSocket notification: ${success ? 'sent' : 'failed'}`)
     } catch (error) {
       // Не блокируем API response при ошибке WebSocket
-      console.error('[API] ⚠️ WebSocket notification failed:', error.message)
+      console.error('[API] ⚠️ WebSocket notification failed:', error instanceof Error ? error.message : String(error))
     }
     
     // [tier_access_system_2025_017] Возвращаем пост с информацией о доступе для автора

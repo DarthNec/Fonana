@@ -26,7 +26,7 @@ export function PostActions({
   const [isLiked, setIsLiked] = useState(post.engagement.isLiked)
   const [isProcessing, setIsProcessing] = useState(false)
   const isMountedRef = useRef(true)
-
+  console.log('PostActions post:', post);
   useEffect(() => {
     return () => {
       isMountedRef.current = false

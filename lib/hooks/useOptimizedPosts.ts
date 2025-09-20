@@ -15,11 +15,7 @@ interface UseOptimizedPostsOptions {
   pageSize?: number
 }
 
-interface PostAction {
-  type: 'like' | 'unlike' | 'purchase' | 'subscribe' | 'comment' | 'share' | 'delete' | 'edit'
-  postId: string
-  data?: any
-}
+import type { PostAction } from '@/types/posts'
 
 interface UseOptimizedPostsReturn {
   posts: UnifiedPost[]
@@ -31,6 +27,7 @@ interface UseOptimizedPostsReturn {
   refresh: (clearCache?: boolean) => void
   handleAction: (action: PostAction) => Promise<void>
   addNewPost: (post: UnifiedPost) => void
+  loadPostById: (postId: string) => Promise<UnifiedPost | null>
 }
 
 /**
@@ -121,7 +118,7 @@ export function useOptimizedPosts(options: UseOptimizedPostsOptions = {}): UseOp
         const normalizedPosts = PostNormalizer.normalizeMany(rawPosts, likesData);
         
         console.log(`[useOptimizedPosts] Normalized ${normalizedPosts.length} posts successfully`)
-        
+        console.log('ПОСТЫ ПОСЛЕ normalizeMany:', normalizedPosts);
         setPosts(normalizedPosts)
         
       } catch (err: any) {
@@ -398,10 +395,10 @@ export function useOptimizedPosts(options: UseOptimizedPostsOptions = {}): UseOp
     try {
       switch (action.type) {
         case 'like':
-          await handleLike(action.postId)
+          void await handleLike(action.postId)
           break
         case 'unlike':
-          await handleLike(action.postId) // Используем тот же API для toggle
+          void await handleLike(action.postId) // Используем тот же API для toggle
           break
         case 'comment':
           console.log('Comment action:', action)
@@ -417,7 +414,6 @@ export function useOptimizedPosts(options: UseOptimizedPostsOptions = {}): UseOp
           break
         case 'delete':
           await handleDelete(action.postId)
-          return true;
           break
         case 'edit':
           console.log('Edit action:', action)
@@ -429,6 +425,7 @@ export function useOptimizedPosts(options: UseOptimizedPostsOptions = {}): UseOp
       console.error('Action error:', error)
       toast.error('Ошибка выполнения действия')
     }
+    return // Явно возвращаем void
   }, [handleLike, handleDelete])
   
   // [tier_access_system_2025_017] Добавляем функцию для локального добавления нового поста
@@ -438,6 +435,68 @@ export function useOptimizedPosts(options: UseOptimizedPostsOptions = {}): UseOp
     const normalizedPost = PostNormalizer.normalize(newPost)
     setPosts(prevPosts => [normalizedPost, ...prevPosts])
   }, [])
+
+  // Функция для загрузки конкретного поста по ID
+  const loadPostById = useCallback(async (postId: string): Promise<UnifiedPost | null> => {
+    try {
+      console.log(`[useOptimizedPosts] Loading post by ID: ${postId}`)
+      
+      // Строим URL с параметрами пользователя
+      const params = new URLSearchParams()
+      if (user?.id) params.append('userId', user.id)
+      if (publicKeyString) params.append('userWallet', publicKeyString)
+      
+      const url = `/api/posts/${postId}${params.toString() ? `?${params.toString()}` : ''}`
+      
+      // Загружаем пост
+      const response = await fetch(url)
+      
+      if (!response.ok) {
+        if (response.status === 404) {
+          throw new Error('Пост не найден')
+        } else if (response.status === 403) {
+          throw new Error('Нет доступа к этому посту')
+        } else {
+          throw new Error(`HTTP ${response.status}: ${response.statusText}`)
+        }
+      }
+      
+      const postData = await response.json()
+      
+      if (!postData || postData.error) {
+        throw new Error(postData?.error || 'Не удалось загрузить пост')
+      }
+      
+      // Загружаем лайки пользователя, если пользователь авторизован
+      let likesData = []
+      if (user?.id) {
+        try {
+          const likesResponse = await fetch(`/api/likes/user?userId=${user.id}`)
+          if (likesResponse.ok) {
+            likesData = await likesResponse.json()
+            console.log(`[useOptimizedPosts] User likes for post:`, likesData)
+          }
+        } catch (likesError) {
+          console.warn('[useOptimizedPosts] Failed to load user likes:', likesError)
+          // Не прерываем загрузку поста из-за ошибки лайков
+        }
+      }
+      console.log(`Post data by id:`, postData);
+      // Нормализуем пост через PostNormalizer
+      const normalizedPosts = PostNormalizer.normalizeMany([{...postData.post}], likesData)
+      
+      if (normalizedPosts.length === 0) {
+        throw new Error('Ошибка при нормализации поста')
+      }
+      
+      console.log(`[useOptimizedPosts] Successfully loaded post:`, normalizedPosts[0])
+      return normalizedPosts[0]
+      
+    } catch (error) {
+      console.error(`[useOptimizedPosts] Error loading post ${postId}:`, error)
+      throw error
+    }
+  }, [user?.id, publicKeyString])
   
   return {
     posts,
@@ -448,6 +507,7 @@ export function useOptimizedPosts(options: UseOptimizedPostsOptions = {}): UseOp
     loadMore,
     refresh,
     handleAction,
-    addNewPost
+    addNewPost,
+    loadPostById
   }
 } 

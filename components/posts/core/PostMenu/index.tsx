@@ -12,6 +12,7 @@ import {
   FlagIcon,
   BookmarkIcon
 } from '@heroicons/react/24/outline'
+import { SharePopup } from '../SharePopup'
 
 export interface PostMenuProps {
   post: UnifiedPost
@@ -27,6 +28,7 @@ export interface PostMenuProps {
 export function PostMenu({ post, onAction, className }: PostMenuProps) {
   const user = useUser()
   const [isOpen, setIsOpen] = useState(false)
+  const [isSharePopupOpen, setIsSharePopupOpen] = useState(false)
   const menuRef = useRef<HTMLDivElement>(null)
   
   // ✅ КРИТИЧЕСКАЯ ПРОВЕРКА: предотвращаем React Error #185
@@ -66,10 +68,16 @@ export function PostMenu({ post, onAction, className }: PostMenuProps) {
   
   const handleAction = (type: PostAction['type']) => {
     setIsOpen(false)
-    onAction?.({
-      type,
-      postId: post.id
-    })
+    
+    if (type === 'share') {
+      // Открываем попап шаринга вместо прямого действия
+      setIsSharePopupOpen(true)
+    } else {
+      onAction?.({
+        type,
+        postId: post.id
+      })
+    }
   }
   
   return (
@@ -175,6 +183,13 @@ export function PostMenu({ post, onAction, className }: PostMenuProps) {
           )}
         </div>
       )}
+      
+      {/* Share Popup */}
+      <SharePopup
+        post={post}
+        isOpen={isSharePopupOpen}
+        onClose={() => setIsSharePopupOpen(false)}
+      />
     </div>
   )
 } 

@@ -93,8 +93,8 @@ export default function CreatePostModal({ onPostCreated, onPostUpdated, onClose,
     category: getSmartCategory('text'), // Устанавливаем категорию по умолчанию для текстовых постов
     tags: [] as string[],
     currentTag: '',
-    file: null as File | null,
-    preview: '',
+    file: null as File | null, // Оригинальный файл для отправки на сервер
+    preview: '', // Base64 для preview
     type: 'text' as 'text' | 'image' | 'video' | 'audio',
     accessType: 'free' as 'free' | 'subscribers' | 'premium' | 'paid' | 'vip',
     price: 0,
@@ -319,9 +319,9 @@ export default function CreatePostModal({ onPostCreated, onPostUpdated, onClose,
         setOriginalImage(result)
         setFormData(prev => ({
           ...prev,
-          file,
+          file, // Сохраняем оригинальный файл для отправки на сервер
           type: contentType,
-          preview: result,
+          preview: result, // Base64 для preview
           category: getSmartCategory(contentType)
         }))
         
@@ -343,9 +343,9 @@ export default function CreatePostModal({ onPostCreated, onPostUpdated, onClose,
       const preview = URL.createObjectURL(file)
       setFormData(prev => ({
         ...prev,
-        file,
+        file, // Сохраняем оригинальный файл для отправки на сервер
         type: contentType,
-        preview,
+        preview, // Object URL для preview
         category: getSmartCategory(contentType)
       }))
     }
@@ -402,8 +402,8 @@ export default function CreatePostModal({ onPostCreated, onPostUpdated, onClose,
       
       setFormData(prev => ({
         ...prev,
-        file: croppedFile,
-        preview: croppedImage,
+        file: croppedFile, // Обрезанный файл для отправки на сервер
+        preview: croppedImage, // Blob URL для preview
         imageAspectRatio
       }))
       setShowCropModal(false)
@@ -451,7 +451,7 @@ export default function CreatePostModal({ onPostCreated, onPostUpdated, onClose,
 
   const uploadMedia = async (file: File): Promise<{ fileUrl: string, thumbUrl?: string, previewUrl?: string } | null> => {
     const formData = new FormData()
-    formData.append('file', file)
+    formData.append('file', file) // Отправляем оригинальный файл на сервер
     formData.append('type', file.type.startsWith('video/') ? 'video' : 
                             file.type.startsWith('audio/') ? 'audio' : 'image')
 
@@ -580,10 +580,9 @@ export default function CreatePostModal({ onPostCreated, onPostUpdated, onClose,
     try {
       let mediaUrl = null
       let thumbnail = null
-
       // Upload media file if present (только для новых файлов)
       if (formData.file) {
-        const uploadResult = await uploadMedia(formData.file)
+        const uploadResult = await uploadMedia(formData.file) // Используем оригинальный файл
         if (!uploadResult || !uploadResult.fileUrl) {
           throw new Error('Failed to upload file')
         }
@@ -838,14 +837,14 @@ export default function CreatePostModal({ onPostCreated, onPostUpdated, onClose,
                     <div className="relative">
                       {formData.type === 'image' && (
                         <img
-                          src={formData.preview}
+                          src={formData.preview} // Используем base64 для preview
                           alt="Preview"
                           className="max-w-full h-40 object-cover rounded-xl mx-auto"
                         />
                       )}
                       {formData.type === 'video' && (
                         <video
-                          src={formData.preview}
+                          src={formData.preview} // Используем Object URL для preview
                           className="max-w-full h-40 object-cover rounded-xl mx-auto"
                           controls
                         />
@@ -853,7 +852,7 @@ export default function CreatePostModal({ onPostCreated, onPostUpdated, onClose,
                       {formData.type === 'audio' && (
                         <div className="p-4 bg-gray-100 dark:bg-slate-700/50 rounded-xl">
                           <MusicalNoteIcon className="w-12 h-12 mx-auto text-pink-500 dark:text-pink-400 mb-2" />
-                          <audio src={formData.preview} controls className="w-full" />
+                          <audio src={formData.preview} controls className="w-full" /> {/* Object URL для preview */}
                         </div>
                       )}
                       <button

@@ -1,9 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { PrismaClient } from '@prisma/client'
+import { prisma } from '@/lib/prisma'
 import jwt from 'jsonwebtoken'
 import { ENV } from '@/lib/constants/env'
-
-const prisma = new PrismaClient()
 
 // POST /api/follow - подписаться на пользователя
 export async function POST(request: NextRequest) {
