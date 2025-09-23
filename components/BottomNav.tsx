@@ -4,71 +4,34 @@ import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { 
   HomeIcon, 
-  Bars3Icon,
   PlusCircleIcon,
-  ChatBubbleLeftEllipsisIcon,
   UserIcon,
-  XMarkIcon,
-  WalletIcon,
-  CurrencyDollarIcon,
   MagnifyingGlassIcon,
-  ArrowRightOnRectangleIcon,
-  Cog6ToothIcon,
-  BellIcon,
-  RocketLaunchIcon,
-  QuestionMarkCircleIcon
+  ChatBubbleLeftEllipsisIcon
 } from '@heroicons/react/24/outline'
 import {
   HomeIcon as HomeSolidIcon,
-  Bars3Icon as Bars3SolidIcon,
   PlusCircleIcon as PlusCircleSolidIcon,
-  ChatBubbleLeftEllipsisIcon as ChatBubbleLeftEllipsisSolidIcon,
   UserIcon as UserSolidIcon,
-  RocketLaunchIcon as RocketLaunchIconSolid
+  ChatBubbleLeftEllipsisIcon as ChatBubbleLeftEllipsisSolidIcon
 } from '@heroicons/react/24/solid'
 import { useUser } from '@/lib/store/appStore'
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { useSafeWalletModal } from '@/lib/hooks/useSafeWalletModal'
-import SolanaRateDisplay from '@/components/SolanaRateDisplay'
-import Avatar from '@/components/Avatar'
-import { MobileWalletConnect } from '@/components/MobileWalletConnect'
-import { unreadMessagesService } from '@/lib/services/UnreadMessagesService'
 import CreatePostModal from '@/components/CreatePostModal'
 import { toast } from 'react-hot-toast'
 import SearchModal from '@/components/SearchModal'
-import NotificationsDropdown from './NotificationsDropdown'
 import { useWallet } from '@/lib/hooks/useSafeWallet'
-import { getProfileLink } from '@/lib/utils/links'
 
 export default function BottomNav() {
   const pathname = usePathname()
   const router = useRouter()
-  const { publicKey, disconnect } = useWallet()
-  const publicKeyString = publicKey?.toBase58() ?? null // 🔥 ALTERNATIVE FIX: Stable string
+  const { publicKey } = useWallet()
+  const publicKeyString = publicKey?.toBase58() ?? null
   const { setVisible } = useSafeWalletModal()
-  const [unreadMessages, setUnreadMessages] = useState(0)
-  const [isMenuOpen, setIsMenuOpen] = useState(false)
   const [showCreateModal, setShowCreateModal] = useState(false)
   const [showSearchModal, setShowSearchModal] = useState(false)
-  const [showProfileMenu, setShowProfileMenu] = useState(false)
   const user = useUser()
-
-  // ✅ КРИТИЧЕСКАЯ ПРОВЕРКА: предотвращаем React Error #185
-  // BottomNav должен показываться всем, но без user-зависимого функционала
-  // Если пользователя нет, показываем базовую версию без персонализации
-
-  // Subscribe to unread messages - FIXED: [critical_regression_infinite_loop_2025_017]
-  useEffect(() => {
-    if (!user?.id) return
-    
-    console.log('[BottomNav] Subscribing to unread messages service')
-    const unsubscribe = unreadMessagesService.subscribe(setUnreadMessages)
-    
-    return () => {
-      console.log('[BottomNav] Unsubscribing from unread messages service')
-      unsubscribe()
-    }
-  }, [user?.id])
 
   const navItems = [
     {
@@ -98,209 +61,120 @@ export default function BottomNav() {
         setShowCreateModal(true)
       }
     },
+    {
+      name: 'Messages',
+      href: '/messages',
+      icon: ChatBubbleLeftEllipsisIcon,
+      activeIcon: ChatBubbleLeftEllipsisSolidIcon
+    },
     // Profile показывается только для авторизованных пользователей
     ...(user && publicKeyString ? [{
       name: 'Profile',
-      href: getProfileLink({ id: user.id, nickname: user.nickname }),
+      href: `/creator/${user.id}`,
       icon: UserIcon,
       activeIcon: UserSolidIcon
-    }] : [])
+    }] : [
+      {
+        name: 'Profile',
+        href: `/creator/no-wallet`,
+        icon: UserIcon,
+        activeIcon: UserSolidIcon
+      }
+    ])
   ]
 
   const isActive = (href: string) => {
-    if (href === '/feed' && pathname === '/') return true
+    // Если мы на главной странице "/", всегда возвращаем false
+    if (pathname === '/') return false
+    
+    if (href === '/feed' && pathname === '/feed') return true
+    if (href === '/messages' && pathname.startsWith('/messages')) return true
+    if (href.startsWith('/creator/') && pathname.startsWith('/creator/')) {
+      // Для профиля проверяем точное совпадение ID
+      const hrefId = href.split('/creator/')[1]
+      const pathnameId = pathname.split('/creator/')[1]
+      return hrefId === pathnameId
+    }
     return pathname === href
   }
 
-  const handleDisconnect = () => {
-    disconnect()
-    setIsMenuOpen(false)
-  }
 
   return (
     <>
       <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl border-t border-gray-200/50 dark:border-slate-700/30 z-50 bottom-safe shadow-lg">
-        <div className="grid grid-cols-4 h-14">
+        <div className="grid grid-cols-5 h-14">
           {navItems.map((item) => {
             const isItemActive = isActive(item.href)
+            console.log('[BottomNav] isItemActive:', isItemActive, item.href, pathname)
             const Icon = isItemActive ? item.activeIcon : item.icon
             
-            // Для Menu и Create используем button вместо Link
+            // Для кнопок с href='#' используем button, для остальных Link
             if (item.href === '#') {
               return (
                 <button
                   key={item.name}
                   onClick={item.onClick}
-                  className={`flex flex-col items-center justify-center gap-0.5 relative w-full ${
+                  className={`flex flex-col items-center justify-center gap-0.5 relative w-full h-full ${
                     isItemActive ? 'text-purple-600 dark:text-purple-400' : 'text-gray-600 dark:text-slate-400'
                   }`}
                 >
                   <div className="relative">
-                    <Icon className="w-6 h-6" />
+                    <Icon className="w-7 h-6" />
                   </div>
-                  <span className="text-xs">{item.name}</span>
+                  { /* <span className="text-xs">{item.name}</span> */ }
                 </button>
               )
             }
             
-            return (
-              <div key={item.name} className="relative">
+            // Специальная обработка для Profile - показываем аватар если пользователь подключен
+            if (item.name === 'Profile' && user && publicKeyString) {
+              return (
                 <Link
+                  key={item.name}
                   href={item.href}
-                  className={`flex flex-col items-center justify-center gap-0.5 relative ${
+                  className={`flex items-center justify-center relative w-full h-full ${
                     isItemActive ? 'text-purple-600 dark:text-purple-400' : 'text-gray-600 dark:text-slate-400'
                   }`}
                 >
                   <div className="relative">
-                    <Icon className="w-6 h-6" />
+                    <div className="w-10 h-10 rounded-full border border-purple-500 p-0.5">
+                      {user.avatar ? (
+                        <img 
+                          src={user.avatar} 
+                          alt={user.nickname || 'User'} 
+                          className="w-full h-full rounded-full object-cover"
+                        />
+                      ) : (
+                        <div className="w-full h-full rounded-full bg-gradient-to-br from-purple-600 to-pink-600 flex items-center justify-center">
+                          <span className="text-white text-sm font-bold">
+                            {(user.nickname || user.fullName || 'U').charAt(0).toUpperCase()}
+                          </span>
+                        </div>
+                      )}
+                    </div>
                   </div>
-                  <span className="text-xs">{item.name}</span>
                 </Link>
-                {/* Menu button overlay for Profile */}
-                {item.name === 'Profile' && (
-                  <button
-                    onClick={() => setIsMenuOpen(true)}
-                    className="absolute top-0 right-0 w-3 h-3 bg-purple-500 rounded-full opacity-60 hover:opacity-100 transition-opacity"
-                    title="Menu"
-                  />
-                )}
-              </div>
+              )
+            }
+            
+            return (
+              <Link
+                key={item.name}
+                href={item.href}
+                className={`flex flex-col items-center justify-center gap-0.5 relative w-full h-full ${
+                  isItemActive ? 'text-purple-600 dark:text-purple-400' : 'text-gray-600 dark:text-slate-400'
+                }`}
+              >
+                <div className="relative">
+                  <Icon className="w-7 h-7" />
+                </div>
+                { /* <span className="text-xs">{item.name}</span> */ }
+              </Link>
             )
           })}
         </div>
       </nav>
 
-      {/* Mobile menu modal */}
-      {isMenuOpen && (
-        <div className="fixed inset-0 z-[60] md:hidden">
-          {/* Backdrop */}
-          <div 
-            className="absolute inset-0 bg-black/60 backdrop-blur-sm"
-            onClick={() => setIsMenuOpen(false)}
-          />
-          
-          {/* Menu Content */}
-          <div className="absolute inset-x-0 bottom-0 bg-white dark:bg-slate-900 rounded-t-3xl shadow-2xl">
-            <div className="p-6 pb-20">
-              {/* Header */}
-              <div className="flex items-center justify-between mb-6">
-                <h2 className="text-xl font-bold text-gray-900 dark:text-white">Menu</h2>
-                <button
-                  onClick={() => setIsMenuOpen(false)}
-                  className="p-2 hover:bg-gray-100 dark:hover:bg-slate-800 rounded-xl transition-colors"
-                >
-                  <XMarkIcon className="w-6 h-6 text-gray-600 dark:text-slate-400" />
-                </button>
-              </div>
-
-              {/* User Info */}
-              {user && (
-                <div className="flex items-center gap-4 p-4 bg-gray-50 dark:bg-slate-800/50 rounded-2xl mb-6">
-                  <Avatar
-                    src={user.avatar}
-                    alt={user.fullName || user.nickname || 'User'}
-                    seed={user.wallet || ''}
-                    size={48}
-                    rounded="xl"
-                  />
-                  <div className="flex-1">
-                    <p className="font-semibold text-gray-900 dark:text-white">
-                      {user.fullName || user.nickname || 'Anonymous'}
-                    </p>
-                    <p className="text-sm text-gray-600 dark:text-slate-400">
-                      {user.nickname ? `@${user.nickname}` : 'Set up your profile'}
-                    </p>
-                  </div>
-                </div>
-              )}
-
-              {/* SOL Rate */}
-              <div className="mb-6">
-                <SolanaRateDisplay />
-              </div>
-
-              {/* Menu Items */}
-              <div className="space-y-2">
-                {/* Messages - только для авторизованных пользователей */}
-                {user && publicKeyString && (
-                  <Link
-                    href="/messages"
-                    onClick={() => setIsMenuOpen(false)}
-                    className="flex items-center gap-4 p-4 hover:bg-gray-50 dark:hover:bg-slate-800/50 rounded-2xl transition-colors"
-                  >
-                    <ChatBubbleLeftEllipsisIcon className="w-6 h-6 text-gray-600 dark:text-slate-400" />
-                    <span className="text-gray-900 dark:text-white font-medium">Messages</span>
-                    {unreadMessages > 0 && (
-                      <span className="ml-auto bg-red-500 text-white text-xs w-5 h-5 rounded-full flex items-center justify-center">
-                        {unreadMessages > 9 ? '9+' : unreadMessages}
-                      </span>
-                    )}
-                  </Link>
-                )}
-
-                <Link
-                  href="/search"
-                  onClick={() => setIsMenuOpen(false)}
-                  className="flex items-center gap-4 p-4 hover:bg-gray-50 dark:hover:bg-slate-800/50 rounded-2xl transition-colors"
-                >
-                  <MagnifyingGlassIcon className="w-6 h-6 text-gray-600 dark:text-slate-400" />
-                  <span className="text-gray-900 dark:text-white font-medium">Search</span>
-                </Link>
-
-                {/* Profile - только для авторизованных пользователей */}
-                {user && publicKeyString && (
-                  <Link
-                    href={getProfileLink({ id: user.id, nickname: user.nickname })}
-                    onClick={() => setIsMenuOpen(false)}
-                    className="flex items-center gap-4 p-4 hover:bg-gray-50 dark:hover:bg-slate-800/50 rounded-2xl transition-colors"
-                  >
-                    <UserIcon className="w-6 h-6 text-gray-600 dark:text-slate-400" />
-                    <span className="text-gray-900 dark:text-white font-medium">Profile</span>
-                  </Link>
-                )}
-
-                {/* Support - только для авторизованных пользователей */}
-                {user && publicKeyString && (
-                  <Link
-                    href="/support"
-                    className="flex items-center gap-4 p-4 hover:bg-gray-50 dark:hover:bg-slate-800/50 rounded-2xl transition-colors"
-                  >
-                    <QuestionMarkCircleIcon className="w-5 h-5" />
-                    Support
-                  </Link>
-                )}
-
-                {/* Dashboard - только для авторизованных пользователей-создателей */}
-                {user?.isCreator && publicKeyString && (
-                  <Link
-                    href="/dashboard"
-                    onClick={() => setIsMenuOpen(false)}
-                    className="flex items-center gap-4 p-4 hover:bg-gray-50 dark:hover:bg-slate-800/50 rounded-2xl transition-colors"
-                  >
-                    <CurrencyDollarIcon className="w-6 h-6 text-gray-600 dark:text-slate-400" />
-                    <span className="text-gray-900 dark:text-white font-medium">Creator Dashboard</span>
-                  </Link>
-                )}
-
-                {/* Wallet Connection */}
-                {publicKeyString ? (
-                  <button
-                    onClick={handleDisconnect}
-                    className="w-full flex items-center gap-4 p-4 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-2xl transition-colors"
-                  >
-                    <ArrowRightOnRectangleIcon className="w-6 h-6 text-red-600 dark:text-red-400" />
-                    <span className="text-red-600 dark:text-red-400 font-medium">Disconnect Wallet</span>
-                  </button>
-                ) : (
-                  <div className="w-full">
-                    <MobileWalletConnect />
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* Create Post Modal */}
       {showCreateModal && (

@@ -343,6 +343,15 @@ export default function ProfilePageClient() {
                       <Cog6ToothIcon className="w-4 h-4 mr-2" />
                       Настройки
                     </Link>
+                    
+                    {/* Dashboard кнопка только для мобильного вида */}
+                    <Link
+                      href="/dashboard"
+                      className="sm:hidden inline-flex items-center px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+                    >
+                      <CurrencyDollarIcon className="w-4 h-4 mr-2" />
+                      Dashboard
+                    </Link>
                   </div>
                 </div>
               </div>

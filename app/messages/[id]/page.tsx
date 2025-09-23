@@ -15,7 +15,11 @@ import {
   VideoCameraIcon,
   CheckCircleIcon,
   GiftIcon,
-  SparklesIcon
+  SparklesIcon,
+  EllipsisVerticalIcon,
+  PencilIcon,
+  TrashIcon,
+  CheckIcon
 } from '@heroicons/react/24/outline'
 import { HeartIcon, EyeIcon } from '@heroicons/react/24/solid'
 import Link from 'next/link'
@@ -46,6 +50,8 @@ interface Message {
   isPaid: boolean
   price?: number
   isPurchased: boolean
+  isEdited?: boolean
+  isDeleted?: boolean
   purchases?: Array<{ id: string; userId: string }>
   sender: {
     id: string
@@ -114,6 +120,8 @@ export default function ConversationPage() {
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [hasMore, setHasMore] = useState(false)
   const [lastMessageCount, setLastMessageCount] = useState(0)
+  const [openMessageMenu, setOpenMessageMenu] = useState<string | null>(null)
+  const [editingMessage, setEditingMessage] = useState<string | null>(null)
   const { rate: solRate } = useSolRate()
 
   // 🚀 PHASE 1 FIX: Circuit breaker state to prevent infinite API calls
@@ -476,6 +484,12 @@ export default function ConversationPage() {
 
   const sendMessage = async () => {
     if ((!messageText.trim() && !selectedMedia) || isSending) return
+
+    // Если мы в режиме редактирования, сохраняем изменения
+    if (editingMessage) {
+      await handleSaveEdit(editingMessage)
+      return
+    }
 
     // Validate paid message
     if (isPaidMessage && (!messagePrice || parseFloat(messagePrice) <= 0)) {
@@ -852,6 +866,119 @@ export default function ConversationPage() {
     await sendTip()
   }
 
+  // Message menu handlers
+  const handleEditMessage = (messageId: string) => {
+    console.log('handleEditMessage called with:', messageId)
+    const message = messages.find(m => m.id === messageId)
+    console.log('Found message:', message)
+    if (message) {
+      console.log('Setting editingMessage to:', messageId)
+      console.log('Setting messageText to:', message.content || '')
+      setOpenMessageMenu(null) // Закрываем меню сначала
+      // Небольшая задержка для предотвращения конфликта с обработчиком клика вне меню
+      setTimeout(() => {
+        setEditingMessage(messageId)
+        setMessageText(message.content || '') // Переносим текст в основное поле ввода
+      }, 10)
+    }
+  }
+
+  const handleSaveEdit = async (messageId: string) => {
+    if (!messageText.trim()) {
+      toast.error('Message cannot be empty')
+      return
+    }
+
+    try {
+      const response = await fetch(`/api/messages/${messageId}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          userWallet: publicKeyString,
+          content: messageText.trim()
+        })
+      })
+
+      if (!response.ok) {
+        throw new Error('Failed to update message')
+      }
+
+      const data = await response.json()
+      
+      // Обновляем сообщение в локальном состоянии
+      setMessages(prev => prev.map(msg => 
+        msg.id === messageId 
+          ? { ...msg, content: data.message.content, isEdited: true }
+          : msg
+      ))
+
+      setEditingMessage(null)
+      setMessageText('') // Очищаем основное поле ввода
+      toast.success('Message updated successfully')
+
+    } catch (error) {
+      console.error('Error updating message:', error)
+      toast.error('Failed to update message')
+    }
+  }
+
+  const handleCancelEdit = () => {
+    setEditingMessage(null)
+    setMessageText('') // Очищаем основное поле ввода
+  }
+
+  const handleDeleteMessage = async (messageId: string) => {
+    try {
+      const response = await fetch(`/api/messages/${messageId}`, {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          userWallet: publicKeyString
+        })
+      })
+
+      if (!response.ok) {
+        throw new Error('Failed to delete message')
+      }
+
+      const data = await response.json()
+      
+      // Обновляем сообщение в локальном состоянии
+      setMessages(prev => prev.map(msg => 
+        msg.id === messageId 
+          ? { ...msg, isDeleted: true }
+          : msg
+      ))
+
+      setOpenMessageMenu(null)
+      toast.success('Message deleted successfully')
+
+    } catch (error) {
+      console.error('Error deleting message:', error)
+      toast.error('Failed to delete message')
+    }
+  }
+
+  // Close message menu when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      // Проверяем, что клик не по элементам меню
+      const target = event.target as HTMLElement
+      if (openMessageMenu && !target.closest('[data-message-menu]')) {
+        setOpenMessageMenu(null)
+      }
+    }
+
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside)
+    }
+  }, [openMessageMenu])
+
   if (!publicKeyString) {
     return (
       <div className="min-h-screen bg-gray-50 dark:bg-slate-900 pt-24 flex items-center justify-center">
@@ -1008,7 +1135,7 @@ export default function ConversationPage() {
                             </div>
                           </div>
                           
-                          {message.mediaUrl && (
+                          {message.mediaUrl && !message.isDeleted && (
                             <div className="relative rounded-lg overflow-hidden">
                               {message.mediaType === 'image' ? (
                                 <div className="relative">
@@ -1087,28 +1214,41 @@ export default function ConversationPage() {
                             </div>
                           )}
                           
-                          {message.mediaUrl && (
+                          {message.mediaUrl && !message.isDeleted && (
                             <div className="mb-2">
                               {message.mediaType === 'image' ? (
                                 <img
                                   src={message.mediaUrl}
                                   alt="Message media"
-                                  className="rounded-xl max-w-xs"
+                                  className="rounded-xl max-w-xs max-h-64 w-full h-auto object-cover"
                                 />
                               ) : (
                                 <video
                                   src={message.mediaUrl}
                                   controls
-                                  className="rounded-xl max-w-xs"
+                                  className="rounded-xl max-w-xs max-h-64 w-full h-auto"
                                 />
                               )}
                             </div>
                           )}
                           
                           {message.content && (
-                            <p className={`${message.isOwn ? 'text-white' : 'text-gray-900 dark:text-white'} text-sm sm:text-base whitespace-pre-wrap`}>
-                              {message.content}
-                            </p>
+                            <>
+                              {message.isDeleted ? (
+                                <p className={`${message.isOwn ? 'text-white/60' : 'text-gray-500 dark:text-slate-500'} text-sm sm:text-base italic`}>
+                                  This message was deleted
+                                </p>
+                              ) : (
+                                <p className={`${message.isOwn ? 'text-white' : 'text-gray-900 dark:text-white'} text-sm sm:text-base whitespace-pre-wrap`}>
+                                  {message.content}
+                                  {message.isEdited && (
+                                    <span className="text-xs text-gray-400 dark:text-slate-500 ml-2 italic">
+                                      (edited)
+                                    </span>
+                                  )}
+                                </p>
+                              )}
+                            </>
                           )}
                         </>
                       )}
@@ -1123,6 +1263,38 @@ export default function ConversationPage() {
                       </span>
                       {message.isOwn && message.isRead && (
                         <span className="text-xs text-blue-500">Read</span>
+                      )}
+                      
+                      {/* Message Menu for own messages */}
+                      {message.isOwn && !message.isDeleted && (
+                        <div className="relative">
+                          <button
+                            onClick={() => setOpenMessageMenu(openMessageMenu === message.id ? null : message.id)}
+                            className="p-1 hover:bg-gray-200 dark:hover:bg-slate-700 rounded-full transition-colors flex items-center justify-center"
+                          >
+                            <EllipsisVerticalIcon className="w-4 h-4 text-gray-500 dark:text-slate-500" />
+                          </button>
+                          
+                          {/* Message Menu Dropdown */}
+                          {openMessageMenu === message.id && (
+                            <div className="absolute right-0 top-6 bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg shadow-lg z-10 min-w-[120px]" data-message-menu>
+                              <button
+                                onClick={() => handleEditMessage(message.id)}
+                                className="w-full px-3 py-2 text-left text-sm text-gray-700 dark:text-slate-300 hover:bg-gray-100 dark:hover:bg-slate-700 flex items-center gap-2"
+                              >
+                                <PencilIcon className="w-4 h-4" />
+                                Edit
+                              </button>
+                              <button
+                                onClick={() => handleDeleteMessage(message.id)}
+                                className="w-full px-3 py-2 text-left text-sm text-red-600 dark:text-red-400 hover:bg-gray-100 dark:hover:bg-slate-700 flex items-center gap-2"
+                              >
+                                <TrashIcon className="w-4 h-4" />
+                                Delete
+                              </button>
+                            </div>
+                          )}
+                        </div>
                       )}
                     </div>
                   </div>
@@ -1175,7 +1347,7 @@ export default function ConversationPage() {
                   <img
                     src={mediaPreview!}
                     alt="Selected media"
-                    className="h-20 rounded-lg"
+                    className="h-20 w-32 object-cover rounded-lg"
                   />
                 ) : (
                   <div className="h-20 w-32 bg-gray-100 dark:bg-slate-800 rounded-lg flex items-center justify-center">
@@ -1236,6 +1408,19 @@ export default function ConversationPage() {
 
           <div className="flex items-end gap-2">
             <div className="flex-1">
+              {/* Индикатор режима редактирования */}
+              {editingMessage && (
+                <div className="mb-2 px-3 py-1 bg-gradient-to-r from-purple-100 to-pink-100 dark:from-purple-900/30 dark:to-pink-900/30 text-purple-700 dark:text-purple-300 rounded-lg text-sm font-medium flex items-center justify-between">
+                  <span>✏️ Editing message</span>
+                  <button
+                    onClick={handleCancelEdit}
+                    className="text-purple-600 dark:text-purple-400 hover:text-purple-800 dark:hover:text-purple-200 transition-colors"
+                  >
+                    <XMarkIcon className="w-4 h-4" />
+                  </button>
+                </div>
+              )}
+              
               <textarea
                 value={messageText}
                 onChange={(e) => setMessageText(e.target.value)}
@@ -1245,8 +1430,12 @@ export default function ConversationPage() {
                     sendMessage()
                   }
                 }}
-                placeholder="Type a message..."
-                className="w-full px-4 py-2.5 bg-gray-100 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-2xl resize-none focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent text-sm sm:text-base"
+                placeholder={editingMessage ? "Edit your message..." : "Type a message..."}
+                className={`w-full px-4 py-2.5 bg-gray-100 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-2xl resize-none focus:outline-none focus:ring-2 focus:border-transparent text-sm sm:text-base ${
+                  editingMessage 
+                    ? 'focus:ring-purple-500 border-purple-300 dark:border-purple-600' 
+                    : 'focus:ring-purple-500'
+                }`}
                 rows={1}
               />
             </div>
@@ -1288,10 +1477,17 @@ export default function ConversationPage() {
               <button
                 onClick={sendMessage}
                 disabled={(!messageText.trim() && !selectedMedia) || isSending || isUploadingMedia}
-                className="p-2.5 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 disabled:from-gray-400 disabled:to-gray-400 text-white rounded-xl transition-all disabled:cursor-not-allowed transform hover:scale-105 disabled:hover:scale-100 shadow-lg"
+                className={`p-2.5 rounded-xl transition-all disabled:cursor-not-allowed transform hover:scale-105 disabled:hover:scale-100 shadow-lg ${
+                  editingMessage 
+                    ? 'bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 disabled:from-gray-400 disabled:to-gray-400 text-white'
+                    : 'bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 disabled:from-gray-400 disabled:to-gray-400 text-white'
+                }`}
+                title={editingMessage ? "Save changes" : "Send message"}
               >
                 {isSending || isUploadingMedia ? (
                   <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                ) : editingMessage ? (
+                  <CheckIcon className="w-5 h-5" />
                 ) : (
                   <PaperAirplaneIcon className="w-5 h-5" />
                 )}

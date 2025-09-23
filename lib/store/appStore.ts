@@ -98,6 +98,7 @@ interface UserSlice {
   isNewUser: boolean
   showProfileForm: boolean
   userError: Error | null
+  userRefreshCount: number
   
   // JWT Authentication State
   isJwtReady: boolean
@@ -173,7 +174,7 @@ export const useAppStore = create<AppStore>()(
         isNewUser: false,
         showProfileForm: false,
         userError: null,
-        
+        userRefreshCount: 0,
         // JWT Authentication State
         isJwtReady: false,
 
@@ -288,6 +289,9 @@ export const useAppStore = create<AppStore>()(
         refreshUser: async () => {
           const { user } = get()
           if (!user) return
+          if(get().userRefreshCount > 0) return;
+          set({ userRefreshCount: get().userRefreshCount + 1 });
+          console.log('[AppStore] refreshUser userRefreshCount:', get().userRefreshCount)
 
           try {
             set({ userLoading: true, userError: null })
@@ -300,6 +304,35 @@ export const useAppStore = create<AppStore>()(
 
             if (response.ok) {
               const data = await response.json()
+              console.log('[AppStore] refreshUser data:', data)
+
+              const subsResponse = await fetch(`/api/subscriptions/check?userId=${data.user.id}`)
+      
+              if (!subsResponse.ok) {
+                throw new Error(`Failed to load subscriptions: HTTP ${subsResponse.status}`)
+              }
+              
+              const subsData = await subsResponse.json()
+              
+              console.info(`[ENTERPRISE QUERY] Successfully loaded subscriptions for user ${data.user.id}`)
+              console.log(`[SUBSCRIPTIONS DATA]`, subsData);
+              
+              // Сохраняем подписки в localStorage
+              localStorage.setItem('user_subscriptions', JSON.stringify(subsData || null))
+
+              let likesData = []
+
+              if(data.user.id) {
+              // Fetch with abort signal
+                const likesResponse = await fetch(`/api/likes/user?userId=${data.user.id}`)
+                if (!likesResponse.ok) {
+                  throw new Error(`HTTP ${likesResponse.status}: ${likesResponse.statusText}`)
+                }
+                likesData = await likesResponse.json()
+                console.log(`[AppStore] User likes:`, likesData);
+                localStorage.setItem('user_likes', JSON.stringify(likesData || null));
+              }
+
               set({ 
                 user: data.user, 
                 isNewUser: data.isNewUser 

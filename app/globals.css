@@ -762,11 +762,9 @@ body::before {
 }
 
 .wallet-adapter-dropdown-list {
-  background: transparent !important;
 }
 
 .wallet-adapter-dropdown-list-item {
-  background: transparent !important;
   color: rgb(var(--foreground)) !important;
   padding: 0.75rem 1rem !important;
   border-radius: var(--border-radius) !important;

@@ -416,6 +416,8 @@ model Message {
   isPaid         Boolean           @default(false)
   price          Float?
   isRead         Boolean           @default(false)
+  isEdited       Boolean           @default(false)
+  isDeleted      Boolean           @default(false)
   createdAt      DateTime          @default(now())
   metadata       Json?
   purchases      MessagePurchase[]

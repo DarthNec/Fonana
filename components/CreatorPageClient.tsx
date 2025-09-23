@@ -652,13 +652,24 @@ export default function CreatorPageClient({ creatorId }: CreatorPageClientProps)
               {/* Actions */}
               <div className="flex flex-col gap-3">
                 {isOwner ? (
-                  <button
-                    onClick={() => setShowEditModal(true)}
-                    className="flex items-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"
-                  >
-                    <PencilIcon className="w-4 h-4" />
-                    Edit Profile
-                  </button>
+                  <>
+                    <button
+                      onClick={() => setShowEditModal(true)}
+                      className="flex items-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"
+                    >
+                      <PencilIcon className="w-4 h-4" />
+                      Edit Profile
+                    </button>
+                    
+                    {/* Dashboard кнопка только для мобильного вида */}
+                    <Link
+                      href="/dashboard"
+                      className="sm:hidden flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+                    >
+                      <CurrencyDollarIcon className="w-4 h-4" />
+                      Dashboard
+                    </Link>
+                  </>
                 ) : (
                   <>
                     <button 

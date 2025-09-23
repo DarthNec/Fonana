@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createOrUpdateUser, getUserByWallet, updateUserProfile, deleteUser, prisma } from '@/lib/db'
+import { createOrUpdateUser, getUserByWallet, updateUserProfile, deleteUser } from '@/lib/db'
+import { prisma } from '@/lib/prisma'
 import { generateRandomNickname, generateRandomBio, generateFullNameFromNickname } from '@/lib/usernames'
 import { referralLogger, apiLogger } from '@/lib/utils/logger'
 

@@ -12,6 +12,7 @@ import ReferralNotification from '@/components/ReferralNotification'
 import Footer from '@/components/Footer'
 import ServiceWorkerRegistration from '@/components/ServiceWorkerRegistration'
 import { useState, useEffect } from 'react'
+import { usePathname } from 'next/navigation'
 import SkeletonLoader from '@/components/ui/SkeletonLoader'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 
@@ -46,12 +47,23 @@ const queryClient = new QueryClient({
   }
 })
 
+
 export default function ClientShell({ children }: { children: React.ReactNode }) {
   const [mounted, setMounted] = useState(false)
-
+  const pathname = usePathname()
+  const [count, setCount] = useState(0);
   useEffect(() => {
+    console.log('[ClientShell] Render')
+    console.log('[ClientShell] Count:', count)
+    if(count <= 0) {
+      setCount(1);
+      console.log('[ClientShell] Count:', count)
+    }
     setMounted(true)
   }, [])
+
+  // Скрываем Navbar на странице messages в мобильной версии
+  const isMessagesPage = pathname?.startsWith('/messages')
 
   if (!mounted) {
     return (
@@ -69,7 +81,7 @@ export default function ClientShell({ children }: { children: React.ReactNode })
             <WalletPersistenceProvider>
               <AppProvider>
               <div className="min-h-screen bg-gray-50 dark:bg-slate-900 flex flex-col">
-                <div className="hidden md:block">
+                <div className={`block ${isMessagesPage ? 'md:block hidden' : 'block'}`}>
                   <Navbar />
                 </div>
                 <main className="pt-0 flex-1 pb-14 md:pb-0 md:pt-20">

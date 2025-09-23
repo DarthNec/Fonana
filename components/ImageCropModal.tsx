@@ -252,21 +252,21 @@ export default function ImageCropModal({ image, onCropComplete, onCancel }: Imag
 
         {/* Aspect ratio selector - modern design */}
         <div className="p-4 border-b border-gray-200 dark:border-slate-700/50">
-          <div className="flex gap-3 overflow-x-auto pb-2">
+          <div className="flex gap-2 sm:gap-3 pb-2">
             {aspectRatios.map((ratio) => (
               <button
                 key={ratio.name}
                 onClick={() => setSelectedRatio(ratio)}
-                className={`flex-shrink-0 px-5 py-4 rounded-2xl border-2 transition-all transform hover:scale-105 min-w-[140px] ${
+                className={`flex-1 px-3 sm:px-5 py-3 sm:py-4 rounded-2xl border-2 transition-all transform hover:scale-105 ${
                   selectedRatio.value === ratio.value
                     ? 'bg-gradient-to-r from-purple-600 to-pink-600 text-white shadow-lg shadow-purple-500/25 border-transparent'
                     : 'bg-white dark:bg-slate-800/50 text-gray-700 dark:text-slate-300 border-gray-200 dark:border-slate-700 hover:border-purple-500/50'
                 }`}
               >
-                <div className="flex flex-col items-center gap-2">
-                  <div className="text-3xl">{ratio.icon}</div>
+                <div className="flex flex-col items-center gap-1 sm:gap-2">
+                  <div className="text-2xl sm:text-3xl">{ratio.icon}</div>
                   <div className="text-center">
-                    <div className="font-semibold">{ratio.name}</div>
+                    <div className="font-semibold text-sm sm:text-base">{ratio.name}</div>
                     <div className="text-xs opacity-75">
                       {ratio.value === 3/4 ? '3:4' : ratio.value === 1 ? '1:1' : '16:9'}
                     </div>

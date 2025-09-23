@@ -30,7 +30,6 @@ export function PostMenu({ post, onAction, className }: PostMenuProps) {
   const [isOpen, setIsOpen] = useState(false)
   const [isSharePopupOpen, setIsSharePopupOpen] = useState(false)
   const menuRef = useRef<HTMLDivElement>(null)
-  
   // ✅ КРИТИЧЕСКАЯ ПРОВЕРКА: предотвращаем React Error #185
   if (!user) {
     return null

@@ -88,6 +88,19 @@ export function AppProvider({ children }: AppProviderProps) {
   const isMountedRef = useRef(true)
   const abortControllerRef = useRef<AbortController | null>(null)
 
+  const refreshUserCount = useRef(0);
+
+  useEffect(() => {
+    console.log('[AppProvider] Try refresh user')
+    if(refreshUserCount.current == 0) {
+      console.log('[AppProvider] Refresh user count:', refreshUserCount.current)
+      refreshUserCount.current++;
+      refreshUser();
+      console.log('[AppProvider] user changed:', user);
+    }
+  }, [])
+
+
   // 🔥 CRITICAL DEBUG: Отслеживаем все изменения состояния
   useEffect(() => {
     console.log(`[AppProvider][CRITICAL DEBUG] State update useEffect triggered (render #${renderCountRef.current}):`, {
@@ -106,7 +119,7 @@ export function AppProvider({ children }: AppProviderProps) {
         isInitialized
       }
     })
-    
+
     // 🔥 ДОПОЛНИТЕЛЬНОЕ ЛОГИРОВАНИЕ ПОДКЛЮЧЕНИЯ КОШЕЛЬКА (только при изменении)
     if (connected && publicKey) {
       // console.log('🎯 [WALLET CONNECTION DETECTED] Wallet connected:')
@@ -121,6 +134,9 @@ export function AppProvider({ children }: AppProviderProps) {
       // console.log('🎯 [WALLET CONNECTION DETECTED] End of wallet logging')
     }
   }, [user?.id, userLoading, connected, publicKey?.toBase58(), isInitialized])
+
+
+  
 
   // Инициализация приложения
   useEffect(() => {

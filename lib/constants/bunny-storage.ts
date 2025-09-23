@@ -13,5 +13,9 @@ export const BUNNY_PATHS = {
   support: {
     images: 'support/images'
   },
-  avatars: 'avatars'
+  avatars: 'avatars',
+  messages: {
+    images: 'messages/images',
+    videos: 'messages/videos'
+  }
 } as const 

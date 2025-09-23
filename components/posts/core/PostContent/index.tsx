@@ -12,12 +12,49 @@ import {
   isPostSold 
 } from '@/components/posts/utils/postHelpers'
 import { cn } from '@/lib/utils'
+import { 
+  // Category icons
+  Squares2X2Icon, // All
+  PaintBrushIcon, // Art
+  MusicalNoteIcon, // Music
+  PuzzlePieceIcon, // Gaming
+  HomeIcon, // Lifestyle
+  HeartIcon as FitnessIcon, // Fitness
+  ComputerDesktopIcon, // Tech
+  CurrencyDollarIcon, // DeFi
+  PhotoIcon as NFTIcon, // NFT
+  ChartBarIcon, // Trading
+  CpuChipIcon, // GameFi
+  LinkIcon, // Blockchain
+  HeartIcon as IntimateIcon, // Intimate
+  AcademicCapIcon, // Education
+  FaceSmileIcon // Comedy
+} from '@heroicons/react/24/outline'
 
 export interface PostContentProps {
   post: UnifiedPost
   variant?: PostCardVariant
   onAction?: (action: PostAction) => void
   className?: string
+}
+
+// Маппинг категорий к иконкам
+const categoryIcons: Record<string, any> = {
+  'All': Squares2X2Icon,
+  'Art': PaintBrushIcon,
+  'Music': MusicalNoteIcon,
+  'Gaming': PuzzlePieceIcon,
+  'Lifestyle': HomeIcon,
+  'Fitness': FitnessIcon,
+  'Tech': ComputerDesktopIcon,
+  'DeFi': CurrencyDollarIcon,
+  'NFT': NFTIcon,
+  'Trading': ChartBarIcon,
+  'GameFi': CpuChipIcon,
+  'Blockchain': LinkIcon,
+  'Intimate': IntimateIcon,
+  'Education': AcademicCapIcon,
+  'Comedy': FaceSmileIcon
 }
 
 /**
@@ -194,9 +231,18 @@ export function PostContent({
           {post.content.category && (
             <Link
               href={`/category/${post.content.category.toLowerCase()}`}
-              className="px-3 py-1 bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 rounded-full text-xs font-medium hover:bg-purple-200 dark:hover:bg-purple-900/50 transition-colors"
+              className="px-3 py-1 bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 rounded-full text-xs font-medium hover:bg-purple-200 dark:hover:bg-purple-900/50 transition-colors flex items-center gap-1"
+              title={post.content.category}
             >
-              {post.content.category}
+              {/* Показываем иконку на мобильных устройствах */}
+              <div className="md:hidden flex items-center justify-center">
+                {(() => {
+                  const IconComponent = categoryIcons[post.content.category] || Squares2X2Icon
+                  return <div className="w-5"> <IconComponent /> </div>
+                })()}
+              </div>
+              {/* Показываем текст на десктопе */}
+              <span className="hidden md:inline">{post.content.category}</span>
             </Link>
           )}
           {post.content.tags.map(tag => (

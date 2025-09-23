@@ -26,18 +26,54 @@ import {
   ArrowTrendingUpIcon,
   PhotoIcon,
   VideoCameraIcon,
-  DocumentTextIcon
+  DocumentTextIcon,
+  // Category icons
+  Squares2X2Icon, // All
+  PaintBrushIcon, // Art
+  MusicalNoteIcon, // Music
+  PuzzlePieceIcon, // Gaming
+  CpuChipIcon, // GameFi
+  HomeIcon, // Lifestyle
+  HeartIcon as FitnessIcon, // Fitness
+  ComputerDesktopIcon, // Tech
+  CurrencyDollarIcon, // DeFi
+  PhotoIcon as NFTIcon, // NFT
+  ChartBarIcon, // Trading
+  LinkIcon, // Blockchain
+  HeartIcon as IntimateIcon, // Intimate
+  AcademicCapIcon, // Education
+  FaceSmileIcon // Comedy
 } from '@heroicons/react/24/outline'
 import { toast } from 'react-hot-toast'
 import Link from 'next/link'
 
 import { useInView } from 'react-intersection-observer'
+import { useSubscriptionStore } from '@/lib/store/subscriptionStore'
 
 const categories = [
   'All', 'Art', 'Music', 'Gaming', 'Lifestyle', 'Fitness', 
   'Tech', 'DeFi', 'NFT', 'Trading', 'GameFi', 
   'Blockchain', 'Intimate', 'Education', 'Comedy'
 ]
+
+// Маппинг категорий к иконкам
+const categoryIcons: Record<string, any> = {
+  'All': Squares2X2Icon,
+  'Art': PaintBrushIcon,
+  'Music': MusicalNoteIcon,
+  'Gaming': PuzzlePieceIcon,
+  'Lifestyle': HomeIcon,
+  'Fitness': FitnessIcon,
+  'Tech': ComputerDesktopIcon,
+  'DeFi': CurrencyDollarIcon,
+  'NFT': NFTIcon,
+  'Trading': ChartBarIcon,
+  'GameFi': CpuChipIcon,
+  'Blockchain': LinkIcon,
+  'Intimate': IntimateIcon,
+  'Education': AcademicCapIcon,
+  'Comedy': FaceSmileIcon
+}
 
 const sortOptions = [
   { value: 'latest', label: 'Latest', icon: ClockIcon },
@@ -53,7 +89,6 @@ export default function FeedPageClient() {
   const [selectedCategory, setSelectedCategory] = useState('All')
   const [sortBy, setSortBy] = useState<'latest' | 'popular' | 'trending' | 'subscribed'>('latest')
   const categoryScrollRef = useRef<HTMLDivElement>(null)
-  
   // 🔥 M7 PHASE 3: React 18 useTransition for filter updates
   const [isPending, startTransition] = useTransition()
   
@@ -68,6 +103,7 @@ export default function FeedPageClient() {
   const [showSellableModal, setShowSellableModal] = useState(false)
   const [selectedPost, setSelectedPost] = useState<any>(null)
   const [selectedCreator, setSelectedCreator] = useState<any>(null)
+
 
   // Функция для проверки аутентификации перед созданием поста
   const handleCreatePost = async () => {
@@ -151,10 +187,9 @@ export default function FeedPageClient() {
 
   // Посты уже отсортированы на сервере в зависимости от sortBy
   const filteredAndSortedPosts = useMemo(() => {
-    // Загружаем подписки из localStorage
     const subscriptions = JSON.parse(localStorage.getItem('user_subscriptions') || '[]')
     console.log(`[SUBSCRIPTIONS]`, subscriptions);
-    // Обрабатываем купленные посты
+    
     const processedPosts = realtimePosts.map(post => {
       if(subscriptions?.subscriptions?.length > 0) {
         const index = subscriptions.subscriptions.findIndex(sub => sub.creatorId === post.creator.id);
@@ -323,21 +358,32 @@ export default function FeedPageClient() {
               ref={categoryScrollRef}
               className="flex gap-2 px-4 pb-3 pt-3 overflow-x-auto scrollbar-hide scroll-smooth"
             >
-              {categories.map((category) => (
-                <button
-                  key={category}
-                  onClick={() => startTransition(() => setSelectedCategory(category))}
-                  className={`
-                    px-4 py-2 rounded-full font-medium whitespace-nowrap transition-all
-                    ${selectedCategory === category
-                      ? 'bg-gradient-to-r from-purple-600 to-pink-600 text-white shadow-md'
-                      : 'bg-gray-100 dark:bg-slate-800 text-gray-700 dark:text-slate-300 hover:bg-gray-200 dark:hover:bg-slate-700'
-                    }
-                  `}
-                >
-                  {category}
-                </button>
-              ))}
+              {categories.map((category) => {
+                const IconComponent = categoryIcons[category]
+                return (
+                  <button
+                    key={category}
+                    onClick={() => startTransition(() => setSelectedCategory(category))}
+                    className={`
+                      px-4 py-2 rounded-full font-medium whitespace-nowrap transition-all
+                      ${selectedCategory === category
+                        ? 'bg-gradient-to-r from-purple-600 to-pink-600 text-white shadow-md'
+                        : 'bg-gray-100 dark:bg-slate-800 text-gray-700 dark:text-slate-300 hover:bg-gray-200 dark:hover:bg-slate-700'
+                      }
+                    `}
+                    title={category} // Добавляем tooltip с названием категории
+                  >
+                    {/* Показываем иконку на мобильных устройствах */}
+                    <div className="md:hidden flex items-center justify-center">
+                      <div className="w-10">
+                        <IconComponent className="w-5 h-5" />
+                      </div>
+                    </div>
+                    {/* Показываем текст на десктопе */}
+                    <span className="hidden md:inline">{category}</span>
+                  </button>
+                )
+              })}
             </div>
             
             {/* Gradient для индикации скролла */}
@@ -417,12 +463,14 @@ export default function FeedPageClient() {
         )}
       </div>
 
-      {/* Floating Action Button */}
-      <FloatingActionButton
-        onClick={handleCreatePost}
-        label="Create Post"
-        hideOnScroll={true}
-      />
+      {/* Floating Action Button - скрыт на мобильных устройствах */}
+      <div className="hidden md:block">
+        <FloatingActionButton
+          onClick={handleCreatePost}
+          label="Create Post"
+          hideOnScroll={true}
+        />
+      </div>
 
       {/* Create Post Modal */}
       {showCreateModal && (

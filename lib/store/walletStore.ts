@@ -10,6 +10,11 @@ import type {
   WalletName,
   Adapter 
 } from '@solana/wallet-adapter-base'
+import { update } from 'lodash'
+import { useAppStore } from '@/lib/store/appStore'
+import { clear } from 'console'
+
+
 
 interface WalletState {
   // Proxy state
@@ -90,11 +95,27 @@ export const useWalletStore = create<WalletState>()(
           connecting: updates.connecting,
           disconnecting: updates.disconnecting
         })
+        if(!updates.connected) {
+          console.log('[WalletStore] updateState called: disconnect');
+          localStorage.removeItem('fonana-app-store');
+          localStorage.removeItem('fonana_jwt_token');
+          localStorage.removeItem('fonana_user_wallet');
+          localStorage.removeItem('user_subscriptions');
+          localStorage.removeItem('user_likes');
+          if (localStorage.getItem('first_reload') == 'true') {
+            localStorage.setItem('first_reload', 'false');
+            window.location.reload();
+          }
+          // const { clearUser, user } = useAppStore.getState();
+          // clearUser();
+        }
+
         set(updates)
       },
       
       // Proxy methods with SSR safety
       connect: async () => {
+        console.log('[WalletStore] connect called');
         const { _adapter, _isSSR } = get()
         if (_isSSR || !_adapter) {
           console.warn('[WalletStore] Cannot connect during SSR or without adapter')
@@ -104,8 +125,10 @@ export const useWalletStore = create<WalletState>()(
       },
       
       disconnect: async () => {
+        console.log('[WalletStore] disconnect called');
         const { _adapter, _isSSR } = get()
         if (_isSSR || !_adapter) return
+
         return _adapter.disconnect()
       },
       

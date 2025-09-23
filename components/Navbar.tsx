@@ -56,6 +56,7 @@ export function Navbar() {
   
   // 🔥 ЛОГИРОВАНИЕ ПОЛЬЗОВАТЕЛЯ В NAVBAR (только при изменении)
   useEffect(() => {
+    console.log(`User in Navbar:`, user)
     // console.log('🎯 [NAVBAR] User state changed:')
     // console.log('📊 Global User from Zustand:', {
     //   hasUser: !!user,
@@ -379,67 +380,10 @@ export function Navbar() {
           {/* Mobile Menu */}
           {isOpen && (
             <div className="md:hidden absolute top-full left-0 right-0 bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl border-b border-gray-200 dark:border-slate-700/50">
-              <div className="p-4 space-y-2">
-                {/* Search Button for mobile */}
-                <button
-                  onClick={() => {
-                    setShowSearchModal(true)
-                    setIsOpen(false)
-                  }}
-                  className="w-full flex items-center gap-3 px-4 py-3 rounded-2xl font-semibold transition-all duration-300 text-gray-600 dark:text-slate-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-slate-800/50 text-left"
-                >
-                  <MagnifyingGlassIcon className="w-5 h-5" />
-                  Search
-                </button>
-                
-                {navigation.map((item) => (
-                  item.isAction ? (
-                    <button
-                      key={item.name}
-                      onClick={(e) => handleNavClick(item, e)}
-                      className={`relative flex items-center gap-3 px-4 py-3 rounded-2xl font-semibold transition-all duration-300 text-gray-600 dark:text-slate-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-slate-800/50 w-full text-left`}
-                    >
-                      <item.icon className="w-5 h-5" />
-                      {item.name}
-                    </button>
-                  ) : (
-                    <Link
-                      key={item.name}
-                      href={item.href}
-                      onClick={() => setIsOpen(false)}
-                      className={`relative flex items-center gap-3 px-4 py-3 rounded-2xl font-semibold transition-all duration-300 ${
-                        item.isNew
-                          ? 'bg-gradient-to-r from-red-600 to-orange-600 text-white animate-pulse'
-                          : isActive(item.href)
-                          ? 'bg-gradient-to-r from-purple-600 to-pink-600 text-white'
-                          : 'text-gray-600 dark:text-slate-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-slate-800/50'
-                      }`}
-                    >
-                      <item.icon className="w-5 h-5" />
-                      {item.name}
-                      {item.hasIndicator && unreadMessages > 0 && (
-                        <span className="absolute top-2 right-2 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center animate-pulse">
-                          {unreadMessages > 9 ? '9+' : unreadMessages}
-                        </span>
-                      )}
-                    </Link>
-                  )
-                ))}
-                
+              <div className="p-4 space-y-2">      
                 <div className="pt-4 border-t border-gray-200 dark:border-slate-700/50">
-                  <div className="wallet-adapter-button-wrapper mb-4">
-                    <MobileWalletConnect />
-                  </div>
-                  
                   {(connected || (isPlaywrightTestMode() && user)) && (
                     <div className="space-y-2">
-                      <Link
-                        href={currentUser ? getProfileLink({ id: currentUser.id, nickname: currentUser.nickname }) : "/profile"}
-                        className="flex items-center gap-3 px-4 py-3 text-gray-600 dark:text-slate-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-slate-800/50 rounded-2xl transition-colors"
-                      >
-                        <UserIcon className="w-5 h-5" />
-                        Profile
-                      </Link>
                       <Link
                         href="/support"
                         className="flex items-center gap-3 px-4 py-3 text-gray-600 dark:text-slate-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-slate-800/50 rounded-2xl transition-colors"
@@ -456,6 +400,10 @@ export function Navbar() {
                       </Link>
                     </div>
                   )}
+
+                  <div className="wallet-adapter-button-wrapper mb-50">
+                    <MobileWalletConnect />
+                  </div>
                 </div>
               </div>
             </div>

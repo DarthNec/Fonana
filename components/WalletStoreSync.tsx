@@ -15,13 +15,15 @@ import { useCallback, useEffect, useRef } from 'react'
 import { useWallet as useOriginalWallet } from '@solana/wallet-adapter-react'
 import { useWalletStore } from '@/lib/store/walletStore'
 import { useAppStore } from '@/lib/store/appStore'
+import { useSubscriptionStore } from '@/lib/store/subscriptionStore'
 import { debounce } from 'lodash-es'
 
 export function WalletStoreSync() {
   const walletAdapter = useOriginalWallet()
   const { setAdapter, updateState } = useWalletStore()
+  const { clearUser } = useAppStore();
   const setUser = useAppStore(state => state.setUser)
-  
+  const { loadSubscriptions } = useSubscriptionStore()
   // 🔥 M7 OPTIMIZED CIRCUIT BREAKER
   const updateCountRef = useRef(0)
   const isCircuitOpenRef = useRef(false)
@@ -207,7 +209,8 @@ export function WalletStoreSync() {
         
         // 🔥 ПОЛУЧАЕМ ДАННЫЕ ПОЛЬЗОВАТЕЛЯ (только если еще не загружен)
         const currentUser = useAppStore.getState().user
-        if (!currentUser || currentUser.wallet !== wallet) {
+        console.log('[WalletStoreSync] currentUser:', currentUser)
+        if (!currentUser || currentUser.wallet !== wallet || !localStorage.getItem('fonana_user_wallet') != null) {
           console.log('🎯 [WALLET STORE SYNC] Fetching user data...')
           const response = await fetch(`/api/user?wallet=${wallet}`)
           
@@ -220,6 +223,23 @@ export function WalletStoreSync() {
                 userWallet: data.user.wallet
               })
               setUser(data.user)
+
+              loadSubscriptions(data.user.id)
+
+              let likesData = []
+
+              if(data.user.id) {
+              // Fetch with abort signal
+                const likesResponse = await fetch(`/api/likes/user?userId=${data.user.id}`)
+                if (!likesResponse.ok) {
+                  throw new Error(`HTTP ${likesResponse.status}: ${likesResponse.statusText}`)
+                }
+                likesData = await likesResponse.json()
+                console.log(`[🎯 [WALLET STORE SYNC] User likes:`, likesData);
+                localStorage.setItem('user_likes', JSON.stringify(likesData || null));
+              }
+
+
             } else {
               console.warn('🎯 [WALLET STORE SYNC] No user data in response')
             }
@@ -281,7 +301,7 @@ export function WalletStoreSync() {
     //   hasWallet: !!newState.wallet,
     //   walletName: newState.wallet?.adapter?.name
     // })
-      
+      console.log('[WalletStoreSync] Updating state:', newState)
       updateState(newState)
     }, 250), // 🔥 250ms debounce to prevent rapid firing
     []
@@ -323,16 +343,25 @@ export function WalletStoreSync() {
         connecting: walletState.connecting,
         disconnecting: walletState.disconnecting
       })
+
       debouncedUpdateState(walletState)
       
       // 🔥 ПОЛУЧАЕМ ПОЛЬЗОВАТЕЛЯ ПРИ ПОДКЛЮЧЕНИИ КОШЕЛЬКА
       if (walletState.connected && walletState.publicKey) {
+
+        if (localStorage.getItem('first_reload') !== 'true') {
+          localStorage.setItem('first_reload', 'true');
+          setTimeout(() => {
+            window.location.reload();
+          }, 2500);
+        }
         const walletAddress = walletState.publicKey.toBase58()
         console.log('🎯 [WALLET STORE SYNC] Wallet connected, fetching user for:', walletAddress.substring(0, 8) + '...')
         fetchAndSetUser(walletAddress)
       } else if (!walletState.connected) {
         // 🔥 ОЧИЩАЕМ WALLET ПРИ ОТКЛЮЧЕНИИ КОШЕЛЬКА
         console.log('🎯 [WALLET STORE SYNC] Wallet disconnected, clearing localStorage and JWT')
+
         localStorage.removeItem('fonana_user_wallet')
         localStorage.removeItem('fonana_jwt_token')
         

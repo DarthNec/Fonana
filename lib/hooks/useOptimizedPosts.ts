@@ -47,6 +47,7 @@ export function useOptimizedPosts(options: UseOptimizedPostsOptions = {}): UseOp
   const [posts, setPosts] = useState<UnifiedPost[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<Error | null>(null)
+  const [isFeedLoading, setIsFeedLoading] = useState(true);
   
   // Main effect for posts loading - FIXED AbortController pattern
   useEffect(() => {
@@ -99,14 +100,17 @@ export function useOptimizedPosts(options: UseOptimizedPostsOptions = {}): UseOp
 
 
         if(user?.id) {
-        // Fetch with abort signal
-          const likesResponse = await fetch(`/api/likes/user?userId=${user.id}`, {
-              signal: controller.signal  // ✅ Proper signal usage
-          })
-          if (!likesResponse.ok) {
-            throw new Error(`HTTP ${likesResponse.status}: ${likesResponse.statusText}`)
+          if(localStorage.getItem('user_likes')) {
+            likesData = JSON.parse(localStorage.getItem('user_likes') || '[]')
+          } else {
+            const likesResponse = await fetch(`/api/likes/user?userId=${user.id}`, {
+                signal: controller.signal  // ✅ Proper signal usage
+            })
+            if (!likesResponse.ok) {
+              throw new Error(`HTTP ${likesResponse.status}: ${likesResponse.statusText}`)
+            }
+            likesData = await likesResponse.json()
           }
-          likesData = await likesResponse.json()
           console.log(`[useOptimizedPosts] User likes:`, likesData);
         }
 
@@ -120,7 +124,9 @@ export function useOptimizedPosts(options: UseOptimizedPostsOptions = {}): UseOp
         console.log(`[useOptimizedPosts] Normalized ${normalizedPosts.length} posts successfully`)
         console.log('ПОСТЫ ПОСЛЕ normalizeMany:', normalizedPosts);
         setPosts(normalizedPosts)
-        
+        console.log('[useOptimizedPosts] Loading posts finished')
+        setIsLoading(false)
+        setIsFeedLoading(false);
       } catch (err: any) {
         // ✅ Proper AbortError handling
         if (err.name !== 'AbortError') {
@@ -128,7 +134,6 @@ export function useOptimizedPosts(options: UseOptimizedPostsOptions = {}): UseOp
           setError(err)
         }
       } finally {
-        setIsLoading(false)
       }
     }
     
@@ -148,6 +153,8 @@ export function useOptimizedPosts(options: UseOptimizedPostsOptions = {}): UseOp
   
   // 🔥 IMPLEMENTED: Refresh functionality for real-time updates
   const refresh = useCallback(async (clearCache?: boolean) => {
+    console.log('[useOptimizedPosts] isFeedLoading:', isFeedLoading)
+    return
     console.log('[useOptimizedPosts] refresh called, clearCache:', clearCache)
     
     try {
@@ -187,14 +194,18 @@ export function useOptimizedPosts(options: UseOptimizedPostsOptions = {}): UseOp
       if (!response.ok) {
         throw new Error(`HTTP ${response.status}: ${response.statusText}`)
       }
-      
+
       const data = await response.json()
       const rawPosts = data.posts || []
-      
+      let likesData = [];
+      if(localStorage.getItem('user_likes') && user?.id) {
+        likesData = JSON.parse(localStorage.getItem('user_likes') || '[]')
+      }
+
       console.log(`[useOptimizedPosts] Refresh received ${rawPosts.length} posts from API`)
       
       // Normalize posts
-      const normalizedPosts = PostNormalizer.normalizeMany(rawPosts)
+      const normalizedPosts = PostNormalizer.normalizeMany(rawPosts, likesData);
       
       console.log(`[useOptimizedPosts] Refresh normalized ${normalizedPosts.length} posts successfully`)
       
@@ -216,9 +227,7 @@ export function useOptimizedPosts(options: UseOptimizedPostsOptions = {}): UseOp
   }, [
     options.sortBy, 
     options.category, 
-    options.creatorId,
-    publicKeyString,
-    user?.id
+    options.creatorId
   ])
   
   // Placeholder functions for Phase 1
