@@ -202,9 +202,9 @@ function MessagesPageClientInner() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-slate-900 pt-20 pb-20">
+    <div className="min-h-screen bg-gray-50 dark:bg-slate-900 pt-4 sm:pt-20 pb-20">
       <div className="max-w-2xl mx-auto px-4">
-        <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-8">
+        <h1 className="hidden sm:block text-2xl font-bold text-gray-900 dark:text-white mb-8">
           Messages
         </h1>
         

@@ -64,6 +64,8 @@ export default function ClientShell({ children }: { children: React.ReactNode })
 
   // Скрываем Navbar на странице messages в мобильной версии
   const isMessagesPage = pathname?.startsWith('/messages')
+  // Скрываем BottomNav на странице конкретного чата в мобильной версии
+  const isIndividualChatPage = pathname?.startsWith('/messages/') && pathname !== '/messages'
 
   if (!mounted) {
     return (
@@ -88,8 +90,8 @@ export default function ClientShell({ children }: { children: React.ReactNode })
                   {children}
                 </main>
                 <ReferralNotification />
-                <Footer />
-                <div className="block md:hidden">
+                {/* <Footer /> */}
+                <div className={`block md:hidden ${isIndividualChatPage ? 'hidden' : 'block'}`}>
                   <BottomNav />
                 </div>
               </div>

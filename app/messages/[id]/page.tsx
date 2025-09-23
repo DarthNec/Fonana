@@ -308,10 +308,18 @@ export default function ConversationPage() {
     }
   }, [userId, isUserReady, conversationId]) // ✅ Убираем loadConversationInfo из зависимостей
 
-  useEffect(() => {
-    scrollToBottom()
-  }, [messages])
+  const [wasScrolled, setWasScrolled] = useState(false);
 
+  useEffect(() => {
+    console.log('[ConversationPage] Scrolling to bottom')
+    if(messages.length > 0 && !wasScrolled) {
+      scrollToBottom();
+      setWasScrolled(true);
+
+    }
+  }, [messages])
+  
+ 
   // 🚀 PHASE 1: Separate useEffect for participant detection (SAFE - after render)
   useEffect(() => {
     const timestamp = Date.now();
@@ -1301,13 +1309,13 @@ export default function ConversationPage() {
                 )}
               </div>
             ))}
-            <div ref={messagesEndRef} />
+             <div ref={messagesEndRef} />
           </>
         )}
       </div>
 
       {/* Input - Enhanced with Quick Tips */}
-      <div className="sticky bottom-0 bg-white dark:bg-slate-900 border-t border-gray-200 dark:border-slate-700/50">
+      <div className="sticky bottom-0 bg-white dark:bg-slate-900  border-gray-200 dark:border-slate-700/50">
         {/* Quick Tips Bar */}
         {showQuickTips && (
           <div className="p-3 border-b border-gray-200 dark:border-slate-700/50 bg-gray-50 dark:bg-slate-800/50">
@@ -1338,7 +1346,7 @@ export default function ConversationPage() {
       </div>
         
       {/* Input Area */}
-      <div className="p-3 sm:p-4 border-t border-gray-200 dark:border-slate-700">
+      <div className="fixed bottom-0 inset-x-0 w-full sm:static p-3 sm:p-4 border-t border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-900 z-50">
         <div className="max-w-2xl mx-auto">
           {selectedMedia && (
             <div className="mb-3 relative inline-block">

@@ -25,6 +25,7 @@ import { useSolRate } from '@/lib/hooks/useSolRate'
 import { refreshSubscriptionStatus } from '@/lib/utils/subscriptions'
 import { jwtManager } from '@/lib/utils/jwt'
 import { useSafeWalletModal } from '@/lib/hooks/useSafeWalletModal'
+import { useSubscriptionStore } from '@/lib/store/subscriptionStore'
 
 interface SubscriptionTier {
   id: string
@@ -135,9 +136,46 @@ export default function SubscribeModal({ creator, preferredTier, onClose, onSucc
   const [expandedTiers, setExpandedTiers] = useState<Set<string>>(new Set<string>())
   const [activeFlashSale, setActiveFlashSale] = useState<any>(null)
   const [allFlashSales, setAllFlashSales] = useState<Record<string, any>>({})
+  const [currentSubscription, setCurrentSubscription] = useState<any>(null)
   const { rate: solRate } = useSolRate()
 
+  const { subscriptions } = useSubscriptionStore();
+
   const selectedSubscription = subscriptionTiers.find(tier => tier.id === selectedTier)
+  
+  // Функции для работы с текущей подпиской
+  const getCurrentTier = () => {
+    if (!currentSubscription) return null
+    console.log('[SubscribeModal] currentSubscription', currentSubscription)
+    return subscriptionTiers.find(tier => tier.name === currentSubscription.plan)
+  }
+  
+  const getUpgradePrice = (tier: SubscriptionTier) => {
+    if (!currentSubscription) return parseFloat(tier.price.toFixed(2))
+    const currentTier = getCurrentTier()
+    if (!currentTier) return parseFloat(tier.price.toFixed(2))
+    return parseFloat((Math.max(0, tier.price - currentTier.price)).toFixed(2))
+  }
+  
+  const getUpgradeDiscount = (tier: SubscriptionTier) => {
+    if (!currentSubscription) return 0
+    const currentTier = getCurrentTier()
+    if (!currentTier) return 0
+    if (tier.price <= currentTier.price) return 0
+    return Math.round(((tier.price - currentTier.price) / tier.price) * 100)
+  }
+  
+  const canUpgrade = (tier: SubscriptionTier) => {
+    if (!currentSubscription) return true
+    const currentTier = getCurrentTier()
+    if (!currentTier) return true
+    return tier.price > currentTier.price
+  }
+  
+  const isCurrentTier = (tier: SubscriptionTier) => {
+    if (!currentSubscription) return false
+    return tier.id === currentSubscription.subscriptionType
+  }
 
   console.log('[SubscribeModal] creator', creator);
   console.log('[SubscribeModal] preferredTier', preferredTier);
@@ -157,6 +195,8 @@ export default function SubscribeModal({ creator, preferredTier, onClose, onSucc
     loadCreatorTierSettings()
     // Load active flash sales
     loadFlashSales()
+    // Load current subscription
+    loadCurrentSubscription()
     
     return () => {
       document.body.style.overflow = 'unset'
@@ -330,6 +370,26 @@ export default function SubscribeModal({ creator, preferredTier, onClose, onSucc
     }
   }
 
+  const loadCurrentSubscription = async () => {
+    try {
+      if (!publicKeyString) return
+      console.log('[SubscribeModal] Subscriptions:', subscriptions)
+      console.log('[SubscribeModal] Creator ID:', creator.id)
+      const activeSub = subscriptions.subscriptions.find((sub: any) =>  {
+        console.log('[SubscribeModal] Sub:', sub)
+        return (sub.creatorId === creator.id && sub.isActive); 
+      }
+      )
+      console.log('[SubscribeModal] Active subscription:', activeSub)
+      if (activeSub) {
+        console.log('[SubscribeModal] Current subscription:', activeSub)
+        setCurrentSubscription(activeSub)
+      }
+    } catch (error) {
+      console.error('Error loading current subscription:', error)
+    }
+  }
+
   const handleSubscribe = async () => {
     if (!connected || !publicKeyString) { // 🔥 M7 FIX
       setVisible(true)
@@ -383,10 +443,16 @@ export default function SubscribeModal({ creator, preferredTier, onClose, onSucc
       const referrerWallet = creatorData.creator.referrer?.solanaWallet || creatorData.creator.referrer?.wallet
       const hasReferrer = creatorData.creator.referrerId && referrerWallet && isValidSolanaAddress(referrerWallet)
 
-      // Calculate payment distribution with Flash Sale discount
-      const finalPrice = activeFlashSale 
+      // Calculate payment distribution with Flash Sale discount and upgrade pricing
+      let finalPrice = activeFlashSale 
         ? selectedSubscription.price * (1 - activeFlashSale.discount / 100)
         : selectedSubscription.price
+      
+      // Если есть текущая подписка, применяем скидку на апгрейд
+      const currentTier = getCurrentTier()
+      if (currentTier) {
+        finalPrice = getUpgradePrice(selectedSubscription)
+      }
       
       // Валидация цены
       if (!finalPrice || finalPrice <= 0 || isNaN(finalPrice)) {
@@ -656,6 +722,13 @@ export default function SubscribeModal({ creator, preferredTier, onClose, onSucc
                 )}
               </div>
               <p className="text-slate-400 text-sm">@{creator.username}</p>
+              {currentSubscription && (
+                <div className="mt-2 px-3 py-1 bg-green-500/20 border border-green-500/30 rounded-lg">
+                  <p className="text-green-400 text-xs font-medium">
+                    Current: {getCurrentTier()?.name || 'Unknown'} Plan
+                  </p>
+                </div>
+              )}
             </div>
           </div>
           <button
@@ -732,7 +805,13 @@ export default function SubscribeModal({ creator, preferredTier, onClose, onSucc
                         {tier.description}
                       </p>
                       <div className="flex items-baseline justify-center gap-1">
-                        {allFlashSales[tier.id] ? (
+                        {isCurrentTier(tier) ? (
+                          <>
+                            <span className="text-2xl font-bold text-green-400">
+                              Current Plan
+                            </span>
+                          </>
+                        ) : allFlashSales[tier.id] ? (
                           <>
                             <span className="text-xl line-through text-slate-500">
                               {tier.price}
@@ -750,16 +829,27 @@ export default function SubscribeModal({ creator, preferredTier, onClose, onSucc
                               -{allFlashSales[tier.id].discount}%
                             </span>
                           </>
-                        ) : (
+                        ) : canUpgrade(tier) ? (
                           <>
                             <span className="text-3xl font-bold text-white">
-                              {tier.price}
+                              {getUpgradePrice(tier)}
                             </span>
                             <span className="text-lg text-purple-400 font-semibold">
                               {tier.currency}
                             </span>
                             <span className="text-slate-400 text-sm">
                               /{tier.duration}
+                            </span>
+                            {getUpgradeDiscount(tier) > 0 && (
+                              <span className="ml-2 text-xs bg-gradient-to-r from-green-500 to-blue-500 text-white px-2 py-0.5 rounded-full font-bold">
+                                -{getUpgradeDiscount(tier)}%
+                              </span>
+                            )}
+                          </>
+                        ) : (
+                          <>
+                            <span className="text-2xl font-bold text-slate-500">
+                              Downgrade
                             </span>
                           </>
                         )}
@@ -840,34 +930,44 @@ export default function SubscribeModal({ creator, preferredTier, onClose, onSucc
 
           {/* Subscribe Button */}
           <div className="flex gap-4">
-            <button
-              onClick={handleSubscribe}
-              disabled={isProcessing}
-              className={`flex-1 py-4 px-8 rounded-xl font-bold text-lg transition-all duration-300 transform hover:scale-105 text-white ${
-                selectedTier === 'free'
-                  ? 'bg-gradient-to-r from-gray-500 to-gray-600 hover:from-gray-600 hover:to-gray-700'
-                  : selectedTier === 'basic'
-                  ? 'bg-gradient-to-r from-blue-500 to-cyan-600 hover:from-blue-600 hover:to-cyan-700'
-                  : selectedTier === 'vip'
-                  ? 'bg-gradient-to-r from-yellow-500 to-orange-500 hover:from-orange-600 hover:to-orange-700'
-                  : 'bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700'
-              } shadow-xl disabled:opacity-50 disabled:cursor-not-allowed`}
-            >
-              {isProcessing ? (
-                <div className="flex items-center justify-center gap-3">
-                  <div className="w-6 h-6 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                  Processing...
-                </div>
-              ) : !connected ? (
-                'Connect Wallet'
-              ) : (
-                selectedSubscription?.price === 0 
-                  ? 'Subscribe for free'
-                  : activeFlashSale && selectedTier === activeFlashSale.subscriptionPlan?.toLowerCase()
-                    ? `Pay ${formatSolAmount((selectedSubscription?.price || 0) * (1 - activeFlashSale.discount / 100))} per ${selectedSubscription?.duration} (Save ${activeFlashSale.discount}%!)`
-                    : `Pay ${formatSolAmount(selectedSubscription?.price || 0)} per ${selectedSubscription?.duration}`
-              )}
-            </button>
+            {selectedSubscription && isCurrentTier(selectedSubscription) ? (
+              <div className="flex-1 py-4 px-8 rounded-xl font-bold text-lg text-center bg-gradient-to-r from-green-500 to-green-600 text-white">
+                You already have this plan
+              </div>
+            ) : selectedSubscription && !canUpgrade(selectedSubscription) ? (
+              <div className="flex-1 py-4 px-8 rounded-xl font-bold text-lg text-center bg-gradient-to-r from-slate-500 to-slate-600 text-white">
+                You have a higher level plan
+              </div>
+            ) : (
+              <button
+                onClick={handleSubscribe}
+                disabled={isProcessing}
+                className={`flex-1 py-4 px-8 rounded-xl font-bold text-lg transition-all duration-300 transform hover:scale-105 text-white ${
+                  selectedTier === 'free'
+                    ? 'bg-gradient-to-r from-gray-500 to-gray-600 hover:from-gray-600 hover:to-gray-700'
+                    : selectedTier === 'basic'
+                    ? 'bg-gradient-to-r from-blue-500 to-cyan-600 hover:from-blue-600 hover:to-cyan-700'
+                    : selectedTier === 'vip'
+                    ? 'bg-gradient-to-r from-yellow-500 to-orange-500 hover:from-orange-600 hover:to-orange-700'
+                    : 'bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700'
+                } shadow-xl disabled:opacity-50 disabled:cursor-not-allowed`}
+              >
+                {isProcessing ? (
+                  <div className="flex items-center justify-center gap-3">
+                    <div className="w-6 h-6 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                    Processing...
+                  </div>
+                ) : !connected ? (
+                  'Connect Wallet'
+                ) : (
+                  selectedSubscription?.price === 0 
+                    ? 'Subscribe for free'
+                    : activeFlashSale && selectedTier === activeFlashSale.subscriptionPlan?.toLowerCase()
+                      ? `Pay ${formatSolAmount((selectedSubscription?.price || 0) * (1 - activeFlashSale.discount / 100))} per ${selectedSubscription?.duration} (Save ${activeFlashSale.discount}%!)`
+                      : selectedSubscription ? `Pay ${formatSolAmount(getUpgradePrice(selectedSubscription))} per ${selectedSubscription.duration}` : 'Subscribe'
+                )}
+              </button>
+            )}
             
             <button
               onClick={onClose}
