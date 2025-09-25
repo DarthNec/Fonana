@@ -7,7 +7,7 @@ import { PostContent } from '../PostContent'
 import { PostActions } from '../PostActions'
 import { PostTierBadge } from '../PostTierBadge'
 import { PostFlashSale } from '../PostFlashSale'
-import { CommentsSection } from '../CommentsSection'
+import { CommentsSection, MobileCommentsSection } from '../CommentsSection'
 import { PostMenu } from '../PostMenu'
 import { cn } from '@/lib/utils'
 import { 
@@ -277,14 +277,31 @@ export function PostCard({
 
       {/* Секция комментариев */}
       {showComments && (
-        <CommentsSection
-          postId={post.id}
-          post={post}
-          onCommentAdded={handleCommentAdded}
-          onCommentDeleted={handleCommentDeleted}
-          onClose={() => setShowComments(false)}
-          className="animate-fade-in"
-        />
+        <>
+          {/* Десктопная версия */}
+          <div className="hidden sm:block">
+            <CommentsSection
+              postId={post.id}
+              post={post}
+              onCommentAdded={handleCommentAdded}
+              onCommentDeleted={handleCommentDeleted}
+              onClose={() => setShowComments(false)}
+              className="animate-fade-in"
+            />
+          </div>
+          
+          {/* Мобильная версия */}
+          <div className="block sm:hidden">
+            <MobileCommentsSection
+              postId={post.id}
+              post={post}
+              onCommentAdded={handleCommentAdded}
+              onCommentDeleted={handleCommentDeleted}
+              onClose={() => setShowComments(false)}
+              className="animate-fade-in"
+            />
+          </div>
+        </>
       )}
     </article>
   )

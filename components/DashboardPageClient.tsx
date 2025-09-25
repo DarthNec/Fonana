@@ -537,13 +537,13 @@ export default function DashboardPageClient() {
                 <div className="flex items-center gap-2 p-2 bg-white dark:bg-gray-800 rounded-lg border">
                   <input
                     type="text"
-                    value={`https://fonana.io/${user?.nickname || 'your-username'}`}
+                    value={`https://fonana.me/ref?ref=${user?.id || 'your-username'}`}
                     readOnly
                     className="flex-1 bg-transparent text-sm text-gray-700 dark:text-gray-300 border-none outline-none"
                   />
                   <button
                     onClick={() => {
-                      navigator.clipboard.writeText(`https://fonana.io/${user?.nickname || 'your-username'}`)
+                      navigator.clipboard.writeText(`https://fonana.me/ref?ref=${user?.id || 'your-username'}`)
                       toast.success('Referral link copied!')
                     }}
                     className="px-3 py-1 bg-orange-600 text-white text-xs rounded hover:bg-orange-700 transition-colors"

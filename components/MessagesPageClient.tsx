@@ -1,8 +1,8 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useUser, useJwtReady } from '@/lib/store/appStore'
-import { ChatBubbleLeftEllipsisIcon, UserIcon } from '@heroicons/react/24/outline'
+import { ChatBubbleLeftEllipsisIcon, UserIcon, EllipsisVerticalIcon, TrashIcon } from '@heroicons/react/24/outline'
 import { jwtManager } from '@/lib/utils/jwt'
 import Link from 'next/link'
 import Avatar from './Avatar'
@@ -35,6 +35,8 @@ function MessagesPageClientInner() {
   const [conversations, setConversations] = useState<Conversation[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [openMenuId, setOpenMenuId] = useState<string | null>(null)
+  const menuRef = useRef<HTMLDivElement>(null)
 
   // 🔥 DEBUG: Добавляем отладочную информацию
   console.log('[MessagesPageClient] Debug state:', {
@@ -44,6 +46,23 @@ function MessagesPageClientInner() {
     isLoading,
     error
   })
+
+  // Закрытие меню при клике вне
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
+        setOpenMenuId(null)
+      }
+    }
+    
+    if (openMenuId) {
+      document.addEventListener('mousedown', handleClickOutside)
+    }
+    
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside)
+    }
+  }, [openMenuId])
 
   // Обновляем счетчик непрочитанных сообщений при загрузке страницы
   useEffect(() => {
@@ -122,6 +141,40 @@ function MessagesPageClientInner() {
       setIsLoading(false)
     }
   }, [conversationsData, queryError])
+
+  // Функция удаления чата
+  const deleteConversation = async (conversationId: string) => {
+    try {
+      const token = await jwtManager.getToken()
+      console.log('Token:', token)
+      if (!token) {
+        throw new Error('Authentication required - no JWT token available')
+      }
+
+      const response = await fetch(`/api/conversations?conversationId=${conversationId}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.error || 'Failed to delete conversation')
+      }
+
+      // Удаляем чат из локального состояния
+      setConversations(prev => prev.filter(conv => conv.id !== conversationId))
+      
+      // Обновляем данные через React Query
+      refetchConversations()
+      
+      console.log('Conversation deleted successfully:', conversationId)
+    } catch (error) {
+      console.error('Error deleting conversation:', error)
+      throw error
+    }
+  }
 
   // 🔥 M7: loadConversations removed - using React Query
 
@@ -273,15 +326,54 @@ function MessagesPageClientInner() {
                     </div>
                     
                     <div className="flex items-center justify-between mt-1">
-                      <p className="text-sm text-gray-600 dark:text-gray-400 truncate">
+                      <p className="text-sm text-gray-600 dark:text-gray-400 truncate flex-1 mr-2">
                         {getLastMessagePreview(conversation.lastMessage)}
                       </p>
                       
-                      {conversation.unreadCount && conversation.unreadCount > 0 && (
-                        <span className="bg-purple-600 text-white text-xs font-medium px-2 py-1 rounded-full flex-shrink-0 ml-2">
-                          {conversation.unreadCount}
-                        </span>
-                      )}
+                      <div className="flex items-center gap-1 flex-shrink-0">
+                        {conversation.unreadCount && conversation.unreadCount > 0 && (
+                          <span className="bg-purple-600 text-white text-xs font-medium px-2 py-1 rounded-full">
+                            {conversation.unreadCount}
+                          </span>
+                        )}
+                        
+                        {/* Menu button */}
+                        <div className="relative" ref={menuRef}>
+                          <button
+                            onClick={(e) => {
+                              e.preventDefault()
+                              e.stopPropagation()
+                              setOpenMenuId(openMenuId === conversation.id ? null : conversation.id)
+                            }}
+                            className="p-1 flex items-center justify-center text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
+                          >
+                            <EllipsisVerticalIcon className="w-4 h-4" />
+                          </button>
+                          
+                          {/* Dropdown menu */}
+                          {openMenuId === conversation.id && (
+                            <div 
+                              className="absolute right-0 top-8 bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg shadow-lg z-150 min-w-[120px]"
+                              onClick={(e) => console.log('Clicked on menu:', e)}
+                            >
+                              <button
+                                onClick={async (e) => {
+                                  console.log('Deleting conversation:', conversation.id)
+                                  e.preventDefault()
+                                  e.stopPropagation()
+                                  setOpenMenuId(null)
+                                  console.log('Deleting conversation:', conversation.id)
+                                  await deleteConversation(conversation.id)
+                                }}
+                                className="w-full flex items-center gap-2 px-3 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
+                              >
+                                <TrashIcon className="w-4 h-4" />
+                                Delete
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                      </div>
                     </div>
                   </div>
                 </div>

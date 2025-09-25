@@ -7,4 +7,6 @@ export default function UserProfileShortcut() {
       <UserProfileShortcutClient />
     </ClientShell>
   )
-} 
+}
+
+

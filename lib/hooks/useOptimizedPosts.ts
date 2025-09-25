@@ -229,6 +229,79 @@ export function useOptimizedPosts(options: UseOptimizedPostsOptions = {}): UseOp
     options.category, 
     options.creatorId
   ])
+
+
+
+  const refreshWithoutCache = useCallback(async (clearCache?: boolean) => {
+    console.log('[useOptimizedPosts] Refresh with need_update_feed')
+    try {
+      setIsLoading(true)
+      setError(null)
+      
+      // Build API params
+      const params = new URLSearchParams()
+      if (options.category) params.append('category', options.category)
+      if (options.creatorId) params.append('creatorId', options.creatorId)
+      params.append('sortBy', options.sortBy || 'latest')
+      params.append('page', '1')
+      params.append('limit', '20')
+      
+      if (publicKeyString) params.append('userWallet', publicKeyString)
+      if (user?.id) params.append('userId', user.id)
+      
+      // 🔥 SAFETY: Fallback на localStorage если publicKeyString недоступен
+      if (!publicKeyString && typeof window !== 'undefined') {
+        const savedWallet = localStorage.getItem('fonana_user_wallet')
+        if (savedWallet) {
+          console.log('[useOptimizedPosts] Using localStorage fallback for refresh wallet address:', savedWallet.substring(0, 8) + '...')
+          params.append('userWallet', savedWallet)
+        }
+      }
+      
+      // Choose endpoint based on sortBy
+      let endpoint = '/api/posts'
+      if (options.sortBy === 'subscribed') {
+        endpoint = '/api/posts/following'
+      }
+      
+      console.log('[useOptimizedPosts] Refreshing posts from:', endpoint)
+      
+      const response = await fetch(`${endpoint}?${params}`)
+      
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`)
+      }
+
+      const data = await response.json()
+      const rawPosts = data.posts || []
+      let likesData = [];
+      if(localStorage.getItem('user_likes') && user?.id) {
+        likesData = JSON.parse(localStorage.getItem('user_likes') || '[]')
+      }
+
+      console.log(`[useOptimizedPosts] Refresh received ${rawPosts.length} posts from API`)
+      
+      // Normalize posts
+      const normalizedPosts = PostNormalizer.normalizeMany(rawPosts, likesData);
+      
+      console.log(`[useOptimizedPosts] Refresh normalized ${normalizedPosts.length} posts successfully`)
+      
+      // Update posts state
+      setPosts(normalizedPosts)
+      
+      // Clear any pending posts if clearCache is true
+      if (clearCache) {
+        console.log('[useOptimizedPosts] Clearing cache as requested')
+        // Reset any cached state if needed
+      }
+      
+    } catch (err: any) {
+      console.error('[useOptimizedPosts] Refresh error:', err)
+      setError(err)
+    } finally {
+      setIsLoading(false)
+    }
+  }, [])
   
   // Placeholder functions for Phase 1
   const loadMore = useCallback(() => {

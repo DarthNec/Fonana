@@ -185,14 +185,29 @@ export default function FeedPageClient() {
     }
   }, [selectedCategory, sortBy, isInitialized, refresh])
 
+
+  useEffect(() => {
+    const intervalId = setInterval(() => {
+      console.log(`Checking need update feed`);
+      if (localStorage.getItem('need_update_feed') !== 'true') {
+        localStorage.setItem('need_update_feed', 'true');
+        console.log(`Need update feed`);
+        clearInterval(intervalId); // ⛔ остановка после первого лога
+      }
+    }, 2500);
+  
+    // очистка при размонтировании компонента (на всякий случай)
+    return () => clearInterval(intervalId);
+  }, []);
+
   // Посты уже отсортированы на сервере в зависимости от sortBy
   const filteredAndSortedPosts = useMemo(() => {
     const subscriptions = JSON.parse(localStorage.getItem('user_subscriptions') || '[]')
     console.log(`[SUBSCRIPTIONS]`, subscriptions);
-    
+
     const processedPosts = realtimePosts.map(post => {
       if(subscriptions?.subscriptions?.length > 0) {
-        const index = subscriptions.subscriptions.findIndex(sub => sub.creatorId === post.creator.id);
+        const index = subscriptions.subscriptions.findIndex((sub: any) => sub.creatorId === post.creator.id);
         console.log(`[SUBSCRIPTION] index:`, index);
         console.log(`[SUBSCRIPTION] post.creator.id:`, post.creator.id);
         if(index !== -1) {

@@ -4,10 +4,10 @@
  * Otherwise use the full creator/id link
  */
 export function getProfileLink(creator: { id: string; nickname?: string | null }): string {
+  return `/creator/${creator.id}`
   if (creator.nickname) {
     return `/${creator.nickname}`
-  }
-  return `/creator/${creator.id}`
+  } 
 }
 
 /**

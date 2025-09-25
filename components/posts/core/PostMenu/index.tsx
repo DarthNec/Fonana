@@ -121,6 +121,19 @@ export function PostMenu({ post, onAction, className }: PostMenuProps) {
                 <PencilIcon className="w-4 h-4" />
                 <span className="text-sm font-medium">Edit Post</span>
               </button>
+
+              <button
+                onClick={() => handleAction('share')}
+                className={cn(
+                  'flex items-center gap-3 w-full px-4 py-2.5',
+                  'text-gray-700 dark:text-slate-300',
+                  'hover:bg-gray-100 dark:hover:bg-slate-700/50',
+                  'transition-colors'
+                )}
+              >
+                <ShareIcon className="w-4 h-4" />
+                <span className="text-sm font-medium">Share</span>
+              </button>
               
               <button
                 onClick={() => handleAction('delete')}

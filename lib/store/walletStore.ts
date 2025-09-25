@@ -102,10 +102,6 @@ export const useWalletStore = create<WalletState>()(
           localStorage.removeItem('fonana_user_wallet');
           localStorage.removeItem('user_subscriptions');
           localStorage.removeItem('user_likes');
-          if (localStorage.getItem('first_reload') == 'true') {
-            localStorage.setItem('first_reload', 'false');
-            window.location.reload();
-          }
           // const { clearUser, user } = useAppStore.getState();
           // clearUser();
         }

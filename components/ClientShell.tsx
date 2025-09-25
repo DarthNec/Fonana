@@ -66,6 +66,8 @@ export default function ClientShell({ children }: { children: React.ReactNode })
   const isMessagesPage = pathname?.startsWith('/messages')
   // Скрываем BottomNav на странице конкретного чата в мобильной версии
   const isIndividualChatPage = pathname?.startsWith('/messages/') && pathname !== '/messages'
+  // Скрываем Navbar на странице реферальной регистрации
+  const isRefPage = pathname === '/ref'
 
   if (!mounted) {
     return (
@@ -83,10 +85,10 @@ export default function ClientShell({ children }: { children: React.ReactNode })
             <WalletPersistenceProvider>
               <AppProvider>
               <div className="min-h-screen bg-gray-50 dark:bg-slate-900 flex flex-col">
-                <div className={`block ${isMessagesPage ? 'md:block hidden' : 'block'}`}>
+                <div className={`block ${isMessagesPage ? 'md:block hidden' : isRefPage ? 'hidden' : 'block'}`}>
                   <Navbar />
                 </div>
-                <main className="pt-0 flex-1 pb-14 md:pb-0 md:pt-20">
+                <main className={`pt-0 flex-1 pb-14 md:pb-0 ${isRefPage ? 'md:pt-0' : 'md:pt-20'}`}>
                   {children}
                 </main>
                 <ReferralNotification />

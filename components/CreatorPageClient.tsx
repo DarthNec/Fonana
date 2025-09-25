@@ -696,7 +696,10 @@ export default function CreatorPageClient({ creatorId }: CreatorPageClientProps)
                   </>
                 )}
                 
-                <button className="flex items-center gap-2 px-4 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-slate-700 transition-colors">
+                <button 
+                  onClick={() => setShowProfileSharePopup(true)}
+                  className="flex items-center gap-2 px-4 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-slate-700 transition-colors"
+                >
                   <ShareIcon className="w-4 h-4" />
                   Share
                 </button>

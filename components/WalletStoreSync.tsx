@@ -349,11 +349,8 @@ export function WalletStoreSync() {
       // 🔥 ПОЛУЧАЕМ ПОЛЬЗОВАТЕЛЯ ПРИ ПОДКЛЮЧЕНИИ КОШЕЛЬКА
       if (walletState.connected && walletState.publicKey) {
 
-        if (localStorage.getItem('first_reload') !== 'true') {
-          localStorage.setItem('first_reload', 'true');
-          setTimeout(() => {
-            window.location.reload();
-          }, 2500);
+        if(localStorage.getItem('need_update_feed') === 'true' || !localStorage.getItem('need_update_feed')) {
+          localStorage.setItem('need_update_feed', 'false');
         }
         const walletAddress = walletState.publicKey.toBase58()
         console.log('🎯 [WALLET STORE SYNC] Wallet connected, fetching user for:', walletAddress.substring(0, 8) + '...')

@@ -436,4 +436,91 @@ export async function POST(request: NextRequest) {
     })
     return NextResponse.json({ error: 'Failed to create conversation' }, { status: 500 })
   }
+}
+
+export async function DELETE(request: NextRequest) {
+  console.log('[Conversations API] Starting DELETE request')
+  
+  try {
+    // Проверяем JWT токен
+    const authHeader = request.headers.get('authorization')
+    console.log('[Conversations API] Authorization header:', authHeader ? 'present' : 'missing')
+    
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      console.log('[Conversations API] No token provided')
+      return NextResponse.json({ error: 'No token provided' }, { status: 401 })
+    }
+
+    const token = authHeader.split(' ')[1]
+    console.log('[Conversations API] JWT token received:', token.substring(0, 20) + '...')
+    
+    let decoded: any
+    
+    try {
+      decoded = jwt.verify(token, JWT_SECRET)
+      console.log('[Conversations API] Token verified successfully:', {
+        userId: decoded.userId,
+        email: decoded.email
+      })
+    } catch (jwtError) {
+      console.error('[Conversations API] JWT verification failed:', jwtError)
+      return NextResponse.json({ error: 'Invalid token' }, { status: 401 })
+    }
+
+    const userId = decoded.userId
+    console.log('[Conversations API] User ID from token:', userId)
+
+    // Получаем conversationId из query параметров
+    const { searchParams } = new URL(request.url)
+    const conversationId = searchParams.get('conversationId')
+    
+    if (!conversationId) {
+      console.log('[Conversations API] No conversationId provided')
+      return NextResponse.json({ error: 'Conversation ID is required' }, { status: 400 })
+    }
+
+    console.log('[Conversations API] Deleting conversation:', conversationId)
+
+    // Проверяем, что пользователь является участником разговора
+    const conversation = await prisma.conversation.findFirst({
+      where: {
+        id: conversationId,
+        OR: [
+          { fromUserId: userId },
+          { toUserId: userId }
+        ]
+      }
+    })
+
+    if (!conversation) {
+      console.log('[Conversations API] Conversation not found or user not authorized')
+      return NextResponse.json({ error: 'Conversation not found or access denied' }, { status: 404 })
+    }
+
+    console.log('[Conversations API] Conversation found, proceeding with deletion')
+
+    // Удаляем разговор (сообщения удалятся автоматически из-за CASCADE)
+    await prisma.conversation.delete({
+      where: {
+        id: conversationId
+      }
+    })
+
+    console.log('[Conversations API] Conversation deleted successfully')
+
+    return NextResponse.json({ 
+      success: true, 
+      message: 'Conversation deleted successfully' 
+    })
+
+  } catch (error: any) {
+    console.error('[API/conversations] ERROR deleting conversation:', error)
+    console.error('[API/conversations] Error stack:', error.stack)
+    console.error('[API/conversations] Error details:', {
+      name: error.name,
+      message: error.message,
+      code: error.code
+    })
+    return NextResponse.json({ error: 'Failed to delete conversation' }, { status: 500 })
+  }
 } 
