@@ -28,6 +28,7 @@ interface UseOptimizedPostsReturn {
   handleAction: (action: PostAction) => Promise<void>
   addNewPost: (post: UnifiedPost) => void
   loadPostById: (postId: string) => Promise<UnifiedPost | null>
+  refreshWithoutCache: () => void
 }
 
 /**
@@ -48,13 +49,14 @@ export function useOptimizedPosts(options: UseOptimizedPostsOptions = {}): UseOp
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<Error | null>(null)
   const [isFeedLoading, setIsFeedLoading] = useState(true);
-  
+  console.log(`[useOptimizedPosts] isFeedLoading:`, isFeedLoading)
   // Main effect for posts loading - FIXED AbortController pattern
   useEffect(() => {
     const controller = new AbortController()  // ✅ Created in useEffect
-    
+    console.log(`[useOptimizedPosts] useEffect loadPosts`)
     const loadPosts = async () => {
       try {
+        setPosts([]);
         console.log('[useOptimizedPosts] Loading posts with options:', {
           sortBy: options.sortBy,
           category: options.category,
@@ -100,19 +102,24 @@ export function useOptimizedPosts(options: UseOptimizedPostsOptions = {}): UseOp
 
 
         if(user?.id) {
-          if(localStorage.getItem('user_likes')) {
-            likesData = JSON.parse(localStorage.getItem('user_likes') || '[]')
-          } else {
-            const likesResponse = await fetch(`/api/likes/user?userId=${user.id}`, {
-                signal: controller.signal  // ✅ Proper signal usage
-            })
-            if (!likesResponse.ok) {
-              throw new Error(`HTTP ${likesResponse.status}: ${likesResponse.statusText}`)
+          if(localStorage.getItem('fonana_user_wallet') !== null) {
+            if(localStorage.getItem('user_likes') === null) {
+            if(JSON.parse(localStorage.getItem('user_likes')) !== null) {
+              likesData = JSON.parse(localStorage.getItem('user_likes') || '[]')
+            } else {
+              const likesResponse = await fetch(`/api/likes/user?userId=${user.id}`, {
+                  signal: controller.signal  // ✅ Proper signal usage
+              })
+              if (!likesResponse.ok) {
+                throw new Error(`HTTP ${likesResponse.status}: ${likesResponse.statusText}`)
+              }
+              likesData = await likesResponse.json()
+              localStorage.setItem('user_likes', JSON.stringify(likesData || null))
             }
-            likesData = await likesResponse.json()
+            console.log(`[useOptimizedPosts] User likes:`, likesData);
           }
-          console.log(`[useOptimizedPosts] User likes:`, likesData);
         }
+      }
 
         
         console.log(`[useOptimizedPosts] Received ${rawPosts.length} posts from API`)
@@ -232,7 +239,8 @@ export function useOptimizedPosts(options: UseOptimizedPostsOptions = {}): UseOp
 
 
 
-  const refreshWithoutCache = useCallback(async (clearCache?: boolean) => {
+  const refreshWithoutCache = useCallback(async () => {
+    return;
     console.log('[useOptimizedPosts] Refresh with need_update_feed')
     try {
       setIsLoading(true)
@@ -288,12 +296,6 @@ export function useOptimizedPosts(options: UseOptimizedPostsOptions = {}): UseOp
       
       // Update posts state
       setPosts(normalizedPosts)
-      
-      // Clear any pending posts if clearCache is true
-      if (clearCache) {
-        console.log('[useOptimizedPosts] Clearing cache as requested')
-        // Reset any cached state if needed
-      }
       
     } catch (err: any) {
       console.error('[useOptimizedPosts] Refresh error:', err)
@@ -590,6 +592,7 @@ export function useOptimizedPosts(options: UseOptimizedPostsOptions = {}): UseOp
     refresh,
     handleAction,
     addNewPost,
-    loadPostById
+    loadPostById,
+    refreshWithoutCache
   }
 } 

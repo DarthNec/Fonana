@@ -103,6 +103,7 @@ export default function FeedPageClient() {
   const [showSellableModal, setShowSellableModal] = useState(false)
   const [selectedPost, setSelectedPost] = useState<any>(null)
   const [selectedCreator, setSelectedCreator] = useState<any>(null)
+  const [filteredAndSortedPosts, setFilteredAndSortedPosts] = useState<UnifiedPost[]>([])
 
 
   // Функция для проверки аутентификации перед созданием поста
@@ -134,6 +135,7 @@ export default function FeedPageClient() {
     isLoadingMore,
     loadMore,
     refresh,
+    refreshWithoutCache,
     handleAction
   } = useOptimizedPosts({
     category: selectedCategory === 'All' ? undefined : selectedCategory,
@@ -187,11 +189,16 @@ export default function FeedPageClient() {
 
 
   useEffect(() => {
+    console.log(`[FeedPageClient] useEffect need_update_feed`);
     const intervalId = setInterval(() => {
-      console.log(`Checking need update feed`);
-      if (localStorage.getItem('need_update_feed') !== 'true') {
-        localStorage.setItem('need_update_feed', 'true');
+      console.log(`Checking need update feed using localStorage`);
+      if (
+        localStorage.getItem('fonana-app-store') !== null &&
+        localStorage.getItem('user_subscriptions') !== null &&
+        localStorage.getItem('user_likes') !== null
+      ) {
         console.log(`Need update feed`);
+        refreshWithoutCache();
         clearInterval(intervalId); // ⛔ остановка после первого лога
       }
     }, 2500);
@@ -200,9 +207,112 @@ export default function FeedPageClient() {
     return () => clearInterval(intervalId);
   }, []);
 
+  useEffect(() => {
+    console.log(`[FeedPageClient] useEffect filteredAndSortedPosts`, realtimePosts);
+    const fetchAndProcess = async () => {
+      if(realtimePosts.length <= 0) {
+        setFilteredAndSortedPosts(realtimePosts);
+        return;
+      } 
+      let subscriptions = [];
+      
+      if(localStorage.getItem('fonana_user_wallet') !== null) {
+        if (localStorage.getItem("user_subscriptions") === null) {
+          const response = await fetch(`/api/subscriptions/check?userId=${user?.id}`);
+          if (!response.ok) {
+            throw new Error(`Failed to load subscriptions: HTTP ${response.status}`);
+          }
+          const data = await response.json();
+          console.log("[SubscriptionStore] Subscriptions loaded:", data);
+          localStorage.setItem("user_subscriptions", JSON.stringify(data || null));
+          subscriptions = data;
+        } else {
+          subscriptions = JSON.parse(localStorage.getItem("user_subscriptions") || "[]");
+        }
+      }
+  
+      console.log("[SUBSCRIPTIONS]", subscriptions);
+      let likesData = [];
+      if(user?.id) {
+        if(localStorage.getItem('fonana_user_wallet') !== null) {
+          if(JSON.parse(localStorage.getItem('user_likes')) !== null) {
+            likesData = JSON.parse(localStorage.getItem('user_likes') || '[]')
+          } else {
+            const likesResponse = await fetch(`/api/likes/user?userId=${user.id}`, {
+            })
+            if (!likesResponse.ok) {
+              throw new Error(`HTTP ${likesResponse.status}: ${likesResponse.statusText}`)
+            }
+            likesData = await likesResponse.json()
+            localStorage.setItem('user_likes', JSON.stringify(likesData || null))
+          }
+          console.log(`[FeedPageClient] User likes:`, likesData);
+        }
+    }
+  
+      const processedPosts = realtimePosts.map((post) => {
+        if (subscriptions?.subscriptions?.length > 0) {
+          const sub = subscriptions.subscriptions.find((sub: any) => sub.creatorId === post.creator.id);
+          console.log("[SUBSCRIPTION] sub:", sub);
+          if (sub?.isActive) {
+            if (sub.plan === "VIP") {
+              post.access.shouldHideContent = false;
+              post.access.isLocked = false;
+            } else if (
+              post.access.tier === "basic" &&
+              ["Basic", "Premium", "VIP"].includes(sub.plan)
+            ) {
+              post.access.shouldHideContent = false;
+              post.access.isLocked = false;
+            } else if (
+              post.access.tier === "premium" &&
+              ["Premium", "VIP"].includes(sub.plan)
+            ) {
+              post.access.shouldHideContent = false;
+              post.access.isLocked = false;
+            }
+          }
+        }
+        if(likesData.length > 0) {
+          const like = likesData.find((like: any) => like.postId === post.id);
+          post.engagement.isLiked = like ? true : false;
+        }
+
+        return post;
+      });
+  
+      console.log("[FILTERED AND SORTED POSTS]", processedPosts);
+      setFilteredAndSortedPosts(processedPosts);
+    };
+  
+    fetchAndProcess();
+  }, [realtimePosts]);
+
+
   // Посты уже отсортированы на сервере в зависимости от sortBy
-  const filteredAndSortedPosts = useMemo(() => {
-    const subscriptions = JSON.parse(localStorage.getItem('user_subscriptions') || '[]')
+  /*
+  const filteredAndSortedPosts = useMemo(async () => {
+    let subscriptions = [];
+    if(localStorage.getItem('user_subscriptions') === null) {
+      const response = await fetch(`/api/subscriptions/check?userId=${user?.id}`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      })
+
+      if (!response.ok) {
+        throw new Error(`Failed to load subscriptions: HTTP ${response.status}`)
+      }
+
+      const data = await response.json()
+      console.log('[SubscriptionStore] Subscriptions loaded:', data)
+      localStorage.setItem('user_subscriptions', JSON.stringify(data || null))
+      subscriptions = data;
+    } else {
+      subscriptions = JSON.parse(localStorage.getItem('user_subscriptions') || '[]')
+    }
+
     console.log(`[SUBSCRIPTIONS]`, subscriptions);
 
     const processedPosts = realtimePosts.map(post => {
@@ -242,13 +352,13 @@ export default function FeedPageClient() {
           }
         }
       }
-      */
+      
       return post
     })
-    
+    console.log(`[FILTERED AND SORTED POSTS]`, processedPosts);
     return processedPosts
   }, [realtimePosts])
-
+  */
   // Обработка действий с постами
   const handlePostAction = useCallback((action: PostAction) => {
     const post = filteredAndSortedPosts.find(p => p.id === action.postId)

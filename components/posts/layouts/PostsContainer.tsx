@@ -58,6 +58,9 @@ export function PostsContainer({
   
   // Нормализуем посты
   useEffect(() => {
+    console.log(`[PostsContainer] Posts:`, posts);
+    setNormalizedPosts(posts)
+    /*
     try {
       // Проверяем, являются ли посты уже нормализованными
       const isNormalized = posts.length > 0 && posts[0].creator && posts[0].content && posts[0].access
@@ -72,18 +75,20 @@ export function PostsContainer({
       console.error('PostsContainer: Error normalizing posts:', error)
       setNormalizedPosts([])
     }
+      */
   }, [posts])
   
   // Используем real-time хук всегда, но с условной логикой внутри
+  /*
   const realtimeData = useRealtimePosts({
     posts: normalizedPosts,
     showNewPostsNotification: enableRealtime ? showNewPostsNotification : false,
     autoUpdateFeed: enableRealtime ? autoUpdateFeed : false,
     // Убираем onPostsUpdate чтобы избежать бесконечного цикла
   })
-  
+  */
   // Используем посты из real-time хука если включено, иначе используем нормализованные
-  const displayPosts = enableRealtime ? realtimeData.posts : normalizedPosts
+  const displayPosts = normalizedPosts
 
   // Загрузка
   if (isLoading) {
@@ -111,6 +116,7 @@ export function PostsContainer({
   }
 
   // Компонент для уведомления о новых постах
+  /*
   const NewPostsNotification = enableRealtime && realtimeData.hasNewPosts ? (
     <div className="sticky top-20 z-40 mb-4">
       <button
@@ -124,7 +130,7 @@ export function PostsContainer({
       </button>
     </div>
   ) : null
-
+  */
   // Выбор компонента layout
   const LayoutComponent = {
     list: PostList,
@@ -135,7 +141,7 @@ export function PostsContainer({
 
   return (
     <div className={className}>
-      {NewPostsNotification}
+      {/* {NewPostsNotification} */}
       <LayoutComponent
         posts={displayPosts}
         variant={variant}

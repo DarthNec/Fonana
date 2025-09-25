@@ -152,7 +152,7 @@ export const useSubscriptionStore = create<SubscriptionState>()(
 
             const data = await response.json()
             console.log('[SubscriptionStore] Subscriptions loaded:', data)
-
+            localStorage.setItem('user_subscriptions', JSON.stringify(data || null))
             // Сохраняем в store
             set({ 
               subscriptions: data || [],
@@ -160,10 +160,7 @@ export const useSubscriptionStore = create<SubscriptionState>()(
               error: null
             })
 
-            // Сохраняем в localStorage для быстрого доступа
-            if (typeof window !== 'undefined') {
-              localStorage.setItem('user_subscriptions', JSON.stringify(data || null))
-            }
+            
 
           } catch (err) {
             const error = err as Error

@@ -225,14 +225,16 @@ export class PostNormalizer {
   static normalizeMany(rawPosts: any[], likesData: any[]): UnifiedPost[] {
     console.log(`[PostNormalizer] Likes data:`, likesData);
     console.log(`[PostNormalizer] Raw posts:`, rawPosts);
-    if(likesData.length > 0 && likesData != undefined) {
+    if(likesData != undefined) {
+      if(likesData.length > 0) {
       rawPosts = rawPosts.map(post => {
         const like = likesData.find(like => like.postId === post.id);
         return {
           ...post,
           isLiked: like ? true : false
-        }
-      })
+          }
+        })
+      }
     }
     console.log(`[PostNormalizer] Raw posts after likes:`, rawPosts);
     return rawPosts.map(post => this.normalize(post))
