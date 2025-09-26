@@ -86,9 +86,9 @@ export default function AITrainingPage() {
 
   const startTraining = async () => {
     console.log(`Uploaded images: `, uploadedImages);
-    if (uploadedImages.length < 10) {
+    if (uploadedImages.length < 1) {
       console.log(`Uploaded images2: `, uploadedImages);
-      toast.error('Please upload at least 10 photos for better training results')
+      toast.error('Please upload at least 1 photo to start training')
       return
     }
 
@@ -134,20 +134,54 @@ export default function AITrainingPage() {
     
     setGeneratedImages(prev => [newGeneration, ...prev])
 
-    // Simulate generation process
-    setTimeout(() => {
-      // Mock generated image URL
-      const mockImageUrl = `https://picsum.photos/512/512?random=${Date.now()}`
-      
+    // Реальная генерация через OpenAI DALL-E 3
+    try {
+      const response = await fetch('/api/ai/generate-image', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          prompt: customPrompt,
+          style: selectedStyle,
+          size: '1024x1024'
+        })
+      })
+
+      const data = await response.json()
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to generate image')
+      }
+
+      // Обновляем статус на успешный с реальным URL
       setGeneratedImages(prev => prev.map(img => 
         img.id === newGeneration.id 
-          ? { ...img, url: mockImageUrl, status: 'completed' as const }
+          ? { 
+              ...img, 
+              url: data.imageUrl, 
+              status: 'completed' as const,
+              prompt: data.revised_prompt || img.prompt // DALL-E может улучшить промпт
+            }
           : img
       ))
       
       setIsGenerating(false)
-      toast.success('🎨 Portrait generated successfully!')
-    }, 5000)
+      toast.success('🎨 AI Portrait generated successfully!')
+      
+    } catch (error) {
+      console.error('Generation error:', error)
+      
+      // Обновляем статус на ошибку
+      setGeneratedImages(prev => prev.map(img => 
+        img.id === newGeneration.id 
+          ? { ...img, status: 'failed' as const }
+          : img
+      ))
+      
+      setIsGenerating(false)
+      toast.error(`❌ Generation failed: ${error instanceof Error ? error.message : 'Unknown error'}`)
+    }
   }
 
   const useSamplePrompt = (prompt: string) => {
@@ -210,7 +244,7 @@ export default function AITrainingPage() {
                   Drop your portrait photos here or click to browse
                 </p>
                 <p className="text-sm text-gray-500 dark:text-gray-500 mb-4">
-                  Upload 10-20 high-quality portraits for best results
+                  Upload 1+ high-quality portraits (more photos = better results)
                 </p>
                 <button className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg font-medium transition-colors">
                   Select Photos
@@ -281,7 +315,7 @@ export default function AITrainingPage() {
               
               <button
                 onClick={startTraining}
-                disabled={isTraining || uploadedImages.length < 5 || modelTrained}
+                disabled={isTraining || uploadedImages.length < 1 || modelTrained}
                 className="w-full px-6 py-3 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 disabled:from-gray-400 disabled:to-gray-500 text-white rounded-lg font-medium transition-all duration-300 hover:scale-105 hover:shadow-lg disabled:hover:scale-100 disabled:hover:shadow-none flex items-center justify-center gap-2"
               >
                 {isTraining ? (
@@ -303,7 +337,7 @@ export default function AITrainingPage() {
               </button>
               
               <p className="text-xs text-gray-500 dark:text-gray-400 mt-2 text-center">
-                Training typically takes 3-5 minutes with 10+ photos
+                Training typically takes 3-5 minutes (time may vary)
               </p>
             </div>
           </div>
