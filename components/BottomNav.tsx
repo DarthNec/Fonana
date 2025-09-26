@@ -16,12 +16,13 @@ import {
   ChatBubbleLeftEllipsisIcon as ChatBubbleLeftEllipsisSolidIcon
 } from '@heroicons/react/24/solid'
 import { useUser } from '@/lib/store/appStore'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useSafeWalletModal } from '@/lib/hooks/useSafeWalletModal'
 import CreatePostModal from '@/components/CreatePostModal'
 import { toast } from 'react-hot-toast'
 import SearchModal from '@/components/SearchModal'
 import { useWallet } from '@/lib/hooks/useSafeWallet'
+import { unreadMessagesService } from '@/lib/services/UnreadMessagesService'
 
 export default function BottomNav() {
   const pathname = usePathname()
@@ -31,6 +32,7 @@ export default function BottomNav() {
   const { setVisible } = useSafeWalletModal()
   const [showCreateModal, setShowCreateModal] = useState(false)
   const [showSearchModal, setShowSearchModal] = useState(false)
+  const [unreadMessages, setUnreadMessages] = useState(0)
   const user = useUser()
 
   const navItems = [
@@ -98,6 +100,25 @@ export default function BottomNav() {
     return pathname === href
   }
 
+  // Подписка на обновления непрочитанных сообщений
+  useEffect(() => {
+    if (!user?.id) {
+      setUnreadMessages(0)
+      return
+    }
+    
+    console.log('[BottomNav] Subscribing to unread messages service for user:', user.id)
+    const unsubscribe = unreadMessagesService.subscribe((count) => {
+      console.log('[BottomNav] Received unread count update:', count)
+      setUnreadMessages(count)
+    })
+    
+    // Принудительно обновляем счетчик при загрузке
+    console.log('[BottomNav] Forcing initial refresh')
+    unreadMessagesService.refresh()
+    
+    return unsubscribe
+  }, [user?.id])
 
   return (
     <>
@@ -120,6 +141,12 @@ export default function BottomNav() {
                 >
                   <div className="relative">
                     <Icon className="w-7 h-6" />
+                    {/* Индикатор непрочитанных сообщений для кнопок */}
+                    {item.name === 'Messages' && unreadMessages > 0 && (
+                      <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center animate-pulse">
+                        {unreadMessages > 9 ? '9+' : unreadMessages}
+                      </span>
+                    )}
                   </div>
                   { /* <span className="text-xs">{item.name}</span> */ }
                 </button>
@@ -167,6 +194,12 @@ export default function BottomNav() {
               >
                 <div className="relative">
                   <Icon className="w-7 h-7" />
+                  {/* Индикатор непрочитанных сообщений */}
+                  {item.name === 'Messages' && unreadMessages > 0 && (
+                    <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center animate-pulse">
+                      {unreadMessages > 9 ? '9+' : unreadMessages}
+                    </span>
+                  )}
                 </div>
                 { /* <span className="text-xs">{item.name}</span> */ }
               </Link>

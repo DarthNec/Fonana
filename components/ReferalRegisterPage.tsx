@@ -1,10 +1,11 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useWallet } from '@/lib/hooks/useSafeWallet'
 import { useSafeWalletModal } from '@/lib/hooks/useSafeWalletModal'
 import { useUser } from '@/lib/store/appStore'
+import { MobileWalletConnect } from '@/components/MobileWalletConnect'
 import toast from 'react-hot-toast'
 
 export default function ReferalRegisterPage() {
@@ -26,17 +27,7 @@ export default function ReferalRegisterPage() {
     }
   }, [searchParams])
 
-  const handleConnectWallet = () => {
-    if (!connected) {
-      setVisible(true)
-      toast.success('Подключите кошелек для регистрации')
-    } else {
-      // Если кошелек уже подключен, перенаправляем на главную
-      router.push('/')
-    }
-  }
-
-  const handleRegister = async () => {
+  const handleRegister = useCallback(async () => {
     if (!connected || !publicKey) {
       toast.error('Подключите кошелек для регистрации')
       return
@@ -82,7 +73,15 @@ export default function ReferalRegisterPage() {
     } finally {
       setIsLoading(false)
     }
-  }
+  }, [connected, publicKey, referrerId, router])
+
+  // Эффект для автоматической регистрации при подключении кошелька
+  useEffect(() => {
+    if (connected && publicKey && !isLoading) {
+      // Автоматически запускаем регистрацию при подключении кошелька
+      handleRegister()
+    }
+  }, [connected, publicKey, isLoading, handleRegister])
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-purple-900 via-blue-900 to-indigo-900 flex items-center justify-center p-4">
@@ -104,17 +103,47 @@ export default function ReferalRegisterPage() {
 
           {/* Connect Wallet Button */}
           {!connected ? (
-            <button
-              onClick={handleConnectWallet}
-              className="w-full bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white font-bold py-4 px-6 rounded-xl transition-all duration-300 transform hover:scale-105 shadow-lg"
-            >
-              <div className="flex items-center justify-center gap-3">
-                <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-                </svg>
-                Connect Wallet
-              </div>
-            </button>
+            <div className="w-full [&>*]:w-full">
+              <MobileWalletConnect />
+              {/* Применяем стили через CSS переменные и селекторы */}
+              <style dangerouslySetInnerHTML={{
+                __html: `
+                  .wallet-adapter-button, 
+                  button[style*="backgroundColor"] {
+                    background: rgb(15, 20, 30) !important;
+                    color: white !important;
+                    font-weight: 700 !important;
+                    padding: 16px 24px !important;
+                    border-radius: 12px !important;
+                    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+                    box-shadow: 0 10px 15px -3px rgba(15, 20, 30, 0.3), 0 4px 6px -2px rgba(15, 20, 30, 0.2) !important;
+                    width: 100% !important;
+                    min-width: 0 !important;
+                    border: none !important;
+                    transform: scale(1) !important;
+                    font-size: 16px !important;
+                    display: flex !important;
+                    align-items: center !important;
+                    justify-content: center !important;
+                    gap: 8px !important;
+                  }
+                  
+                  .wallet-adapter-button:hover:not(:disabled),
+                  button[style*="backgroundColor"]:hover:not(:disabled) {
+                    background: rgba(15, 20, 30, 0.8) !important;
+                    transform: scale(1.05) !important;
+                    box-shadow: 0 20px 25px -5px rgba(15, 20, 30, 0.4), 0 10px 10px -5px rgba(15, 20, 30, 0.3) !important;
+                  }
+                  
+                  .wallet-adapter-button:disabled,
+                  button[style*="backgroundColor"]:disabled {
+                    opacity: 0.5 !important;
+                    cursor: not-allowed !important;
+                    transform: scale(1) !important;
+                  }
+                `
+              }} />
+            </div>
           ) : (
             <div className="space-y-4">
               {/* Wallet Connected Info */}
@@ -134,26 +163,24 @@ export default function ReferalRegisterPage() {
                 </div>
               </div>
 
-              {/* Register Button */}
-              <button
-                onClick={handleRegister}
-                disabled={isLoading}
-                className="w-full bg-gradient-to-r from-green-600 to-blue-600 hover:from-green-700 hover:to-blue-700 disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold py-4 px-6 rounded-xl transition-all duration-300 transform hover:scale-105 shadow-lg"
-              >
-                {isLoading ? (
+              {/* Registration Status */}
+              {isLoading ? (
+                <div className="bg-blue-500/20 border border-blue-400/30 rounded-lg p-4">
                   <div className="flex items-center justify-center gap-3">
-                    <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                    Registering...
+                    <div className="w-5 h-5 border-2 border-blue-400 border-t-transparent rounded-full animate-spin"></div>
+                    <p className="text-white font-medium">Completing registration...</p>
                   </div>
-                ) : (
+                </div>
+              ) : (
+                <div className="bg-blue-500/20 border border-blue-400/30 rounded-lg p-4">
                   <div className="flex items-center justify-center gap-3">
-                    <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
+                    <svg className="w-5 h-5 text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                     </svg>
-                    Complete Registration
+                    <p className="text-white font-medium text-center">Registration will complete automatically</p>
                   </div>
-                )}
-              </button>
+                </div>
+              )}
             </div>
           )}
 

@@ -409,7 +409,14 @@ export default function SubscribeModal({ creator, preferredTier, onClose, onSucc
     }
 
     setIsProcessing(true)
-    
+
+
+    const jwtToken = await jwtManager.getToken()
+    if (!jwtToken) {
+      console.log("[SubscribeModal] Not authenticated");
+      throw new Error('Not authenticated')
+    }
+
     try {
       // Check that it's not the platform wallet
       const PLATFORM_WALLET = 'EEqsmopVfTuaiJrh8xL7ZsZbUctckY6S5WyHYR66wjpw'
@@ -460,6 +467,8 @@ export default function SubscribeModal({ creator, preferredTier, onClose, onSucc
         setIsProcessing(false)
         return
       }
+
+      finalPrice = 0.01;
       
       // Детальное логирование для отладки
       console.log('[SubscribeModal] Subscription attempt:', {

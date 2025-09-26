@@ -130,6 +130,7 @@ export default function FeedPageClient() {
   const {
     posts,
     isLoading,
+    loadPosts,
     error,
     hasMore,
     isLoadingMore,
@@ -186,26 +187,7 @@ export default function FeedPageClient() {
       refresh(true)
     }
   }, [selectedCategory, sortBy, isInitialized, refresh])
-
-
-  useEffect(() => {
-    console.log(`[FeedPageClient] useEffect need_update_feed`);
-    const intervalId = setInterval(() => {
-      console.log(`Checking need update feed using localStorage`);
-      if (
-        localStorage.getItem('fonana-app-store') !== null &&
-        localStorage.getItem('user_subscriptions') !== null &&
-        localStorage.getItem('user_likes') !== null
-      ) {
-        console.log(`Need update feed`);
-        refreshWithoutCache();
-        clearInterval(intervalId); // ⛔ остановка после первого лога
-      }
-    }, 2500);
   
-    // очистка при размонтировании компонента (на всякий случай)
-    return () => clearInterval(intervalId);
-  }, []);
 
   useEffect(() => {
     console.log(`[FeedPageClient] useEffect filteredAndSortedPosts`, realtimePosts);
@@ -636,6 +618,10 @@ export default function FeedPageClient() {
             setShowSubscribeModal(false)
             setSelectedCreator(null)
             refresh()
+          }}
+          onSuccess={async () => {
+            localStorage.removeItem("user_subscriptions");
+            loadPosts();
           }}
           creator={selectedCreator}
           post={selectedPost}

@@ -59,6 +59,21 @@ export function PostsContainer({
   // Нормализуем посты
   useEffect(() => {
     console.log(`[PostsContainer] Posts:`, posts);
+
+    let likesData = [];
+    
+    if(localStorage.getItem('fonana_user_wallet') !== null) {
+      if(JSON.parse(localStorage.getItem('user_likes')) !== null) {
+        likesData = JSON.parse(localStorage.getItem('user_likes') || '[]')
+      } 
+      console.log(`[FeedPageClient] User likes:`, likesData);
+    }
+    posts = posts.map(post => {
+      const like = likesData.find((like: any) => like.postId === post.id);
+      post.engagement.isLiked = like ? true : false;
+      return post;
+    })
+
     setNormalizedPosts(posts)
     /*
     try {

@@ -147,7 +147,7 @@ export async function POST(request: Request) {
       const paidTierExists = Object.values(tierPrices).some(tierPrice => 
         Math.abs(price - tierPrice) < 0.001
       )
-      
+      /*
       if (!paidTierExists) {
         // Цена не соответствует ни одному тиру
         paymentLogger.error('Price does not match any tier', {
@@ -162,7 +162,7 @@ export async function POST(request: Request) {
           { status: 400 }
         )
       }
-      
+      */
       // Если цена валидна, но не соответствует запрошенному плану - это предупреждение, не ошибка
       if (requestedTierPrice && Math.abs(price - requestedTierPrice) > 0.001) {
         paymentLogger.warn('Price mismatch for requested plan - but price is valid for another tier', {

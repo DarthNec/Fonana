@@ -88,12 +88,12 @@ export default function ClientShell({ children }: { children: React.ReactNode })
                 <div className={`block ${isMessagesPage ? 'md:block hidden' : isRefPage ? 'hidden' : 'block'}`}>
                   <Navbar />
                 </div>
-                <main className={`pt-0 flex-1 pb-14 md:pb-0 ${isRefPage ? 'md:pt-0' : 'md:pt-20'}`}>
+                <main className={`pt-0 flex-1 ${isRefPage ? 'pb-0 md:pt-0' : 'pb-14 md:pb-0 md:pt-20'}`}>
                   {children}
                 </main>
                 <ReferralNotification />
                 {/* <Footer /> */}
-                <div className={`block md:hidden ${isIndividualChatPage ? 'hidden' : 'block'}`}>
+                <div className={`block md:hidden ${isIndividualChatPage || isRefPage ? 'hidden' : 'block'}`}>
                   <BottomNav />
                 </div>
               </div>

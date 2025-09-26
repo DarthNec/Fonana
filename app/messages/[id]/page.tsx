@@ -456,21 +456,12 @@ export default function ConversationPage() {
   const uploadMedia = async (file: File): Promise<string | null> => {
     setIsUploadingMedia(true)
     try {
-      const token = await jwtManager.getToken()
-      if (!token) {
-        toast.error('No authentication token')
-        return null
-      }
-
       const formData = new FormData()
       formData.append('file', file)
       formData.append('type', file.type.startsWith('image/') ? 'image' : 'video')
 
-      const response = await fetch('/api/upload', {
+      const response = await fetch('/api/upload/message', {
         method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`
-        },
         body: formData
       })
 

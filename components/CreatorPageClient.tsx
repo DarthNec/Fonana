@@ -11,6 +11,7 @@ import ProfileSetupModal from './ProfileSetupModal'
 import CreatePostModal from './CreatePostModal'
 import SubscribeModal from './SubscribeModal'
 import PurchaseModal from './PurchaseModal'
+import { ProfileSharePopup } from './ProfileSharePopup'
 import { useSafeWalletModal } from '@/lib/hooks/useSafeWalletModal'
 import { CheckBadgeIcon, UsersIcon, DocumentTextIcon, CurrencyDollarIcon, PencilIcon, ShareIcon, PhotoIcon, ChatBubbleLeftIcon } from '@heroicons/react/24/outline'
 import { HeartIcon as HeartSolidIcon } from '@heroicons/react/24/solid'
@@ -68,6 +69,7 @@ export default function CreatorPageClient({ creatorId }: CreatorPageClientProps)
   const [showSubscribeModal, setShowSubscribeModal] = useState(false)
   const [showPurchaseModal, setShowPurchaseModal] = useState(false)
   const [showEditPostModal, setShowEditPostModal] = useState(false)
+  const [showProfileSharePopup, setShowProfileSharePopup] = useState(false)
   const [selectedPost, setSelectedPost] = useState<any>(null)
   const [selectedCreator, setSelectedCreator] = useState<any>(null)
   const [filteredPosts, setFilteredPosts] = useState<any>([]);
@@ -766,7 +768,7 @@ export default function CreatorPageClient({ creatorId }: CreatorPageClientProps)
           </div>
 
           {/* Posts Container */}
-          <div className="min-h-[200px] px-6 pb-6">
+          <div className="min-h-[200px] px-0 md:px-6 pb-6">
             {postsData.isLoading ? (
               <div className="flex justify-center items-center py-12">
                 <div className="w-8 h-8 border-4 border-purple-600 border-t-transparent rounded-full animate-spin"></div>
@@ -848,6 +850,21 @@ export default function CreatorPageClient({ creatorId }: CreatorPageClientProps)
             postsData.refresh?.()
             toast.success('Post updated successfully!')
           }}
+        />
+      )}
+
+      {/* Profile Share Popup */}
+      {showProfileSharePopup && creator && (
+        <ProfileSharePopup
+          creator={{
+            id: creator.id,
+            name: creator.fullName,
+            nickname: creator.nickname,
+            fullName: creator.fullName,
+            avatar: creator.avatar
+          }}
+          isOpen={showProfileSharePopup}
+          onClose={() => setShowProfileSharePopup(false)}
         />
       )}
     </div>

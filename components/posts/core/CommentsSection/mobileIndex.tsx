@@ -187,8 +187,11 @@ export function MobileCommentsSection({ postId, post, className, onClose, onComm
         {/* Прокручиваемая область с комментариями */}
         <div className="flex-1 overflow-y-auto p-4 space-y-4">
           {loading ? (
-            <div className="text-center py-8">
-              <div className="w-8 h-8 border-3 border-purple-500/30 border-t-purple-500 rounded-full animate-spin mx-auto"></div>
+            <div className="flex items-center justify-center h-full">
+              <div className="text-center">
+                <div className="w-12 h-12 border-4 border-purple-500/30 border-t-purple-500 rounded-full animate-spin mx-auto mb-3"></div>
+                <p className="text-gray-600 dark:text-slate-400 text-sm">Загружаем комментарии...</p>
+              </div>
             </div>
           ) : comments.length === 0 ? (
             <p className="text-center text-gray-500 dark:text-slate-400 py-8">

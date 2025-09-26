@@ -68,6 +68,24 @@ export function PostContent({
 }: PostContentProps) {
   const [imageLoaded, setImageLoaded] = useState(false)
   const [imageError, setImageError] = useState(false)
+  const [isTextExpanded, setIsTextExpanded] = useState(false)
+  
+  // Определяем длинный ли текст (больше 15 символов для тестирования)
+  const isLongText = post.content?.text && typeof post.content.text === 'string' && post.content.text.length > 200
+  
+  // Показываем кнопку для всех длинных текстов (и для разворачивания, и для сворачивания)
+  const shouldShowExpandButton = isLongText
+  
+  // Отладочная информация
+  if (isLongText) {
+    console.log('PostContent Debug:', {
+      variant,
+      textLength: post.content?.text?.length,
+      isLongText,
+      shouldShowExpandButton,
+      isTextExpanded
+    })
+  }
 
   // Проверяем, нужно ли скрывать контент
   // Автор всегда видит свой контент
@@ -216,13 +234,25 @@ export function PostContent({
       {/* Text Content */}
       {/* [post_content_render_2025_017] Добавлена проверка типа для предотвращения ошибок рендеринга */}
       {!shouldHideContent && post.content?.text && typeof post.content.text === 'string' && (
-        <p className={cn(
-          'text-gray-700 dark:text-slate-300',
-          getContentSize(),
-          variant !== 'full' && 'line-clamp-3'
-        )}>
-          {post.content.text}
-        </p>
+        <div className="space-y-2">
+          <p className={cn(
+            'text-gray-700 dark:text-slate-300',
+            getContentSize(),
+            isLongText && !isTextExpanded && 'line-clamp-3'
+          )}>
+            {post.content.text}
+          </p>
+          
+          {/* Кнопка разворачивания/сворачивания */}
+          {shouldShowExpandButton && (
+            <button
+              onClick={() => setIsTextExpanded(!isTextExpanded)}
+              className="text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 text-sm font-medium transition-colors"
+            >
+              {isTextExpanded ? 'Свернуть' : 'Развернуть...'}
+            </button>
+          )}
+        </div>
       )}
 
       {/* Category & Tags & Tier */}

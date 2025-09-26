@@ -24,6 +24,7 @@ interface UseOptimizedPostsReturn {
   hasMore: boolean
   isLoadingMore: boolean
   loadMore: () => void
+  loadPosts: () => void
   refresh: (clearCache?: boolean) => void
   handleAction: (action: PostAction) => Promise<void>
   addNewPost: (post: UnifiedPost) => void
@@ -51,98 +52,97 @@ export function useOptimizedPosts(options: UseOptimizedPostsOptions = {}): UseOp
   const [isFeedLoading, setIsFeedLoading] = useState(true);
   console.log(`[useOptimizedPosts] isFeedLoading:`, isFeedLoading)
   // Main effect for posts loading - FIXED AbortController pattern
+  const loadPosts = async () => {
+    try {
+      setPosts([]);
+      console.log('[useOptimizedPosts] Loading posts with options:', {
+        sortBy: options.sortBy,
+        category: options.category,
+        creatorId: options.creatorId
+      })
+      
+      setIsLoading(true)
+      setError(null)
+      
+      // Build API params
+      const params = new URLSearchParams()
+      if (options.category) params.append('category', options.category)
+      if (options.creatorId) params.append('creatorId', options.creatorId)
+      params.append('sortBy', options.sortBy || 'latest')
+      params.append('page', '1')
+      params.append('limit', '20')
+      
+      if (publicKeyString) params.append('userWallet', publicKeyString) // 🔥 M7 FIX: STABLE STRING
+      if (user?.id) params.append('userId', user.id)
+      
+      // Choose endpoint based on sortBy
+      let endpoint = '/api/posts'
+      if (options.sortBy === 'subscribed') {
+        endpoint = '/api/posts/following'
+      }
+
+
+      
+      
+      // Fetch with abort signal
+      const response = await fetch(`${endpoint}?${params}`, {
+      })
+
+      
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`)
+      }
+      
+      const data = await response.json()
+      let likesData = []
+      let rawPosts = data.posts || []
+
+
+      if(user?.id) {
+        if(localStorage.getItem('fonana_user_wallet') !== null) {
+          if(localStorage.getItem('user_likes') === null) {
+          if(JSON.parse(localStorage.getItem('user_likes')) !== null) {
+            likesData = JSON.parse(localStorage.getItem('user_likes') || '[]')
+          } else {
+            const likesResponse = await fetch(`/api/likes/user?userId=${user.id}`, {
+            })
+            if (!likesResponse.ok) {
+              throw new Error(`HTTP ${likesResponse.status}: ${likesResponse.statusText}`)
+            }
+            likesData = await likesResponse.json()
+            localStorage.setItem('user_likes', JSON.stringify(likesData || null))
+          }
+          console.log(`[useOptimizedPosts] User likes:`, likesData);
+        }
+      }
+    }
+
+      
+      console.log(`[useOptimizedPosts] Received ${rawPosts.length} posts from API`)
+      console.log(`[useOptimizedPosts] Raw posts2:`, rawPosts);
+      // Normalize posts
+      console.log('ПРЯМО ПЕРЕД normalizeMany:', rawPosts[0]);
+      const normalizedPosts = PostNormalizer.normalizeMany(rawPosts, likesData);
+      
+      console.log(`[useOptimizedPosts] Normalized ${normalizedPosts.length} posts successfully`)
+      console.log('ПОСТЫ ПОСЛЕ normalizeMany:', normalizedPosts);
+      setPosts(normalizedPosts)
+      console.log('[useOptimizedPosts] Loading posts finished')
+      setIsLoading(false)
+      setIsFeedLoading(false);
+    } catch (err: any) {
+      // ✅ Proper AbortError handling
+      if (err.name !== 'AbortError') {
+        console.error('[useOptimizedPosts] Fetch error:', err)
+        setError(err)
+      }
+    } finally {
+    }
+  }
+  
   useEffect(() => {
     const controller = new AbortController()  // ✅ Created in useEffect
     console.log(`[useOptimizedPosts] useEffect loadPosts`)
-    const loadPosts = async () => {
-      try {
-        setPosts([]);
-        console.log('[useOptimizedPosts] Loading posts with options:', {
-          sortBy: options.sortBy,
-          category: options.category,
-          creatorId: options.creatorId
-        })
-        
-        setIsLoading(true)
-        setError(null)
-        
-        // Build API params
-        const params = new URLSearchParams()
-        if (options.category) params.append('category', options.category)
-        if (options.creatorId) params.append('creatorId', options.creatorId)
-        params.append('sortBy', options.sortBy || 'latest')
-        params.append('page', '1')
-        params.append('limit', '20')
-        
-        if (publicKeyString) params.append('userWallet', publicKeyString) // 🔥 M7 FIX: STABLE STRING
-        if (user?.id) params.append('userId', user.id)
-        
-        // Choose endpoint based on sortBy
-        let endpoint = '/api/posts'
-        if (options.sortBy === 'subscribed') {
-          endpoint = '/api/posts/following'
-        }
-
-
-        
-        
-        // Fetch with abort signal
-        const response = await fetch(`${endpoint}?${params}`, {
-          signal: controller.signal  // ✅ Proper signal usage
-        })
-
-        
-        if (!response.ok) {
-          throw new Error(`HTTP ${response.status}: ${response.statusText}`)
-        }
-        
-        const data = await response.json()
-        let likesData = []
-        let rawPosts = data.posts || []
-
-
-        if(user?.id) {
-          if(localStorage.getItem('fonana_user_wallet') !== null) {
-            if(localStorage.getItem('user_likes') === null) {
-            if(JSON.parse(localStorage.getItem('user_likes')) !== null) {
-              likesData = JSON.parse(localStorage.getItem('user_likes') || '[]')
-            } else {
-              const likesResponse = await fetch(`/api/likes/user?userId=${user.id}`, {
-                  signal: controller.signal  // ✅ Proper signal usage
-              })
-              if (!likesResponse.ok) {
-                throw new Error(`HTTP ${likesResponse.status}: ${likesResponse.statusText}`)
-              }
-              likesData = await likesResponse.json()
-              localStorage.setItem('user_likes', JSON.stringify(likesData || null))
-            }
-            console.log(`[useOptimizedPosts] User likes:`, likesData);
-          }
-        }
-      }
-
-        
-        console.log(`[useOptimizedPosts] Received ${rawPosts.length} posts from API`)
-        console.log(`[useOptimizedPosts] Raw posts2:`, rawPosts);
-        // Normalize posts
-        console.log('ПРЯМО ПЕРЕД normalizeMany:', rawPosts[0]);
-        const normalizedPosts = PostNormalizer.normalizeMany(rawPosts, likesData);
-        
-        console.log(`[useOptimizedPosts] Normalized ${normalizedPosts.length} posts successfully`)
-        console.log('ПОСТЫ ПОСЛЕ normalizeMany:', normalizedPosts);
-        setPosts(normalizedPosts)
-        console.log('[useOptimizedPosts] Loading posts finished')
-        setIsLoading(false)
-        setIsFeedLoading(false);
-      } catch (err: any) {
-        // ✅ Proper AbortError handling
-        if (err.name !== 'AbortError') {
-          console.error('[useOptimizedPosts] Fetch error:', err)
-          setError(err)
-        }
-      } finally {
-      }
-    }
     
     loadPosts()
     
@@ -589,6 +589,7 @@ export function useOptimizedPosts(options: UseOptimizedPostsOptions = {}): UseOp
     hasMore: false, // Phase 1: No pagination
     isLoadingMore: false,
     loadMore,
+    loadPosts,
     refresh,
     handleAction,
     addNewPost,
