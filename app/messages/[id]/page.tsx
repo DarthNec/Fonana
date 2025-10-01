@@ -69,6 +69,11 @@ interface Message {
     senderName?: string
     creatorName?: string
   }
+  // 🚀 Optimistic UI states
+  isPending?: boolean // Сообщение отправляется на сервер
+  isFailed?: boolean  // Отправка не удалась
+  tempId?: string     // Временный ID для локальных сообщений
+  isNew?: boolean     // Анимация нового сообщения
 }
 
 interface Participant {
@@ -293,6 +298,8 @@ export default function ConversationPage() {
     }
     
     loadMessages()
+    // 🔥 FIX: Загружаем информацию о участнике сразу при инициализации
+    loadConversationInfo()
     
     // Request notification permission
     if ('Notification' in window && Notification.permission === 'default') {
@@ -330,6 +337,7 @@ export default function ConversationPage() {
     });
 
     // CRITICAL: Both conditions must be present to prevent infinite loop
+    // 🔥 FIX: Только если участник еще не загружен через loadConversationInfo
     if (messages.length > 0 && !participant) {
       const firstMessage = messages[0]
       console.log(`[${timestamp}] [Participant Effect] First message:`, {
@@ -339,16 +347,12 @@ export default function ConversationPage() {
       });
       
       const otherParticipant = firstMessage.isOwn 
-        ? null // Own message - нужен receiver (будет загружен через loadConversationInfo)
+        ? null // Own message - участник уже должен быть загружен через loadConversationInfo
         : firstMessage.sender // Message from other - sender is participant
       
       if (otherParticipant) {
-        console.log(`[${timestamp}] [Participant Effect] Setting participant:`, otherParticipant);
+        console.log(`[${timestamp}] [Participant Effect] Setting participant from message:`, otherParticipant);
         setParticipant(otherParticipant) // ✅ Safe - in useEffect after render
-      } else {
-        console.log(`[${timestamp}] [Participant Effect] No participant from messages, loading conversation info`);
-        // Fallback to loadConversationInfo для own messages
-        loadConversationInfo()
       }
     } else {
       console.log(`[${timestamp}] [Participant Effect] Skipping:`, {
@@ -407,7 +411,11 @@ export default function ConversationPage() {
             }
           }
           
-          setMessages(data.messages)
+          // 🚀 OPTIMISTIC UI: Сохраняем локальные сообщения (pending/failed)
+          setMessages(prev => {
+            const localMessages = prev.filter(msg => msg.isPending || msg.isFailed)
+            return [...data.messages, ...localMessages]
+          })
           setLastMessageCount(data.messages.length)
         }
         
@@ -496,26 +504,63 @@ export default function ConversationPage() {
       return
     }
 
+    // 🚀 OPTIMISTIC UI: Создаем временное сообщение сразу
+    const tempId = `temp-${Date.now()}-${Math.random()}`
+    const tempMessage: Message = {
+      id: tempId,
+      tempId,
+      content: messageText || null,
+      mediaUrl: selectedMedia ? URL.createObjectURL(selectedMedia) : null,
+      mediaType: selectedMedia ? (selectedMedia.type.startsWith('image/') ? 'image' : 'video') : null,
+      isPaid: isPaidMessage,
+      price: isPaidMessage ? parseFloat(messagePrice) : undefined,
+      isPurchased: false,
+      sender: {
+        id: user?.id || '',
+        nickname: user?.nickname || 'You',
+        fullName: user?.fullName || undefined,
+        avatar: user?.avatar || undefined
+      },
+      isOwn: true,
+      isRead: false,
+      createdAt: new Date().toISOString(),
+      isPending: true, // 🚀 Показываем, что сообщение отправляется
+      isNew: true
+    }
+
+    // 🚀 OPTIMISTIC UI: Добавляем сообщение в UI сразу
+    setMessages(prev => [...prev, tempMessage])
+    
+    // Сбрасываем форму сразу для лучшего UX
+    const originalMessageText = messageText
+    const originalSelectedMedia = selectedMedia
+    const originalMediaPreview = mediaPreview
+    const originalIsPaidMessage = isPaidMessage
+    const originalMessagePrice = messagePrice
+    
+    setMessageText('')
+    setIsPaidMessage(false)
+    setMessagePrice('')
+    setSelectedMedia(null)
+    setMediaPreview(null)
+
     setIsSending(true)
     try {
       const token = await jwtManager.getToken()
       if (!token) {
-        toast.error('No authentication token')
-        setIsSending(false)
-        return
+        throw new Error('No authentication token')
       }
 
       let mediaUrl = null
       let mediaType = null
 
       // Upload media if selected
-      if (selectedMedia) {
-        mediaUrl = await uploadMedia(selectedMedia)
+      if (originalSelectedMedia) {
+        mediaUrl = await uploadMedia(originalSelectedMedia)
         if (!mediaUrl) {
-          setIsSending(false)
-          return
+          throw new Error('Failed to upload media')
         }
-        mediaType = selectedMedia.type.startsWith('image/') ? 'image' : 'video'
+        mediaType = originalSelectedMedia.type.startsWith('image/') ? 'image' : 'video'
       }
 
       const response = await fetch(`/api/conversations/${conversationId}/messages`, {
@@ -525,48 +570,132 @@ export default function ConversationPage() {
           'Authorization': `Bearer ${token}`
         },
         body: JSON.stringify({
-          content: messageText || null,
+          content: originalMessageText || null,
           mediaUrl,
           mediaType,
-          isPaid: isPaidMessage,
-          price: isPaidMessage ? parseFloat(messagePrice) : null
+          isPaid: originalIsPaidMessage,
+          price: originalIsPaidMessage ? parseFloat(originalMessagePrice) : null
         })
       })
 
       if (response.ok) {
         const data = await response.json()
-        // Add animation flag for new message
-        const newMessage = {
-          ...data.message,
-          content: data.message.content || messageText,
-          mediaUrl: data.message.mediaUrl || mediaUrl,
-          isOwn: true,
-          isNew: true
-        }
-        setMessages(prev => [...prev, newMessage])
         
-        // Reset form
-        setMessageText('')
-        setIsPaidMessage(false)
-        setMessagePrice('')
-        setSelectedMedia(null)
-        setMediaPreview(null)
+        // 🚀 OPTIMISTIC UI: Заменяем временное сообщение на реальное
+        setMessages(prev => prev.map(msg => 
+          msg.tempId === tempId ? {
+            ...data.message,
+            content: data.message.content || originalMessageText,
+            mediaUrl: data.message.mediaUrl || mediaUrl,
+            isOwn: true,
+            isNew: true,
+            isPending: false // Убираем состояние "отправляется"
+          } : msg
+        ))
         
         // Remove animation flag after a delay
         setTimeout(() => {
           setMessages(prev => prev.map(msg => 
-            msg.id === newMessage.id ? { ...msg, isNew: false } : msg
+            msg.id === data.message.id ? { ...msg, isNew: false } : msg
           ))
         }, 500)
       } else {
         const error = await response.json()
-        toast.error(error.error || 'Failed to send message')
+        throw new Error(error.error || 'Failed to send message')
       }
     } catch (error) {
       console.error('Error sending message:', error)
-      toast.error('Failed to send message')
+      
+      // 🚀 OPTIMISTIC UI: Помечаем сообщение как неудачное
+      setMessages(prev => prev.map(msg => 
+        msg.tempId === tempId ? {
+          ...msg,
+          isPending: false,
+          isFailed: true
+        } : msg
+      ))
+      
+      toast.error('Failed to send message. Tap to retry.')
     } finally {
       setIsSending(false)
+    }
+  }
+
+  // 🚀 OPTIMISTIC UI: Функция для повторной отправки неудачных сообщений
+  const retryMessage = async (message: Message) => {
+    if (!message.isFailed || !message.tempId) return
+
+    // Помечаем сообщение как отправляющееся снова
+    setMessages(prev => prev.map(msg => 
+      msg.tempId === message.tempId ? {
+        ...msg,
+        isPending: true,
+        isFailed: false
+      } : msg
+    ))
+
+    try {
+      const token = await jwtManager.getToken()
+      if (!token) {
+        throw new Error('No authentication token')
+      }
+
+      let mediaUrl = null
+      let mediaType = null
+
+      // Если есть медиа, загружаем его снова (blob URL мог устареть)
+      if (message.mediaUrl && message.mediaType) {
+        // Для повторной отправки медиа нужно будет сохранить оригинальный файл
+        // Пока что просто используем существующий URL
+        mediaUrl = message.mediaUrl
+        mediaType = message.mediaType
+      }
+
+      const response = await fetch(`/api/conversations/${conversationId}/messages`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          content: message.content,
+          mediaUrl: mediaUrl?.startsWith('blob:') ? null : mediaUrl, // Не отправляем blob URLs
+          mediaType: mediaUrl?.startsWith('blob:') ? null : mediaType,
+          isPaid: message.isPaid,
+          price: message.price
+        })
+      })
+
+      if (response.ok) {
+        const data = await response.json()
+        
+        // Заменяем временное сообщение на реальное
+        setMessages(prev => prev.map(msg => 
+          msg.tempId === message.tempId ? {
+            ...data.message,
+            isOwn: true,
+            isPending: false
+          } : msg
+        ))
+        
+        toast.success('Message sent!')
+      } else {
+        const error = await response.json()
+        throw new Error(error.error || 'Failed to send message')
+      }
+    } catch (error) {
+      console.error('Error retrying message:', error)
+      
+      // Помечаем сообщение как неудачное снова
+      setMessages(prev => prev.map(msg => 
+        msg.tempId === message.tempId ? {
+          ...msg,
+          isPending: false,
+          isFailed: true
+        } : msg
+      ))
+      
+      toast.error('Failed to send message. Try again.')
     }
   }
 
@@ -1109,7 +1238,11 @@ export default function ConversationPage() {
                   <div className={`max-w-[70%] ${message.isOwn ? 'items-end' : 'items-start'}`}>
                     <div className={`rounded-2xl ${
                       message.isOwn 
-                        ? 'bg-gradient-to-r from-purple-600 to-pink-600 text-white shadow-md' 
+                        ? message.isFailed
+                          ? 'bg-gradient-to-r from-red-500 to-red-600 text-white shadow-md border-2 border-red-300' 
+                          : message.isPending
+                            ? 'bg-gradient-to-r from-purple-400 to-pink-400 text-white shadow-md opacity-75'
+                            : 'bg-gradient-to-r from-purple-600 to-pink-600 text-white shadow-md'
                         : 'bg-gray-100 dark:bg-slate-800'
                     } ${message.isPaid && !message.isPurchased && !message.isOwn ? 'p-1' : 'p-3'}`}>
                       
@@ -1260,7 +1393,27 @@ export default function ConversationPage() {
                           minute: '2-digit'
                         })}
                       </span>
-                      {message.isOwn && message.isRead && (
+                      
+                      {/* 🚀 OPTIMISTIC UI: Статусы отправки */}
+                      {message.isPending && (
+                        <div className="flex items-center gap-1">
+                          <div className="w-3 h-3 border border-gray-400 border-t-transparent rounded-full animate-spin"></div>
+                          <span className="text-xs text-gray-500">Sending...</span>
+                        </div>
+                      )}
+                      
+                      {message.isFailed && (
+                        <button
+                          onClick={() => retryMessage(message)}
+                          className="flex items-center gap-1 text-xs text-red-500 hover:text-red-600 transition-colors"
+                          title="Click to retry"
+                        >
+                          <span>❌</span>
+                          <span>Failed - Tap to retry</span>
+                        </button>
+                      )}
+                      
+                      {message.isOwn && message.isRead && !message.isPending && !message.isFailed && (
                         <span className="text-xs text-blue-500">Read</span>
                       )}
                       

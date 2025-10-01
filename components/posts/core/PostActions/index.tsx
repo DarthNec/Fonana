@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useRef } from 'react'
 import { UnifiedPost, PostAction, PostCardVariant } from '@/types/posts'
+import toast from 'react-hot-toast'
 import { cn } from '@/lib/utils'
 
 export interface PostActionsProps {

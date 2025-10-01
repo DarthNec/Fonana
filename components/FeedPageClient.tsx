@@ -230,7 +230,20 @@ export default function FeedPageClient() {
           }
           console.log(`[FeedPageClient] User likes:`, likesData);
         }
-    }
+      }
+
+      let purshasesData = [];
+      if(localStorage.getItem('user_purchases') !== null) {
+        purshasesData = JSON.parse(localStorage.getItem('user_purchases') || '[]')
+      } else {
+        const purchasesResponse = await fetch(`/api/posts/purchases?userId=${user.id}`)
+        if (purchasesResponse.ok) {
+          const purchasesData = await purchasesResponse.json()
+          purshasesData = purchasesData.purchases || []
+          console.log(`[FeedPageClient] User purchases:`, purshasesData);
+          localStorage.setItem('user_purchases', JSON.stringify(purshasesData))
+        }
+      }
   
       const processedPosts = realtimePosts.map((post) => {
         if (subscriptions?.subscriptions?.length > 0) {
@@ -258,6 +271,12 @@ export default function FeedPageClient() {
         if(likesData.length > 0) {
           const like = likesData.find((like: any) => like.postId === post.id);
           post.engagement.isLiked = like ? true : false;
+        }
+        if(purshasesData.length > 0) {
+          const purchase = purshasesData.find((purchase: any) => purchase.postId === post.id);
+          post.access.isPurchased = true;
+          post.access.isLocked = false;
+          post.access.shouldHideContent = false;
         }
 
         return post;
@@ -441,7 +460,8 @@ export default function FeedPageClient() {
   }, [filteredAndSortedPosts, handleAction])
 
   console.log(`[FILTERED AND SORTED POSTS]`, filteredAndSortedPosts);
-
+  console.log(`[HAS MORE]`, hasMore);
+  console.log(`[IS LOADING MORE] `, isLoadingMore);
   return (
     <div className="min-h-screen bg-white dark:bg-slate-900 pt-16 sm:pt-20">
       <div className="max-w-2xl mx-auto px-0 sm:px-4 pb-20">

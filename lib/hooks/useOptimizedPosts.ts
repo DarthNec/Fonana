@@ -49,10 +49,19 @@ export function useOptimizedPosts(options: UseOptimizedPostsOptions = {}): UseOp
   const [posts, setPosts] = useState<UnifiedPost[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<Error | null>(null)
-  const [isFeedLoading, setIsFeedLoading] = useState(true);
+  const [isFeedLoading, setIsFeedLoading] = useState(true)
+  
+  // 🚀 PAGINATION: Добавляем состояния для пагинации
+  const [currentPage, setCurrentPage] = useState(1)
+  const [totalPages, setTotalPages] = useState(0)
+  const [totalCount, setTotalCount] = useState(0)
+  const [isLoadingMore, setIsLoadingMore] = useState(false)
+  const [hasMore, setHasMore] = useState(false)
+  
   console.log(`[useOptimizedPosts] isFeedLoading:`, isFeedLoading)
+  
   // Main effect for posts loading - FIXED AbortController pattern
-  const loadPosts = async () => {
+  const loadPosts = useCallback(async () => {
     try {
       setPosts([]);
       console.log('[useOptimizedPosts] Loading posts with options:', {
@@ -80,15 +89,11 @@ export function useOptimizedPosts(options: UseOptimizedPostsOptions = {}): UseOp
       if (options.sortBy === 'subscribed') {
         endpoint = '/api/posts/following'
       }
-
-
-      
       
       // Fetch with abort signal
       const response = await fetch(`${endpoint}?${params}`, {
       })
 
-      
       if (!response.ok) {
         throw new Error(`HTTP ${response.status}: ${response.statusText}`)
       }
@@ -96,13 +101,29 @@ export function useOptimizedPosts(options: UseOptimizedPostsOptions = {}): UseOp
       const data = await response.json()
       let likesData = []
       let rawPosts = data.posts || []
-
+      
+      // 🚀 PAGINATION: Обрабатываем данные пагинации из API
+      const apiTotalPages = data.totalPages || 0
+      const apiTotalCount = data.totalCount || 0
+      const apiCurrentPage = data.currentPage || 1
+      
+      setCurrentPage(apiCurrentPage)
+      setTotalPages(apiTotalPages)
+      setTotalCount(apiTotalCount)
+      setHasMore(apiCurrentPage < apiTotalPages)
+      
+      console.log(`[useOptimizedPosts] Pagination info:`, {
+        currentPage: apiCurrentPage,
+        totalPages: apiTotalPages,
+        totalCount: apiTotalCount,
+        hasMore: apiCurrentPage < apiTotalPages
+      })
 
       if(user?.id) {
         if(localStorage.getItem('fonana_user_wallet') !== null) {
-          if(localStorage.getItem('user_likes') === null) {
-          if(JSON.parse(localStorage.getItem('user_likes')) !== null) {
-            likesData = JSON.parse(localStorage.getItem('user_likes') || '[]')
+          const userLikes = localStorage.getItem('user_likes')
+          if(userLikes !== null) {
+            likesData = JSON.parse(userLikes)
           } else {
             const likesResponse = await fetch(`/api/likes/user?userId=${user.id}`, {
             })
@@ -115,9 +136,7 @@ export function useOptimizedPosts(options: UseOptimizedPostsOptions = {}): UseOp
           console.log(`[useOptimizedPosts] User likes:`, likesData);
         }
       }
-    }
 
-      
       console.log(`[useOptimizedPosts] Received ${rawPosts.length} posts from API`)
       console.log(`[useOptimizedPosts] Raw posts2:`, rawPosts);
       // Normalize posts
@@ -137,12 +156,18 @@ export function useOptimizedPosts(options: UseOptimizedPostsOptions = {}): UseOp
         setError(err)
       }
     } finally {
+      setIsLoading(false)
     }
-  }
+  }, [options.sortBy, options.category, options.creatorId, publicKeyString, user?.id])
   
   useEffect(() => {
     const controller = new AbortController()  // ✅ Created in useEffect
     console.log(`[useOptimizedPosts] useEffect loadPosts`)
+    
+    // 🚀 PAGINATION: Сбрасываем пагинацию при изменении параметров
+    setCurrentPage(1)
+    setHasMore(false)
+    setIsLoadingMore(false)
     
     loadPosts()
     
@@ -162,109 +187,48 @@ export function useOptimizedPosts(options: UseOptimizedPostsOptions = {}): UseOp
   const refresh = useCallback(async (clearCache?: boolean) => {
     console.log('[useOptimizedPosts] isFeedLoading:', isFeedLoading)
     return
-    console.log('[useOptimizedPosts] refresh called, clearCache:', clearCache)
     
-    try {
-      setIsLoading(true)
-      setError(null)
-      
-      // Build API params
-      const params = new URLSearchParams()
-      if (options.category) params.append('category', options.category)
-      if (options.creatorId) params.append('creatorId', options.creatorId)
-      params.append('sortBy', options.sortBy || 'latest')
-      params.append('page', '1')
-      params.append('limit', '20')
-      
-      if (publicKeyString) params.append('userWallet', publicKeyString)
-      if (user?.id) params.append('userId', user.id)
-      
-      // 🔥 SAFETY: Fallback на localStorage если publicKeyString недоступен
-      if (!publicKeyString && typeof window !== 'undefined') {
-        const savedWallet = localStorage.getItem('fonana_user_wallet')
-        if (savedWallet) {
-          console.log('[useOptimizedPosts] Using localStorage fallback for refresh wallet address:', savedWallet.substring(0, 8) + '...')
-          params.append('userWallet', savedWallet)
-        }
-      }
-      
-      // Choose endpoint based on sortBy
-      let endpoint = '/api/posts'
-      if (options.sortBy === 'subscribed') {
-        endpoint = '/api/posts/following'
-      }
-      
-      console.log('[useOptimizedPosts] Refreshing posts from:', endpoint)
-      
-      const response = await fetch(`${endpoint}?${params}`)
-      
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}: ${response.statusText}`)
-      }
-
-      const data = await response.json()
-      const rawPosts = data.posts || []
-      let likesData = [];
-      if(localStorage.getItem('user_likes') && user?.id) {
-        likesData = JSON.parse(localStorage.getItem('user_likes') || '[]')
-      }
-
-      console.log(`[useOptimizedPosts] Refresh received ${rawPosts.length} posts from API`)
-      
-      // Normalize posts
-      const normalizedPosts = PostNormalizer.normalizeMany(rawPosts, likesData);
-      
-      console.log(`[useOptimizedPosts] Refresh normalized ${normalizedPosts.length} posts successfully`)
-      
-      // Update posts state
-      setPosts(normalizedPosts)
-      
-      // Clear any pending posts if clearCache is true
-      if (clearCache) {
-        console.log('[useOptimizedPosts] Clearing cache as requested')
-        // Reset any cached state if needed
-      }
-      
-    } catch (err: any) {
-      console.error('[useOptimizedPosts] Refresh error:', err)
-      setError(err)
-    } finally {
-      setIsLoading(false)
-    }
+    // 🚀 PAGINATION: Сбрасываем пагинацию при refresh
+    setCurrentPage(1)
+    setHasMore(false)
+    
+    return
   }, [
     options.sortBy, 
     options.category, 
     options.creatorId
   ])
 
-
-
   const refreshWithoutCache = useCallback(async () => {
+  return
+    // 🚀 PAGINATION: Сбрасываем пагинацию при refreshWithoutCache
+    setCurrentPage(1)
+    setHasMore(false)
+    
     return;
-    console.log('[useOptimizedPosts] Refresh with need_update_feed')
+  }, [])
+  
+  // 🚀 PAGINATION: Реализуем функцию loadMore
+  const loadMore = useCallback(async () => {
+    if (isLoadingMore || !hasMore) {
+      console.log('[useOptimizedPosts] loadMore skipped:', { isLoadingMore, hasMore })
+      return
+    }
+
+    console.log('[useOptimizedPosts] loadMore called for page:', currentPage + 1)
+    setIsLoadingMore(true)
+
     try {
-      setIsLoading(true)
-      setError(null)
-      
-      // Build API params
+      // Build API params для следующей страницы
       const params = new URLSearchParams()
       if (options.category) params.append('category', options.category)
       if (options.creatorId) params.append('creatorId', options.creatorId)
       params.append('sortBy', options.sortBy || 'latest')
-      params.append('page', '1')
-      params.append('limit', '20')
+      params.append('page', (currentPage + 1).toString())
+      params.append('limit', (options.pageSize || 20).toString())
       
       if (publicKeyString) params.append('userWallet', publicKeyString)
       if (user?.id) params.append('userId', user.id)
-      
-      // 🔥 SAFETY: Fallback на localStorage если publicKeyString недоступен
-      if (!publicKeyString && typeof window !== 'undefined') {
-        const savedWallet = localStorage.getItem('fonana_user_wallet')
-        if (savedWallet) {
-          console.log('[useOptimizedPosts] Using localStorage fallback for refresh wallet address:', savedWallet.substring(0, 8) + '...')
-          params.append('userWallet', savedWallet)
-        }
-      }
       
       // Choose endpoint based on sortBy
       let endpoint = '/api/posts'
@@ -272,43 +236,65 @@ export function useOptimizedPosts(options: UseOptimizedPostsOptions = {}): UseOp
         endpoint = '/api/posts/following'
       }
       
-      console.log('[useOptimizedPosts] Refreshing posts from:', endpoint)
-      
       const response = await fetch(`${endpoint}?${params}`)
       
       if (!response.ok) {
         throw new Error(`HTTP ${response.status}: ${response.statusText}`)
       }
-
+      
       const data = await response.json()
-      const rawPosts = data.posts || []
-      let likesData = [];
-      if(localStorage.getItem('user_likes') && user?.id) {
-        likesData = JSON.parse(localStorage.getItem('user_likes') || '[]')
+      let likesData = []
+      let rawPosts = data.posts || []
+      
+      // Обрабатываем лайки пользователя
+      if (user?.id) {
+        const userLikes = localStorage.getItem('user_likes')
+        if (userLikes) {
+          likesData = JSON.parse(userLikes)
+        }
       }
-
-      console.log(`[useOptimizedPosts] Refresh received ${rawPosts.length} posts from API`)
+      
+      console.log(`[useOptimizedPosts] LoadMore received ${rawPosts.length} additional posts`)
       
       // Normalize posts
-      const normalizedPosts = PostNormalizer.normalizeMany(rawPosts, likesData);
+      const normalizedPosts = PostNormalizer.normalizeMany(rawPosts, likesData)
       
-      console.log(`[useOptimizedPosts] Refresh normalized ${normalizedPosts.length} posts successfully`)
+      // Добавляем новые посты к существующим
+      setPosts(prev => [...prev, ...normalizedPosts])
       
-      // Update posts state
-      setPosts(normalizedPosts)
+      // Обновляем состояние пагинации
+      const apiTotalPages = data.totalPages || 0
+      const apiCurrentPage = data.currentPage || currentPage + 1
       
-    } catch (err: any) {
-      console.error('[useOptimizedPosts] Refresh error:', err)
-      setError(err)
+      setCurrentPage(apiCurrentPage)
+      setTotalPages(apiTotalPages)
+      setHasMore(apiCurrentPage < apiTotalPages)
+      
+      console.log(`[useOptimizedPosts] LoadMore completed. New pagination:`, {
+        currentPage: apiCurrentPage,
+        totalPages: apiTotalPages,
+        hasMore: apiCurrentPage < apiTotalPages,
+        totalPosts: posts.length + normalizedPosts.length
+      })
+      
+    } catch (error) {
+      console.error('[useOptimizedPosts] LoadMore error:', error)
+      setError(error as Error)
     } finally {
-      setIsLoading(false)
+      setIsLoadingMore(false)
     }
-  }, [])
-  
-  // Placeholder functions for Phase 1
-  const loadMore = useCallback(() => {
-    console.log('[useOptimizedPosts] loadMore not implemented in Phase 1')
-  }, [])
+  }, [
+    isLoadingMore, 
+    hasMore, 
+    currentPage, 
+    options.category, 
+    options.creatorId, 
+    options.sortBy, 
+    options.pageSize,
+    publicKeyString, 
+    user?.id,
+    posts.length
+  ])
   
   // Функция для получения userId
   const getUserId = useCallback(async (): Promise<string | null> => {
@@ -586,8 +572,8 @@ export function useOptimizedPosts(options: UseOptimizedPostsOptions = {}): UseOp
     posts,
     isLoading,
     error,
-    hasMore: false, // Phase 1: No pagination
-    isLoadingMore: false,
+    hasMore, // 🚀 PAGINATION: Используем реальное значение hasMore
+    isLoadingMore,
     loadMore,
     loadPosts,
     refresh,
@@ -596,4 +582,4 @@ export function useOptimizedPosts(options: UseOptimizedPostsOptions = {}): UseOp
     loadPostById,
     refreshWithoutCache
   }
-} 
+}

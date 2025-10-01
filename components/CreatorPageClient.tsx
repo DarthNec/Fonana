@@ -160,7 +160,27 @@ export default function CreatorPageClient({ creatorId }: CreatorPageClientProps)
   */
 
   useEffect(() => {
-    setFilteredPosts(postsData.posts);
+    let posts = postsData.posts;
+    if(localStorage.getItem('user_purchases') !== null) {
+      const purchasesData = JSON.parse(localStorage.getItem('user_purchases') || '[]')
+      posts = posts.map(p => {
+        if(purchasesData.find((purchase: any) => purchase.postId === p.id)) {
+          return {
+            ...p,
+            access: {
+              ...p.access,
+              isPurchased: true,
+              shouldHideContent: false
+            }
+          }
+        }
+        else return p;
+      })
+      console.log(`[CreatorPageClient] Updated posts:`, posts);
+      setFilteredPosts(posts);
+    } else {
+      setFilteredPosts(posts);
+    }
   }, [postsData.posts]);
 
   // [media_only_tab_optimization_2025_017] Используем точные счетчики вместо фильтрации загруженных постов
