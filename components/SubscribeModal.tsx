@@ -468,8 +468,9 @@ export default function SubscribeModal({ creator, preferredTier, onClose, onSucc
         return
       }
 
+      /*
       finalPrice = 0.01;
-      
+      */
       // Детальное логирование для отладки
       console.log('[SubscribeModal] Subscription attempt:', {
         selectedTier: selectedTier,

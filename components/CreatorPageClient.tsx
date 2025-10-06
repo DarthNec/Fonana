@@ -364,8 +364,9 @@ export default function CreatorPageClient({ creatorId }: CreatorPageClientProps)
         break
         
       case 'like':
-        // Handle like action - already handled by PostActions
-        toast.success('Post liked!')
+      case 'unlike':
+        // Обрабатываем через handleAction от useOptimizedPosts
+        handleAction(action)
         break
         
       case 'share':

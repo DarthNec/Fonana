@@ -1,0 +1,16 @@
+{
+  "name": "fonana-images-scripts",
+  "version": "1.0.0",
+  "description": "Скрипты для работы с изображениями проекта Fonana",
+  "main": "download-images.js",
+  "scripts": {
+    "download": "node download-images.js",
+    "update-backgrounds": "node update-user-backgrounds.js",
+    "test-db": "node update-user-backgrounds.js --test"
+  },
+  "dependencies": {
+    "pg": "^8.11.3"
+  },
+  "author": "Fonana Team",
+  "license": "MIT"
+}

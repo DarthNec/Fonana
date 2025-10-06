@@ -42,7 +42,9 @@ import {
   LinkIcon, // Blockchain
   HeartIcon as IntimateIcon, // Intimate
   AcademicCapIcon, // Education
-  FaceSmileIcon // Comedy
+  FaceSmileIcon, // Comedy
+  CakeIcon, // Food
+  BriefcaseIcon // Work
 } from '@heroicons/react/24/outline'
 import { toast } from 'react-hot-toast'
 import Link from 'next/link'
@@ -53,7 +55,8 @@ import { useSubscriptionStore } from '@/lib/store/subscriptionStore'
 const categories = [
   'All', 'Art', 'Music', 'Gaming', 'Lifestyle', 'Fitness', 
   'Tech', 'DeFi', 'NFT', 'Trading', 'GameFi', 
-  'Blockchain', 'Intimate', 'Education', 'Comedy'
+  'Blockchain', 'Intimate', 'Education', 'Comedy',
+  'Food', 'Party', 'Landscape', 'Work'
 ]
 
 // Маппинг категорий к иконкам
@@ -72,7 +75,11 @@ const categoryIcons: Record<string, any> = {
   'Blockchain': LinkIcon,
   'Intimate': IntimateIcon,
   'Education': AcademicCapIcon,
-  'Comedy': FaceSmileIcon
+  'Comedy': FaceSmileIcon,
+  'Food': CakeIcon,
+  'Party': SparklesIcon,
+  'Landscape': PhotoIcon,
+  'Work': BriefcaseIcon
 }
 
 const sortOptions = [
@@ -164,13 +171,13 @@ export default function FeedPageClient() {
     threshold: 0.1,
     rootMargin: '100px'
   })
-
+  /*
   useEffect(() => {
     if (inView && hasMore && !isLoadingMore) {
       loadMore()
     }
   }, [inView, hasMore, isLoadingMore, loadMore])
-
+  */
   // Инициализация при первой загрузке
   useEffect(() => {
     if (!isInitialized) {
@@ -233,6 +240,7 @@ export default function FeedPageClient() {
       }
 
       let purshasesData = [];
+      if(user?.id) {
       if(localStorage.getItem('user_purchases') !== null) {
         purshasesData = JSON.parse(localStorage.getItem('user_purchases') || '[]')
       } else {
@@ -241,7 +249,8 @@ export default function FeedPageClient() {
           const purchasesData = await purchasesResponse.json()
           purshasesData = purchasesData.purchases || []
           console.log(`[FeedPageClient] User purchases:`, purshasesData);
-          localStorage.setItem('user_purchases', JSON.stringify(purshasesData))
+            localStorage.setItem('user_purchases', JSON.stringify(purshasesData))
+          }
         }
       }
   
@@ -270,13 +279,17 @@ export default function FeedPageClient() {
         }
         if(likesData.length > 0) {
           const like = likesData.find((like: any) => like.postId === post.id);
-          post.engagement.isLiked = like ? true : false;
+          if(post.engagement) {
+            post.engagement.isLiked = like ? true : false;
+          }
         }
         if(purshasesData.length > 0) {
           const purchase = purshasesData.find((purchase: any) => purchase.postId === post.id);
-          post.access.isPurchased = true;
-          post.access.isLocked = false;
-          post.access.shouldHideContent = false;
+          if(purchase) {
+            post.access.isPurchased = true;
+            post.access.isLocked = false;
+            post.access.shouldHideContent = false;
+          }
         }
 
         return post;

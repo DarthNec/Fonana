@@ -26,7 +26,8 @@ import { useSolRate } from '@/lib/hooks/useSolRate'
 const categories = [
   'Art', 'Music', 'Gaming', 'Lifestyle', 'Fitness', 
   'Tech', 'DeFi', 'NFT', 'Trading', 'GameFi', 
-  'Blockchain', 'Intimate', 'Education', 'Comedy'
+  'Blockchain', 'Intimate', 'Education', 'Comedy',
+  'Food', 'Party', 'Landscape', 'Work'
 ]
 
 interface CreatePostModalProps {

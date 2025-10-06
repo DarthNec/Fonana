@@ -324,14 +324,14 @@ function CreatorsExplorerInner() {
             {creator.backgroundImage ? (
               <Image
                 src={creator.backgroundImage}
-                alt={`${creator.name || 'Creator'} background`}
+                alt={``}
                 fill
                 className="object-cover group-hover:scale-110 transition-transform duration-700"
               />
             ) : (
               <div className="w-full h-full bg-gradient-to-br from-purple-600/20 to-pink-600/20 flex items-center justify-center">
                 <span className="text-4xl font-bold text-white/50">
-                  {(creator.name || '?').charAt(0).toUpperCase()}
+                  
                 </span>
               </div>
             )}

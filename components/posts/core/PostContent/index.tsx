@@ -28,7 +28,11 @@ import {
   LinkIcon, // Blockchain
   HeartIcon as IntimateIcon, // Intimate
   AcademicCapIcon, // Education
-  FaceSmileIcon // Comedy
+  FaceSmileIcon, // Comedy
+  CakeIcon, // Food
+  SparklesIcon, // Party
+  PhotoIcon, // Landscape
+  BriefcaseIcon // Work
 } from '@heroicons/react/24/outline'
 
 export interface PostContentProps {
@@ -54,7 +58,11 @@ const categoryIcons: Record<string, any> = {
   'Blockchain': LinkIcon,
   'Intimate': IntimateIcon,
   'Education': AcademicCapIcon,
-  'Comedy': FaceSmileIcon
+  'Comedy': FaceSmileIcon,
+  'Food': CakeIcon,
+  'Party': SparklesIcon,
+  'Landscape': PhotoIcon,
+  'Work': BriefcaseIcon
 }
 
 /**
@@ -70,11 +78,15 @@ export function PostContent({
   const [imageError, setImageError] = useState(false)
   const [isTextExpanded, setIsTextExpanded] = useState(false)
   
-  // Определяем длинный ли текст (больше 15 символов для тестирования)
+  // Определяем длинный ли текст (больше 200 символов)
   const isLongText = post.content?.text && typeof post.content.text === 'string' && post.content.text.length > 200
   
-  // Показываем кнопку для всех длинных текстов (и для разворачивания, и для сворачивания)
-  const shouldShowExpandButton = isLongText
+  // Определяем много ли строк в тексте (больше 3 строк)
+  const hasManyLines = post.content?.text && typeof post.content.text === 'string' && 
+    post.content.text.split('\n').length > 3
+  
+  // Показываем кнопку для длинных текстов ИЛИ для текстов с большим количеством строк
+  const shouldShowExpandButton = isLongText || hasManyLines
   
   // Отладочная информация
   if (isLongText) {
@@ -236,9 +248,9 @@ export function PostContent({
       {!shouldHideContent && post.content?.text && typeof post.content.text === 'string' && (
         <div className="space-y-2">
           <p className={cn(
-            'text-gray-700 dark:text-slate-300',
+            'text-gray-700 dark:text-slate-300 whitespace-pre-line',
             getContentSize(),
-            isLongText && !isTextExpanded && 'line-clamp-3'
+            shouldShowExpandButton && !isTextExpanded && 'line-clamp-3'
           )}>
             {post.content.text}
           </p>

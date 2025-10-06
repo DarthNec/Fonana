@@ -1,0 +1,80 @@
+/* CSS Градиентные фоны для проекта Fonana */
+
+/* 1. Основной фиолетовый градиент */
+.bg-primary-gradient {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+}
+
+/* 2. Фиолетово-розовый градиент */
+.bg-purple-pink {
+  background: linear-gradient(135deg, #a8edea 0%, #fed6e3 100%);
+}
+
+/* 3. Темный технологический фон */
+.bg-tech-dark {
+  background: linear-gradient(135deg, #0c0c0c 0%, #1a1a2e 50%, #16213e 100%);
+}
+
+/* 4. Солана-стиль градиент */
+.bg-solana-style {
+  background: linear-gradient(135deg, #9945ff 0%, #14f195 100%);
+}
+
+/* 5. Успех и достижения */
+.bg-success-gradient {
+  background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+}
+
+/* 6. Креативный оранжево-фиолетовый */
+.bg-creative {
+  background: linear-gradient(135deg, #fc466b 0%, #3f5efb 100%);
+}
+
+/* 7. Мягкий голубой */
+.bg-soft-blue {
+  background: linear-gradient(135deg, #a8edea 0%, #fed6e3 100%);
+}
+
+/* 8. Золотой премиум */
+.bg-premium-gold {
+  background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+}
+
+/* 9. Ночной режим */
+.bg-dark-mode {
+  background: linear-gradient(135deg, #2c3e50 0%, #34495e 100%);
+}
+
+/* 10. Анимированный фон */
+.bg-animated {
+  background: linear-gradient(-45deg, #ee7752, #e73c7e, #23a6d5, #23d5ab);
+  background-size: 400% 400%;
+  animation: gradientShift 15s ease infinite;
+}
+
+@keyframes gradientShift {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+/* Дополнительные утилиты */
+.bg-overlay {
+  position: relative;
+}
+
+.bg-overlay::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.3);
+  z-index: 1;
+}
+
+.bg-overlay > * {
+  position: relative;
+  z-index: 2;
+}
