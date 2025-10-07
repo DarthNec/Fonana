@@ -31,10 +31,13 @@ const getPhantomDeeplink = () => {
   // Получаем текущий URL для возврата после подключения
   const currentUrl = encodeURIComponent(window.location.href)
   const appUrl = encodeURIComponent(window.location.origin)
-  
-  // Phantom универсальная ссылка
-  return `https://phantom.app/ul/browse/${appUrl}?ref=${currentUrl}`
+  console.log('appUrl', window.location.origin)
+  console.log('currentUrl', window.location.href)
+  console.log('Full url', `https://phantom.app/ul/browse/${currentUrl}`)
+  // Phantom универсальная ссылка - используем полный URL вместо origin
+  return `https://phantom.app/ul/browse/${currentUrl}`
 }
+
 
 export function MobileWalletConnect() {
   const { connected, connect, disconnect, wallet, select } = useWallet()

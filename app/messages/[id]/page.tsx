@@ -128,7 +128,7 @@ export default function ConversationPage() {
   const [openMessageMenu, setOpenMessageMenu] = useState<string | null>(null)
   const [editingMessage, setEditingMessage] = useState<string | null>(null)
   const { rate: solRate } = useSolRate()
-
+  console.log("Messages", messages)
   // 🚀 PHASE 1 FIX: Circuit breaker state to prevent infinite API calls
   const [circuitBreakerState, setCircuitBreakerState] = useState({
     callCount: 0,
@@ -322,7 +322,6 @@ export default function ConversationPage() {
     if(messages.length > 0 && !wasScrolled) {
       scrollToBottom();
       setWasScrolled(true);
-
     }
   }, [messages])
   
@@ -529,7 +528,7 @@ export default function ConversationPage() {
     }
 
     // 🚀 OPTIMISTIC UI: Добавляем сообщение в UI сразу
-    setMessages(prev => [...prev, tempMessage])
+    setMessages(prev => [tempMessage, ...prev])
     
     // Сбрасываем форму сразу для лучшего UX
     const originalMessageText = messageText
@@ -545,6 +544,7 @@ export default function ConversationPage() {
     setMediaPreview(null)
 
     setIsSending(true)
+    
     try {
       const token = await jwtManager.getToken()
       if (!token) {

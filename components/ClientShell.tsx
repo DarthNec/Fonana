@@ -91,7 +91,6 @@ export default function ClientShell({ children }: { children: React.ReactNode })
                 <main className={`pt-0 flex-1 ${isRefPage ? 'pb-0 md:pt-0' : 'pb-14 md:pb-0 md:pt-20'}`}>
                   {children}
                 </main>
-                <ReferralNotification />
                 {/* <Footer /> */}
                 <div className={`block md:hidden ${isIndividualChatPage || isRefPage ? 'hidden' : 'block'}`}>
                   <BottomNav />

@@ -34,6 +34,7 @@ function MessagesPageClientInner() {
   const isJwtReady = true;
   const [conversations, setConversations] = useState<Conversation[]>([])
   const [isLoading, setIsLoading] = useState(true)
+  const [conversationIdForDelete, setConversationIdForDelete] = useState(null)
   const [error, setError] = useState<string | null>(null)
   const [openMenuId, setOpenMenuId] = useState<string | null>(null)
   const menuRef = useRef<HTMLDivElement>(null)
@@ -168,7 +169,7 @@ function MessagesPageClientInner() {
       
       // Обновляем данные через React Query
       refetchConversations()
-      
+      setConversationIdForDelete(null)
       console.log('Conversation deleted successfully:', conversationId)
     } catch (error) {
       console.error('Error deleting conversation:', error)
@@ -343,6 +344,7 @@ function MessagesPageClientInner() {
                             onClick={(e) => {
                               e.preventDefault()
                               e.stopPropagation()
+                              setConversationIdForDelete(conversation.id)
                               setOpenMenuId(openMenuId === conversation.id ? null : conversation.id)
                             }}
                             className="p-1 flex items-center justify-center text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
@@ -374,36 +376,7 @@ function MessagesPageClientInner() {
                                 </button>
                               </div>
 
-                              {/* Mobile bottom popup */}
-                              <div className="md:hidden">
-                                {/* Backdrop */}
-                                <div 
-                                  className="fixed inset-0 bg-black/50 z-[100]"
-                                  onClick={(e) => {
-                                    e.preventDefault()
-                                    e.stopPropagation()
-                                    setOpenMenuId(null)
-                                  }}
-                                />
-                                
-                                {/* Bottom popup */}
-                                <div className="fixed bottom-0 left-0 right-0 bg-white dark:bg-slate-900 border-t border-gray-200 dark:border-slate-700 z-[110] h-[10vh] flex items-center justify-center">
-                                  <button
-                                    onClick={async (e) => {
-                                      console.log('Deleting conversation:', conversation.id)
-                                      e.preventDefault()
-                                      e.stopPropagation()
-                                      setOpenMenuId(null)
-                                      console.log('Deleting conversation:', conversation.id)
-                                      await deleteConversation(conversation.id)
-                                    }}
-                                    className="flex items-center gap-3 px-6 py-3 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors rounded-lg font-medium"
-                                  >
-                                    <TrashIcon className="w-5 h-5" />
-                                    Удалить диалог
-                                  </button>
-                                </div>
-                              </div>
+                              
                             </>
                           )}
                         </div>
@@ -415,6 +388,41 @@ function MessagesPageClientInner() {
             ))}
           </div>
         )}
+
+      {conversationIdForDelete !== null ? (
+        <div className="md:hidden absolute">
+          {/* Backdrop */}
+          <div 
+            className="fixed inset-0 bg-black/50 z-[10]"
+            onClick={(e) => {
+              e.preventDefault()
+              e.stopPropagation()
+              setOpenMenuId(null)
+              setConversationIdForDelete(null)
+            }}
+          />
+          
+          {/* Bottom popup */}
+          <div className="fixed bottom-0 left-0 right-0 bg-white dark:bg-slate-900 border-t border-gray-200 dark:border-slate-700 z-[150] h-[10vh] flex items-center justify-center">
+            <button
+              onClick={async (e) => {
+                console.log('Deleting conversation:', conversationIdForDelete)
+                e.preventDefault()
+                e.stopPropagation()
+                setOpenMenuId(null)
+                console.log('Deleting conversation:', conversationIdForDelete)
+                await deleteConversation(conversationIdForDelete)
+                
+                
+              }}
+              className="flex items-center gap-3 px-6 py-3 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors rounded-lg font-medium"
+            >
+              <TrashIcon className="w-5 h-5" />
+              Удалить диалог
+            </button>
+          </div>
+        </div>
+      ) : null}
       </div>
     </div>
   )
