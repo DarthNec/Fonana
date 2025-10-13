@@ -44,7 +44,10 @@ import {
   AcademicCapIcon, // Education
   FaceSmileIcon, // Comedy
   CakeIcon, // Food
-  BriefcaseIcon // Work
+  BriefcaseIcon, // Work
+  UserIcon, // Adult
+  UserGroupIcon, // Couple
+  UserIcon as SoloIcon // Solo
 } from '@heroicons/react/24/outline'
 import { toast } from 'react-hot-toast'
 import Link from 'next/link'
@@ -56,7 +59,7 @@ const categories = [
   'All', 'Art', 'Music', 'Gaming', 'Lifestyle', 'Fitness', 
   'Tech', 'DeFi', 'NFT', 'Trading', 'GameFi', 
   'Blockchain', 'Intimate', 'Education', 'Comedy',
-  'Food', 'Party', 'Landscape', 'Work'
+  'Food', 'Party', 'Landscape', 'Work', 'Adult', 'Couple', 'Solo'
 ]
 
 // Маппинг категорий к иконкам
@@ -79,7 +82,10 @@ const categoryIcons: Record<string, any> = {
   'Food': CakeIcon,
   'Party': SparklesIcon,
   'Landscape': PhotoIcon,
-  'Work': BriefcaseIcon
+  'Work': BriefcaseIcon,
+  'Adult': UserIcon,
+  'Couple': UserGroupIcon,
+  'Solo': SoloIcon
 }
 
 const sortOptions = [
@@ -112,7 +118,7 @@ export default function FeedPageClient() {
   const [selectedCreator, setSelectedCreator] = useState<any>(null)
   const [filteredAndSortedPosts, setFilteredAndSortedPosts] = useState<UnifiedPost[]>([])
 
-
+  console.log('[FeedPageClient] user:', user);
   // Функция для проверки аутентификации перед созданием поста
   const handleCreatePost = async () => {
     if (!user) {
@@ -171,13 +177,51 @@ export default function FeedPageClient() {
     threshold: 0.1,
     rootMargin: '100px'
   })
+
+  // Отслеживание скролла страницы
   /*
   useEffect(() => {
-    if (inView && hasMore && !isLoadingMore) {
+    const handleScroll = () => {
+      const scrollTop = window.pageYOffset || document.documentElement.scrollTop
+      const windowHeight = window.innerHeight
+      const documentHeight = document.documentElement.scrollHeight
+      
+      // Проверяем, находимся ли мы в 100px от низа страницы
+      const distanceFromBottom = documentHeight - (scrollTop + windowHeight)
+      console.log('[FeedPageClient] Distance from bottom:', distanceFromBottom);
+      if (distanceFromBottom <= 350) {
+        console.log('[FeedPageClient] Скролл: 100px от низа страницы достигнуто', {
+          scrollTop,
+          windowHeight,
+          documentHeight,
+          distanceFromBottom
+        })
+        loadMore()
+      }
+    }
+
+    // Добавляем обработчик скролла
+    window.addEventListener('scroll', handleScroll, { passive: true })
+    
+    // Очищаем обработчик при размонтировании
+    return () => {
+      window.removeEventListener('scroll', handleScroll)
+    }
+  }, [])
+  */
+  
+  useEffect(() => {
+    console.log('[FeedPageClient] inView:', inView);
+    const scrollTop = window.pageYOffset || document.documentElement.scrollTop
+    const windowHeight = window.innerHeight
+    const documentHeight = document.documentElement.scrollHeight
+      
+      // Проверяем, находимся ли мы в 100px от низа страницы
+    const distanceFromBottom = documentHeight - (scrollTop + windowHeight)
+    if (inView && hasMore && !isLoadingMore && distanceFromBottom <= 250) {
       loadMore()
     }
   }, [inView, hasMore, isLoadingMore, loadMore])
-  */
   // Инициализация при первой загрузке
   useEffect(() => {
     if (!isInitialized) {

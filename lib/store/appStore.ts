@@ -34,6 +34,7 @@ export interface User {
     wallet?: string
     solanaWallet?: string
   } | null
+  referalCount?: number
 }
 
 export interface ProfileData {

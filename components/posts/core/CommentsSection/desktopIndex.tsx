@@ -42,6 +42,28 @@ export function CommentsSection({ postId, post, className, onClose, onCommentAdd
   const [newComment, setNewComment] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [isAnonymous, setIsAnonymous] = useState(false)
+  const [expandedComments, setExpandedComments] = useState<Set<string>>(new Set())
+
+  // Функции для работы с развернутыми комментариями
+  const toggleCommentExpansion = (commentId: string) => {
+    setExpandedComments(prev => {
+      const newSet = new Set(prev)
+      if (newSet.has(commentId)) {
+        newSet.delete(commentId)
+      } else {
+        newSet.add(commentId)
+      }
+      return newSet
+    })
+  }
+
+  const getDisplayText = (content: string, commentId: string) => {
+    const isExpanded = expandedComments.has(commentId)
+    if (content.length <= 150 || isExpanded) {
+      return content
+    }
+    return content.substring(0, 150) + '...'
+  }
 
   // ✅ КРИТИЧЕСКАЯ ПРОВЕРКА: предотвращаем React Error #185
   // Комментарии доступны всем, но форма добавления только авторизованным
@@ -190,28 +212,40 @@ export function CommentsSection({ postId, post, className, onClose, onCommentAdd
             <div className="flex-1">
               <textarea
                 value={newComment}
-                onChange={(e) => setNewComment(e.target.value)}
+                onChange={(e) => {
+                  if (e.target.value.length <= 300) {
+                    setNewComment(e.target.value)
+                  }
+                }}
                 placeholder="Написать комментарий..."
                 className="w-full px-4 py-2 bg-gray-100 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-slate-400"
                 rows={3}
+                maxLength={300}
               />
               <div className="mt-2 flex items-center justify-between">
-                <label className="flex items-center gap-2 text-sm text-gray-600 dark:text-slate-400">
-                  <input
-                    type="checkbox"
-                    checked={isAnonymous}
-                    onChange={(e) => setIsAnonymous(e.target.checked)}
-                    className="rounded border-gray-300 dark:border-slate-600 text-purple-600 focus:ring-purple-500"
-                  />
-                  Анонимно
-                </label>
-                <button
-                  type="submit"
-                  disabled={!newComment.trim() || isSubmitting}
-                  className="px-4 py-2 bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-lg font-medium hover:from-purple-600 hover:to-pink-600 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
-                >
-                  {isSubmitting ? 'Отправка...' : 'Отправить'}
-                </button>
+                <div className="flex items-center gap-4">
+                  <label className="flex items-center gap-2 text-sm text-gray-600 dark:text-slate-400">
+                    <input
+                      type="checkbox"
+                      checked={isAnonymous}
+                      onChange={(e) => setIsAnonymous(e.target.checked)}
+                      className="rounded border-gray-300 dark:border-slate-600 text-purple-600 focus:ring-purple-500"
+                    />
+                    Анонимно
+                  </label>
+                  <span className={`text-xs ${newComment.length > 300 ? 'text-red-500' : 'text-gray-500 dark:text-slate-400'}`}>
+                    {newComment.length}/300
+                  </span>
+                </div>
+                {newComment.length <= 300 && (
+                  <button
+                    type="submit"
+                    disabled={!newComment.trim() || isSubmitting}
+                    className="px-4 py-2 bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-lg font-medium hover:from-purple-600 hover:to-pink-600 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+                  >
+                    {isSubmitting ? 'Отправка...' : 'Отправить'}
+                  </button>
+                )}
               </div>
             </div>
           </div>
@@ -252,9 +286,19 @@ export function CommentsSection({ postId, post, className, onClose, onCommentAdd
                       {formatDate(comment.createdAt)}
                     </span>
                   </div>
-                  <p className="text-sm text-gray-700 dark:text-slate-300">
-                    {comment.content}
-                  </p>
+                  <div>
+                    <p className="text-sm text-gray-700 dark:text-slate-300 break-words whitespace-pre-wrap overflow-hidden" style={{ wordBreak: 'break-word', overflowWrap: 'break-word' }}>
+                      {getDisplayText(comment.content, comment.id)}
+                    </p>
+                    {comment.content.length > 150 && (
+                      <button
+                        onClick={() => toggleCommentExpansion(comment.id)}
+                        className="text-xs text-purple-600 dark:text-purple-400 hover:text-purple-700 dark:hover:text-purple-300 mt-1 font-medium transition-colors"
+                      >
+                        {expandedComments.has(comment.id) ? 'Свернуть' : 'Развернуть'}
+                      </button>
+                    )}
+                  </div>
                 </div>
                 <div className="mt-2 flex items-center gap-4">
                   <button className="text-xs text-gray-500 dark:text-slate-400 hover:text-purple-600 dark:hover:text-purple-400 transition-colors flex items-center gap-1">

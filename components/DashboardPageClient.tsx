@@ -566,15 +566,17 @@ export default function DashboardPageClient() {
               <div className="space-y-2">
                 <div className="flex items-center justify-between text-sm">
                   <span className="text-purple-700 dark:text-purple-300">Total Referred</span>
-                  <span className="text-purple-600 dark:text-purple-400 font-medium">12 users</span>
+                  <span className="text-purple-600 dark:text-purple-400 font-medium">
+                    {user?.referalCount ? `${user.referalCount} users` : '0 users'}
+                  </span>
                 </div>
                 <div className="flex items-center justify-between text-sm">
                   <span className="text-purple-700 dark:text-purple-300">Total Earned</span>
-                  <span className="text-purple-600 dark:text-purple-400 font-medium">2.34 SOL</span>
+                  <span className="text-purple-600 dark:text-purple-400 font-medium">0 SOL</span>
                 </div>
                 <div className="flex items-center justify-between text-sm">
                   <span className="text-purple-700 dark:text-purple-300">This Month</span>
-                  <span className="text-purple-600 dark:text-purple-400 font-medium">0.56 SOL</span>
+                  <span className="text-purple-600 dark:text-purple-400 font-medium">0 SOL</span>
                 </div>
               </div>
             </div>

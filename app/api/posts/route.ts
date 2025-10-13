@@ -3,6 +3,7 @@ import { prisma } from '@/lib/prisma'
 import { hasAccessToTier, checkPostAccess, normalizeTierName } from '@/lib/utils/access'
 import { TIER_HIERARCHY } from '@/lib/constants/tiers'
 import { detectPostType } from '@/lib/utils/postTypeDetection'
+import { getRedisPosts } from '@/app/api/redis/redisClient'
 
 // [post_creation_500_error_2025_017] Transformation function for imageAspectRatio
 function transformAspectRatio(value: string | number | null | undefined): number | null {

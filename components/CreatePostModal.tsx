@@ -27,7 +27,7 @@ const categories = [
   'Art', 'Music', 'Gaming', 'Lifestyle', 'Fitness', 
   'Tech', 'DeFi', 'NFT', 'Trading', 'GameFi', 
   'Blockchain', 'Intimate', 'Education', 'Comedy',
-  'Food', 'Party', 'Landscape', 'Work'
+  'Food', 'Party', 'Landscape', 'Work', 'Adult', 'Couple', 'Solo'
 ]
 
 interface CreatePostModalProps {

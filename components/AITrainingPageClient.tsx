@@ -1,195 +1,325 @@
 'use client'
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { 
   PhotoIcon, 
   SparklesIcon, 
   PlayIcon,
-  PlusIcon,
-  TrashIcon,
+  VideoCameraIcon,
   ArrowDownTrayIcon,
   EyeIcon,
-  Cog6ToothIcon
+  XMarkIcon
 } from '@heroicons/react/24/outline'
 import { toast } from 'react-hot-toast'
+import axios from 'axios'
+import { useUser } from '@/lib/store/appStore'
 
-interface UploadedImage {
+interface Generation {
   id: string
-  url: string
-  name: string
-  uploadedAt: Date
-}
-
-interface GeneratedImage {
-  id: string
-  url: string
+  type: 'video' | 'image'
   prompt: string
-  style: string
-  generatedAt: Date
+  url: string
+  thumbnail?: string
+  createdAt: Date
   status: 'generating' | 'completed' | 'failed'
+  model: string
+  requestId?: string
+  settings: {
+    seconds?: string
+    size?: string
+    referenceImage?: string
+  }
 }
-
-const GENERATION_STYLES = [
-  { id: 'realistic', name: 'Realistic Portrait', description: 'Photorealistic style' },
-  { id: 'artistic', name: 'Artistic', description: 'Artistic interpretation' },
-  { id: 'fantasy', name: 'Fantasy Character', description: 'Fantasy/RPG style' },
-  { id: 'anime', name: 'Anime Style', description: 'Japanese anime style' },
-  { id: 'vintage', name: 'Vintage Photo', description: '1950s-80s vintage style' },
-  { id: 'cyberpunk', name: 'Cyberpunk', description: 'Futuristic cyberpunk style' }
-]
-
-const SAMPLE_PROMPTS = [
-  "A professional headshot in a modern office setting",
-  "Fantasy warrior in medieval armor with magical aura",
-  "Cyberpunk character with neon lighting and tech implants",
-  "Elegant portrait in renaissance painting style",
-  "Adventurer in a mystical forest with magical creatures",
-  "Sci-fi space captain on the bridge of a starship"
-]
 
 export default function AITrainingPage() {
-  const [uploadedImages, setUploadedImages] = useState<UploadedImage[]>([])
-  const [generatedImages, setGeneratedImages] = useState<GeneratedImage[]>([])
-  const [isTraining, setIsTraining] = useState(false)
-  const [trainingProgress, setTrainingProgress] = useState(0)
-  const [modelTrained, setModelTrained] = useState(false)
+  const user = useUser()
+  const [generations, setGenerations] = useState<Generation[]>([])
+  const [isLoadingGenerations, setIsLoadingGenerations] = useState(true)
+  const [showCreateModal, setShowCreateModal] = useState(false)
+  const [generationType, setGenerationType] = useState<'video' | 'image'>('video')
   
-  const [selectedStyle, setSelectedStyle] = useState('realistic')
-  const [customPrompt, setCustomPrompt] = useState('')
+  // Video generation state
+  const [prompt, setPrompt] = useState('')
+  const [model, setModel] = useState('sora-2')
+  const [seconds, setSeconds] = useState('4')
+  const [size, setSize] = useState('720x1280')
+  const [inputReference, setInputReference] = useState<File | null>(null)
+  const [imagePreview, setImagePreview] = useState('')
   const [isGenerating, setIsGenerating] = useState(false)
+  const [videoId, setVideoId] = useState('')
   
   const fileInputRef = useRef<HTMLInputElement>(null)
 
-  const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const files = event.target.files
-    if (!files) return
-
-    Array.from(files).forEach((file) => {
-      if (file.type.startsWith('image/')) {
-        const url = URL.createObjectURL(file)
-        const newImage: UploadedImage = {
-          id: Date.now().toString() + Math.random(),
-          url,
-          name: file.name,
-          uploadedAt: new Date()
-        }
-        setUploadedImages(prev => [...prev, newImage])
+  // Загрузка генераций пользователя при монтировании компонента
+  useEffect(() => {
+    const fetchGenerations = async () => {
+      if (!user?.id) {
+        setIsLoadingGenerations(false)
+        return
       }
-    })
-    
-    toast.success(`${files.length} photo(s) uploaded successfully`)
-  }
 
-  const removeImage = (id: string) => {
-    setUploadedImages(prev => prev.filter(img => img.id !== id))
-    toast.success('Photo removed')
-  }
+      try {
+        const response = await fetch(`/api/aicreation?userId=${user.id}`)
+        const data = await response.json()
 
-  const startTraining = async () => {
-    console.log(`Uploaded images: `, uploadedImages);
-    if (uploadedImages.length < 1) {
-      console.log(`Uploaded images2: `, uploadedImages);
-      toast.error('Please upload at least 1 photo to start training')
-      return
-    }
+        if (data.success && data.creations) {
+          // Преобразуем данные из БД в формат Generation
+          const formattedGenerations: Generation[] = data.creations.map((creation: any) => ({
+            id: creation.id,
+            type: creation.type,
+            prompt: creation.prompt,
+            url: '', // URL будет заполнен позже при скачивании
+            createdAt: new Date(creation.createdAt),
+            status: creation.status === 'completed' ? 'completed' : 
+                    creation.status === 'failed' ? 'failed' : 'generating',
+            model: creation.model,
+            requestId: creation.requestId,
+            settings: {
+              size: creation.size
+            }
+          }))
 
-    setIsTraining(true)
-    setTrainingProgress(0)
-    
-    // Simulate training progress
-    const interval = setInterval(() => {
-      setTrainingProgress(prev => {
-        if (prev >= 100) {
-          clearInterval(interval)
-          setIsTraining(false)
-          setModelTrained(true)
-          toast.success('🎉 AI model training completed! You can now generate portraits.')
-          return 100
+          setGenerations(formattedGenerations)
+          console.log(`Loaded ${formattedGenerations.length} generations`)
+
+          // Автоматически загружаем видео для completed генераций
+          const apiKey = process.env.NEXT_PUBLIC_OPENAI_API_KEY
+          if (apiKey) {
+            formattedGenerations.forEach((gen) => {
+              if (gen.status === 'completed' && !gen.url && gen.requestId) {
+                downloadVideo(gen.requestId, apiKey, gen.id)
+              }
+            })
+          }
         }
-        return prev + Math.random() * 15
-      })
-    }, 1000)
+      } catch (error) {
+        console.error('Failed to load generations:', error)
+        toast.error('Failed to load your generations')
+      } finally {
+        setIsLoadingGenerations(false)
+      }
+    }
+
+    fetchGenerations()
+  }, [user?.id])
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      const file = e.target.files[0]
+      setInputReference(file)
+      
+      const reader = new FileReader()
+      reader.onload = (e) => {
+        setImagePreview(e.target?.result as string)
+      }
+      reader.readAsDataURL(file)
+    }
   }
 
-  const generatePortrait = async () => {
-    if (!modelTrained) {
-      toast.error('Please train your AI model first')
+  // Функция для изменения размера изображения
+  const resizeImage = (file: File, targetWidth: number, targetHeight: number): Promise<Blob> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader()
+      
+      reader.onload = (e) => {
+        const img = new Image()
+        
+        img.onload = () => {
+          const canvas = document.createElement('canvas')
+          canvas.width = targetWidth
+          canvas.height = targetHeight
+          
+          const ctx = canvas.getContext('2d')
+          if (!ctx) {
+            reject(new Error('Failed to get canvas context'))
+            return
+          }
+          
+          ctx.drawImage(img, 0, 0, targetWidth, targetHeight)
+          
+          canvas.toBlob((blob) => {
+            if (blob) {
+              resolve(blob)
+            } else {
+              reject(new Error('Failed to create blob'))
+            }
+          }, 'image/png')
+        }
+        
+        img.onerror = () => {
+          reject(new Error('Failed to load image'))
+        }
+        
+        img.src = e.target?.result as string
+      }
+      
+      reader.onerror = () => {
+        reject(new Error('Failed to read file'))
+      }
+      
+      reader.readAsDataURL(file)
+    })
+  }
+
+  const generateVideo = async () => {
+    if (!prompt.trim()) {
+      toast.error('Please enter a prompt')
       return
     }
 
-    if (!customPrompt.trim()) {
-      toast.error('Please enter a prompt for generation')
+    if (!user?.id) {
+      toast.error('Please connect your wallet first')
       return
     }
 
     setIsGenerating(true)
     
-    const newGeneration: GeneratedImage = {
+    const newGeneration: Generation = {
       id: Date.now().toString(),
-      url: '', // Will be populated after generation
-      prompt: customPrompt,
-      style: selectedStyle,
-      generatedAt: new Date(),
-      status: 'generating'
+      type: 'video',
+      prompt,
+      url: '',
+      createdAt: new Date(),
+      status: 'generating',
+      model,
+      settings: {
+        seconds,
+        size,
+        referenceImage: imagePreview
+      }
     }
     
-    setGeneratedImages(prev => [newGeneration, ...prev])
+    setGenerations(prev => [newGeneration, ...prev])
 
-    // Реальная генерация через OpenAI DALL-E 3
     try {
-      const response = await fetch('/api/ai/generate-image', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          prompt: customPrompt,
-          style: selectedStyle,
-          size: '1024x1024'
-        })
-      })
-
-      const data = await response.json()
-
-      if (!response.ok) {
-        throw new Error(data.error || 'Failed to generate image')
+      const apiKey = process.env.NEXT_PUBLIC_OPENAI_API_KEY
+      
+      if (!apiKey) {
+        throw new Error('OPENAI_API_KEY not found')
       }
 
-      // Обновляем статус на успешный с реальным URL
-      setGeneratedImages(prev => prev.map(img => 
-        img.id === newGeneration.id 
-          ? { 
-              ...img, 
-              url: data.imageUrl, 
-              status: 'completed' as const,
-              prompt: data.revised_prompt || img.prompt // DALL-E может улучшить промпт
-            }
-          : img
+      const formData = new FormData()
+      formData.append('model', model)
+      formData.append('prompt', prompt)
+      formData.append('seconds', seconds)
+      formData.append('size', size)
+
+      if (inputReference) {
+        const [width, height] = size.split('x').map(Number)
+        console.log(`Resizing image to ${width}x${height}...`)
+        const resizedBlob = await resizeImage(inputReference, width, height)
+        formData.append('input_reference', resizedBlob, 'reference.png')
+      }
+
+      const response = await axios.post(
+        'https://api.openai.com/v1/videos',
+        formData,
+        {
+          headers: {
+            'Authorization': `Bearer ${apiKey}`,
+            'Content-Type': 'multipart/form-data',
+          },
+        }
+      )
+
+      console.log('Generation response:', response.data)
+      
+      const generatedVideoId = response.data.id || response.data.video_id
+      
+      if (generatedVideoId) {
+        setVideoId(generatedVideoId)
+        
+        // Создаем запись в базе данных
+        try {
+          await fetch('/api/aicreation', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              user_id: user.id,
+              type: 'video',
+              requestId: generatedVideoId,
+              model: 'sora2',
+              size: size,
+              prompt: prompt,
+              status: 'created'
+            })
+          })
+          console.log('AI Creation record created in database')
+        } catch (dbError) {
+          console.error('Failed to create database record:', dbError)
+          // Не прерываем процесс, если запись в БД не удалась
+        }
+        
+        // await downloadVideo(generatedVideoId, apiKey, newGeneration.id)
+      } else {
+        throw new Error('Video ID not found in response')
+      }
+
+    } catch (err: any) {
+      console.error('Error generating video:', err)
+      
+      setGenerations(prev => prev.map(gen => 
+        gen.id === newGeneration.id 
+          ? { ...gen, status: 'failed' as const }
+          : gen
       ))
       
+      toast.error(err.response?.data?.error?.message || err.message || 'Failed to generate video')
+    } finally {
       setIsGenerating(false)
-      toast.success('🎨 AI Portrait generated successfully!')
-      
-    } catch (error) {
-      console.error('Generation error:', error)
-      
-      // Обновляем статус на ошибку
-      setGeneratedImages(prev => prev.map(img => 
-        img.id === newGeneration.id 
-          ? { ...img, status: 'failed' as const }
-          : img
-      ))
-      
-      setIsGenerating(false)
-      toast.error(`❌ Generation failed: ${error instanceof Error ? error.message : 'Unknown error'}`)
     }
   }
 
-  const useSamplePrompt = (prompt: string) => {
-    setCustomPrompt(prompt)
+  const downloadVideo = async (videoIdToDownload: string, apiKey: string, generationId: string) => {
+    try {
+      const response = await axios.get(
+        `https://api.openai.com/v1/videos/${videoIdToDownload}/content`,
+        {
+          headers: {
+            'Authorization': `Bearer ${apiKey}`,
+          },
+          responseType: 'blob',
+        }
+      )
+
+      const blob = new Blob([response.data], { type: 'video/mp4' })
+      const url = URL.createObjectURL(blob)
+      
+      setGenerations(prev => prev.map(gen => 
+        gen.id === generationId 
+          ? { ...gen, url, status: 'completed' as const }
+          : gen
+      ))
+      
+      toast.success('🎥 Video generated successfully!')
+      setShowCreateModal(false)
+      resetForm()
+      
+      console.log('Video downloaded successfully')
+    } catch (err: any) {
+      console.error('Error downloading video:', err)
+      
+      setGenerations(prev => prev.map(gen => 
+        gen.id === generationId 
+          ? { ...gen, status: 'failed' as const }
+          : gen
+      ))
+      
+      toast.error(err.response?.data?.error?.message || err.message || 'Failed to download video')
+    }
+  }
+
+  const resetForm = () => {
+    setPrompt('')
+    setInputReference(null)
+    setImagePreview('')
+    setSeconds('4')
+    setSize('720x1280')
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 pt-16 sm:pt-20">
       {/* Header */}
       <div className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
@@ -200,297 +330,295 @@ export default function AITrainingPage() {
               </div>
               <div>
                 <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
-                  AI Portrait Training
+                  AI Generations
                 </h1>
                 <p className="text-gray-600 dark:text-gray-400">
-                  Train your personal AI model and generate custom portraits
+                  Create stunning videos and images with AI
                 </p>
               </div>
             </div>
-            <div className="flex items-center gap-2 text-sm">
-              <div className={`px-3 py-1 rounded-full font-medium ${
-                modelTrained 
-                  ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300'
-                  : 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400'
-              }`}>
-                {modelTrained ? 'Model Ready' : 'Not Trained'}
-              </div>
-            </div>
+            <button
+              onClick={() => setShowCreateModal(true)}
+              className="px-6 py-3 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white rounded-lg font-medium transition-all inline-flex items-center gap-2"
+            >
+              <SparklesIcon className="w-5 h-5" />
+              Создать генерацию
+            </button>
           </div>
         </div>
       </div>
 
+      {/* Content */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-          
-          {/* Left Column - Training */}
-          <div className="space-y-6">
-            
-            {/* Upload Section */}
-            <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6">
-              <div className="flex items-center gap-3 mb-4">
-                <PhotoIcon className="w-5 h-5 text-purple-600" />
-                <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
-                  Upload Training Photos
-                </h2>
-              </div>
-              
-              <div 
-                className="border-2 border-dashed border-purple-300 dark:border-purple-600 rounded-xl p-8 text-center cursor-pointer hover:border-purple-400 dark:hover:border-purple-500 transition-colors"
-                onClick={() => fileInputRef.current?.click()}
-              >
-                <PhotoIcon className="w-12 h-12 text-purple-400 mx-auto mb-4" />
-                <p className="text-gray-600 dark:text-gray-400 mb-2">
-                  Drop your portrait photos here or click to browse
-                </p>
-                <p className="text-sm text-gray-500 dark:text-gray-500 mb-4">
-                  Upload 1+ high-quality portraits (more photos = better results)
-                </p>
-                <button className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg font-medium transition-colors">
-                  Select Photos
-                </button>
-              </div>
-              
-              <input
-                ref={fileInputRef}
-                type="file"
-                multiple
-                accept="image/*"
-                onChange={handleFileUpload}
-                className="hidden"
-              />
-              
-              {/* Uploaded Images Grid */}
-              {uploadedImages.length > 0 && (
-                <div className="mt-6">
-                  <div className="flex items-center justify-between mb-3">
-                    <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                      Uploaded Photos ({uploadedImages.length})
-                    </span>
-                  </div>
-                  <div className="grid grid-cols-4 gap-3">
-                    {uploadedImages.map((image) => (
-                      <div key={image.id} className="relative group">
-                        <img
-                          src={image.url}
-                          alt={image.name}
-                          className="w-full h-20 object-cover rounded-lg border border-gray-200 dark:border-gray-600"
-                        />
-                        <button
-                          onClick={() => removeImage(image.id)}
-                          className="absolute -top-2 -right-2 w-5 h-5 bg-red-500 hover:bg-red-600 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center"
-                        >
-                          <TrashIcon className="w-3 h-3" />
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
-
-            {/* Training Section */}
-            <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6">
-              <div className="flex items-center gap-3 mb-4">
-                <Cog6ToothIcon className="w-5 h-5 text-purple-600" />
-                <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
-                  Model Training
-                </h2>
-              </div>
-              
-              {!modelTrained && (
-                <div className="mb-4">
-                  <div className="flex items-center justify-between text-sm mb-2">
-                    <span className="text-gray-600 dark:text-gray-400">Training Progress</span>
-                    <span className="font-medium text-gray-900 dark:text-white">{Math.round(trainingProgress)}%</span>
-                  </div>
-                  <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
-                    <div 
-                      className="bg-gradient-to-r from-purple-500 to-pink-500 h-2 rounded-full transition-all duration-500"
-                      style={{ width: `${trainingProgress}%` }}
-                    />
-                  </div>
-                </div>
-              )}
-              
-              <button
-                onClick={startTraining}
-                disabled={isTraining || uploadedImages.length < 1 || modelTrained}
-                className="w-full px-6 py-3 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 disabled:from-gray-400 disabled:to-gray-500 text-white rounded-lg font-medium transition-all duration-300 hover:scale-105 hover:shadow-lg disabled:hover:scale-100 disabled:hover:shadow-none flex items-center justify-center gap-2"
-              >
-                {isTraining ? (
-                  <>
-                    <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                    Training Model...
-                  </>
-                ) : modelTrained ? (
-                  <>
-                    <SparklesIcon className="w-5 h-5" />
-                    Model Trained Successfully
-                  </>
-                ) : (
-                  <>
-                    <PlayIcon className="w-5 h-5" />
-                    Start Training
-                  </>
-                )}
-              </button>
-              
-              <p className="text-xs text-gray-500 dark:text-gray-400 mt-2 text-center">
-                Training typically takes 3-5 minutes (time may vary)
-              </p>
+        {isLoadingGenerations ? (
+          <div className="flex items-center justify-center py-20">
+            <div className="text-center">
+              <div className="w-12 h-12 border-4 border-purple-500/30 border-t-purple-500 rounded-full animate-spin mx-auto mb-4" />
+              <p className="text-gray-600 dark:text-gray-400">Загрузка генераций...</p>
             </div>
           </div>
-
-          {/* Right Column - Generation */}
-          <div className="space-y-6">
-            
-            {/* Generation Section */}
-            <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6">
-              <div className="flex items-center gap-3 mb-4">
-                <SparklesIcon className="w-5 h-5 text-purple-600" />
-                <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
-                  Generate AI Portraits
-                </h2>
+        ) : generations.length === 0 ? (
+          <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-12 text-center">
+            <SparklesIcon className="w-16 h-16 text-gray-400 dark:text-gray-600 mx-auto mb-4" />
+            <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">
+              Ещё нет ни одной генерации
+            </h3>
+            <p className="text-gray-600 dark:text-gray-400 mb-6">
+              Создайте свою первую AI генерацию, чтобы увидеть её здесь
+            </p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {generations.map((generation) => (
+              <div key={generation.id} className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden">
+                <div className="aspect-video bg-gray-100 dark:bg-gray-700">
+                  {generation.status === 'generating' ? (
+                    <div className="w-full h-full flex items-center justify-center p-[10px]">
+                      <div className="text-center">
+                        <div className="w-12 h-12 border-4 border-purple-500/30 border-t-purple-500 rounded-full animate-spin mx-auto mb-3" />
+                        <p className="text-sm text-gray-600 dark:text-gray-400">Generating...</p>
+                      </div>
+                    </div>
+                  ) : generation.status === 'completed' && generation.url ? (
+                    <video
+                      src={generation.url}
+                      controls
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center p-[10px]">
+                      <p className="text-sm text-red-500">Generation failed</p>
+                    </div>
+                  )}
+                </div>
+                <div className="p-4">
+                  <p className="text-sm text-gray-900 dark:text-white font-medium mb-2 line-clamp-2">
+                    {generation.prompt}
+                  </p>
+                  <div className="flex items-center justify-between text-xs text-gray-500 dark:text-gray-400 mb-2">
+                    <span>{generation.model}</span>
+                    <span>{generation.settings.size || 'N/A'}</span>
+                  </div>
+                  <div className="text-xs text-gray-400 dark:text-gray-500">
+                    {new Date(generation.createdAt).toLocaleDateString('ru-RU', { 
+                      day: 'numeric', 
+                      month: 'short', 
+                      year: 'numeric',
+                      hour: '2-digit',
+                      minute: '2-digit'
+                    })}
+                  </div>
+                  {generation.status === 'completed' && generation.url && (
+                    <div className="mt-3 flex gap-2">
+                      <a
+                        href={generation.url}
+                        download={`ai-video-${generation.id}.mp4`}
+                        className="flex-1 px-3 py-2 bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 rounded-lg text-sm font-medium hover:bg-purple-200 dark:hover:bg-purple-900/50 transition-colors flex items-center justify-center gap-2"
+                      >
+                        <ArrowDownTrayIcon className="w-4 h-4" />
+                        Download
+                      </a>
+                    </div>
+                  )}
+                </div>
               </div>
-              
-              {/* Style Selection */}
-              <div className="mb-4">
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Create Modal */}
+      {showCreateModal && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-gray-800 rounded-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="sticky top-0 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 p-6 flex items-center justify-between">
+              <h2 className="text-xl font-bold text-gray-900 dark:text-white">
+                Создать AI генерацию
+              </h2>
+              <button
+                onClick={() => setShowCreateModal(false)}
+                className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
+              >
+                <XMarkIcon className="w-5 h-5 text-gray-500" />
+              </button>
+            </div>
+
+            <div className="p-6 space-y-6">
+              {/* Type Selection */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
+                  Тип генерации
+                </label>
+                <div className="grid grid-cols-2 gap-3">
+                  <button
+                    onClick={() => setGenerationType('video')}
+                    className={`p-4 rounded-lg border-2 transition-all ${
+                      generationType === 'video'
+                        ? 'border-purple-500 bg-purple-50 dark:bg-purple-900/20'
+                        : 'border-gray-200 dark:border-gray-600 hover:border-purple-300'
+                    }`}
+                  >
+                    <VideoCameraIcon className="w-6 h-6 mx-auto mb-2 text-purple-600" />
+                    <div className="font-medium text-sm text-gray-900 dark:text-white">Видео</div>
+                  </button>
+                  <button
+                    onClick={() => setGenerationType('image')}
+                    disabled
+                    className="p-4 rounded-lg border-2 border-gray-200 dark:border-gray-600 opacity-50 cursor-not-allowed"
+                  >
+                    <PhotoIcon className="w-6 h-6 mx-auto mb-2 text-gray-400" />
+                    <div className="font-medium text-sm text-gray-400">Изображение</div>
+                    <div className="text-xs text-gray-400">(скоро)</div>
+                  </button>
+                </div>
+              </div>
+
+              {/* Model (Sora-2 selected by default) */}
+              <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  Art Style
+                  Модель
+                </label>
+                <div className="px-4 py-3 bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-800 rounded-lg">
+                  <div className="flex items-center justify-between">
+                    <span className="font-medium text-purple-900 dark:text-purple-100">Sora-2</span>
+                    <span className="text-sm text-purple-700 dark:text-purple-300">OpenAI</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Prompt */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Промпт
+                </label>
+                <textarea
+                  value={prompt}
+                  onChange={(e) => setPrompt(e.target.value)}
+                  placeholder="Опишите видео, которое хотите создать..."
+                  className="w-full h-24 px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500 resize-none"
+                />
+              </div>
+
+              {/* Duration */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Длительность
+                </label>
+                <div className="grid grid-cols-3 gap-2">
+                  {['4', '8', '12'].map((sec) => (
+                    <button
+                      key={sec}
+                      onClick={() => setSeconds(sec)}
+                      className={`px-4 py-2 rounded-lg font-medium transition-all ${
+                        seconds === sec
+                          ? 'bg-purple-500 text-white'
+                          : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
+                      }`}
+                    >
+                      {sec}s
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Size/Resolution */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Разрешение
                 </label>
                 <div className="grid grid-cols-2 gap-2">
-                  {GENERATION_STYLES.map((style) => (
+                  {[
+                    { value: '720x1280', label: '720x1280', desc: 'Portrait' },
+                    { value: '1280x720', label: '1280x720', desc: 'Landscape' },
+                    { value: '1080x1920', label: '1080x1920', desc: 'Full HD Portrait' },
+                    { value: '1920x1080', label: '1920x1080', desc: 'Full HD' }
+                  ].map((sizeOption) => (
                     <button
-                      key={style.id}
-                      onClick={() => setSelectedStyle(style.id)}
+                      key={sizeOption.value}
+                      onClick={() => setSize(sizeOption.value)}
                       className={`p-3 rounded-lg border text-left transition-all ${
-                        selectedStyle === style.id
+                        size === sizeOption.value
                           ? 'border-purple-500 bg-purple-50 dark:bg-purple-900/20'
                           : 'border-gray-200 dark:border-gray-600 hover:border-purple-300'
                       }`}
                     >
                       <div className="font-medium text-sm text-gray-900 dark:text-white">
-                        {style.name}
+                        {sizeOption.label}
                       </div>
                       <div className="text-xs text-gray-500 dark:text-gray-400">
-                        {style.description}
+                        {sizeOption.desc}
                       </div>
                     </button>
                   ))}
                 </div>
               </div>
-              
-              {/* Prompt Input */}
-              <div className="mb-4">
+
+              {/* Reference Image */}
+              <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  Prompt
+                  Референсное изображение (опционально)
                 </label>
-                <textarea
-                  value={customPrompt}
-                  onChange={(e) => setCustomPrompt(e.target.value)}
-                  placeholder="Describe the scene or character you want to create..."
-                  className="w-full h-24 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500 resize-none"
+                <div
+                  onClick={() => fileInputRef.current?.click()}
+                  className="border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg p-6 text-center cursor-pointer hover:border-purple-400 transition-colors"
+                >
+                  {imagePreview ? (
+                    <div className="space-y-3">
+                      <img src={imagePreview} alt="Preview" className="max-h-40 mx-auto rounded-lg" />
+                      <p className="text-sm text-gray-600 dark:text-gray-400">
+                        Изображение будет изменено до размера {size}
+                      </p>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          setInputReference(null)
+                          setImagePreview('')
+                        }}
+                        className="text-sm text-red-600 hover:text-red-700"
+                      >
+                        Удалить
+                      </button>
+                    </div>
+                  ) : (
+                    <>
+                      <PhotoIcon className="w-10 h-10 text-gray-400 mx-auto mb-2" />
+                      <p className="text-sm text-gray-600 dark:text-gray-400">
+                        Нажмите для выбора изображения
+                      </p>
+                    </>
+                  )}
+                </div>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/*"
+                  onChange={handleFileChange}
+                  className="hidden"
                 />
               </div>
-              
-              {/* Sample Prompts */}
-              <div className="mb-4">
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  Sample Prompts
-                </label>
-                <div className="space-y-1">
-                  {SAMPLE_PROMPTS.slice(0, 3).map((prompt, index) => (
-                    <button
-                      key={index}
-                      onClick={() => useSamplePrompt(prompt)}
-                      className="block w-full text-left px-3 py-2 text-sm text-purple-600 dark:text-purple-400 hover:bg-purple-50 dark:hover:bg-purple-900/20 rounded-md transition-colors"
-                    >
-                      "{prompt}"
-                    </button>
-                  ))}
-                </div>
-              </div>
-              
+
               {/* Generate Button */}
               <button
-                onClick={generatePortrait}
-                disabled={!modelTrained || isGenerating || !customPrompt.trim()}
-                className="w-full px-6 py-3 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 disabled:from-gray-400 disabled:to-gray-500 text-white rounded-lg font-medium transition-all duration-300 hover:scale-105 hover:shadow-lg disabled:hover:scale-100 disabled:hover:shadow-none flex items-center justify-center gap-2"
+                onClick={generateVideo}
+                disabled={isGenerating || !prompt.trim()}
+                className="w-full px-6 py-3 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 disabled:from-gray-400 disabled:to-gray-500 text-white rounded-lg font-medium transition-all flex items-center justify-center gap-2"
               >
                 {isGenerating ? (
                   <>
-                    <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                    Generating...
+                    <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                    Генерация...
                   </>
                 ) : (
                   <>
-                    <SparklesIcon className="w-5 h-5" />
-                    Generate AI Portrait
+                    <PlayIcon className="w-5 h-5" />
+                    Сгенерировать видео
                   </>
                 )}
               </button>
             </div>
-
-            {/* Generated Images Gallery */}
-            {generatedImages.length > 0 && (
-              <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6">
-                <div className="flex items-center gap-3 mb-4">
-                  <EyeIcon className="w-5 h-5 text-purple-600" />
-                  <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
-                    Generated Gallery
-                  </h2>
-                </div>
-                
-                <div className="grid grid-cols-2 gap-4">
-                  {generatedImages.map((image) => (
-                    <div key={image.id} className="relative group">
-                      <div className="aspect-square rounded-lg overflow-hidden border border-gray-200 dark:border-gray-600">
-                        {image.status === 'generating' ? (
-                          <div className="w-full h-full bg-gray-100 dark:bg-gray-700 flex items-center justify-center">
-                            <div className="text-center">
-                              <div className="w-8 h-8 border-2 border-purple-500/30 border-t-purple-500 rounded-full animate-spin mx-auto mb-2" />
-                              <p className="text-sm text-gray-500 dark:text-gray-400">Generating...</p>
-                            </div>
-                          </div>
-                        ) : (
-                          <img
-                            src={image.url}
-                            alt={image.prompt}
-                            className="w-full h-full object-cover"
-                          />
-                        )}
-                      </div>
-                      
-                      {image.status === 'completed' && (
-                        <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity rounded-lg flex items-center justify-center">
-                          <div className="flex gap-2">
-                            <button className="p-2 bg-white/20 hover:bg-white/30 text-white rounded-lg transition-colors">
-                              <ArrowDownTrayIcon className="w-4 h-4" />
-                            </button>
-                            <button className="p-2 bg-white/20 hover:bg-white/30 text-white rounded-lg transition-colors">
-                              <EyeIcon className="w-4 h-4" />
-                            </button>
-                          </div>
-                        </div>
-                      )}
-                      
-                      <div className="mt-2">
-                        <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
-                          {image.prompt}
-                        </p>
-                        <p className="text-xs text-gray-400 dark:text-gray-500">
-                          {image.style} • {image.generatedAt.toLocaleDateString()}
-                        </p>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
           </div>
         </div>
-      </div>
+      )}
     </div>
   )
-} 
+}

@@ -21,7 +21,8 @@ import {
   ChatBubbleLeftEllipsisIcon,
   MagnifyingGlassIcon,
   RocketLaunchIcon,
-  QuestionMarkCircleIcon
+  QuestionMarkCircleIcon,
+  SparklesIcon
 } from '@heroicons/react/24/outline'
 import { MobileWalletConnect } from './MobileWalletConnect'
 import { useWallet } from '@/lib/hooks/useSafeWallet'
@@ -340,6 +341,14 @@ export function Navbar() {
                           Support
                         </Link>
                         <Link
+                          href="/dashboard/ai-training"
+                          className="flex items-center gap-3 px-4 py-3 text-gray-600 dark:text-slate-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-slate-700/50 rounded-2xl transition-colors"
+                          onClick={() => setIsProfileOpen(false)}
+                        >
+                          <SparklesIcon className="w-5 h-5" />
+                          AI Portrait Training
+                        </Link>
+                        <Link
                           href="/dashboard"
                           className="flex items-center gap-3 px-4 py-3 text-gray-600 dark:text-slate-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-slate-700/50 rounded-2xl transition-colors"
                           onClick={() => setIsProfileOpen(false)}
@@ -390,6 +399,13 @@ export function Navbar() {
                       >
                         <QuestionMarkCircleIcon className="w-5 h-5" />
                         Support
+                      </Link>
+                      <Link
+                        href="/dashboard/ai-training"
+                        className="flex items-center gap-3 px-4 py-3 text-gray-600 dark:text-slate-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-slate-800/50 rounded-2xl transition-colors"
+                      >
+                        <SparklesIcon className="w-5 h-5" />
+                        AI Portrait Training
                       </Link>
                       <Link
                         href="/dashboard"

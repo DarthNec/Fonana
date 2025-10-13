@@ -77,7 +77,7 @@ export default function CreatorPageClient({ creatorId }: CreatorPageClientProps)
   const user = useUser()
   const router = useRouter()
   const { setVisible } = useSafeWalletModal()
-
+  console.log('[CreatorPageClient] creator:', creator);
   // Определяем, является ли текущий пользователь владельцем профиля
   const isOwner = user?.id === creatorId
 

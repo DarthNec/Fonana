@@ -113,6 +113,16 @@ export async function POST(request: NextRequest) {
       }
     })
 
+    // Обновляем referralCount у реферера
+    await prisma.user.update({
+      where: { id: referrerId },
+      data: { 
+        referalCount: {
+          increment: 1
+        }
+      }
+    })
+
     return NextResponse.json({ 
       success: true, 
       message: 'Referrer added successfully',

@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { useWallet } from '@/lib/hooks/useSafeWallet'
 import { useParams, useRouter } from 'next/navigation'
+import Avatar from '@/components/Avatar'
 import { 
   ArrowLeftIcon,
   PaperClipIcon,
@@ -1140,13 +1141,13 @@ export default function ConversationPage() {
               href={`/creator/${participant.id}`}
               className="flex items-center gap-3 flex-1 hover:bg-gray-50 dark:hover:bg-slate-800/50 p-2 -m-2 rounded-xl transition-colors"
             >
-              <div className="relative w-10 h-10 rounded-xl overflow-hidden bg-gradient-to-br from-purple-500/20 to-pink-500/20">
-                <img
-                  src={participant.avatar || `/api/avatar/${participant.nickname}`}
-                  alt={participant.nickname}
-                  className="w-full h-full object-cover"
-                />
-              </div>
+              <Avatar
+                src={participant.avatar}
+                alt={participant.nickname || participant.fullName || 'User'}
+                seed={participant.nickname || participant.id || 'user'}
+                size={40}
+                rounded="xl"
+              />
               <div className="flex-1">
                 <h2 className="font-semibold text-gray-900 dark:text-white text-sm sm:text-base">
                   {participant.fullName || participant.nickname}

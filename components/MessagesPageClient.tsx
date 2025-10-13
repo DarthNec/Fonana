@@ -215,7 +215,7 @@ function MessagesPageClientInner() {
     
     return message.content || 'Message'
   }
-
+  console.log('[MessagesPageClient] Conversations:', conversations);
   if (!user) {
     console.log('[MessagesPageClient] Rendering "Loading chats" - no user yet')
     return (
@@ -299,18 +299,12 @@ function MessagesPageClientInner() {
                 <div className="flex items-center space-x-3">
                   {/* Avatar */}
                   <div className="flex-shrink-0">
-                    {conversation.participant?.avatar ? (
-                      <Avatar
+                  <Avatar
                         src={conversation.participant.avatar}
                         alt={conversation.participant.nickname || 'User'}
                         size={48}
                         seed={conversation.participant.nickname || conversation.participant.id}
                       />
-                    ) : (
-                      <div className="w-12 h-12 bg-gray-300 dark:bg-slate-600 rounded-full flex items-center justify-center">
-                        <UserIcon className="w-6 h-6 text-gray-500 dark:text-slate-400" />
-                      </div>
-                    )}
                   </div>
                   
                   {/* Content */}

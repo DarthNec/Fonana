@@ -32,6 +32,7 @@ model User {
   solanaWallet         String?               @map("solana_wallet")
   token                String?               // JWT token for API authentication
   tokenExpiresAt       DateTime?             // Token expiration date
+  referalCount         Int              
   accounts             Account[]
   auctionBids          AuctionBid[]
   auctionDeposits      AuctionDeposit[]
@@ -560,4 +561,20 @@ enum SupportTicketStatus {
   IN_PROGRESS
   RESOLVED
   CLOSED
+}
+
+model AI_Creations {
+  id         String   @id @default(cuid())
+  user_id    String
+  type       String   // 'photo' or 'video'
+  createdAt  DateTime @default(now())
+  requestId  String
+  model      String   // 'sora2' or 'openAI'
+  size       String
+  prompt     String   @default("")
+  status     String   @default("pending")
+  
+  @@index([user_id])
+  @@index([requestId])
+  @@map("AI_Creations")
 }

@@ -28,6 +28,7 @@ export default function Avatar({
     // console.log(`[Avatar] Src changed: ${src}`)
     setImageError(false)
     setGeneratorError(false)
+    console.log('[Avatar] Src changed: ', src);
   }, [src])
   
   // Нормализуем src для Next.js Image
@@ -55,7 +56,7 @@ export default function Avatar({
   const hasValidSrc = normalizedSrc && normalizedSrc.length > 0
   
   // Используем DiceBear ТОЛЬКО если нет src ИЛИ произошла ошибка загрузки
-  const shouldUseGenerator = !hasValidSrc || imageError
+  const shouldUseGenerator = !hasValidSrc || imageError || src === null
   
   const roundedClasses = {
     'full': 'rounded-full',
