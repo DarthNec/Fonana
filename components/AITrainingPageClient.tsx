@@ -81,11 +81,12 @@ export default function AITrainingPage() {
           setGenerations(formattedGenerations)
           console.log(`Loaded ${formattedGenerations.length} generations`)
 
-          // Автоматически загружаем видео для completed генераций
+          // Автоматически загружаем видео для всех генераций без URL
           const apiKey = process.env.NEXT_PUBLIC_OPENAI_API_KEY
           if (apiKey) {
             formattedGenerations.forEach((gen) => {
-              if (gen.status === 'completed' && !gen.url && gen.requestId) {
+              if (!gen.url && gen.requestId) {
+                console.log(`[Init] Starting download attempts for video ${gen.requestId}`)
                 downloadVideo(gen.requestId, apiKey, gen.id)
               }
             })
@@ -251,7 +252,9 @@ export default function AITrainingPage() {
           // Не прерываем процесс, если запись в БД не удалась
         }
         
-        // await downloadVideo(generatedVideoId, apiKey, newGeneration.id)
+        // Начинаем попытки скачивания видео
+        await downloadVideo(generatedVideoId, apiKey, newGeneration.id)
+        setShowCreateModal(false);
       } else {
         throw new Error('Video ID not found in response')
       }
@@ -271,8 +274,10 @@ export default function AITrainingPage() {
     }
   }
 
-  const downloadVideo = async (videoIdToDownload: string, apiKey: string, generationId: string) => {
+  const downloadVideo = async (videoIdToDownload: string, apiKey: string, generationId: string, retryCount: number = 0) => {
     try {
+      console.log(`[Download] Attempting to download video ${videoIdToDownload}, attempt ${retryCount + 1}`)
+      
       const response = await axios.get(
         `https://api.openai.com/v1/videos/${videoIdToDownload}/content`,
         {
@@ -296,17 +301,15 @@ export default function AITrainingPage() {
       setShowCreateModal(false)
       resetForm()
       
-      console.log('Video downloaded successfully')
+      console.log('[Download] Video downloaded successfully')
     } catch (err: any) {
-      console.error('Error downloading video:', err)
+      console.error(`[Download] Error downloading video (attempt ${retryCount + 1}):`, err)
       
-      setGenerations(prev => prev.map(gen => 
-        gen.id === generationId 
-          ? { ...gen, status: 'failed' as const }
-          : gen
-      ))
-      
-      toast.error(err.response?.data?.error?.message || err.message || 'Failed to download video')
+      // Повторная попытка через 30 секунд
+      console.log('[Download] Scheduling retry in 30 seconds...')
+      setTimeout(() => {
+        downloadVideo(videoIdToDownload, apiKey, generationId, retryCount + 1)
+      }, 30000)
     }
   }
 
@@ -371,22 +374,20 @@ export default function AITrainingPage() {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {generations.map((generation) => (
               <div key={generation.id} className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden">
-                <div className="aspect-video bg-gray-100 dark:bg-gray-700">
+                <div className="h-[300px] bg-gray-100 dark:bg-gray-700 flex items-center justify-center">
                   {generation.status === 'generating' ? (
-                    <div className="w-full h-full flex items-center justify-center p-[10px]">
-                      <div className="text-center">
-                        <div className="w-12 h-12 border-4 border-purple-500/30 border-t-purple-500 rounded-full animate-spin mx-auto mb-3" />
-                        <p className="text-sm text-gray-600 dark:text-gray-400">Generating...</p>
-                      </div>
+                    <div className="text-center p-[10px]">
+                      <div className="w-12 h-12 border-4 border-purple-500/30 border-t-purple-500 rounded-full animate-spin mx-auto mb-3" />
+                      <p className="text-sm text-gray-600 dark:text-gray-400">Generating...</p>
                     </div>
                   ) : generation.status === 'completed' && generation.url ? (
                     <video
                       src={generation.url}
                       controls
-                      className="w-full h-full object-cover"
+                      className="w-full h-full object-contain"
                     />
                   ) : (
-                    <div className="w-full h-full flex items-center justify-center p-[10px]">
+                    <div className="text-center p-[10px]">
                       <p className="text-sm text-red-500">Generation failed</p>
                     </div>
                   )}

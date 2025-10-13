@@ -6,7 +6,7 @@ export const dynamic = 'force-dynamic'
 
 // Инициализируем OpenAI клиент с webhook secret
 const client = new OpenAI({ 
-  apiKey: process.env.OPENAI_API_KEY,
+  apiKey: process.env.NEXT_PUBLIC_OPENAI_API_KEY,
   webhookSecret: process.env.OPENAI_WEBHOOK_SECRET 
 })
 
