@@ -36,6 +36,22 @@ module.exports = {
       max_restarts: 3,
       restart_delay: 4000,
       cron_restart: '0 4 * * *'
+    },
+    {
+      name: 'sora-checker',
+      script: './sorachecker.js',
+      instances: 1,
+      exec_mode: 'fork',
+      cron_restart: '*/1 * * * *', // Запускается каждые 1 минут
+      autorestart: true, // Не автоперезапуск, только по крону
+      env_file: './.env',
+      env: {
+        NODE_ENV: 'production'
+      },
+      error_file: '/var/www/Fonana/logs/sora-checker-error.log',
+      out_file: '/var/www/Fonana/logs/sora-checker-out.log',
+      time: true,
+      merge_logs: true
     }
   ]
 } 

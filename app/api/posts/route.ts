@@ -182,6 +182,13 @@ export async function GET(request: NextRequest) {
           upgradePrompt: accessStatus.upgradePrompt,
           requiredTier,
         },
+        // Добавляем media объект для UnifiedPost
+        media: {
+          type: post.type,
+          url: post.mediaUrl,
+          thumbnail: post.thumbnail,
+          error: post.error
+        },
         // Скрываем контент для заблокированных постов, но НЕ для автора
         content: (shouldHideContent && !isCreatorPost) ? '' : post.content,
         shouldHideContent: shouldHideContent && !isCreatorPost
@@ -216,7 +223,9 @@ export async function POST(request: NextRequest) {
       title: body.title || 'empty',
       hasMedia: !!body.mediaUrl || !!body.thumbnail,
       // [tier_access_system_2025_017] Log tier information
-      minSubscriptionTier: body.minSubscriptionTier
+      minSubscriptionTier: body.minSubscriptionTier,
+      // [sora2_ai_video_2025_017] Log requestId for AI videos
+      requestId: body.requestId || null
     })
     
     // Проверяем обязательные поля
@@ -235,10 +244,16 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'User not found' }, { status: 404 })
     }
     
-    // Для медиа-постов нужен хотя бы thumbnail или mediaUrl
-    if (body.type !== 'text' && !body.mediaUrl && !body.thumbnail) {
+    // Для медиа-постов нужен хотя бы thumbnail или mediaUrl (кроме ai-video с requestId)
+    if (body.type !== 'text' && body.type !== 'ai-video' && !body.mediaUrl && !body.thumbnail) {
       console.log('[API] Media post missing media files')
       return NextResponse.json({ error: 'Media files required for media posts' }, { status: 400 })
+    }
+    
+    // Для ai-video проверяем наличие requestId
+    if (body.type === 'ai-video' && !body.requestId) {
+      console.log('[API] AI video post missing requestId')
+      return NextResponse.json({ error: 'requestId required for AI video posts' }, { status: 400 })
     }
     
     // [post_type_detection_fix_2025_017] Автоматическое определение типа поста
@@ -268,7 +283,9 @@ export async function POST(request: NextRequest) {
       imageAspectRatio: transformAspectRatio(body.imageAspectRatio), // [post_creation_500_error_2025_017] Transform string to number
       isSellable: body.isSellable || false,
       // [tier_access_system_2025_017] Добавляем поддержку тиров
-      minSubscriptionTier: body.minSubscriptionTier || null
+      minSubscriptionTier: body.minSubscriptionTier || null,
+      // [sora2_ai_video_2025_017] Добавляем requestId для AI-генерированных видео
+      requestId: body.requestId || null
     }
     
     // [post_creation_500_error_2025_017] Log aspect ratio transformation

@@ -70,7 +70,11 @@ export function PostsContainer({
     }
     posts = posts.map(post => {
       const like = likesData.find((like: any) => like.postId === post.id);
-      post.engagement.isLiked = like ? true : false;
+      if(post.engagement) {
+        if(post.engagement.isLiked) {
+          post.engagement.isLiked = like ? true : false;
+        }
+      }
       return post;
     })
 

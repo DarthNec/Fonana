@@ -48,6 +48,19 @@ export default function AITrainingPage() {
   const [videoId, setVideoId] = useState('')
   
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const downloadTimersRef = useRef<Map<string, NodeJS.Timeout>>(new Map())
+
+  // Очистка таймеров при демонтировании компонента
+  useEffect(() => {
+    return () => {
+      console.log('[AITrainingPage] Cleaning up download timers on unmount')
+      downloadTimersRef.current.forEach((timer, generationId) => {
+        console.log(`[AITrainingPage] Clearing timer for generation ${generationId}`)
+        clearTimeout(timer)
+      })
+      downloadTimersRef.current.clear()
+    }
+  }, [])
 
   // Загрузка генераций пользователя при монтировании компонента
   useEffect(() => {
@@ -276,7 +289,117 @@ export default function AITrainingPage() {
 
   const downloadVideo = async (videoIdToDownload: string, apiKey: string, generationId: string, retryCount: number = 0) => {
     try {
-      console.log(`[Download] Attempting to download video ${videoIdToDownload}, attempt ${retryCount + 1}`)
+      console.log(`[Download] Checking video status ${videoIdToDownload}, attempt ${retryCount + 1}`)
+      
+      // 1. Сначала проверяем статус генерации
+      let statusResponse
+      try {
+        statusResponse = await axios.get(
+          `https://api.openai.com/v1/videos/${videoIdToDownload}`,
+          {
+            headers: {
+              'Authorization': `Bearer ${apiKey}`,
+            },
+          }
+        )
+      } catch (statusError: any) {
+        // Если видео не найдено (404) или удалено
+        if (statusError.response?.status === 404) {
+          console.error(`[Download] Video not found or deleted:`, videoIdToDownload)
+          
+          setGenerations(prev => prev.map(gen => 
+            gen.id === generationId 
+              ? { 
+                  ...gen, 
+                  status: 'failed' as const,
+                  prompt: `${gen.prompt.split('\n\n')[0]}\n\n❌ Error: This generation no longer exists`
+                }
+              : gen
+          ))
+          
+          // Очищаем таймер
+          const timer = downloadTimersRef.current.get(generationId)
+          if (timer) {
+            clearTimeout(timer)
+            downloadTimersRef.current.delete(generationId)
+          }
+          
+          toast.error('Generation no longer exists')
+          return
+        }
+        
+        // Другая ошибка - пробрасываем дальше
+        throw statusError
+      }
+      
+      const videoStatus = statusResponse.data
+      console.log(`[Download] Video status:`, videoStatus.status, `Progress: ${videoStatus.progress || 0}`)
+      
+      // 2. Проверяем на ошибки
+      if (videoStatus.error) {
+        console.error(`[Download] Video generation failed:`, videoStatus.error)
+        
+        setGenerations(prev => prev.map(gen => 
+          gen.id === generationId 
+            ? { 
+                ...gen, 
+                status: 'failed' as const,
+                prompt: `${gen.prompt}\n\n❌ Error: ${videoStatus.error.message}`
+              }
+            : gen
+        ))
+        
+        // Очищаем таймер
+        const timer = downloadTimersRef.current.get(generationId)
+        if (timer) {
+          clearTimeout(timer)
+          downloadTimersRef.current.delete(generationId)
+        }
+        
+        toast.error(`Generation failed: ${videoStatus.error.message}`)
+        return
+      }
+      
+      // 3. Если статус in_progress - обновляем прогресс
+      if (videoStatus.status === 'in_progress' || videoStatus.status === 'processing') {
+        const progress = videoStatus.progress || 0
+        console.log(`[Download] Generation in progress: ${progress}%`)
+        
+        setGenerations(prev => prev.map(gen => 
+          gen.id === generationId 
+            ? { 
+                ...gen, 
+                status: 'generating' as const,
+                prompt: `${gen.prompt.split('\n\n')[0]}\n\n⏳ Generating: ${progress}%`
+              }
+            : gen
+        ))
+        
+        // Повторная проверка через 30 секунд
+        console.log('[Download] Scheduling status check in 30 seconds...')
+        const timer = setTimeout(() => {
+          downloadVideo(videoIdToDownload, apiKey, generationId, retryCount + 1)
+        }, 30000)
+        
+        downloadTimersRef.current.set(generationId, timer)
+        return
+      }
+      
+      // 4. Если статус не completed - ждем
+      if (videoStatus.status !== 'completed') {
+        console.log(`[Download] Video not ready yet, status: ${videoStatus.status}`)
+        
+        // Повторная проверка через 30 секунд
+        const timer = setTimeout(() => {
+          downloadVideo(videoIdToDownload, apiKey, generationId, retryCount + 1)
+        }, 30000)
+        
+        downloadTimersRef.current.set(generationId, timer)
+        return
+      }
+      
+      // 5. Статус completed - скачиваем видео
+      console.log(`[Download] Video is ready, downloading...`)
       
       const response = await axios.get(
         `https://api.openai.com/v1/videos/${videoIdToDownload}/content`,
@@ -293,9 +416,17 @@ export default function AITrainingPage() {
       
       setGenerations(prev => prev.map(gen => 
         gen.id === generationId 
-          ? { ...gen, url, status: 'completed' as const }
+          ? { ...gen, url, status: 'completed' as const, prompt: gen.prompt.split('\n\n')[0] }
           : gen
       ))
+      
+      // Очищаем таймер после успешной загрузки
+      const timer = downloadTimersRef.current.get(generationId)
+      if (timer) {
+        clearTimeout(timer)
+        downloadTimersRef.current.delete(generationId)
+        console.log(`[Download] Cleared timer for generation ${generationId}`)
+      }
       
       toast.success('🎥 Video generated successfully!')
       setShowCreateModal(false)
@@ -303,13 +434,16 @@ export default function AITrainingPage() {
       
       console.log('[Download] Video downloaded successfully')
     } catch (err: any) {
-      console.error(`[Download] Error downloading video (attempt ${retryCount + 1}):`, err)
+      console.error(`[Download] Error in download process (attempt ${retryCount + 1}):`, err)
       
       // Повторная попытка через 30 секунд
       console.log('[Download] Scheduling retry in 30 seconds...')
-      setTimeout(() => {
+      const timer = setTimeout(() => {
         downloadVideo(videoIdToDownload, apiKey, generationId, retryCount + 1)
       }, 30000)
+      
+      // Сохраняем таймер для возможности очистки
+      downloadTimersRef.current.set(generationId, timer)
     }
   }
 
@@ -378,7 +512,16 @@ export default function AITrainingPage() {
                   {generation.status === 'generating' ? (
                     <div className="text-center p-[10px]">
                       <div className="w-12 h-12 border-4 border-purple-500/30 border-t-purple-500 rounded-full animate-spin mx-auto mb-3" />
-                      <p className="text-sm text-gray-600 dark:text-gray-400">Generating...</p>
+                      {generation.prompt.includes('⏳ Generating:') ? (
+                        <div>
+                          <p className="text-sm font-medium text-purple-600 dark:text-purple-400 mb-1">
+                            {generation.prompt.split('\n\n')[1]}
+                          </p>
+                          <p className="text-xs text-gray-500 dark:text-gray-400">Please wait...</p>
+                        </div>
+                      ) : (
+                        <p className="text-sm text-gray-600 dark:text-gray-400">Starting generation...</p>
+                      )}
                     </div>
                   ) : generation.status === 'completed' && generation.url ? (
                     <video
@@ -388,13 +531,18 @@ export default function AITrainingPage() {
                     />
                   ) : (
                     <div className="text-center p-[10px]">
-                      <p className="text-sm text-red-500">Generation failed</p>
+                      <p className="text-sm text-red-500 font-medium mb-2">Generation failed</p>
+                      {generation.prompt.includes('❌ Error:') && (
+                        <p className="text-xs text-red-400 max-w-[250px] mx-auto">
+                          {generation.prompt.split('❌ Error: ')[1]}
+                        </p>
+                      )}
                     </div>
                   )}
                 </div>
                 <div className="p-4">
                   <p className="text-sm text-gray-900 dark:text-white font-medium mb-2 line-clamp-2">
-                    {generation.prompt}
+                    {generation.prompt.split('\n\n')[0]}
                   </p>
                   <div className="flex items-center justify-between text-xs text-gray-500 dark:text-gray-400 mb-2">
                     <span>{generation.model}</span>

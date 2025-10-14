@@ -85,7 +85,8 @@ export class PostNormalizer {
       url: transformMediaUrl(rawPost.mediaUrl || rawPost.image),
       thumbnail: transformMediaUrl(rawPost.thumbnail),
       preview: transformMediaUrl(rawPost.preview),
-      aspectRatio: rawPost.imageAspectRatio
+      aspectRatio: rawPost.imageAspectRatio,
+      error: rawPost.error || null
     }
   }
 

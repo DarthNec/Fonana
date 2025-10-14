@@ -76,6 +76,8 @@ model Post {
   imageAspectRatio    Decimal?
   isSellable          Boolean          @default(false)
   minSubscriptionTier String?          // 'basic' | 'premium' | 'vip'
+  requestId           String?          // For Sora-2 AI generated videos
+  error               String?          // Error message for AI video generation failures
   likesCount          Int              @default(0)
   commentsCount       Int              @default(0)
   viewsCount          Int              @default(0)
@@ -91,6 +93,7 @@ model Post {
   creator         User             @relation(fields: [creatorId], references: [id], onDelete: Cascade)
   purchases       PostPurchase[]   @relation("PostPurchases")
 
+  @@index([requestId])
   @@map("posts")
 }
 

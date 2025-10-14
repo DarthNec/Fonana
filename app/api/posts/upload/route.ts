@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { uploadToBunnyStorage } from '@/lib/utils/bunny-upload'
+import sharp from 'sharp'
 
 // 🔧 ФИКС M7: App Router body size configuration (Next.js 14 syntax)
 export const maxDuration = 30 // Allow time for large file processing
@@ -50,8 +51,43 @@ export async function POST(request: NextRequest) {
       }, { status: 400 })
     }
 
+    // Конвертируем изображения в WebP перед загрузкой (кроме GIF)
+    let fileToUpload: File = file
+    if (type === 'image' && file.type !== 'image/gif') {
+      try {
+        console.log('🎯 [BUNNY UPLOAD API] Converting image to WebP...')
+        
+        const arrayBuffer = await file.arrayBuffer()
+        const buffer = Buffer.from(arrayBuffer)
+        
+        // Конвертируем в WebP с качеством 85%
+        const webpBuffer = await sharp(buffer)
+          .webp({ quality: 85 })
+          .toBuffer()
+        
+        const originalSize = file.size
+        const webpSize = webpBuffer.length
+        const savings = ((originalSize - webpSize) / originalSize * 100).toFixed(2)
+        
+        console.log('🎯 [BUNNY UPLOAD API] WebP conversion successful:', {
+          originalSize: `${(originalSize / 1024).toFixed(2)} KB`,
+          webpSize: `${(webpSize / 1024).toFixed(2)} KB`,
+          savings: `${savings}%`
+        })
+        
+        // Создаем новый File объект с WebP данными
+        const webpBlob = new Blob([new Uint8Array(webpBuffer)], { type: 'image/webp' })
+        const originalName = file.name.replace(/\.[^/.]+$/, '')
+        fileToUpload = new File([webpBlob], `${originalName}.webp`, { type: 'image/webp' })
+        
+      } catch (conversionError) {
+        console.error('🎯 [BUNNY UPLOAD API] WebP conversion failed, using original:', conversionError)
+        // Если конвертация не удалась, используем оригинальный файл
+      }
+    }
+
     // Загружаем файл в BunnyStorage
-    const uploadResult = await uploadToBunnyStorage(file, type as 'image' | 'video' | 'audio')
+    const uploadResult = await uploadToBunnyStorage(fileToUpload, type as 'image' | 'video' | 'audio')
 
     if (!uploadResult.success) {
       console.error('🎯 [BUNNY UPLOAD API] Upload failed:', uploadResult.error)

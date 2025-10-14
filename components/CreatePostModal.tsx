@@ -22,6 +22,7 @@ import {
 } from '@heroicons/react/24/outline'
 import ImageCropModal from './ImageCropModal'
 import { useSolRate } from '@/lib/hooks/useSolRate'
+import axios from 'axios'
 
 const categories = [
   'Art', 'Music', 'Gaming', 'Lifestyle', 'Fitness', 
@@ -107,7 +108,14 @@ export default function CreatePostModal({ onPostCreated, onPostUpdated, onClose,
     auctionStepPrice: 0.1,
     auctionDuration: 24,
     auctionDepositAmount: 0.01,
-    imageAspectRatio: 'square' as 'vertical' | 'square' | 'horizontal'
+    imageAspectRatio: 'square' as 'vertical' | 'square' | 'horizontal',
+    // Sora-2 fields
+    contentSource: 'upload' as 'upload' | 'sora2',
+    soraPrompt: '',
+    soraSize: '720x1280' as string,
+    soraDuration: '4' as string,
+    soraReferenceImage: null as File | null,
+    soraReferencePreview: ''
   })
 
   const { rate: solToUsdRate, isLoading: isRateLoading } = useSolRate()
@@ -237,7 +245,13 @@ export default function CreatePostModal({ onPostCreated, onPostUpdated, onClose,
         auctionStepPrice: postData.auctionStepPrice || 0.1,
         auctionDuration: postData.auctionDuration || 24,
         auctionDepositAmount: postData.auctionDepositAmount || 0.01,
-        imageAspectRatio: postData.imageAspectRatio || 'square'
+        imageAspectRatio: postData.imageAspectRatio || 'square',
+        contentSource: 'upload',
+        soraPrompt: '',
+        soraSize: '720x1280',
+        soraDuration: '4',
+        soraReferenceImage: null,
+        soraReferencePreview: ''
       })
       
       setHasInitialized(true)
@@ -432,6 +446,72 @@ export default function CreatePostModal({ onPostCreated, onPostUpdated, onClose,
     if (file) handleFileUpload(file)
   }
 
+  const handleSoraReferenceUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (file) {
+      if (!file.type.startsWith('image/')) {
+        toast.error('Please select an image file')
+        return
+      }
+
+      const reader = new FileReader()
+      reader.onload = (e) => {
+        const result = e.target?.result as string
+        setFormData(prev => ({
+          ...prev,
+          soraReferenceImage: file,
+          soraReferencePreview: result
+        }))
+      }
+      reader.readAsDataURL(file)
+    }
+  }
+
+  // Функция для изменения размера изображения (для Sora-2)
+  const resizeImage = (file: File, targetWidth: number, targetHeight: number): Promise<Blob> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader()
+      
+      reader.onload = (e) => {
+        const img = new Image()
+        
+        img.onload = () => {
+          const canvas = document.createElement('canvas')
+          canvas.width = targetWidth
+          canvas.height = targetHeight
+          
+          const ctx = canvas.getContext('2d')
+          if (!ctx) {
+            reject(new Error('Failed to get canvas context'))
+            return
+          }
+          
+          ctx.drawImage(img, 0, 0, targetWidth, targetHeight)
+          
+          canvas.toBlob((blob) => {
+            if (blob) {
+              resolve(blob)
+            } else {
+              reject(new Error('Failed to create blob'))
+            }
+          }, 'image/png')
+        }
+        
+        img.onerror = () => {
+          reject(new Error('Failed to load image'))
+        }
+        
+        img.src = e.target?.result as string
+      }
+      
+      reader.onerror = () => {
+        reject(new Error('Failed to read file'))
+      }
+      
+      reader.readAsDataURL(file)
+    })
+  }
+
   const addTag = () => {
     const tag = formData.currentTag.trim().toLowerCase()
     if (tag && !formData.tags.includes(tag) && formData.tags.length < 5) {
@@ -483,6 +563,88 @@ export default function CreatePostModal({ onPostCreated, onPostUpdated, onClose,
     }
   }
 
+  // Функция для генерации видео через Sora-2
+  const generateSoraVideo = async (): Promise<string | null> => {
+    try {
+      const apiKey = process.env.NEXT_PUBLIC_OPENAI_API_KEY
+      
+      if (!apiKey) {
+        throw new Error('OPENAI_API_KEY not found')
+      }
+
+      console.log('[CreatePostModal] Starting Sora-2 video generation...')
+
+      const soraFormData = new FormData()
+      soraFormData.append('model', 'sora-2')
+      soraFormData.append('prompt', formData.soraPrompt)
+      soraFormData.append('seconds', formData.soraDuration)
+      soraFormData.append('size', formData.soraSize)
+
+      // Если есть референсное изображение, изменяем его размер и добавляем
+      if (formData.soraReferenceImage) {
+        const [width, height] = formData.soraSize.split('x').map(Number)
+        console.log(`[CreatePostModal] Resizing reference image to ${width}x${height}...`)
+        const resizedBlob = await resizeImage(formData.soraReferenceImage, width, height)
+        soraFormData.append('input_reference', resizedBlob, 'reference.png')
+      }
+
+      const response = await axios.post(
+        'https://api.openai.com/v1/videos',
+        soraFormData,
+        {
+          headers: {
+            'Authorization': `Bearer ${apiKey}`,
+            'Content-Type': 'multipart/form-data',
+          },
+        }
+      )
+
+      console.log('[CreatePostModal] Sora-2 generation response:', response.data)
+      
+      const generatedVideoId = response.data.id || response.data.video_id
+      
+      if (!generatedVideoId) {
+        throw new Error('Video ID not found in Sora response')
+      }
+
+      // Создаем запись в AI_Creations таблице
+      /*
+      try {
+        await fetch('/api/aicreation', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            user_id: user.id,
+            type: 'video',
+            requestId: generatedVideoId,
+            model: 'sora2',
+            size: formData.soraSize,
+            prompt: formData.soraPrompt,
+            status: 'created'
+          })
+        })
+        console.log('[CreatePostModal] AI Creation record created in database')
+      } catch (dbError) {
+        console.error('[CreatePostModal] Failed to create AI_Creations record:', dbError)
+        // Не прерываем процесс, если запись в БД не удалась
+      }
+      */
+      toast.success('🎥 Sora-2 video generation started!')
+      return generatedVideoId
+
+    } catch (error) {
+      console.error('[CreatePostModal] Sora-2 generation error:', error)
+      if (axios.isAxiosError(error)) {
+        toast.error(error.response?.data?.error?.message || error.message || 'Failed to generate video')
+      } else {
+        toast.error(error instanceof Error ? error.message : 'Failed to generate video')
+      }
+      return null
+    }
+  }
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     
@@ -527,8 +689,16 @@ export default function CreatePostModal({ onPostCreated, onPostUpdated, onClose,
       return
     }
 
-    // Для медиа контента проверяем наличие файла (только при создании)
-    if (mode === 'create' && formData.type !== 'text' && !formData.file) {
+    // Валидация для Sora-2
+    if (formData.contentSource === 'sora2') {
+      if (!formData.soraPrompt.trim()) {
+        toast.error('Please enter a prompt for Sora-2')
+        return
+      }
+    }
+
+    // Для медиа контента проверяем наличие файла (только при создании и upload)
+    if (mode === 'create' && formData.type !== 'text' && formData.contentSource === 'upload' && !formData.file) {
       toast.error('Please select a file')
       return
     }
@@ -581,8 +751,30 @@ export default function CreatePostModal({ onPostCreated, onPostUpdated, onClose,
     try {
       let mediaUrl = null
       let thumbnail = null
-      // Upload media file if present (только для новых файлов)
-      if (formData.file) {
+      let requestId = null
+      let postType = formData.type
+
+      // Обработка Sora-2 генерации
+      if (formData.contentSource === 'sora2') {
+        console.log('[CreatePostModal] Processing Sora-2 video generation...')
+        
+        const videoId = await generateSoraVideo()
+        if (!videoId) {
+          throw new Error('Failed to generate Sora-2 video')
+        }
+        
+        requestId = videoId
+        postType = 'ai-video' as any // Тип ai-video для Sora-2
+        mediaUrl = null // URL будет null, видео придет через webhook
+        thumbnail = '/placeholder-video-enhanced.png' // Плейсхолдер на время генерации
+        
+        console.log('[CreatePostModal] Sora-2 video generation initiated:', {
+          requestId,
+          prompt: formData.soraPrompt
+        })
+      }
+      // Upload media file if present (только для новых файлов и не Sora-2)
+      else if (formData.file) {
         const uploadResult = await uploadMedia(formData.file) // Используем оригинальный файл
         if (!uploadResult || !uploadResult.fileUrl) {
           throw new Error('Failed to upload file')
@@ -618,6 +810,8 @@ export default function CreatePostModal({ onPostCreated, onPostUpdated, onClose,
       console.log('[CreatePostModal] 🔥 FINAL MEDIA DEBUG:', {
         mediaUrl,
         thumbnail,
+        requestId,
+        contentSource: formData.contentSource,
         mode,
         hasFile: !!formData.file,
         isCDN: mediaUrl?.includes('b-cdn.net'),
@@ -628,12 +822,13 @@ export default function CreatePostModal({ onPostCreated, onPostUpdated, onClose,
       const postDataToSend = {
         userWallet: walletAddress,  // 🔧 ИСПРАВЛЕНИЕ: используем walletAddress с fallback логикой
         title: formData.title,
-        content: formData.content,
-        type: formData.type,
+        content: formData.content, // Для Sora-2 content пустой
+        type: postType, // Используем postType (может быть изменен для Sora-2)
         category: formData.category,
         tags: formData.tags,
         thumbnail,
         mediaUrl,
+        requestId, // Добавляем requestId для Sora-2
         isLocked: formData.accessType !== 'free',
         accessType: formData.accessType,
         // Единое поле price для всех типов постов с ценой
@@ -705,7 +900,13 @@ export default function CreatePostModal({ onPostCreated, onPostUpdated, onClose,
           auctionStepPrice: 0.1,
           auctionDuration: 24,
           auctionDepositAmount: 0.01,
-          imageAspectRatio: 'square'
+          imageAspectRatio: 'square',
+          contentSource: 'upload',
+          soraPrompt: '',
+          soraSize: '720x1280',
+          soraDuration: '4',
+          soraReferenceImage: null,
+          soraReferencePreview: ''
         })
       }
 
@@ -804,8 +1005,68 @@ export default function CreatePostModal({ onPostCreated, onPostUpdated, onClose,
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {/* Left column */}
             <div className="space-y-6">
+              {/* Content Type Selection - Always visible first */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-3">
+                  What do you want to create?
+                </label>
+                <div className="grid grid-cols-4 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setFormData(prev => ({ ...prev, type: 'text', contentSource: 'upload' }))}
+                    className={`p-3 rounded-xl border-2 transition-all ${
+                      formData.type === 'text'
+                        ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20'
+                        : 'border-gray-200 dark:border-slate-700 hover:border-gray-300'
+                    }`}
+                  >
+                    <DocumentTextIcon className="w-5 h-5 mx-auto mb-1 text-blue-600 dark:text-blue-400" />
+                    <div className="text-xs font-medium text-gray-900 dark:text-white">Text</div>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setFormData(prev => ({ ...prev, contentSource: 'upload', type: 'image' }))}
+                    className={`p-3 rounded-xl border-2 transition-all ${
+                      formData.contentSource === 'upload' && formData.type === 'image'
+                        ? 'border-green-500 bg-green-50 dark:bg-green-900/20'
+                        : 'border-gray-200 dark:border-slate-700 hover:border-gray-300'
+                    }`}
+                  >
+                    <PhotoIcon className="w-5 h-5 mx-auto mb-1 text-green-600 dark:text-green-400" />
+                    <div className="text-xs font-medium text-gray-900 dark:text-white">Image</div>
+                  </button>
+                  
+                  <button
+                    type="button"
+                    onClick={() => setFormData(prev => ({ ...prev, contentSource: 'upload', type: 'video' }))}
+                    className={`p-3 rounded-xl border-2 transition-all ${
+                      formData.contentSource === 'upload' && formData.type === 'video'
+                        ? 'border-purple-500 bg-purple-50 dark:bg-purple-900/20'
+                        : 'border-gray-200 dark:border-slate-700 hover:border-gray-300'
+                    }`}
+                  >
+                    <VideoCameraIcon className="w-5 h-5 mx-auto mb-1 text-purple-600 dark:text-purple-400" />
+                    <div className="text-xs font-medium text-gray-900 dark:text-white">Video</div>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setFormData(prev => ({ ...prev, contentSource: 'sora2', type: 'video' }))}
+                    className={`p-3 rounded-xl border-2 transition-all ${
+                      formData.contentSource === 'sora2'
+                        ? 'border-pink-500 bg-pink-50 dark:bg-pink-900/20'
+                        : 'border-gray-200 dark:border-slate-700 hover:border-gray-300'
+                    }`}
+                  >
+                    <SparklesIcon className="w-5 h-5 mx-auto mb-1 text-pink-600 dark:text-pink-400" />
+                    <div className="text-xs font-medium text-gray-900 dark:text-white">Sora-2</div>
+                  </button>
+                </div>
+              </div>
+
               {/* Content type info - automatically detected */}
-              {formData.type !== 'text' && formData.file && (
+              {formData.type !== 'text' && formData.file && formData.contentSource === 'upload' && (
                 <div className="bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-800 rounded-xl p-4">
                   <div className="flex items-center gap-3">
                     {formData.type === 'image' && <PhotoIcon className="w-5 h-5 text-purple-600 dark:text-purple-400" />}
@@ -823,77 +1084,199 @@ export default function CreatePostModal({ onPostCreated, onPostUpdated, onClose,
                 </div>
               )}
 
-              {/* File upload - always shown */}
-              <div className="space-y-4">
-                <label className="block text-sm font-medium text-gray-700 dark:text-slate-300">
-                  Upload media (optional)
-                </label>
-                <div
-                  onDrop={handleDrop}
-                  onDragOver={(e) => e.preventDefault()}
-                  onClick={() => fileInputRef.current?.click()}
-                  className="border-2 border-dashed border-gray-300 dark:border-slate-700 rounded-2xl p-6 text-center cursor-pointer hover:border-purple-500/50 transition-colors bg-gray-50 dark:bg-slate-800/30"
-                >
-                  {formData.preview ? (
-                    <div className="relative">
-                      {formData.type === 'image' && (
-                        <img
-                          src={formData.preview} // Используем base64 для preview
-                          alt="Preview"
-                          className="max-w-full h-40 object-cover rounded-xl mx-auto"
-                        />
-                      )}
-                      {formData.type === 'video' && (
-                        <video
-                          src={formData.preview} // Используем Object URL для preview
-                          className="max-w-full h-40 object-cover rounded-xl mx-auto"
-                          controls
-                        />
-                      )}
-                      {formData.type === 'audio' && (
-                        <div className="p-4 bg-gray-100 dark:bg-slate-700/50 rounded-xl">
-                          <MusicalNoteIcon className="w-12 h-12 mx-auto text-pink-500 dark:text-pink-400 mb-2" />
-                          <audio src={formData.preview} controls className="w-full" /> {/* Object URL для preview */}
-                        </div>
-                      )}
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          setFormData(prev => ({ ...prev, file: null, preview: '' }))
-                        }}
-                        className="absolute top-2 right-2 p-1 bg-red-500 text-white rounded-full hover:bg-red-600"
-                      >
-                        <XMarkIcon className="w-4 h-4" />
-                      </button>
-                    </div>
-                  ) : (
-                    <div>
-                      <PhotoIcon className="w-10 h-10 mx-auto text-gray-400 dark:text-slate-500 mb-2" />
-                      <p className="text-sm font-medium text-gray-700 dark:text-slate-300">
-                        Drag file or click
-                      </p>
-                      <p className="text-xs text-gray-500 dark:text-slate-600 mt-1">
-                        Max: {formData.type === 'video' ? '200MB' : formData.type === 'audio' ? '100MB' : '100MB'}
-                      </p>
-                    </div>
-                  )}
-                  <input
-                    ref={fileInputRef}
-                    type="file"
-                    onChange={handleFileSelect}
-                    accept={
-                      formData.type === 'video' ? 'video/*' :
-                      formData.type === 'audio' ? 'audio/*' :
-                      'image/*'
-                    }
-                    className="hidden"
-                  />
+              {/* File upload or Sora-2 generation - hidden for text posts */}
+              {formData.type !== 'text' && formData.contentSource === 'upload' ? (
+                <div className="space-y-4">
+                  <label className="block text-sm font-medium text-gray-700 dark:text-slate-300">
+                    Upload media (optional)
+                  </label>
+                  <div
+                    onDrop={handleDrop}
+                    onDragOver={(e) => e.preventDefault()}
+                    onClick={() => fileInputRef.current?.click()}
+                    className="border-2 border-dashed border-gray-300 dark:border-slate-700 rounded-2xl p-6 text-center cursor-pointer hover:border-purple-500/50 transition-colors bg-gray-50 dark:bg-slate-800/30"
+                  >
+                    {formData.preview ? (
+                      <div className="relative">
+                        {formData.type === 'image' && (
+                          <img
+                            src={formData.preview}
+                            alt="Preview"
+                            className="max-w-full h-40 object-cover rounded-xl mx-auto"
+                          />
+                        )}
+                        {formData.type === 'video' && (
+                          <video
+                            src={formData.preview}
+                            className="max-w-full h-40 object-cover rounded-xl mx-auto"
+                            controls
+                          />
+                        )}
+                        {formData.type === 'audio' && (
+                          <div className="p-4 bg-gray-100 dark:bg-slate-700/50 rounded-xl">
+                            <MusicalNoteIcon className="w-12 h-12 mx-auto text-pink-500 dark:text-pink-400 mb-2" />
+                            <audio src={formData.preview} controls className="w-full" />
+                          </div>
+                        )}
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            setFormData(prev => ({ ...prev, file: null, preview: '' }))
+                          }}
+                          className="absolute top-2 right-2 p-1 bg-red-500 text-white rounded-full hover:bg-red-600"
+                        >
+                          <XMarkIcon className="w-4 h-4" />
+                        </button>
+                      </div>
+                    ) : (
+                      <div>
+                        <PhotoIcon className="w-10 h-10 mx-auto text-gray-400 dark:text-slate-500 mb-2" />
+                        <p className="text-sm font-medium text-gray-700 dark:text-slate-300">
+                          Drag file or click
+                        </p>
+                        <p className="text-xs text-gray-500 dark:text-slate-600 mt-1">
+                          Max: {formData.type === 'video' ? '200MB' : formData.type === 'audio' ? '100MB' : '100MB'}
+                        </p>
+                      </div>
+                    )}
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      onChange={handleFileSelect}
+                      accept={
+                        formData.type === 'video' ? 'video/*' :
+                        formData.type === 'audio' ? 'audio/*' :
+                        'image/*'
+                      }
+                      className="hidden"
+                    />
+                  </div>
                 </div>
-              </div>
+              ) : formData.type !== 'text' && formData.contentSource === 'sora2' ? (
+                /* Sora-2 Generation Fields */
+                <div className="space-y-4">
+                  {/* Prompt */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-2">
+                      Prompt for Sora-2
+                    </label>
+                    <textarea
+                      value={formData.soraPrompt}
+                      onChange={(e) => setFormData(prev => ({ ...prev, soraPrompt: e.target.value }))}
+                      placeholder="Describe the video you want to create..."
+                      className="w-full h-24 px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-pink-500 resize-none"
+                    />
+                  </div>
 
-              {/* Crop button for images */}
-              {formData.type === 'image' && formData.preview && (
+                  {/* Duration */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-2">
+                      Duration
+                    </label>
+                    <div className="grid grid-cols-3 gap-2">
+                      {['4', '8', '12'].map((sec) => (
+                        <button
+                          key={sec}
+                          type="button"
+                          onClick={() => setFormData(prev => ({ ...prev, soraDuration: sec }))}
+                          className={`px-4 py-2 rounded-lg font-medium transition-all ${
+                            formData.soraDuration === sec
+                              ? 'bg-pink-500 text-white'
+                              : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
+                          }`}
+                        >
+                          {sec}s
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Size/Resolution */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-2">
+                      Resolution
+                    </label>
+                    
+                    <div className="grid grid-cols-2 gap-2">
+                      {[
+                        { value: '720x1280', label: '720x1280', desc: 'Portrait' },
+                        { value: '1280x720', label: '1280x720', desc: 'Landscape' },
+                        { value: '1080x1920', label: '1080x1920', desc: 'Full HD Portrait' },
+                        { value: '1920x1080', label: '1920x1080', desc: 'Full HD' }
+                      ].map((sizeOption) => (
+                        <div></div>
+                        /*
+                        <button
+                          key={sizeOption.value}
+                          type="button"
+                          onClick={() => setFormData(prev => ({ ...prev, soraSize: sizeOption.value }))}
+                          className={`p-3 rounded-lg border text-left transition-all ${
+                            formData.soraSize === sizeOption.value
+                              ? 'border-pink-500 bg-pink-50 dark:bg-pink-900/20'
+                              : 'border-gray-200 dark:border-gray-600 hover:border-pink-300'
+                          }`}
+                        >
+                          <div className="font-medium text-sm text-gray-900 dark:text-white">
+                            {sizeOption.label}
+                          </div>
+                          <div className="text-xs text-gray-500 dark:text-gray-400">
+                            {sizeOption.desc}
+                          </div>
+                        </button>
+                        */
+                      ))}
+                    </div> 
+                  </div>
+
+                  {/* Reference Image */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-2">
+                      Reference Image (optional)
+                    </label>
+                    <div
+                      onClick={() => document.getElementById('sora-reference-input')?.click()}
+                      className="border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg p-6 text-center cursor-pointer hover:border-pink-400 transition-colors"
+                    >
+                      {formData.soraReferencePreview ? (
+                        <div className="space-y-3">
+                          <img src={formData.soraReferencePreview} alt="Preview" className="max-h-40 mx-auto rounded-lg" />
+                          <p className="text-sm text-gray-600 dark:text-gray-400">
+                            Image will be resized to {formData.soraSize}
+                          </p>
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              setFormData(prev => ({ ...prev, soraReferenceImage: null, soraReferencePreview: '' }))
+                            }}
+                            className="text-sm text-red-600 hover:text-red-700"
+                          >
+                            Remove
+                          </button>
+                        </div>
+                      ) : (
+                        <>
+                          <PhotoIcon className="w-10 h-10 text-gray-400 mx-auto mb-2" />
+                          <p className="text-sm text-gray-600 dark:text-gray-400">
+                            Click to select reference image
+                          </p>
+                        </>
+                      )}
+                    </div>
+                    <input
+                      id="sora-reference-input"
+                      type="file"
+                      accept="image/*"
+                      onChange={handleSoraReferenceUpload}
+                      className="hidden"
+                    />
+                  </div>
+                </div>
+              ) : null}
+
+              {/* Crop button for images - only for uploaded images */}
+              {formData.type === 'image' && formData.preview && formData.contentSource === 'upload' && (
                 <div className="flex justify-center">
                   <button
                     type="button"

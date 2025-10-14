@@ -128,8 +128,14 @@ export function PostContent({
     }
   }
 
-  // Aspect ratio классы
+  // Aspect ratio классы (для видео используем фиксированную высоту)
   const getAspectRatioClass = () => {
+    // Для видео используем фиксированную высоту
+    if (post.media.type === 'video') {
+      return 'h-full'
+    }
+    
+    // Для изображений используем aspect ratio
     switch (post.media.aspectRatio) {
       case 'vertical': return 'aspect-3/4'
       case 'square': return 'aspect-square'
@@ -141,7 +147,7 @@ export function PostContent({
   const handleClick = () => {
     if (onAction) {
       // Открываем пост в отдельной странице
-      window.location.href = `/post/${post.id}`
+      // window.location.href = `/post/${post.id}`
     }
   }
 
@@ -202,15 +208,59 @@ export function PostContent({
                 </>
               )}
 
-              {post.media.type === 'video' && (
-                <video
-                  src={post.media.url}
-                  poster={post.media.thumbnail}
-                  className="w-full h-full object-cover"
-                  controls={false}
-                  muted
-                  playsInline
-                />
+              {post.media.type === 'ai-video' && !post.media.error && (
+                <div className="flex items-center justify-center h-full bg-gradient-to-br from-purple-500 to-pink-500">
+                  <div className="text-center">
+                    <div className="w-12 h-12 border-4 border-white/30 border-t-white rounded-full animate-spin mx-auto mb-3" />
+                    <p className="text-sm text-white font-medium mb-1">Generating AI Video...</p>
+                    <p className="text-xs text-white/80">This may take a few minutes</p>
+                  </div>
+                </div>
+              )}
+
+              {post.media.type === 'ai-video' && post.media.error && (
+                <div className="flex items-center justify-center h-full bg-gradient-to-br from-red-500 to-pink-500">
+                  <div className="text-center p-6">
+                    <svg className="w-12 h-12 text-white mx-auto mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                    </svg>
+                    <p className="text-sm text-white font-medium mb-2">Generation Failed</p>
+                    <p className="text-xs text-white/90 max-w-sm mx-auto">{post.media.error}</p>
+                  </div>
+                </div>
+              )}
+
+              {(post.media.type === 'video') && post.media.error && (
+                <div className="flex items-center justify-center h-full bg-gradient-to-br from-red-500 to-pink-500">
+                  <div className="text-center p-6">
+                    <svg className="w-12 h-12 text-white mx-auto mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                    </svg>
+                    <p className="text-sm text-white font-medium mb-2">Video Error</p>
+                    <p className="text-xs text-white/90 max-w-sm mx-auto">{post.media.error}</p>
+                  </div>
+                </div>
+              )}
+
+              {(post.media.type === 'video') && !post.media.error && (
+                <div className="relative w-full h-full">
+                  <video
+                    src={post.media.url}
+                    className="w-full h-full object-contain"
+                    preload="auto"
+                    controls
+                  />
+                  <a
+                    href={post.media.url}
+                    download
+                    className="absolute bottom-4 right-4 w-10 h-10 flex items-center justify-center bg-black/50 hover:bg-black/70 text-white rounded-full transition-colors sm:hidden backdrop-blur-sm"
+                    aria-label="Download video"
+                  >
+                    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                    </svg>
+                  </a>
+                </div>
               )}
 
               {post.media.type === 'audio' && (
@@ -221,16 +271,6 @@ export function PostContent({
                 </div>
               )}
 
-              {/* Play button overlay for video */}
-              {post.media.type === 'video' && (
-                <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                  <div className="w-16 h-16 bg-black/70 rounded-full flex items-center justify-center">
-                    <svg className="w-8 h-8 text-white ml-1" fill="currentColor" viewBox="0 0 20 20">
-                      <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clipRule="evenodd" />
-                    </svg>
-                  </div>
-                </div>
-              )}
 
               {/* Sold overlay */}
               {isSold && (

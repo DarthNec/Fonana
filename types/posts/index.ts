@@ -27,11 +27,12 @@ export interface PostContent {
  * Медиа контент поста
  */
 export interface PostMedia {
-  type: 'text' | 'image' | 'video' | 'audio'
+  type: 'text' | 'image' | 'video' | 'audio' | 'ai-video'
   url?: string
   thumbnail?: string
   preview?: string
   aspectRatio?: 'vertical' | 'square' | 'horizontal'
+  error?: string | null
 }
 
 /**

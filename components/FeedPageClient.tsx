@@ -298,7 +298,18 @@ export default function FeedPageClient() {
         }
       }
   
-      const processedPosts = realtimePosts.map((post) => {
+      const processedPosts = realtimePosts.filter((post) => {
+        // Пропускаем ai-video, если не подходит
+        if (post.media.type === 'ai-video') {
+          if (user?.id) {
+            if (user.id !== post.creator.id) return false;
+          } else return false;
+        }
+    
+        // можно добавить другие фильтры, если нужно
+        return true;
+      })
+      .map((post) => {
         if (subscriptions?.subscriptions?.length > 0) {
           const sub = subscriptions.subscriptions.find((sub: any) => sub.creatorId === post.creator.id);
           console.log("[SUBSCRIPTION] sub:", sub);
@@ -335,7 +346,8 @@ export default function FeedPageClient() {
             post.access.shouldHideContent = false;
           }
         }
-
+        
+        console.log(`[POST] post:`, post);
         return post;
       });
   
