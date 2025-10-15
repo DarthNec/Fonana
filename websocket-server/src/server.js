@@ -221,11 +221,27 @@ function extractToken(req) {
 
 // Отправка события конкретному пользователю
 function sendToUser(userId, event) {
+  console.log(`👤 [sendToUser] Attempting to send to user: ${userId}`);
+  console.log(`👤 [sendToUser] Event type: ${event.type}`);
+  console.log(`👤 [sendToUser] Total connections: ${connections.size}`);
+  
   const ws = connections.get(userId);
-  if (ws && ws.readyState === WebSocket.OPEN) {
-    ws.send(JSON.stringify(event));
+  
+  if (!ws) {
+    console.log(`❌ [sendToUser] User ${userId} not found in connections`);
+    return false;
+  }
+  
+  console.log(`👤 [sendToUser] User ${userId} connection found, readyState: ${ws.readyState}`);
+  
+  if (ws.readyState === WebSocket.OPEN) {
+    const payload = JSON.stringify(event);
+    console.log(`✅ [sendToUser] Sending to user ${userId}:`, payload.substring(0, 200) + '...');
+    ws.send(payload);
     return true;
   }
+  
+  console.log(`❌ [sendToUser] Connection not open for user ${userId}, state: ${ws.readyState}`);
   return false;
 }
 
@@ -234,15 +250,26 @@ function broadcastToSubscribers(channel, event) {
   let count = 0;
   const channelKey = getChannelKey(channel);
   
+  console.log(`📢 [broadcastToSubscribers] Channel:`, channelKey);
+  console.log(`📢 [broadcastToSubscribers] Event type:`, event.type);
+  console.log(`📢 [broadcastToSubscribers] Total connections:`, connections.size);
+  
   // Если Redis доступен, публикуем событие для других серверов
   if (isRedisAvailable()) {
     publishToChannel(`ws:${channelKey}`, event);
   }
   
-  // Отправляем событие локальным подписчикам
-  connections.forEach((ws) => {
+  // Логируем все подключения и их подписки
+  connections.forEach((ws, userId) => {
+    const subscriptions = Array.from(ws.subscriptions || new Set());
+    console.log(`  👥 User ${userId}: subscriptions =`, subscriptions);
+    console.log(`  👥 Has channel ${channelKey}?`, ws.subscriptions?.has(channelKey));
+    console.log(`  👥 ReadyState:`, ws.readyState);
+    
     if (ws.subscriptions.has(channelKey) && ws.readyState === WebSocket.OPEN) {
-      ws.send(JSON.stringify(event));
+      const payload = JSON.stringify(event);
+      console.log(`  ✅ Sending to ${userId}:`, payload.substring(0, 150) + '...');
+      ws.send(payload);
       count++;
     }
   });

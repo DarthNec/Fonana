@@ -86,84 +86,146 @@ class WebSocketService extends EventEmitter {
   }
 
   connect(url?: string) {
-    if (this.isConnecting || this.ws?.readyState === WebSocket.OPEN) {
+    const timestamp = new Date().toISOString()
+    console.log(`🔌 [WebSocket] Connection attempt started at ${timestamp}`)
+    console.log(`🔌 [WebSocket] Custom URL provided:`, url || 'none')
+    
+    if (this.isConnecting) {
+      console.log('⚠️ [WebSocket] Already connecting, skipping...')
+      return
+    }
+    
+    if (this.ws?.readyState === WebSocket.OPEN) {
+      console.log('✅ [WebSocket] Already connected, skipping...')
       return
     }
 
     this.isConnecting = true
+    console.log(`🔄 [WebSocket] isConnecting set to true, attempt #${this.reconnectAttempts + 1}`)
     
     // Асинхронная функция для получения URL с токеном
+    console.log('🔑 [WebSocket] Getting WebSocket URL with auth token...')
     this.getWebSocketUrlWithAuth(url).then(wsUrl => {
       if (!wsUrl) {
-        console.error('Failed to get WebSocket URL with auth')
+        console.error('❌ [WebSocket] Failed to get WebSocket URL with auth')
         this.isConnecting = false
         this.scheduleReconnect()
         return
       }
 
+      console.log('🌐 [WebSocket] WebSocket URL obtained:', wsUrl.substring(0, 50) + '...')
+
       try {
+        console.log('🚀 [WebSocket] Creating WebSocket connection...')
         this.ws = new WebSocket(wsUrl)
+        console.log('📡 [WebSocket] WebSocket object created, readyState:', this.ws.readyState)
 
         this.ws.onopen = () => {
-          console.log('WebSocket connected')
+          const connectedAt = new Date().toISOString()
+          console.log(`✅ [WebSocket] Connected successfully at ${connectedAt}`)
+          console.log(`⏱️ [WebSocket] Connection established after ${this.reconnectAttempts} attempts`)
+          
           this.isConnecting = false
           this.reconnectAttempts = 0
           this.emit('connected')
           
           // Переподписываемся на все каналы
-          this.subscribedChannels.forEach((channel) => {
-            this.sendSubscription(channel)
-          })
+          const channelCount = this.subscribedChannels.size
+          if (channelCount > 0) {
+            console.log(`🔔 [WebSocket] Resubscribing to ${channelCount} channels...`)
+            this.subscribedChannels.forEach((channel) => {
+              console.log(`  ↳ Subscribing to:`, channel)
+              this.sendSubscription(channel)
+            })
+          } else {
+            console.log('📭 [WebSocket] No channels to resubscribe')
+          }
 
           // Отправляем накопившиеся сообщения
-          this.processMessageQueue()
+          if (this.messageQueue.length > 0) {
+            console.log(`📤 [WebSocket] Processing ${this.messageQueue.length} queued messages...`)
+            this.processMessageQueue()
+          }
         }
 
         this.ws.onmessage = (event) => {
           try {
             const data = JSON.parse(event.data) as WebSocketEvent
+            console.log(`📨 [WebSocket] Message received:`, data.type)
             
             // Защита от слишком частых событий
             this.throttleEvent(data.type, () => {
               this.emit(data.type, data)
             })
           } catch (error) {
-            console.error('Error parsing WebSocket message:', error)
+            console.error('❌ [WebSocket] Error parsing message:', error)
           }
         }
 
         this.ws.onerror = (error) => {
-          console.error('WebSocket error:', error)
+          console.error('❌ [WebSocket] Error occurred:', error)
+          console.log(`🔍 [WebSocket] Error details - readyState: ${this.ws?.readyState}`)
           this.isConnecting = false
         }
 
-        this.ws.onclose = () => {
-          console.log('WebSocket disconnected')
+        this.ws.onclose = (event) => {
+          const closedAt = new Date().toISOString()
+          console.log(`🔌 [WebSocket] Disconnected at ${closedAt}`)
+          console.log(`🔍 [WebSocket] Close details - code: ${event.code}, reason: ${event.reason || 'none'}, clean: ${event.wasClean}`)
+          
           this.isConnecting = false
           this.ws = null
           this.emit('disconnected')
+          
+          console.log('♻️ [WebSocket] Scheduling reconnection...')
           this.scheduleReconnect()
         }
       } catch (error) {
-        console.error('Error creating WebSocket:', error)
+        console.error('❌ [WebSocket] Error creating WebSocket:', error)
+        console.log('📊 [WebSocket] Error stack:', error instanceof Error ? error.stack : 'no stack')
         this.isConnecting = false
         this.scheduleReconnect()
       }
+    }).catch(error => {
+      console.error('❌ [WebSocket] Error in getWebSocketUrlWithAuth:', error)
+      this.isConnecting = false
+      this.scheduleReconnect()
     })
   }
 
   private async getWebSocketUrlWithAuth(customUrl?: string): Promise<string | null> {
     // Если передан кастомный URL, используем его
     if (customUrl) {
+      console.log('[WebSocket] Using custom URL:', customUrl)
       return customUrl
     }
     
-    // В production используем WSS, в development - WS
+    // Определяем протокол и хост
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
-    const host = window.location.hostname  // hostname without port
-    // WebSocket всегда на порту 3002, независимо от окружения
-    const wsPort = '3002'
-    let url = `${protocol}//${host}:${wsPort}/ws`
+    
+    // WebSocket сервер на выделенном IP
+    // Development: ws://64.20.37.222:3002
+    // Production через Nginx: wss://fonana.me/ws (проксируется на 64.20.37.222:3002)
+    let wsHost: string
+    let wsPort: string
+    let wsPath: string
+    
+    if (window.location.hostname === 'fonana.me' || window.location.hostname.endsWith('.fonana.me')) {
+      // Production: используем домен, Nginx проксирует на 64.20.37.222:3002
+      wsHost = window.location.hostname
+      wsPort = '' // Nginx слушает на стандартном порту (443 для wss)
+      wsPath = '/ws'
+      console.log('[WebSocket] Production mode: using Nginx proxy')
+    } else {
+      // Development: прямое подключение к WebSocket серверу
+      wsHost = '127.0.0.1'
+      wsPort = ':3003'
+      wsPath = '/ws'
+      console.log('[WebSocket] Development mode: direct connection to WebSocket server')
+    }
+    
+    let url = `${protocol}//${wsHost}${wsPort}${wsPath}`
+    console.log('[WebSocket] Base URL constructed:', url)
     
     console.log('[WebSocket] Getting JWT token for connection...')
     
@@ -180,7 +242,7 @@ class WebSocketService extends EventEmitter {
     // Добавляем токен как query параметр
     url += `?token=${encodeURIComponent(token)}`
     
-    console.log('[WebSocket] Final URL:', url.substring(0, 50) + '...')
+    console.log('[WebSocket] Final URL:', url.substring(0, 80) + '...')
     
     return url
   }
@@ -194,61 +256,88 @@ class WebSocketService extends EventEmitter {
   }
 
   private scheduleReconnect() {
+    console.log(`🔄 [WebSocket] scheduleReconnect called, current attempts: ${this.reconnectAttempts}`)
+    
     if (this.reconnectAttempts >= this.maxReconnectAttempts) {
-      console.error('Max reconnection attempts reached')
+      console.error(`❌ [WebSocket] Max reconnection attempts (${this.maxReconnectAttempts}) reached, giving up`)
       this.emit('max_reconnect_reached')
       return
     }
 
     if (this.reconnectTimeout) {
+      console.log('⏰ [WebSocket] Clearing existing reconnect timeout')
       clearTimeout(this.reconnectTimeout)
     }
 
     const delay = this.reconnectDelay * Math.pow(2, this.reconnectAttempts)
     this.reconnectAttempts++
+    
+    console.log(`⏳ [WebSocket] Scheduling reconnect attempt #${this.reconnectAttempts}/${this.maxReconnectAttempts} in ${delay}ms (${(delay / 1000).toFixed(1)}s)`)
 
     this.reconnectTimeout = setTimeout(() => {
-      console.log(`Attempting to reconnect (${this.reconnectAttempts}/${this.maxReconnectAttempts})`)
+      console.log(`🔄 [WebSocket] Reconnect timeout fired, attempting to reconnect (${this.reconnectAttempts}/${this.maxReconnectAttempts})`)
       this.connect()
     }, delay)
   }
 
   disconnect() {
+    console.log('🔌 [WebSocket] Disconnect called manually')
+    
     if (this.reconnectTimeout) {
+      console.log('⏰ [WebSocket] Clearing reconnect timeout')
       clearTimeout(this.reconnectTimeout)
       this.reconnectTimeout = null
     }
 
     if (this.ws) {
+      const state = this.ws.readyState
+      console.log(`🔌 [WebSocket] Closing connection, readyState: ${state}`)
       this.ws.close()
       this.ws = null
     }
 
+    const channelCount = this.subscribedChannels.size
+    const queueCount = this.messageQueue.length
+    
+    console.log(`🧹 [WebSocket] Cleaning up - channels: ${channelCount}, queued messages: ${queueCount}`)
     this.subscribedChannels.clear()
     this.messageQueue = []
     this.reconnectAttempts = 0
     this.isConnecting = false
+    console.log('✅ [WebSocket] Disconnect complete')
   }
 
   // Унифицированная подписка на каналы
   subscribe(channel: SubscriptionChannel) {
     const key = this.getChannelKey(channel)
+    console.log(`🔔 [WebSocket] Subscribe request for channel:`, key)
+    
     this.subscribedChannels.set(key, channel)
+    console.log(`📝 [WebSocket] Channel saved to local subscriptions (total: ${this.subscribedChannels.size})`)
     
     if (this.ws?.readyState === WebSocket.OPEN) {
+      console.log(`✅ [WebSocket] Connection is open, sending subscription immediately`)
       this.sendSubscription(channel)
+    } else {
+      console.log(`⏳ [WebSocket] Connection not ready (state: ${this.ws?.readyState}), subscription will be sent on connect`)
     }
   }
 
   unsubscribe(channel: SubscriptionChannel) {
     const key = this.getChannelKey(channel)
+    console.log(`🔕 [WebSocket] Unsubscribe request for channel:`, key)
+    
     this.subscribedChannels.delete(key)
+    console.log(`📝 [WebSocket] Channel removed from subscriptions (remaining: ${this.subscribedChannels.size})`)
     
     if (this.ws?.readyState === WebSocket.OPEN) {
+      console.log(`✅ [WebSocket] Connection is open, sending unsubscribe message`)
       this.send({
         type: 'unsubscribe',
         channel
       })
+    } else {
+      console.log(`⏳ [WebSocket] Connection not ready, unsubscribe not sent`)
     }
   }
 
@@ -371,16 +460,13 @@ class WebSocketService extends EventEmitter {
 // Singleton экземпляр
 export const wsService = new WebSocketService()
 
-// ВРЕМЕННО ОТКЛЮЧЕНО: Автоматически подключаемся при загрузке в браузере
-// [critical_regression_2025_017] Отключено для остановки infinite reconnect loop
 /*
+// Auto-connect при загрузке в браузере
 if (typeof window !== 'undefined') {
   // Откладываем подключение, чтобы дать время для загрузки JWT
   setTimeout(() => {
-    console.log('[WebSocket] Initiating auto-connect...')
+    console.log('[WebSocket] Initiating auto-connect to 64.20.37.222:3002...')
     wsService.connect()
   }, 1000)
 } 
-*/
-
-console.log('[WebSocket] Auto-connect disabled for emergency stabilization [critical_regression_2025_017]') 
+  */

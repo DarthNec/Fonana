@@ -251,8 +251,7 @@ export function PostContent({
                     controls
                   />
                   <a
-                    href={post.media.url}
-                    download
+                    href={`/api/download?url=${encodeURIComponent(post.media.url)}`}
                     className="absolute bottom-4 right-4 w-10 h-10 flex items-center justify-center bg-black/50 hover:bg-black/70 text-white rounded-full transition-colors sm:hidden backdrop-blur-sm"
                     aria-label="Download video"
                   >

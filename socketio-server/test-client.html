@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Socket.IO Test Client</title>
+    <script src="https://cdn.socket.io/4.8.1/socket.io.min.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+        }
+        .container {
+            border: 1px solid #ccc;
+            padding: 20px;
+            border-radius: 8px;
+        }
+        .status {
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 4px;
+            font-weight: bold;
+        }
+        .connected {
+            background-color: #d4edda;
+            color: #155724;
+        }
+        .disconnected {
+            background-color: #f8d7da;
+            color: #721c24;
+        }
+        input, button {
+            padding: 10px;
+            margin: 5px 0;
+            width: 100%;
+            box-sizing: border-box;
+        }
+        button {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            cursor: pointer;
+            border-radius: 4px;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        .log {
+            background-color: #f8f9fa;
+            padding: 15px;
+            margin-top: 20px;
+            border-radius: 4px;
+            max-height: 400px;
+            overflow-y: auto;
+            font-family: monospace;
+            font-size: 12px;
+        }
+        .log-entry {
+            padding: 5px 0;
+            border-bottom: 1px solid #dee2e6;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔌 Socket.IO Test Client</h1>
+        
+        <div id="status" class="status disconnected">
+            ❌ Disconnected
+        </div>
+
+        <div>
+            <label for="token">JWT Token:</label>
+            <input type="text" id="token" placeholder="Вставьте ваш JWT токен сюда">
+            
+            <label for="url">Server URL:</label>
+            <input type="text" id="url" value="http://localhost:3004" placeholder="http://localhost:3004">
+            
+            <button onclick="connect()">🔌 Connect</button>
+            <button onclick="disconnect()">🔌 Disconnect</button>
+        </div>
+
+        <hr>
+
+        <div>
+            <h3>Подписки</h3>
+            
+            <label for="userId">User ID:</label>
+            <input type="text" id="userId" placeholder="user-id">
+            
+            <button onclick="subscribeNotifications()">🔔 Subscribe to Notifications</button>
+            <button onclick="subscribeFeed()">📰 Subscribe to Feed</button>
+            
+            <hr>
+            
+            <label for="creatorId">Creator ID:</label>
+            <input type="text" id="creatorId" placeholder="creator-id">
+            <button onclick="subscribeCreator()">👤 Subscribe to Creator</button>
+            
+            <hr>
+            
+            <label for="postId">Post ID:</label>
+            <input type="text" id="postId" placeholder="post-id">
+            <button onclick="subscribePost()">📝 Subscribe to Post</button>
+        </div>
+
+        <hr>
+
+        <div>
+            <button onclick="sendPing()">🏓 Send Ping</button>
+            <button onclick="clearLog()">🧹 Clear Log</button>
+        </div>
+
+        <div class="log" id="log">
+            <div class="log-entry">Ожидание подключения...</div>
+        </div>
+    </div>
+
+    <script>
+        let socket = null;
+
+        function log(message, data = null) {
+            const logDiv = document.getElementById('log');
+            const entry = document.createElement('div');
+            entry.className = 'log-entry';
+            const timestamp = new Date().toLocaleTimeString();
+            entry.innerHTML = `<strong>${timestamp}</strong> - ${message}`;
+            
+            if (data) {
+                entry.innerHTML += `<br><pre>${JSON.stringify(data, null, 2)}</pre>`;
+            }
+            
+            logDiv.appendChild(entry);
+            logDiv.scrollTop = logDiv.scrollHeight;
+        }
+
+        function updateStatus(connected) {
+            const statusDiv = document.getElementById('status');
+            if (connected) {
+                statusDiv.className = 'status connected';
+                statusDiv.textContent = '✅ Connected';
+            } else {
+                statusDiv.className = 'status disconnected';
+                statusDiv.textContent = '❌ Disconnected';
+            }
+        }
+
+        function connect() {
+            const token = document.getElementById('token').value;
+            const url = document.getElementById('url').value;
+
+            if (!token) {
+                alert('Пожалуйста, введите JWT токен!');
+                return;
+            }
+
+            log('🔌 Connecting to ' + url + '...');
+
+            socket = io(url, {
+                auth: {
+                    token: token
+                },
+                transports: ['websocket', 'polling']
+            });
+
+            // События подключения
+            socket.on('connect', () => {
+                log('✅ Connected! Socket ID: ' + socket.id);
+                updateStatus(true);
+            });
+
+            socket.on('connected', (data) => {
+                log('📨 Server welcome message:', data);
+            });
+
+            socket.on('disconnect', (reason) => {
+                log('🔌 Disconnected. Reason: ' + reason);
+                updateStatus(false);
+            });
+
+            socket.on('connect_error', (error) => {
+                log('❌ Connection error: ' + error.message);
+                updateStatus(false);
+            });
+
+            // События подписок
+            socket.on('subscribed', (data) => {
+                log('✅ Subscribed to channel:', data);
+            });
+
+            socket.on('unsubscribed', (data) => {
+                log('✅ Unsubscribed from channel:', data);
+            });
+
+            socket.on('pong', () => {
+                log('🏓 Pong received');
+            });
+
+            // События приложения
+            const eventTypes = [
+                'notification',
+                'post_liked',
+                'post_created',
+                'creator_updated',
+                'feed_update'
+            ];
+
+            eventTypes.forEach(eventType => {
+                socket.on(eventType, (data) => {
+                    log(`📨 Event: ${eventType}`, data);
+                });
+            });
+
+            socket.on('error', (error) => {
+                log('❌ Error:', error);
+            });
+        }
+
+        function disconnect() {
+            if (socket) {
+                log('🔌 Disconnecting...');
+                socket.disconnect();
+                socket = null;
+                updateStatus(false);
+            }
+        }
+
+        function subscribeNotifications() {
+            const userId = document.getElementById('userId').value;
+            if (!userId) {
+                alert('Введите User ID!');
+                return;
+            }
+
+            if (!socket || !socket.connected) {
+                alert('Сначала подключитесь к серверу!');
+                return;
+            }
+
+            log('🔔 Subscribing to notifications for user: ' + userId);
+            socket.emit('subscribe', {
+                type: 'notifications',
+                userId: userId
+            });
+        }
+
+        function subscribeFeed() {
+            const userId = document.getElementById('userId').value;
+            if (!userId) {
+                alert('Введите User ID!');
+                return;
+            }
+
+            if (!socket || !socket.connected) {
+                alert('Сначала подключитесь к серверу!');
+                return;
+            }
+
+            log('📰 Subscribing to feed for user: ' + userId);
+            socket.emit('subscribe', {
+                type: 'feed',
+                userId: userId
+            });
+        }
+
+        function subscribeCreator() {
+            const creatorId = document.getElementById('creatorId').value;
+            if (!creatorId) {
+                alert('Введите Creator ID!');
+                return;
+            }
+
+            if (!socket || !socket.connected) {
+                alert('Сначала подключитесь к серверу!');
+                return;
+            }
+
+            log('👤 Subscribing to creator: ' + creatorId);
+            socket.emit('subscribe', {
+                type: 'creator',
+                id: creatorId
+            });
+        }
+
+        function subscribePost() {
+            const postId = document.getElementById('postId').value;
+            if (!postId) {
+                alert('Введите Post ID!');
+                return;
+            }
+
+            if (!socket || !socket.connected) {
+                alert('Сначала подключитесь к серверу!');
+                return;
+            }
+
+            log('📝 Subscribing to post: ' + postId);
+            socket.emit('subscribe', {
+                type: 'post',
+                postId: postId
+            });
+        }
+
+        function sendPing() {
+            if (!socket || !socket.connected) {
+                alert('Сначала подключитесь к серверу!');
+                return;
+            }
+
+            log('🏓 Sending ping...');
+            socket.emit('ping');
+        }
+
+        function clearLog() {
+            document.getElementById('log').innerHTML = '<div class="log-entry">Log cleared</div>';
+        }
+    </script>
+</body>
+</html>
+

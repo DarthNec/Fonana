@@ -7,7 +7,7 @@ function initRedis() {
   try {
     // Создаем основное подключение
     redis = new Redis({
-      host: '127.0.0.1',
+      host: '64.20.37.222',
       port: 6379,
       retryStrategy: (times) => {
         const delay = Math.min(times * 50, 2000);
@@ -24,7 +24,7 @@ function initRedis() {
     
     // Создаем подписчика для pub/sub
     subscriber = new Redis({
-      host: '127.0.0.1',
+      host: '64.20.37.222',
       port: 6379
     });
     

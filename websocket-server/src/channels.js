@@ -57,10 +57,14 @@ async function canAccessChannel(user, channel) {
 // Обработка подписки на канал
 async function handleSubscribe(ws, channel) {
   try {
+    console.log(`🔔 [handleSubscribe] User ${ws.userId} subscribing to:`, JSON.stringify(channel));
+    
     // Проверяем права доступа
     const hasAccess = await canAccessChannel(ws.user, channel);
+    console.log(`🔔 [handleSubscribe] Access check result:`, hasAccess);
     
     if (!hasAccess) {
+      console.log(`❌ [handleSubscribe] Access denied for user ${ws.userId} to channel:`, channel);
       ws.send(JSON.stringify({
         type: 'error',
         data: {
@@ -72,20 +76,24 @@ async function handleSubscribe(ws, channel) {
     }
     
     const channelKey = getChannelKey(channel);
+    console.log(`🔔 [handleSubscribe] Generated channel key:`, channelKey);
     
     // Добавляем подписку
     ws.subscriptions.add(channelKey);
+    console.log(`🔔 [handleSubscribe] Current subscriptions for user ${ws.userId}:`, Array.from(ws.subscriptions));
     
     console.log(`✅ User ${ws.userId} subscribed to ${channelKey}`);
     
     // Подтверждаем подписку
-    ws.send(JSON.stringify({
+    const response = {
       type: 'subscribed',
       data: {
         channel,
         channelKey
       }
-    }));
+    };
+    console.log(`📤 [handleSubscribe] Sending confirmation:`, JSON.stringify(response));
+    ws.send(JSON.stringify(response));
     
     // Если это канал уведомлений, отправляем непрочитанные
     if (channel.type === 'notifications') {

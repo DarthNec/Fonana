@@ -31,6 +31,7 @@ import { useRetry } from '@/lib/utils/retry'
 import { toast } from 'react-hot-toast'
 import { jwtManager } from '@/lib/utils/jwt'
 import { isPlaywrightTestMode, getPlaywrightTestUser } from '@/lib/test/playwright-detection'
+import { socketIOService } from '@/lib/services/socketio'
 
 // Dynamic import Toaster to prevent SSR useContext errors
 const Toaster = dynamic(
@@ -299,6 +300,112 @@ export function AppProvider({ children }: AppProviderProps) {
       }
     }
   }, [connected, publicKey, isInitialized])
+
+  // 🔌 Socket.IO подключение (работает как для авторизованных, так и для анонимных пользователей)
+  useEffect(() => {
+    console.log('[AppProvider][Socket.IO] Socket.IO useEffect triggered', {
+      hasUser: !!user,
+      userId: user?.id,
+      isInitialized
+    })
+    
+    // Проверяем, что мы на клиенте
+    if (typeof window === 'undefined' || !isInitialized) {
+      console.log('[AppProvider][Socket.IO] Skipping Socket.IO connection:', {
+        isClient: typeof window !== 'undefined',
+        isInitialized
+      })
+      return
+    }
+
+    if (user && user.id) {
+      console.log('🔌 [Socket.IO] Connecting to Socket.IO server for authenticated user:', user.id)
+      // Подключаемся к Socket.IO с объектом пользователя
+      socketIOService.connect(undefined, user)
+    } else {
+      console.log('🔌 [Socket.IO] Connecting to Socket.IO server anonymously')
+      // Подключаемся без пользователя
+      socketIOService.connect()
+    }
+    
+    // Обработчик успешного подключения
+    const handleConnected = () => {
+      console.log('✅ [Socket.IO] Connected successfully!')
+      
+      // Подписываемся на каналы только если пользователь авторизован
+      if (user && user.id) {
+        console.log('🔔 [Socket.IO] Subscribing to notifications for user:', user.id)
+        socketIOService.subscribeToNotifications(user.id)
+        
+        console.log('📰 [Socket.IO] Subscribing to feed for user:', user.id)
+        socketIOService.subscribeToFeed(user.id)
+      } else {
+        console.log('👤 [Socket.IO] Connected anonymously (no user subscriptions)')
+      }
+    }
+    
+    // Обработчик отключения
+    const handleDisconnected = () => {
+      console.log('🔌 [Socket.IO] Disconnected from server')
+    }
+    
+    // Обработчик новых уведомлений
+    const handleNotification = (data: any) => {
+      console.log('📨 [Socket.IO] New notification received:', data)
+      
+      // Показываем уведомление пользователю
+      if (data.notification?.message) {
+        toast.success(data.notification.message, {
+          duration: 5000,
+          icon: '🔔'
+        })
+      }
+      
+      // Здесь можно добавить обновление store уведомлений
+      // Например: setNotifications([data.notification, ...notifications])
+    }
+    
+    // Обработчик обновления ленты
+    const handleFeedUpdate = (data: any) => {
+      console.log('📰 [Socket.IO] Feed update received:', data)
+      // Здесь можно обновить ленту постов
+    }
+    
+    // Регистрируем обработчики событий
+    socketIOService.on('connected', handleConnected)
+    socketIOService.on('disconnected', handleDisconnected)
+    socketIOService.on('notification', handleNotification)
+    socketIOService.on('feed_update', handleFeedUpdate)
+    
+    // Если уже подключены, сразу подписываемся
+    if (socketIOService.isConnected()) {
+      console.log('✅ [Socket.IO] Already connected, subscribing immediately')
+      handleConnected()
+    }
+    
+    // Cleanup при размонтировании
+    return () => {
+      console.log('🧹 [Socket.IO] Cleaning up Socket.IO connection')
+      
+      // Отписываемся от событий
+      socketIOService.off('connected', handleConnected)
+      socketIOService.off('disconnected', handleDisconnected)
+      socketIOService.off('notification', handleNotification)
+      socketIOService.off('feed_update', handleFeedUpdate)
+      
+      // Отписываемся от каналов если пользователь был авторизован
+      if (user?.id) {
+        socketIOService.unsubscribeFromNotifications(user.id)
+        socketIOService.unsubscribeFromFeed(user.id)
+      }
+      
+      // Отключаемся при размонтировании провайдера
+      if (!isMountedRef.current) {
+        console.log('🔌 [Socket.IO] Disconnecting from server')
+        socketIOService.disconnect()
+      }
+    }
+  }, [isInitialized])
 
   /**
    * Обеспечивает существование JWT токена для подключенного кошелька
