@@ -4,6 +4,7 @@ import React, { useState } from 'react'
 import { UnifiedPost, PostAction, PostCardVariant } from '@/types/posts'
 import { PostHeader } from '../PostHeader'
 import { PostContent } from '../PostContent'
+import { RemixCarousel } from '../RemixCarousel'
 import { PostActions } from '../PostActions'
 import { PostTierBadge } from '../PostTierBadge'
 import { PostFlashSale } from '../PostFlashSale'
@@ -77,6 +78,9 @@ export function PostCard({
   const showTierBadge = !!post?.access?.tier && (needsSubscription(post) || needsTierUpgrade(post))
   const showAuctionBadge = isActiveAuction(post.commerce)
   const isSold = isPostSold(post.commerce)
+  
+  // Определяем, нужно ли показывать карусель ремиксов
+  const shouldShowRemixCarousel = hasRemixes(post.id)
 
   // [content_access_system_2025_017] Определяем визуальные параметры
   const accessType = getPostAccessType({
@@ -214,11 +218,23 @@ export function PostCard({
         )}
 
         {/* Content */}
-        <PostContent 
-          post={post}
-          variant={variant}
-          onAction={onAction}
-        />
+        {shouldShowRemixCarousel ? (
+          <RemixCarousel 
+            post={convertUnifiedPostToPostAPI(post)}
+            variant={variant}
+            onAction={onAction}
+            showIndicators={variant !== 'minimal'}
+            showNavigation={variant !== 'minimal'}
+            enableTouch={true}
+            enableKeyboard={true}
+          />
+        ) : (
+          <PostContent 
+            post={post}
+            variant={variant}
+            onAction={onAction}
+          />
+        )}
 
         {/* Actions */}
         {variant !== 'minimal' && (
@@ -305,4 +321,38 @@ export function PostCard({
       )}
     </article>
   )
+}
+
+// Вспомогательная функция для проверки наличия ремиксов
+function hasRemixes(postId: string): boolean {
+  // В реальном приложении здесь может быть проверка через API
+  // Пока возвращаем false, так как загрузка будет происходить через API
+  return false
+}
+
+// Функция конвертации UnifiedPost в PostAPI
+function convertUnifiedPostToPostAPI(post: UnifiedPost): any {
+  return {
+    id: post.id,
+    title: post.content.title,
+    content: post.content.text,
+    type: post.media.type,
+    category: post.content.category,
+    thumbnail: post.media.thumbnail,
+    mediaUrl: post.media.url,
+    requestId: post.media.requestId,
+    isLocked: post.access.isLocked,
+    minSubscriptionTier: post.access.tier,
+    remixId: null, // UnifiedPost не имеет этого поля
+    createdAt: post.createdAt,
+    updatedAt: post.updatedAt,
+    creator: {
+      id: post.creator.id,
+      nickname: post.creator.username,
+      avatar: post.creator.avatar,
+      fullName: post.creator.name
+    },
+    likesCount: post.engagement.likes,
+    commentsCount: post.engagement.comments
+  }
 } 

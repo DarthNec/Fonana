@@ -185,4 +185,104 @@ export interface PostsResponse {
   total: number
   hasMore: boolean
   nextCursor?: string
+}
+
+/**
+ * Информация о создателе для API ответов
+ */
+export interface PostCreatorAPI {
+  id: string
+  nickname: string
+  avatar: string | null
+  fullName: string | null
+}
+
+/**
+ * Пост для API ответов
+ */
+export interface PostAPI {
+  id: string
+  title: string
+  content: string
+  type: string
+  category: string | null
+  thumbnail: string | null
+  mediaUrl: string | null
+  requestId: string | null
+  isLocked: boolean
+  minSubscriptionTier: string | null
+  remixId: string | null
+  createdAt: string
+  updatedAt: string
+  creator: PostCreatorAPI
+  likesCount: number
+  commentsCount: number
+}
+
+/**
+ * Запрос группы ремиксов
+ */
+export interface RemixGroupRequest {
+  postId: string
+  includeOriginal?: boolean
+  limit?: number
+  offset?: number
+}
+
+/**
+ * Ответ группы ремиксов
+ */
+export interface RemixGroupResponse {
+  success: boolean
+  data: {
+    originalPost: PostAPI
+    remixes: PostAPI[]
+    totalCount: number
+    hasMore: boolean
+    pagination: {
+      limit: number
+      offset: number
+      total: number
+    }
+  }
+  error?: string
+}
+
+/**
+ * Запрос ремиксов поста
+ */
+export interface RemixesRequest {
+  id: string
+  limit?: number
+  offset?: number
+  sortBy?: 'createdAt' | 'likesCount' | 'viewsCount'
+  sortOrder?: 'asc' | 'desc'
+}
+
+/**
+ * Ответ ремиксов поста
+ */
+export interface RemixesResponse {
+  success: boolean
+  data: {
+    remixes: PostAPI[]
+    totalCount: number
+    hasMore: boolean
+    pagination: {
+      limit: number
+      offset: number
+      total: number
+    }
+  }
+  error?: string
+}
+
+/**
+ * Ошибка API
+ */
+export interface ErrorResponse {
+  success: false
+  error: string
+  code?: string
+  details?: any
 } 
