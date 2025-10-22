@@ -25,6 +25,7 @@ interface UseOptimizedPostsReturn {
   isLoadingMore: boolean
   loadMore: () => void
   loadPosts: () => void
+  testF: () => void
   refresh: (clearCache?: boolean) => void
   handleAction: (action: PostAction) => Promise<void>
   addNewPost: (post: UnifiedPost) => void
@@ -60,6 +61,11 @@ export function useOptimizedPosts(options: UseOptimizedPostsOptions = {}): UseOp
   
   console.log(`[useOptimizedPosts] isFeedLoading:`, isFeedLoading)
   
+  const testF = useCallback(async () => {
+    console.log('[useOptimizedPosts] testF called')
+    return 'test'
+  }, [])
+
   // Main effect for posts loading - FIXED AbortController pattern
   const loadPosts = useCallback(async () => {
     try {
@@ -574,6 +580,7 @@ export function useOptimizedPosts(options: UseOptimizedPostsOptions = {}): UseOp
     error,
     hasMore, // 🚀 PAGINATION: Используем реальное значение hasMore
     isLoadingMore,
+    testF,
     loadMore,
     loadPosts,
     refresh,

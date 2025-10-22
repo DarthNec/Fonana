@@ -61,6 +61,45 @@ socket.on('notification', (data) => {
 
 ## API
 
+### HTTP Endpoints
+
+#### POST /notify-ai-post/
+
+HTTP эндпоинт для отправки уведомлений о генерации AI-постов напрямую на сокет пользователя.
+
+**Использование:**
+
+```bash
+curl -X POST http://localhost:3004/notify-ai-post/ \
+  -H "Content-Type: application/json" \
+  -d '{
+    "userId": "cmfetoamd001spzkowc5pdygf",
+    "postId": "cm1234567890",
+    "status": "completed"
+  }'
+```
+
+**Параметры:**
+- `userId` (обязательный) - ID пользователя, которому отправить уведомление
+- `postId` (опциональный) - ID поста
+- `status` (опциональный) - Статус генерации (`started`, `processing`, `completed`, `error`)
+
+**Ответы:**
+- `200` - Уведомление успешно отправлено
+- `400` - Отсутствует userId
+- `404` - Пользователь не подключен к Socket.IO
+- `500` - Серверная ошибка
+
+**Клиент получит событие:**
+```javascript
+socket.on('ai-post-updated', (data) => {
+  console.log(data);
+  // { postId: "...", status: "completed", timestamp: "2025-10-16T..." }
+});
+```
+
+📚 **Подробная документация:** [README_NOTIFY.md](./README_NOTIFY.md)
+
 ### События от клиента к серверу
 
 #### subscribe
@@ -136,6 +175,18 @@ socket.on('notification', (data) => {
   // data: { type: 'notification', userId: string, notification: any }
 });
 ```
+
+#### ai-post-updated
+Обновление статуса генерации AI-поста.
+
+```javascript
+socket.on('ai-post-updated', (data) => {
+  // data: { postId: string, status: string, timestamp: string }
+  console.log(`Post ${data.postId} is now ${data.status}`);
+});
+```
+
+Возможные статусы: `started`, `processing`, `completed`, `error`, `cancelled`
 
 ## Архитектура
 

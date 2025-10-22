@@ -29,7 +29,8 @@ const SYSTEM_PATHS = [
   '/manifest',
   '/robots',
   '/sitemap',
-  '/not-found'
+  '/not-found',
+  '/socket.io'  // Добавляем SocketIO путь
 ]
 
 export function middleware(request: NextRequest) {

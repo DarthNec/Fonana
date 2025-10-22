@@ -33,6 +33,7 @@ export interface PostMedia {
   preview?: string
   aspectRatio?: 'vertical' | 'square' | 'horizontal'
   error?: string | null
+  requestId?: string
 }
 
 /**
@@ -149,6 +150,7 @@ export type PostActionType =
   | 'delete'
   | 'bookmark'
   | 'report'
+  | 'remix_created'
 
 /**
  * Действие с постом
@@ -157,6 +159,7 @@ export interface PostAction {
   type: PostActionType
   postId: string
   data?: any
+  post?: UnifiedPost // Для remix_created и других действий, которые создают новые посты
 }
 
 /**

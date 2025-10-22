@@ -10,6 +10,7 @@ export async function POST(request: NextRequest) {
     const formData = await request.formData()
     const file = formData.get('file') as File
     const type = formData.get('type') as string || 'image'
+    const accessType = formData.get('accessType') as string || 'free'
     
     if (!file) {
       return NextResponse.json({ error: 'Файл не найден' }, { status: 400 })
@@ -19,7 +20,8 @@ export async function POST(request: NextRequest) {
       name: file.name,
       type: file.type,
       size: file.size,
-      contentType: type
+      contentType: type,
+      accessType
     })
 
     // Проверяем тип файла в зависимости от типа контента
@@ -96,17 +98,68 @@ export async function POST(request: NextRequest) {
       }, { status: 500 })
     }
 
+    // Для изображений создаем сильно размытую копию ТОЛЬКО если контент платный
+    let blurUrl: string | undefined
+    const needsBlur = type === 'image' && accessType !== 'free'
+    
+    if (needsBlur) {
+      try {
+        console.log('🎯 [BUNNY UPLOAD API] Creating blurred version for paid content...')
+        
+        const arrayBuffer = await fileToUpload.arrayBuffer()
+        const buffer = Buffer.from(arrayBuffer)
+        
+        // Создаем МАКСИМАЛЬНО размытую версию
+        // 1. Уменьшаем размер до 20% для более быстрого blur
+        // 2. Применяем очень сильный blur (sigma 50)
+        // 3. Уменьшаем качество до 60%
+        const blurredBuffer = await sharp(buffer)
+          .resize({ width: 400 }) // Уменьшаем для более быстрого blur
+          .blur(30) // Максимальный blur (sigma)
+          .webp({ quality: 60 })
+          .toBuffer()
+        
+        console.log('🎯 [BUNNY UPLOAD API] Blurred image created:', {
+          originalSize: `${(buffer.length / 1024).toFixed(2)} KB`,
+          blurredSize: `${(blurredBuffer.length / 1024).toFixed(2)} KB`
+        })
+        
+        // Создаем File объект для размытого изображения
+        const blurredBlob = new Blob([new Uint8Array(blurredBuffer)], { type: 'image/webp' })
+        const originalName = fileToUpload.name.replace(/\.[^/.]+$/, '')
+        const blurredFile = new File([blurredBlob], `${originalName}_blur.webp`, { type: 'image/webp' })
+        
+        // Загружаем размытую версию в posts/blur папку
+        const blurUploadResult = await uploadToBunnyStorage(blurredFile, 'blur')
+        
+        if (blurUploadResult.success && blurUploadResult.fileUrl) {
+          blurUrl = blurUploadResult.fileUrl
+          console.log('🎯 [BUNNY UPLOAD API] Blurred version uploaded:', blurUrl)
+        } else {
+          console.error('🎯 [BUNNY UPLOAD API] Failed to upload blurred version:', blurUploadResult.error)
+        }
+        
+      } catch (blurError) {
+        console.error('🎯 [BUNNY UPLOAD API] Blur creation failed:', blurError)
+        // Не прерываем процесс если blur не удался
+      }
+    } else if (type === 'image' && accessType === 'free') {
+      console.log('🎯 [BUNNY UPLOAD API] Skipping blur creation for free content')
+    }
+
     console.log('🎯 [BUNNY UPLOAD API] Upload successful:', {
       fileUrl: uploadResult.fileUrl,
       thumbUrl: uploadResult.thumbUrl,
-      previewUrl: uploadResult.previewUrl
+      previewUrl: uploadResult.previewUrl,
+      blurUrl
     })
 
     return NextResponse.json({
       success: true,
       fileUrl: uploadResult.fileUrl,
       thumbUrl: uploadResult.thumbUrl,
-      previewUrl: uploadResult.previewUrl
+      previewUrl: uploadResult.previewUrl,
+      blurUrl
     })
 
   } catch (error) {

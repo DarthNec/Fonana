@@ -43,7 +43,7 @@ module.exports = {
       instances: 1,
       exec_mode: 'fork',
       cron_restart: '*/1 * * * *', // Запускается каждые 1 минут
-      autorestart: true, // Не автоперезапуск, только по крону
+      autorestart: false, // Отключаем автоперезапуск, только по крону
       env_file: './.env',
       env: {
         NODE_ENV: 'production'

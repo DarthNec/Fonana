@@ -121,6 +121,7 @@ export default function FeedPageClient() {
   console.log('[FeedPageClient] user:', user);
   // Функция для проверки аутентификации перед созданием поста
   const handleCreatePost = async () => {
+    console.log('[FeedPageClient] handleCreatePost');
     if (!user) {
       // 🔥 Открываем модальное окно подключения кошелька вместо ошибки
       setVisible(true)
@@ -150,7 +151,7 @@ export default function FeedPageClient() {
     loadMore,
     refresh,
     refreshWithoutCache,
-    handleAction
+    handleAction,
   } = useOptimizedPosts({
     category: selectedCategory === 'All' ? undefined : selectedCategory,
     variant: 'feed',
@@ -356,7 +357,19 @@ export default function FeedPageClient() {
     };
   
     fetchAndProcess();
-  }, [realtimePosts]);
+  }, [realtimePosts, refresh]);
+
+
+  useEffect(() => {
+    const handlePostCreated = () => {
+      console.log('[FeedPage] Post created event received')
+      refresh(true)
+      loadPosts();
+    }
+    
+    window.addEventListener('post-created', handlePostCreated)
+    return () => window.removeEventListener('post-created', handlePostCreated)
+  }, [refresh])
 
 
   // Посты уже отсортированы на сервере в зависимости от sortBy
@@ -675,7 +688,7 @@ export default function FeedPageClient() {
           onPostCreated={(createdPost) => {
             console.log('[FeedPage] Post created successfully, refreshing feed...')
             setShowCreateModal(false)
-            
+            loadPosts();
             // 🔥 OPTIMIZATION: Refresh feed to show new post immediately
             if (refresh) {
               console.log('[FeedPage] Calling refresh() to update feed...')

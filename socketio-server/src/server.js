@@ -1,13 +1,113 @@
 const { Server } = require('socket.io');
 const { createServer } = require('http');
+const { createServer: createHttpsServer } = require('https');
+const fs = require('fs');
+const path = require('path');
 const { publishToChannel, subscribeToChannel, isAvailable: isRedisAvailable } = require('./redis');
 
 // Хранилище активных соединений
 const connections = new Map();
 
 function createSocketIOServer(port) {
-  // Создаем HTTP сервер
-  const httpServer = createServer();
+  // Определяем тип сервера (HTTP или HTTPS)
+  const isProduction = process.env.NODE_ENV === 'production';
+  let httpServer;
+  
+  if (isProduction) {
+    // В production пытаемся использовать HTTPS
+    try {
+      // Ищем SSL сертификаты
+      const certPath = path.join(__dirname, '../../ssl/cert.pem');
+      const keyPath = path.join(__dirname, '../../ssl/key.pem');
+      
+      if (fs.existsSync(certPath) && fs.existsSync(keyPath)) {
+        console.log('🔒 Using HTTPS server with SSL certificates');
+        const options = {
+          cert: fs.readFileSync(certPath),
+          key: fs.readFileSync(keyPath)
+        };
+        httpServer = createHttpsServer(options, requestHandler);
+      } else {
+        console.log('⚠️  SSL certificates not found, falling back to HTTP');
+        httpServer = createServer(requestHandler);
+      }
+    } catch (error) {
+      console.log('⚠️  HTTPS setup failed, falling back to HTTP:', error.message);
+      httpServer = createServer(requestHandler);
+    }
+  } else {
+    // В development используем HTTP
+    httpServer = createServer(requestHandler);
+  }
+  
+  function requestHandler(req, res) {
+    // Обработка POST /notify-ai-post/
+    if (req.method === 'POST' && req.url === '/notify-ai-post/') {
+      let body = '';
+      
+      req.on('data', chunk => {
+        body += chunk.toString();
+      });
+      
+      req.on('end', () => {
+        try {
+          const { userId, postId, status } = JSON.parse(body);
+          
+          if (!userId) {
+            res.writeHead(400, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ 
+              success: false, 
+              error: 'userId is required' 
+            }));
+            return;
+          }
+          
+          // Находим сокет пользователя
+          const socket = connections.get(userId);
+          
+          if (socket && socket.connected) {
+            // Отправляем событие на сокет
+            socket.emit('ai-post-updated', {
+              postId,
+              status,
+              timestamp: new Date().toISOString()
+            });
+            
+            console.log(`✅ Sent ai-post-updated to user ${userId} (Socket: ${socket.id})`);
+            
+            res.writeHead(200, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ 
+              success: true, 
+              message: `Event sent to user ${userId}`,
+              socketId: socket.id
+            }));
+          } else {
+            console.log(`⚠️  User ${userId} not connected or socket closed`);
+            
+            res.writeHead(404, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ 
+              success: false, 
+              error: `User ${userId} not connected` 
+            }));
+          }
+        } catch (error) {
+          console.error('❌ Error processing notify-ai-post:', error);
+          
+          res.writeHead(500, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ 
+            success: false, 
+            error: error.message 
+          }));
+        }
+      });
+      
+      return;
+    }
+    
+    // Для других запросов возвращаем 404
+    res.writeHead(404, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ error: 'Not found' }));
+  }
   
   // Создаем Socket.IO сервер с CORS настройками
   const io = new Server(httpServer, {
@@ -16,7 +116,8 @@ function createSocketIOServer(port) {
         'http://localhost:3000',
         'http://127.0.0.1:3000',
         'https://fonana.me',
-        'https://www.fonana.me'
+        'https://www.fonana.me',
+        'https://64.20.37.222:3004' // Добавляем IP для fallback
       ],
       methods: ['GET', 'POST'],
       credentials: true
@@ -42,28 +143,20 @@ function createSocketIOServer(port) {
       }
       
       if (!user || !user.id) {
-        console.log('⚠️  No user data provided - connecting as anonymous');
-        // Анонимное подключение
-        socket.userId = `anonymous_${socket.id}`;
-        socket.user = { id: socket.userId, nickname: 'Anonymous' };
-        socket.isAnonymous = true;
-      } else {
-        // Пользователь передан клиентом
-        socket.userId = user.id;
-        socket.user = user;
-        socket.isAnonymous = false;
-        
-        console.log(`✅ User ${user.id} (${user.nickname || 'Unknown'}) connected`);
+        console.log('❌ No user data provided - connection rejected');
+        return next(new Error('Authentication required: user data must be provided'));
       }
+      
+      // Пользователь передан клиентом
+      socket.userId = user.id;
+      socket.user = user;
+      
+      console.log(`✅ User ${user.id} (${user.nickname || 'Unknown'}) connected`);
       
       next();
     } catch (error) {
-      console.error('⚠️  Error in auth middleware, allowing anonymous connection:', error);
-      // При любой ошибке - анонимное подключение
-      socket.userId = `anonymous_${socket.id}`;
-      socket.user = { id: socket.userId, nickname: 'Anonymous' };
-      socket.isAnonymous = true;
-      next();
+      console.error('❌ Error in auth middleware, connection rejected:', error);
+      return next(new Error('Authentication error: ' + error.message));
     }
   });
   

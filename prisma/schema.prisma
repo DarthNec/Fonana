@@ -32,7 +32,7 @@ model User {
   solanaWallet         String?               @map("solana_wallet")
   token                String?               // JWT token for API authentication
   tokenExpiresAt       DateTime?             // Token expiration date
-  referalCount         Int              
+  referalCount         Int                   @default(0)              
   accounts             Account[]
   auctionBids          AuctionBid[]
   auctionDeposits      AuctionDeposit[]
@@ -69,6 +69,7 @@ model Post {
   category            String?
   thumbnail           String?
   mediaUrl            String?
+  blurUrl             String?          // Blurred preview URL for locked content
   isLocked            Boolean          @default(false)
   isPremium           Boolean          @default(false)
   price               Float?
@@ -78,6 +79,7 @@ model Post {
   minSubscriptionTier String?          // 'basic' | 'premium' | 'vip'
   requestId           String?          // For Sora-2 AI generated videos
   error               String?          // Error message for AI video generation failures
+  remixId             String?          // ID of the original post that this is a remix of
   likesCount          Int              @default(0)
   commentsCount       Int              @default(0)
   viewsCount          Int              @default(0)

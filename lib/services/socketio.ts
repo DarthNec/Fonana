@@ -129,6 +129,26 @@ class SocketIOService extends EventEmitter {
       
       this.socket = io(url, socketOptions)
 
+      // Добавляем обработчик ошибки подключения для fallback
+      this.socket.on('connect_error', (error) => {
+        console.error('❌ [Socket.IO] Connect error:', error.message)
+        
+        // Если это production и ошибка связана с доменом, пробуем IP
+        if (window.location.hostname === 'fonana.me' || window.location.hostname.endsWith('.fonana.me')) {
+          if (url.includes('fonana.me') && !url.includes('64.20.37.222')) {
+            console.log('🔄 [Socket.IO] Domain failed, trying IP fallback...')
+            this.socket?.disconnect()
+            
+            // Пробуем подключиться к IP с правильным SocketIO путем
+            const fallbackUrl = 'http://64.20.37.222:3004'
+            console.log('🔄 [Socket.IO] Fallback URL:', fallbackUrl)
+            
+            this.socket = io(fallbackUrl, socketOptions)
+            this.setupEventHandlers()
+          }
+        }
+      })
+
       this.setupEventHandlers()
       
     } catch (error) {
@@ -198,7 +218,8 @@ class SocketIOService extends EventEmitter {
       'post_deleted',
       'comment_added',
       'comment_deleted',
-      'feed_update'
+      'feed_update',
+      'ai-post-updated'
     ]
 
     eventTypes.forEach(eventType => {
@@ -257,16 +278,17 @@ class SocketIOService extends EventEmitter {
     let url: string
     
     if (window.location.hostname === 'fonana.me' || window.location.hostname.endsWith('.fonana.me')) {
-      // Production: используем домен
-      url = `https://${window.location.hostname}:3004`
-      console.log('[Socket.IO] Production mode')
+      // Production: пробуем домен, если не работает - используем IP
+      url = 'https://fonana.me'
+      console.log('[Socket.IO] Production mode - connecting to:', url)
     } else {
       // Development: прямое подключение
-      url = 'http://127.0.0.1:3004'
-      console.log('[Socket.IO] Development mode')
+      url = 'https://fonana.me'
+      console.log('[Socket.IO] Development mode - connecting to:', url)
     }
     
-    console.log('[Socket.IO] URL:', url)
+      console.log('[Socket.IO] URL:', url)
+      console.log('[Socket.IO] Attempting connection...')
     
     return { url, user: user || null }
   }

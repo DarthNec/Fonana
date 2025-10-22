@@ -187,7 +187,8 @@ export async function GET(request: NextRequest) {
           type: post.type,
           url: post.mediaUrl,
           thumbnail: post.thumbnail,
-          error: post.error
+          error: post.error,
+          blurUrl: post.blurUrl
         },
         // Скрываем контент для заблокированных постов, но НЕ для автора
         content: (shouldHideContent && !isCreatorPost) ? '' : post.content,
@@ -276,6 +277,7 @@ export async function POST(request: NextRequest) {
       category: body.category || 'General',
       thumbnail: body.thumbnail || null,
       mediaUrl: body.mediaUrl || null,
+      blurUrl: body.blurUrl || null, // Размытое превью для заблокированного контента
       isLocked: body.isLocked || false,
       isPremium: body.isPremium || false,
       price: body.price ? parseFloat(body.price) : null,

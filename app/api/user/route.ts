@@ -110,6 +110,9 @@ export async function GET(request: NextRequest) {
           data: {
             wallet: wallet!,
             nickname: `user_${wallet!.slice(0, 8).toLowerCase()}`,
+            referalCount: 0,
+            fullName: `user_${wallet!.slice(0, 8).toLowerCase()}`,
+            name: `user_${wallet!.slice(0, 8).toLowerCase()}`,
             solanaWallet: wallet!
           },
           include: {

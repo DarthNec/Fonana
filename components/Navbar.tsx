@@ -8,6 +8,7 @@ import Avatar from './Avatar'
 import NotificationsDropdown from './NotificationsDropdown'
 import SolanaRateDisplay from './SolanaRateDisplay'
 import CreatePostModal from './CreatePostModal'
+import { useOptimizedPosts } from '@/lib/hooks/useOptimizedPosts'
 import { 
   HomeIcon, 
   UsersIcon, 
@@ -43,6 +44,7 @@ const navigation = [
 ] // { name: '', href: '/version-check', icon: RocketLaunchIcon, isNew: false },
 
 export function Navbar() {
+  const { loadPosts } = useOptimizedPosts()
   const [isOpen, setIsOpen] = useState(false)
   const [isProfileOpen, setIsProfileOpen] = useState(false)
   const [isScrolled, setIsScrolled] = useState(false)
@@ -432,9 +434,16 @@ export function Navbar() {
         <CreatePostModal 
           onClose={() => setShowCreateModal(false)}
           onPostCreated={() => {
-            setShowCreateModal(false)
             toast.success('Пост успешно создан!')
-            router.push('/feed')
+  
+            // Испускаем событие
+            window.dispatchEvent(new CustomEvent('post-created', { 
+              detail: { timestamp: Date.now() } 
+            }))
+            
+            if(window.location.pathname !== '/feed') {
+              router.push('/feed')
+            }
           }}
         />
       )}

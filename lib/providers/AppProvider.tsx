@@ -23,6 +23,7 @@ import { shallow } from 'zustand/shallow'
 import dynamic from 'next/dynamic'
 import { useAppStore, useUserActions } from '@/lib/store/appStore'
 import { setupDefaultHandlers } from '@/lib/services/WebSocketEventManager'
+import { useOptimizedPosts } from '../hooks/useOptimizedPosts'
 import { cacheManager } from '@/lib/services/CacheManager'
 import { LocalStorageCache } from '@/lib/services/CacheManager'
 import ErrorBoundary from '@/components/ErrorBoundary'
@@ -84,6 +85,8 @@ export function AppProvider({ children }: AppProviderProps) {
   const setNotifications = useAppStore((state: any) => state.setNotifications)
   // 🔥 ИСПРАВЛЕНО: Используем стабильный селектор для setJwtReady
   const setJwtReady = useAppStore((state: any) => state.setJwtReady)
+
+  const { loadPosts } = useOptimizedPosts()
   
   // 🔥 M7 PHASE 2: Enhanced lifecycle management 
   const isMountedRef = useRef(true)
@@ -371,11 +374,34 @@ export function AppProvider({ children }: AppProviderProps) {
       // Здесь можно обновить ленту постов
     }
     
+    // Обработчик обновления AI-постов
+    const handleAIPostUpdated = (data: any) => {
+      console.log('🤖 [Socket.IO] AI Post update received:', data)
+      console.log('   Post ID:', data.postId)
+      console.log('   Status:', data.status)
+      console.log('   Timestamp:', data.timestamp)
+      toast.success(`Sora генерация завершена! ${window.location.href == '/feed' ? 'Обновляем ленту...' : ''}`, {
+        duration: 3000,
+        icon: '🎉'
+      })
+      if(window.location.href == '/feed') {
+        window.location.reload();
+      } else {
+        window.location.href = '/feed';
+      }
+      // TODO: Показать уведомление и обновить список постов
+      // if (data.status === 'completed') {
+      //   showNotification('Пост готов!');
+      //   refreshPosts();
+      // }
+    }
+    
     // Регистрируем обработчики событий
     socketIOService.on('connected', handleConnected)
     socketIOService.on('disconnected', handleDisconnected)
     socketIOService.on('notification', handleNotification)
     socketIOService.on('feed_update', handleFeedUpdate)
+    socketIOService.on('ai-post-updated', handleAIPostUpdated)
     
     // Если уже подключены, сразу подписываемся
     if (socketIOService.isConnected()) {
@@ -392,6 +418,7 @@ export function AppProvider({ children }: AppProviderProps) {
       socketIOService.off('disconnected', handleDisconnected)
       socketIOService.off('notification', handleNotification)
       socketIOService.off('feed_update', handleFeedUpdate)
+      socketIOService.off('ai-post-updated', handleAIPostUpdated)
       
       // Отписываемся от каналов если пользователь был авторизован
       if (user?.id) {

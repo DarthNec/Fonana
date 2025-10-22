@@ -248,7 +248,7 @@ export default function CreatePostModal({ onPostCreated, onPostUpdated, onClose,
         imageAspectRatio: postData.imageAspectRatio || 'square',
         contentSource: 'upload',
         soraPrompt: '',
-        soraSize: '720x1280',
+        soraSize: '1080x1920',
         soraDuration: '4',
         soraReferenceImage: null,
         soraReferencePreview: ''
@@ -530,17 +530,19 @@ export default function CreatePostModal({ onPostCreated, onPostUpdated, onClose,
     }))
   }
 
-  const uploadMedia = async (file: File): Promise<{ fileUrl: string, thumbUrl?: string, previewUrl?: string } | null> => {
+  const uploadMedia = async (file: File, accessType: string): Promise<{ fileUrl: string, thumbUrl?: string, previewUrl?: string, blurUrl?: string } | null> => {
     const formData = new FormData()
     formData.append('file', file) // Отправляем оригинальный файл на сервер
     formData.append('type', file.type.startsWith('video/') ? 'video' : 
                             file.type.startsWith('audio/') ? 'audio' : 'image')
+    formData.append('accessType', accessType) // Отправляем тип доступа для определения нужен ли blur
 
     try {
       console.log('🎯 [CreatePostModal] Starting file upload to BunnyStorage:', {
         fileName: file.name,
         fileType: file.type,
-        fileSize: file.size
+        fileSize: file.size,
+        accessType
       })
 
       const response = await fetch('/api/posts/upload', {
@@ -751,6 +753,7 @@ export default function CreatePostModal({ onPostCreated, onPostUpdated, onClose,
     try {
       let mediaUrl = null
       let thumbnail = null
+      let blurUrl = null
       let requestId = null
       let postType = formData.type
 
@@ -775,7 +778,7 @@ export default function CreatePostModal({ onPostCreated, onPostUpdated, onClose,
       }
       // Upload media file if present (только для новых файлов и не Sora-2)
       else if (formData.file) {
-        const uploadResult = await uploadMedia(formData.file) // Используем оригинальный файл
+        const uploadResult = await uploadMedia(formData.file, formData.accessType) // Передаем accessType для определения нужен ли blur
         if (!uploadResult || !uploadResult.fileUrl) {
           throw new Error('Failed to upload file')
         }
@@ -785,10 +788,14 @@ export default function CreatePostModal({ onPostCreated, onPostUpdated, onClose,
           fileUrl: uploadResult.fileUrl,
           thumbUrl: uploadResult.thumbUrl,
           previewUrl: uploadResult.previewUrl,
+          blurUrl: uploadResult.blurUrl,
+          accessType: formData.accessType,
+          shouldHaveBlur: formData.accessType !== 'free',
           isCDN: uploadResult.fileUrl?.includes('b-cdn.net')
         })
         
         mediaUrl = uploadResult.fileUrl
+        blurUrl = uploadResult.blurUrl || null
         
         // Use thumbUrl from upload result or fallback to placeholder
         if (uploadResult.thumbUrl) {
@@ -805,11 +812,13 @@ export default function CreatePostModal({ onPostCreated, onPostUpdated, onClose,
         // В режиме редактирования используем существующие медиа
         mediaUrl = postData.mediaUrl
         thumbnail = postData.thumbnail
+        blurUrl = postData.blurUrl
       }
 
       console.log('[CreatePostModal] 🔥 FINAL MEDIA DEBUG:', {
         mediaUrl,
         thumbnail,
+        blurUrl,
         requestId,
         contentSource: formData.contentSource,
         mode,
@@ -828,6 +837,7 @@ export default function CreatePostModal({ onPostCreated, onPostUpdated, onClose,
         tags: formData.tags,
         thumbnail,
         mediaUrl,
+        blurUrl, // Добавляем blurUrl для размытого превью
         requestId, // Добавляем requestId для Sora-2
         isLocked: formData.accessType !== 'free',
         accessType: formData.accessType,

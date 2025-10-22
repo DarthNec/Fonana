@@ -329,10 +329,13 @@ async function processPost(post) {
     }
     
     // 8. Удаляем видео из OpenAI
-    await deleteSoraVideo(post.requestId)
+    // await deleteSoraVideo(post.requestId)
     
     // 9. Очищаем временные файлы
     cleanupTempFiles(post.requestId)
+    
+    // 10. Отправляем уведомление в SocketIO
+    await sendNotificationToSocketIO(post.creatorId, post.id, 'updated')
     
     console.log(`[SoraChecker] ✅ Post ${post.id} processed successfully!`)
     return true
@@ -341,6 +344,25 @@ async function processPost(post) {
     console.error(`[SoraChecker] Error processing post ${post.id}:`, error)
     cleanupTempFiles(post.requestId)
     return false
+  }
+}
+
+/**
+ * Отправляет уведомление в SocketIO сервер
+ */
+async function sendNotificationToSocketIO(userId, postId, status) {
+  try {
+    await axios.post('http://localhost:3004/notify-ai-post/', {
+      userId,
+      postId,
+      status
+    }, {
+      timeout: 5000 // 5 секунд таймаут
+    })
+    console.log(`[SoraChecker] Notification sent to SocketIO for post ${postId}`)
+  } catch (error) {
+    // Не логируем ошибку, так как это не критично для работы SoraChecker
+    console.log(`[SoraChecker] Failed to send notification for post ${postId} (non-critical)`)
   }
 }
 

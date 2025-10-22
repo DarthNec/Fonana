@@ -12,6 +12,7 @@ import {
   isPostSold 
 } from '@/components/posts/utils/postHelpers'
 import { cn } from '@/lib/utils'
+import RemixPostModal from '@/components/RemixPostModal'
 import { 
   // Category icons
   Squares2X2Icon, // All
@@ -32,7 +33,8 @@ import {
   CakeIcon, // Food
   SparklesIcon, // Party
   PhotoIcon, // Landscape
-  BriefcaseIcon // Work
+  BriefcaseIcon, // Work
+  ArrowPathIcon // Remix
 } from '@heroicons/react/24/outline'
 
 export interface PostContentProps {
@@ -77,6 +79,7 @@ export function PostContent({
   const [imageLoaded, setImageLoaded] = useState(false)
   const [imageError, setImageError] = useState(false)
   const [isTextExpanded, setIsTextExpanded] = useState(false)
+  const [showRemixModal, setShowRemixModal] = useState(false)
   
   // Определяем длинный ли текст (больше 200 символов)
   const isLongText = post.content?.text && typeof post.content.text === 'string' && post.content.text.length > 200
@@ -250,6 +253,21 @@ export function PostContent({
                     preload="auto"
                     controls
                   />
+                  
+                  {/* Remix button for videos with requestId */}
+                  {post.media.requestId && (
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        setShowRemixModal(true)
+                      }}
+                      className="absolute top-4 right-4 w-10 h-10 flex items-center justify-center bg-purple-500/80 hover:bg-purple-600/80 text-white rounded-full transition-colors backdrop-blur-sm"
+                      aria-label="Remix video"
+                    >
+                      <ArrowPathIcon className="w-5 h-5" />
+                    </button>
+                  )}
+                  
                   <a
                     href={`/api/download?url=${encodeURIComponent(post.media.url)}`}
                     className="absolute bottom-4 right-4 w-10 h-10 flex items-center justify-center bg-black/50 hover:bg-black/70 text-white rounded-full transition-colors sm:hidden backdrop-blur-sm"
@@ -346,6 +364,22 @@ export function PostContent({
             />
           )}
         </div>
+      )}
+      
+      {/* Remix Modal */}
+      {showRemixModal && (
+        <RemixPostModal
+          post={post}
+          onClose={() => setShowRemixModal(false)}
+          onRemixCreated={(remixPost) => {
+            console.log('[PostContent] Remix created:', remixPost)
+            setShowRemixModal(false)
+            // Можно добавить callback для обновления ленты
+            if (onAction) {
+              onAction({ type: 'remix_created', postId: post.id, post: remixPost })
+            }
+          }}
+        />
       )}
     </div>
   )

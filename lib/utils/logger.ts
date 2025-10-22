@@ -63,6 +63,9 @@ export class Logger {
     signature?: string
     hasReferrer?: boolean
     error?: any
+    operationType?: string
+    previousPlan?: string
+    newPlan?: string
   }) {
     const safeDetails = {
       ...details,

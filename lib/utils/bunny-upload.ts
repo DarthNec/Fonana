@@ -7,12 +7,14 @@ export interface BunnyUploadResult {
   fileUrl?: string
   thumbUrl?: string
   previewUrl?: string
+  blurUrl?: string
   error?: string
 }
 
 export async function uploadToBunnyStorage(
   file: File, 
-  type: 'image' | 'video' | 'audio' | 'support' | 'avatars' | 'messages'
+  type: 'image' | 'video' | 'audio' | 'support' | 'avatars' | 'messages' | 'blur',
+  customPath?: string
 ): Promise<BunnyUploadResult> {
   try {
     console.log('🎯 [BUNNY UPLOAD] Starting upload:', {
@@ -31,7 +33,10 @@ export async function uploadToBunnyStorage(
     // Определяем путь в BunnyStorage
     let bunnyPath: string
     
-    if (type === 'support') {
+    if (customPath) {
+      // Используем custom путь если он указан
+      bunnyPath = `${customPath}/${fileName}`
+    } else if (type === 'support') {
       bunnyPath = `${BUNNY_PATHS.support.images}/${fileName}`
     } else if (type === 'avatars') {
       bunnyPath = `${BUNNY_PATHS.avatars}/${fileName}`
@@ -41,6 +46,9 @@ export async function uploadToBunnyStorage(
       const isVideo = file.type.startsWith('video/')
       const mediaType = isImage ? 'images' : isVideo ? 'videos' : 'images' // fallback к images
       bunnyPath = `${BUNNY_PATHS.messages[mediaType]}/${fileName}`
+    } else if (type === 'blur') {
+      // Для размытых изображений
+      bunnyPath = `posts/blur/${fileName}`
     } else {
       const mediaType = type === 'image' ? 'images' : type === 'video' ? 'videos' : 'audio'
       bunnyPath = `${BUNNY_PATHS.posts[mediaType]}/${fileName}`
