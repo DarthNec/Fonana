@@ -4,6 +4,9 @@ import { hasAccessToTier, checkPostAccess, normalizeTierName } from '@/lib/utils
 import { TIER_HIERARCHY } from '@/lib/constants/tiers'
 import { detectPostType } from '@/lib/utils/postTypeDetection'
 import { getRedisPosts } from '@/app/api/redis/redisClient'
+import redis from '@/app/api/redis/redisClient'
+import { decode } from '@msgpack/msgpack'
+import { saveRemixToFile, getRemixFromFile } from '@/lib/remixFileSystem'
 
 // [post_creation_500_error_2025_017] Transformation function for imageAspectRatio
 function transformAspectRatio(value: string | number | null | undefined): number | null {
@@ -70,6 +73,80 @@ export async function GET(request: NextRequest) {
     })
 
     const totalCount = await prisma.post.count({ where })
+
+    // 🎭 [EMOTIONS] Получаем эмоции для всех постов
+    const postIds = posts.map(p => p.id)
+    const emotions = await (prisma as any).emotion.findMany({
+      where: {
+        postId: { in: postIds }
+      },
+      include: {
+        user: {
+          select: {
+            id: true,
+            nickname: true,
+            fullName: true,
+            avatar: true
+          }
+        }
+      }
+    })
+
+    // Группируем эмоции по postId
+    const emotionsMap = new Map<string, any[]>() // postId -> массив эмоций
+    emotions.forEach((emotion: any) => {
+      if (emotion.postId) {
+        if (!emotionsMap.has(emotion.postId)) {
+          emotionsMap.set(emotion.postId, [])
+        }
+        emotionsMap.get(emotion.postId)!.push({
+          id: emotion.id,
+          emotionId: emotion.emotionId,
+          userId: emotion.userId,
+          createdAt: emotion.createdAt,
+          user: {
+            id: emotion.user.id,
+            name: emotion.user.fullName || emotion.user.nickname || 'Unknown',
+            username: emotion.user.nickname || 'unknown',
+            avatar: emotion.user.avatar
+          }
+        })
+      }
+    })
+
+    console.log('[API] 🎭 Loaded emotions for', emotionsMap.size, 'posts')
+
+    // 🔥 [REMIX_CACHE] Получаем ремиксы для видео-постов из файловой системы
+    const postRemixesMap = new Map<string, any[]>() // postId -> ремиксы
+    
+    for (const post of posts) {
+      // Проверяем условия: requestId есть, error нет, тип = video
+      if (post.requestId && !post.error && post.type === 'video' && (post as any).containerId !== null) {
+        try {
+          // Используем containerId если есть, иначе post.id
+          const containerId = (post as any).containerId || post.id
+          
+          console.log('[API] 🎯 Fetching remixes from file system for post:', post.id, 'containerId:', containerId)
+          
+          // Получаем ремиксы из файловой системы
+          const remixData = await getRemixFromFile(containerId)
+          
+          if (remixData && remixData.posts && remixData.posts.length > 0) {
+            postRemixesMap.set(post.id, remixData.posts)
+            console.log('[API] ✅ Found remixes in file system:', {
+              postId: post.id,
+              containerId,
+              remixCount: remixData.posts.length,
+              filePath: `app/remixes/${containerId}.json`
+            })
+          } else {
+            console.log('[API] No remixes found for post:', post.id)
+          }
+        } catch (error) {
+          console.error('[API] ⚠️ Error fetching remixes from file system (non-critical):', error instanceof Error ? error.message : String(error))
+        }
+      }
+    }
 
     // [tier_access_system_2025_017] Получаем текущего пользователя если передан wallet
     let currentUser = null
@@ -192,7 +269,11 @@ export async function GET(request: NextRequest) {
         },
         // Скрываем контент для заблокированных постов, но НЕ для автора
         content: (shouldHideContent && !isCreatorPost) ? '' : post.content,
-        shouldHideContent: shouldHideContent && !isCreatorPost
+        shouldHideContent: shouldHideContent && !isCreatorPost,
+        // 🔥 [REMIX_CACHE] Массив ремиксов из Redis (если есть)
+        postRemixes: postRemixesMap.get(post.id) || [],
+        // 🎭 [EMOTIONS] Массив эмоций поста
+        emotions: emotionsMap.get(post.id) || []
       }
     })
 
@@ -245,6 +326,36 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'User not found' }, { status: 404 })
     }
     
+    // Проверка генераций для ai-video постов
+    if (body.type === 'ai-video') {
+      console.log('[API] AI-video post detected, checking available generations...')
+      
+      const availableGenerations = (user as any).availableGenerationCount || 0
+      
+      console.log('[API] User generation count:', availableGenerations)
+      
+      if (availableGenerations <= 0) {
+        console.log('[API] Insufficient generations for AI-video creation')
+        return NextResponse.json({ 
+          error: 'Insufficient generations. You need at least 1 generation to create AI videos.',
+          availableGenerations: 0
+        }, { status: 403 })
+      }
+      
+      // Декрементируем счетчик генераций
+      await prisma.user.update({
+        where: { id: user.id },
+        data: {
+          availableGenerationCount: { decrement: 1 }
+        }
+      })
+      
+      console.log('[API] Generation count decremented:', {
+        previous: availableGenerations,
+        new: availableGenerations - 1
+      })
+    }
+    
     // Для медиа-постов нужен хотя бы thumbnail или mediaUrl (кроме ai-video с requestId)
     if (body.type !== 'text' && body.type !== 'ai-video' && !body.mediaUrl && !body.thumbnail) {
       console.log('[API] Media post missing media files')
@@ -278,6 +389,7 @@ export async function POST(request: NextRequest) {
       thumbnail: body.thumbnail || null,
       mediaUrl: body.mediaUrl || null,
       blurUrl: body.blurUrl || null, // Размытое превью для заблокированного контента
+      previewUrl: body.previewUrl || null, // Preview URL для видео и изображений
       isLocked: body.isLocked || false,
       isPremium: body.isPremium || false,
       price: body.price ? parseFloat(body.price) : null,
@@ -328,6 +440,98 @@ export async function POST(request: NextRequest) {
     
     console.log('[API] Post created successfully:', post.id)
     
+    // 🔥 [REMIX_CACHE] Для AI-видео устанавливаем containerId = post.id
+    if (postData.type === 'ai-video') {
+      console.log('[API] 🎯 AI-video detected, setting containerId = post.id')
+      // containerId will be available after migration
+      await prisma.post.update({
+        where: { id: post.id },
+        data: { containerId: post.id } as any
+      })
+      console.log('[API] ✅ containerId set to:', post.id)
+      
+      // Обновляем объект post для дальнейшего использования
+      // @ts-ignore - containerId will be available after migration
+      post.containerId = post.id
+      
+      // 🔥 [REMIX_CACHE] Кешируем AI-видео в Redis для цепочек ремиксов
+      try {
+        console.log('[API] 🎯 AI-video post detected, caching in Redis for remix chain')
+        
+        // Создаем полный объект поста для кеширования
+        const fullPostForCache = {
+          ...post,
+          containerId: post.id,
+          creator: {
+            ...post.creator,
+            name: post.creator.fullName || post.creator.nickname || 'Unknown',
+            username: post.creator.nickname || 'unknown',
+          },
+          likes: post.likesCount || 0,
+          comments: post.commentsCount || 0,
+          isSubscribed: false,
+          hasPurchased: false,
+          isCreatorPost: true,
+          requiredTier: post.minSubscriptionTier,
+          userTier: null,
+          hasAccess: true,
+          shouldBlur: false,
+          shouldDim: false,
+          upgradePrompt: null,
+          accessType: 'creator',
+          access: {
+            isLocked: post.isLocked,
+            tier: post.minSubscriptionTier,
+            price: post.price,
+            currency: post.currency || 'SOL',
+            isPurchased: false,
+            isSubscribed: false,
+            userTier: null,
+            shouldHideContent: false,
+            isCreatorPost: true,
+            hasAccess: true,
+            shouldBlur: false,
+            shouldDim: false,
+            upgradePrompt: null,
+            requiredTier: post.minSubscriptionTier,
+          },
+          media: {
+            type: post.type,
+            url: post.mediaUrl,
+            thumbnail: post.thumbnail,
+            error: post.error,
+            blurUrl: post.blurUrl,
+            requestId: post.requestId
+          },
+          shouldHideContent: false
+        }
+        
+        // Отправляем в Redis cache (non-blocking)
+        const cacheResponse = await fetch('https://fonana.me/api/redis/remixcache', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            containerId: post.id,
+            post: fullPostForCache
+          })
+        })
+        
+        if (cacheResponse.ok) {
+          const cacheData = await cacheResponse.json()
+          console.log('[API] ✅ AI-video cached in Redis:', {
+            containerId: post.id,
+            postsCount: cacheData.data?.postsCount || 1
+          })
+        } else {
+          console.warn('[API] ⚠️ Failed to cache AI-video in Redis:', cacheResponse.status)
+        }
+        
+      } catch (cacheError) {
+        // Не блокируем создание поста при ошибке кеширования
+        console.error('[API] ⚠️ Redis cache error (non-critical):', cacheError instanceof Error ? cacheError.message : String(cacheError))
+      }
+    }
+    
     // NEW: WebSocket уведомление автора (non-blocking)
     try {
       // Динамический импорт WebSocket функции
@@ -359,6 +563,76 @@ export async function POST(request: NextRequest) {
       requiredTier: post.minSubscriptionTier,
       userTier: null, // Автор не нуждается в подписке на себя
       shouldHideContent: false
+    }
+    
+    // 🔥 [REMIX_CACHE] Кеширование AI-видео постов в Redis для цепочек ремиксов
+    if (postData.type === 'ai-video') {
+      try {
+        console.log('[API] 🎯 AI-video post detected, saving to file system for remix chain')
+        
+        // Создаем полный объект поста (как в GET блоке)
+        const fullPostForCache = {
+          ...post,
+          creator: {
+            ...post.creator,
+            name: post.creator.fullName || post.creator.nickname || 'Unknown',
+            username: post.creator.nickname || 'unknown',
+          },
+          likes: post.likesCount || 0,
+          comments: post.commentsCount || 0,
+          isSubscribed: false,
+          hasPurchased: false,
+          isCreatorPost: true,
+          requiredTier: post.minSubscriptionTier,
+          userTier: null,
+          hasAccess: true,
+          shouldBlur: false,
+          shouldDim: false,
+          upgradePrompt: null,
+          accessType: 'creator',
+          access: {
+            isLocked: post.isLocked,
+            tier: post.minSubscriptionTier,
+            price: post.price,
+            currency: post.currency || 'SOL',
+            isPurchased: false,
+            isSubscribed: false,
+            userTier: null,
+            shouldHideContent: false,
+            isCreatorPost: true,
+            hasAccess: true,
+            shouldBlur: false,
+            shouldDim: false,
+            upgradePrompt: null,
+            requiredTier: post.minSubscriptionTier,
+          },
+          media: {
+            type: post.type,
+            url: post.mediaUrl,
+            thumbnail: post.thumbnail,
+            error: post.error,
+            blurUrl: post.blurUrl,
+            requestId: post.requestId
+          },
+          shouldHideContent: false
+        }
+        
+        // Сохраняем в файловую систему (non-blocking)
+        const saved = await saveRemixToFile(post.id, fullPostForCache)
+        
+        if (saved) {
+          console.log('[API] ✅ AI-video saved to file system:', {
+            containerId: post.id,
+            filePath: `app/remixes/${post.id}.json`
+          })
+        } else {
+          console.warn('[API] ⚠️ Failed to save AI-video to file system')
+        }
+        
+      } catch (cacheError) {
+        // Не блокируем создание поста при ошибке сохранения
+        console.error('[API] ⚠️ File system save error (non-critical):', cacheError instanceof Error ? cacheError.message : String(cacheError))
+      }
     }
     
     return NextResponse.json({ 

@@ -69,7 +69,8 @@ export function useUnifiedPosts(options: UseUnifiedPostsOptions = {}): UseUnifie
       const rawPosts = data.posts || []
 
       // Нормализация постов
-      const normalizedPosts = PostNormalizer.normalizeMany(rawPosts)
+      // [iscreatorpost_normalizer_fix_2025_025] Передаём undefined, так как этот хук не имеет user context
+      const normalizedPosts = PostNormalizer.normalizeMany(rawPosts, [], undefined)
       setPosts(normalizedPosts)
 
     } catch (err) {

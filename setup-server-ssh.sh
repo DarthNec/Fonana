@@ -48,3 +48,15 @@ echo "Теперь можно подключаться без пароля ис�
 echo "Для тестирования выполните на локальном компьютере:"
 echo "ssh fonana-server 'echo SSH key authentication successful'"
 
+
+
+
+
+
+
+
+
+
+
+
+

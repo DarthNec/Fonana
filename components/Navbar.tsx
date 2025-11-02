@@ -8,7 +8,6 @@ import Avatar from './Avatar'
 import NotificationsDropdown from './NotificationsDropdown'
 import SolanaRateDisplay from './SolanaRateDisplay'
 import CreatePostModal from './CreatePostModal'
-import { useOptimizedPosts } from '@/lib/hooks/useOptimizedPosts'
 import { 
   HomeIcon, 
   UsersIcon, 
@@ -44,7 +43,6 @@ const navigation = [
 ] // { name: '', href: '/version-check', icon: RocketLaunchIcon, isNew: false },
 
 export function Navbar() {
-  const { loadPosts } = useOptimizedPosts()
   const [isOpen, setIsOpen] = useState(false)
   const [isProfileOpen, setIsProfileOpen] = useState(false)
   const [isScrolled, setIsScrolled] = useState(false)
@@ -131,6 +129,11 @@ export function Navbar() {
 
   const isActive = (href: string) => pathname === href
 
+  // Скрываем Navbar на странице TikTok Video Viewer
+  if (pathname === '/videos-carousel') {
+    return null
+  }
+
   // Загружаем свежие данные пользователя из API (как делают фид/профиль/карточки)
   useEffect(() => {
     if (user?.id) {
@@ -182,6 +185,7 @@ export function Navbar() {
     //   finalAvatarUrl: avatarUrl,
     //   timestamp: Date.now() 
     // })
+    console.log('[Navbar] DogWater tokens:', user)
   }, [user?.avatar, apiUser, avatarUrl])
 
   // Check if it's PWA mode
@@ -373,19 +377,69 @@ export function Navbar() {
                   )}
                 </div>
               ) : null}
+
+              {/* DogWater Token - Desktop only */}
+              {(connected && user) ?
+              <Link
+                href="https://gmgn.ai/sol/token/99smS99MkGP8WFggmUZWaVbe18Y8iWuC3YhGtUMMBray"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="group relative flex items-center gap-2 h-12 px-3 mb-2 rounded-2xl bg-gradient-to-r from-blue-500/10 to-purple-500/10 hover:from-blue-500/20 hover:to-purple-500/20 border border-blue-500/20 hover:border-blue-500/40 transition-all duration-300 hover:scale-105"
+              >
+                <div className="relative w-8 h-8 rounded-full overflow-hidden flex-shrink-0">
+                  <Image
+                    src="https://fonanastorage.b-cdn.net/dogwater/DogWaterLogoBG.png"
+                    alt="DogWater Token"
+                    width={32}
+                    height={32}
+                    className="object-cover"
+                  />
+                </div>
+                <span className="font-semibold text-gray-900 dark:text-white">
+                  {(() => {
+                    // @ts-expect-error - Поле dogWaterTokens будет доступно после генерации Prisma Client
+                    const tokens = user.dogWaterTokens || 0
+                    if (tokens >= 1000) {
+                      return `${(tokens / 1000).toFixed(1)}K`
+                    }
+                    return tokens.toFixed(0)
+                  })()}
+                </span>
+                
+                {/* Tooltip on hover - снизу */}
+                <div className="absolute top-full left-1/2 -translate-x-1/2 mt-2 px-3 py-1.5 bg-gray-900 dark:bg-slate-700 text-white text-sm rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200 whitespace-nowrap pointer-events-none z-50">
+                  DogWater token
+                  <div className="absolute bottom-full left-1/2 -translate-x-1/2 -mb-1 border-4 border-transparent border-b-gray-900 dark:border-b-slate-700"></div>
+                </div>
+              </Link> : null}
             </div>
 
-            {/* Mobile Menu Button */}
-            <button
-              onClick={() => setIsOpen(!isOpen)}
-              className="md:hidden p-3 text-gray-600 dark:text-slate-300 hover:text-gray-900 dark:hover:text-white rounded-2xl hover:bg-gray-100 dark:hover:bg-slate-800/50 transition-all duration-300"
-            >
-              {isOpen ? (
-                <XMarkIcon className="w-6 h-6" />
-              ) : (
-                <Bars3Icon className="w-6 h-6" />
-              )}
-            </button>
+            {/* Mobile Actions - Messages & Burger Menu */}
+            <div className="md:hidden flex items-center gap-1">
+              {/* Burger Menu Button */}
+              <button
+                onClick={() => setIsOpen(!isOpen)}
+                className="p-3 text-gray-600 dark:text-slate-300 hover:text-gray-900 dark:hover:text-white rounded-2xl hover:bg-gray-100 dark:hover:bg-slate-800/50 transition-all duration-300"
+              >
+                {isOpen ? (
+                  <XMarkIcon className="w-6 h-6" />
+                ) : (
+                  <Bars3Icon className="w-6 h-6" />
+                )}
+              </button>
+              {/* Messages Button */}
+              <Link
+                href="/messages"
+                className="relative p-3 text-gray-600 dark:text-slate-300 hover:text-gray-900 dark:hover:text-white rounded-2xl hover:bg-gray-100 dark:hover:bg-slate-800/50 transition-all duration-300"
+              >
+                <ChatBubbleLeftEllipsisIcon className="w-6 h-6" />
+                {unreadMessages > 0 && (
+                  <span className="absolute -top-0.5 -right-0.5 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center animate-pulse font-medium">
+                    {unreadMessages > 9 ? '9+' : unreadMessages}
+                  </span>
+                )}
+              </Link>
+            </div>
           </div>
 
           {/* Mobile Menu */}

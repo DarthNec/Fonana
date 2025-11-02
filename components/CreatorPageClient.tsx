@@ -324,7 +324,7 @@ export default function CreatorPageClient({ creatorId }: CreatorPageClientProps)
     console.log('[CreatorPageClient] Post action:', action)
     
     // Проверяем аутентификацию для действий, требующих подключения кошелька
-    if (['subscribe', 'purchase', 'like'].includes(action.type)) {
+    if (['subscribe', 'purchase', 'like', 'add-emotion'].includes(action.type)) {
       if (!user) {
         setVisible(true)
         toast.success('Подключите кошелек для выполнения этого действия')
@@ -365,6 +365,12 @@ export default function CreatorPageClient({ creatorId }: CreatorPageClientProps)
         
       case 'like':
       case 'unlike':
+        // Обрабатываем через handleAction от useOptimizedPosts
+        handleAction(action)
+        break
+        
+      case 'add-emotion':
+      case 'remove-emotion':
         // Обрабатываем через handleAction от useOptimizedPosts
         handleAction(action)
         break

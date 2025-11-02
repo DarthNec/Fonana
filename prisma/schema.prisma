@@ -32,7 +32,11 @@ model User {
   solanaWallet         String?               @map("solana_wallet")
   token                String?               // JWT token for API authentication
   tokenExpiresAt       DateTime?             // Token expiration date
-  referalCount         Int                   @default(0)              
+  referalCount         Int                   @default(0)
+  isBoughtDogWater     Boolean               @default(false)
+  isGetRegistrationReward Boolean            @default(false)
+  dogWaterTokens       Float                 @default(0)
+  availableGenerationCount Int               @default(3)
   accounts             Account[]
   auctionBids          AuctionBid[]
   auctionDeposits      AuctionDeposit[]
@@ -43,6 +47,7 @@ model User {
   follows              Follow[]              @relation("UserFollows")
   followers            Follow[]              @relation("UserFollowers")
   likes                Like[]
+  emotions             Emotion[]
   posts                Post[]
   sessions             Session[]
   subscribers          Subscription[]        @relation("CreatorSubscriptions")
@@ -70,6 +75,7 @@ model Post {
   thumbnail           String?
   mediaUrl            String?
   blurUrl             String?          // Blurred preview URL for locked content
+  previewUrl          String?          // Preview URL for content
   isLocked            Boolean          @default(false)
   isPremium           Boolean          @default(false)
   price               Float?
@@ -80,6 +86,7 @@ model Post {
   requestId           String?          // For Sora-2 AI generated videos
   error               String?          // Error message for AI video generation failures
   remixId             String?          // ID of the original post that this is a remix of
+  containerId         String?          // Container ID for grouping related posts
   likesCount          Int              @default(0)
   commentsCount       Int              @default(0)
   viewsCount          Int              @default(0)
@@ -91,6 +98,7 @@ model Post {
   comments        Comment[]
   flashSales      FlashSale[]
   likes           Like[]
+  emotions        Emotion[]
   tags            PostTag[]
   creator         User             @relation(fields: [creatorId], references: [id], onDelete: Cascade)
   purchases       PostPurchase[]   @relation("PostPurchases")
@@ -132,6 +140,7 @@ model Comment {
   post        Post      @relation(fields: [postId], references: [id], onDelete: Cascade)
   user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   likes       Like[]
+  emotions    Emotion[]
 
   @@map("comments")
 }
@@ -149,6 +158,25 @@ model Like {
   @@unique([userId, postId])
   @@unique([userId, commentId])
   @@map("likes")
+}
+
+model Emotion {
+  id        String   @id @default(cuid())
+  userId    String
+  postId    String?
+  emotionId Int
+  commentId String?
+  creatorId String?
+  createdAt DateTime @default(now())
+  comment   Comment? @relation(fields: [commentId], references: [id], onDelete: Cascade)
+  post      Post?    @relation(fields: [postId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, postId, emotionId])
+  @@unique([userId, commentId, emotionId])
+  @@index([postId])
+  @@index([commentId])
+  @@map("emotions")
 }
 
 model Subscription {

@@ -44,3 +44,15 @@ Write-Host "ssh fonana-server 'echo SSH key authentication successful'" -Foregro
 
 Write-Host "`n=== Готово! ===" -ForegroundColor Green
 
+
+
+
+
+
+
+
+
+
+
+
+

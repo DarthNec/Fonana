@@ -137,6 +137,8 @@ export async function GET(
         content: isPaidAndLocked ? null : message.content,
         mediaUrl: isPaidAndLocked ? null : message.mediaUrl,
         mediaType: message.mediaType,
+        isDeleted: message.isDeleted || false,
+        isEdited: message.isEdited || false,
         isPaid: message.isPaid || false,
         price: message.price,
         isPurchased,

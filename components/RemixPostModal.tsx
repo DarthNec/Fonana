@@ -4,7 +4,6 @@ import React, { useState, useEffect } from 'react'
 import { useUser } from '@/lib/store/appStore'
 import { useStableWallet } from '@/lib/hooks/useStableWallet'
 import { toast } from 'react-hot-toast'
-import axios from 'axios'
 import { 
   XMarkIcon,
   PaperAirplaneIcon,
@@ -41,51 +40,46 @@ export default function RemixPostModal({ post, onClose, onRemixCreated }: RemixP
     }
   }, [])
 
-  // Функция для создания ремикса через OpenAI API
-  const createOpenAIRemix = async (videoId: string, prompt: string): Promise<string | null> => {
+  // Функция для создания ремикса через наш API
+  const createRemix = async (videoId: string, prompt: string): Promise<string | null> => {
     try {
-      const apiKey = process.env.NEXT_PUBLIC_OPENAI_API_KEY
-      
-      if (!apiKey) {
-        throw new Error('OPENAI_API_KEY not found')
-      }
-
-      console.log('[RemixPostModal] Starting OpenAI video remix...', {
+      console.log('[RemixPostModal] Starting video remix via API...', {
         videoId,
         prompt: prompt.substring(0, 50) + '...'
       })
 
-      const response = await axios.post(
-        `https://api.openai.com/v1/videos/${videoId}/remix`,
-        {
-          prompt: prompt
+      // Отправляем запрос на наш внутренний API
+      const response = await fetch('/api/sora/mobile/remix', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
         },
-        {
-          headers: {
-            'Authorization': `Bearer ${apiKey}`,
-            'Content-Type': 'application/json',
-          },
-        }
-      )
+        body: JSON.stringify({
+          videoId,
+          prompt
+        })
+      })
 
-      console.log('[RemixPostModal] OpenAI remix response:', response.data)
+      if (!response.ok) {
+        const error = await response.json()
+        throw new Error(error.error || 'Failed to create remix')
+      }
+
+      const data = await response.json()
+      console.log('[RemixPostModal] Remix API response:', data)
       
-      const remixVideoId = response.data.id
+      const remixVideoId = data.videoId
       
       if (!remixVideoId) {
-        throw new Error('Remix video ID not found in OpenAI response')
+        throw new Error('Remix video ID not found in response')
       }
 
       toast.success('🎥 Video remix generation started!')
       return remixVideoId
 
     } catch (error) {
-      console.error('[RemixPostModal] OpenAI remix error:', error)
-      if (axios.isAxiosError(error)) {
-        toast.error(error.response?.data?.error?.message || error.message || 'Failed to create video remix')
-      } else {
-        toast.error(error instanceof Error ? error.message : 'Failed to create video remix')
-      }
+      console.error('[RemixPostModal] Remix error:', error)
+      toast.error(error instanceof Error ? error.message : 'Failed to create video remix')
       return null
     }
   }
@@ -129,20 +123,20 @@ export default function RemixPostModal({ post, onClose, onRemixCreated }: RemixP
         throw new Error('Original video does not have a requestId for remixing')
       }
 
-      console.log('[RemixPostModal] Creating OpenAI remix...')
-      const remixVideoId = await createOpenAIRemix(post.media.requestId, remixPrompt)
+      console.log('[RemixPostModal] Creating remix...')
+      const remixVideoId = await createRemix(post.media.requestId, remixPrompt)
       
       if (!remixVideoId) {
-        throw new Error('Failed to create OpenAI remix')
+        throw new Error('Failed to create remix')
       }
 
-      console.log('[RemixPostModal] OpenAI remix created:', remixVideoId)
+      console.log('[RemixPostModal] Remix created:', remixVideoId)
 
       // Подготавливаем данные для ремикса
       const remixData = {
         userWallet: walletAddress,
-        title: `Remix: ${post.content.title}`,
-        content: `Remix of "${post.content.title}"\n\nPrompt: ${remixPrompt}`,
+        title: `Remix`, // ${post.content.title}
+        content: `Prompt: ${remixPrompt}`,
         type: 'ai-video',
         category: post.content.category || 'Art',
         tags: [...(post.content.tags || []), 'remix'],

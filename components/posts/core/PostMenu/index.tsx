@@ -18,6 +18,7 @@ export interface PostMenuProps {
   post: UnifiedPost
   onAction?: (action: PostAction) => void
   className?: string
+  overlay?: boolean // Для Instagram-style на темном фоне
 }
 
 /**
@@ -25,7 +26,7 @@ export interface PostMenuProps {
  * Показывает опции редактирования и удаления для автора
  * Опции шаринга и жалобы для остальных
  */
-export function PostMenu({ post, onAction, className }: PostMenuProps) {
+export function PostMenu({ post, onAction, className, overlay = false }: PostMenuProps) {
   const user = useUser()
   const [isOpen, setIsOpen] = useState(false)
   const [isSharePopupOpen, setIsSharePopupOpen] = useState(false)
@@ -85,11 +86,10 @@ export function PostMenu({ post, onAction, className }: PostMenuProps) {
         onClick={handleMenuClick}
         className={cn(
           'p-2 rounded-lg transition-all duration-200',
-          'text-gray-500 dark:text-slate-400',
-          'hover:bg-gray-100 dark:hover:bg-slate-800',
-          'hover:text-gray-700 dark:hover:text-slate-200',
+          overlay ? 'text-white hover:bg-white/20 hover:text-white' : 'text-gray-500 dark:text-slate-400 hover:bg-gray-100 dark:hover:bg-slate-800 hover:text-gray-700 dark:hover:text-slate-200',
           'focus:outline-none focus:ring-2 focus:ring-purple-400 focus:ring-offset-2 dark:focus:ring-offset-slate-900',
-          isOpen && 'bg-gray-100 dark:bg-slate-800'
+          isOpen && (overlay ? 'bg-white/20' : 'bg-gray-100 dark:bg-slate-800'),
+          overlay && 'drop-shadow-lg'
         )}
         aria-label="Post menu"
       >

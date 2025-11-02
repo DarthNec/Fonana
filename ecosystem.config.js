@@ -52,6 +52,22 @@ module.exports = {
       out_file: '/var/www/Fonana/logs/sora-checker-out.log',
       time: true,
       merge_logs: true
+    },
+    {
+      name: 'generation-updater',
+      script: './updateUserGeneration.js',
+      instances: 1,
+      exec_mode: 'fork',
+      cron_restart: '0 4 * * *', // Запускается каждый день в 4:00 утра
+      autorestart: false, // Отключаем автоперезапуск, только по крону
+      env_file: './.env',
+      env: {
+        NODE_ENV: 'production'
+      },
+      error_file: '/var/www/Fonana/logs/generation-updater-error.log',
+      out_file: '/var/www/Fonana/logs/generation-updater-out.log',
+      time: true,
+      merge_logs: true
     }
   ]
 } 

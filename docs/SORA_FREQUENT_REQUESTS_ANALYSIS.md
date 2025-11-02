@@ -169,3 +169,15 @@ tail -f /var/log/syslog | grep sora
   <em>Нужно отключить autorestart в PM2 конфигурации</em>
 </div>
 
+
+
+
+
+
+
+
+
+
+
+
+

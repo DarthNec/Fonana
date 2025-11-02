@@ -13,7 +13,7 @@ export interface BunnyUploadResult {
 
 export async function uploadToBunnyStorage(
   file: File, 
-  type: 'image' | 'video' | 'audio' | 'support' | 'avatars' | 'messages' | 'blur',
+  type: 'image' | 'video' | 'audio' | 'support' | 'avatars' | 'messages' | 'blur' | 'video-preview',
   customPath?: string
 ): Promise<BunnyUploadResult> {
   try {
@@ -49,6 +49,9 @@ export async function uploadToBunnyStorage(
     } else if (type === 'blur') {
       // Для размытых изображений
       bunnyPath = `posts/blur/${fileName}`
+    } else if (type === 'video-preview') {
+      // Для превью видео (первый кадр)
+      bunnyPath = `posts/videos/preview/${fileName}`
     } else {
       const mediaType = type === 'image' ? 'images' : type === 'video' ? 'videos' : 'audio'
       bunnyPath = `${BUNNY_PATHS.posts[mediaType]}/${fileName}`
@@ -90,7 +93,8 @@ export async function uploadToBunnyStorage(
       success: true,
       fileUrl: cdnUrl,
       thumbUrl: type === 'image' ? cdnUrl : undefined, // Для изображений thumbUrl = fileUrl
-      previewUrl: type === 'video' ? cdnUrl : undefined // Для видео previewUrl = fileUrl
+      // previewUrl НЕ устанавливается здесь - оно будет установлено отдельно для video-preview типа
+      previewUrl: type === 'video-preview' ? cdnUrl : undefined
     }
 
   } catch (error) {

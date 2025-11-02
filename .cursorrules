@@ -1,5 +1,32 @@
 # Fonana Project Intelligence 1
 
+## 🧠 AI Decision Making Protocol
+
+**MANDATORY PROTOCOL:** Before proposing ANY solution, AI MUST follow the Decision Making Protocol:
+- **📋 Full Protocol:** [docs/AI_DECISION_MAKING_PROTOCOL.md](./docs/AI_DECISION_MAKING_PROTOCOL.md)
+- **⚡ Quick Reference:** [docs/AI_PROTOCOL_QUICK_REFERENCE.md](./docs/AI_PROTOCOL_QUICK_REFERENCE.md)
+
+**Key Rules:**
+1. **Правильное > Быстрое** - If difference < 30 min, choose CORRECT over FAST
+2. **Root Cause > Symptom** - Always find root cause, don't patch symptoms
+3. **Use Available Data** - If data already in scope, USE IT!
+4. **ALWAYS Matrix** - Create solution matrix with SCORE
+5. **Check Red Flags** - Data available but unused, minimal changes, logic in multiple places
+
+**Red Flag Example (isCreatorPost case):**
+```typescript
+// 🚨 RED FLAG:
+const user = useUser() // ← Available in scope
+PostNormalizer.normalizeMany(posts, likesData) // ← user NOT passed
+// → WHY? Maybe this is the solution!
+```
+
+**Scoring Formula:** Architecture(30%) + Security(25%) + Speed(15%) + Risk(15%) + Maintainability(15%)
+
+**Recommend:** Solution with MAXIMUM SCORE, not only fastest!
+
+---
+
 ## Critical Architecture Patterns
 
 ### Database Schema Reality

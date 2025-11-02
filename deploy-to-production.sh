@@ -2,7 +2,7 @@
 
 # Fonana Emergency Deployment Script v1.3
 # INTERACTIVE MODE: SSH with password input + Node.js setup
-# Target: 64.20.37.222 (fonana.me)
+# Target: 209.97.149.137 (fonana.me)
 
 set -euo pipefail
 
@@ -14,7 +14,7 @@ BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
 # Configuration
-PRODUCTION_SERVER="64.20.37.222"
+PRODUCTION_SERVER="209.97.149.137"
 DOMAIN="fonana.me"
 DEPLOY_PATH="/var/www/Fonana"
 BACKUP_DIR="/backup"
@@ -70,10 +70,10 @@ main() {
         error_exit "Not in Fonana project directory"
     fi
     
-    # Check server connectivity (without SSH keys)
+    # Check server connectivity (using SSH instead of ping)
     log "🔗 Checking server connectivity..."
-    if ! ping -c 1 "$PRODUCTION_SERVER" >/dev/null 2>&1; then
-        error_exit "Cannot reach production server $PRODUCTION_SERVER"
+    if ! ssh -o ConnectTimeout=10 -o BatchMode=yes fonana-server "echo 'SSH connection test'" >/dev/null 2>&1; then
+        error_exit "Cannot connect to production server fonana-server via SSH"
     fi
     
     # Create deployment package (source code only)
@@ -219,17 +219,14 @@ REMOTE_SCRIPT
 
     chmod +x "${TEMP_DIR}/emergency-deploy.sh"
     
-    # Transfer files and execute (INTERACTIVE MODE)
+    # Transfer files and execute (SSH KEY MODE)
     log "📤 Transferring files to server..."
-    echo -e "${YELLOW}Введи пароль root для сервера:${NC}"
-    scp -o StrictHostKeyChecking=no "${DEPLOY_PACKAGE}" root@${PRODUCTION_SERVER}:/tmp/deployment-package.tar.gz
+    scp -o StrictHostKeyChecking=no "${DEPLOY_PACKAGE}" fonana-server:/tmp/deployment-package.tar.gz
     
-    echo -e "${YELLOW}Введи пароль root еще раз для копирования скрипта:${NC}"
-    scp -o StrictHostKeyChecking=no "${TEMP_DIR}/emergency-deploy.sh" root@${PRODUCTION_SERVER}:/tmp/emergency-deploy.sh
+    scp -o StrictHostKeyChecking=no "${TEMP_DIR}/emergency-deploy.sh" fonana-server:/tmp/emergency-deploy.sh
     
     log "🚀 Executing full server setup and deployment..."
-    echo -e "${YELLOW}Введи пароль root для выполнения деплоя (займет 5-10 минут):${NC}"
-    ssh -o StrictHostKeyChecking=no root@${PRODUCTION_SERVER} "chmod +x /tmp/emergency-deploy.sh && /tmp/emergency-deploy.sh"
+    ssh -o StrictHostKeyChecking=no fonana-server "chmod +x /tmp/emergency-deploy.sh && /tmp/emergency-deploy.sh"
     
     # Setup Nginx configuration
     log "⚙️  Configuring Nginx..."
@@ -262,20 +259,17 @@ server {
 }
 NGINX_CONFIG
 
-    echo -e "${YELLOW}Введи пароль root для настройки Nginx:${NC}"
-    scp -o StrictHostKeyChecking=no "${TEMP_DIR}/nginx-emergency.conf" root@${PRODUCTION_SERVER}:/etc/nginx/sites-available/fonana
+    scp -o StrictHostKeyChecking=no "${TEMP_DIR}/nginx-emergency.conf" fonana-server:/etc/nginx/sites-available/fonana
     
     log "🔧 Enabling Nginx configuration..."
-    echo -e "${YELLOW}Введи пароль root для перезагрузки Nginx:${NC}"
-    ssh -o StrictHostKeyChecking=no root@${PRODUCTION_SERVER} "
+    ssh -o StrictHostKeyChecking=no fonana-server "
         ln -sf /etc/nginx/sites-available/fonana /etc/nginx/sites-enabled/
         nginx -t && systemctl reload nginx
     "
     
     # Setup SSL with Certbot
     log "🔒 Setting up SSL certificate..."
-    echo -e "${YELLOW}Введи пароль root для настройки SSL:${NC}"
-    ssh -o StrictHostKeyChecking=no root@${PRODUCTION_SERVER} "
+    ssh -o StrictHostKeyChecking=no fonana-server "
         certbot --nginx -d ${DOMAIN} -d www.${DOMAIN} --non-interactive --agree-tos --email admin@${DOMAIN} --redirect || echo 'SSL setup may have failed, continuing...'
     "
     
@@ -294,9 +288,9 @@ NGINX_CONFIG
     
     log "🎉 EMERGENCY DEPLOYMENT COMPLETED!"
     log "🌐 Application URL: https://${DOMAIN}"
-    log "📊 Server status: ssh root@${PRODUCTION_SERVER} 'pm2 status'"
-    log "📝 Application logs: ssh root@${PRODUCTION_SERVER} 'pm2 logs fonana-app'"
-    log "🔄 To restart: ssh root@${PRODUCTION_SERVER} 'pm2 restart fonana-app'"
+    log "📊 Server status: ssh fonana-server 'pm2 status'"
+    log "📝 Application logs: ssh fonana-server 'pm2 logs fonana-app'"
+    log "🔄 To restart: ssh fonana-server 'pm2 restart fonana-app'"
     
     echo -e ""
     echo -e "${GREEN}=============================================================================="
@@ -304,8 +298,8 @@ NGINX_CONFIG
     echo -e "=============================================================================="
     echo -e ""
     echo -e "🌐 Application URL: https://${DOMAIN}"
-    echo -e "📊 Check status: ssh root@${PRODUCTION_SERVER} 'pm2 status'"
-    echo -e "📝 View logs: ssh root@${PRODUCTION_SERVER} 'pm2 logs fonana-app'"
+    echo -e "📊 Check status: ssh fonana-server 'pm2 status'"
+    echo -e "📝 View logs: ssh fonana-server 'pm2 logs fonana-app'"
     echo -e "${NC}"
 }
 

@@ -291,6 +291,7 @@ export default function ProfileSetupModal({
             {/* Header */}
             <div className="text-center mb-6 relative">
               {/* Close button - показываем всегда */}
+              {/*
               <button
                 onClick={onClose}
                 className="absolute right-0 top-0 p-2 text-gray-400 hover:text-gray-600 dark:text-slate-500 dark:hover:text-slate-300 transition-colors"
@@ -298,6 +299,7 @@ export default function ProfileSetupModal({
               >
                 <XMarkIcon className="w-5 h-5" />
               </button>
+              */}
               <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
                 {mode === 'edit' ? 'Edit Your Profile' : 'Welcome to Fonana! 🎉'}
               </h2>

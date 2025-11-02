@@ -5,6 +5,7 @@ const path = require('path')
 const { exec } = require('child_process')
 const util = require('util')
 const execPromise = util.promisify(exec)
+const { updatePostInRemix, deletePostFromRemix } = require('./lib/remixFileSystem')
 
 const prisma = new PrismaClient()
 
@@ -147,6 +148,28 @@ async function addWatermark(inputPath, requestId, videoDuration) {
 }
 
 /**
+ * Извлекает первый кадр из видео и создает превью в формате WebP
+ */
+async function extractVideoPreview(videoPath, requestId) {
+  try {
+    console.log(`[SoraChecker] Extracting preview from video ${requestId}...`)
+    
+    const previewPath = path.join(TEMP_DIR, `${requestId}_preview.png`)
+    
+    // FFmpeg команда для извлечения первого кадра
+    const command = `ffmpeg -i "${videoPath}" -vframes 1 -f image2 "${previewPath}"`
+    
+    await execPromise(command)
+    
+    console.log(`[SoraChecker] Preview frame extracted to ${previewPath}`)
+    return previewPath
+  } catch (error) {
+    console.error(`[SoraChecker] Error extracting preview from ${requestId}:`, error.message)
+    return null
+  }
+}
+
+/**
  * Загружает видео на Bunny Storage
  */
 async function uploadToBunnyStorage(filePath, requestId) {
@@ -187,6 +210,46 @@ async function uploadToBunnyStorage(filePath, requestId) {
 }
 
 /**
+ * Загружает превью изображение на Bunny Storage
+ */
+async function uploadPreviewToBunnyStorage(previewPath, requestId) {
+  try {
+    console.log(`[SoraChecker] Uploading preview for ${requestId} to Bunny Storage...`)
+    
+    const fileName = `${requestId}_preview.webp`
+    const bunnyPath = `posts/videos/preview/${fileName}`
+    const fileBuffer = fs.readFileSync(previewPath)
+    
+    // Полный URL для загрузки в Bunny Storage
+    const uploadUrl = `${BUNNY_STORAGE_HOST}/${BUNNY_STORAGE_ZONE}/${bunnyPath}`
+    
+    console.log(`[SoraChecker] Preview upload URL: ${uploadUrl}`)
+    
+    const response = await axios.put(
+      uploadUrl,
+      fileBuffer,
+      {
+        headers: {
+          'AccessKey': BUNNY_STORAGE_API_KEY,
+          'Content-Type': 'image/webp'
+        },
+        maxContentLength: Infinity,
+        maxBodyLength: Infinity
+      }
+    )
+    
+    // CDN URL для доступа к файлу
+    const cdnUrl = `${BUNNY_CDN_HOST}/${bunnyPath}`
+    console.log(`[SoraChecker] Preview uploaded to Bunny: ${cdnUrl}`)
+    
+    return cdnUrl
+  } catch (error) {
+    console.error(`[SoraChecker] Error uploading preview to Bunny Storage:`, error.response?.data || error.message)
+    return null
+  }
+}
+
+/**
  * Удаляет видео из OpenAI
  */
 async function deleteSoraVideo(requestId) {
@@ -211,18 +274,26 @@ async function deleteSoraVideo(requestId) {
 }
 
 /**
- * Обновляет пост с mediaUrl
+ * Обновляет пост с mediaUrl и previewUrl
  */
-async function updatePostWithVideo(postId, mediaUrl) {
+async function updatePostWithVideo(postId, mediaUrl, previewUrl = null) {
   try {
     console.log(`[SoraChecker] Updating post ${postId} with video URL...`)
     
+    const updateData = {
+      mediaUrl: mediaUrl,
+      type: 'video' // Меняем тип с ai-video на video
+    }
+    
+    // Добавляем previewUrl если он есть
+    if (previewUrl) {
+      updateData.previewUrl = previewUrl
+      console.log(`[SoraChecker] Including previewUrl: ${previewUrl}`)
+    }
+    
     await prisma.post.update({
       where: { id: postId },
-      data: {
-        mediaUrl: mediaUrl,
-        type: 'video' // Меняем тип с ai-video на video
-      }
+      data: updateData
     })
     
     console.log(`[SoraChecker] Post ${postId} updated successfully`)
@@ -240,6 +311,7 @@ function cleanupTempFiles(requestId) {
   try {
     const originalPath = path.join(TEMP_DIR, `${requestId}_original.mp4`)
     const watermarkedPath = path.join(TEMP_DIR, `${requestId}_watermarked.mp4`)
+    const previewPath = path.join(TEMP_DIR, `${requestId}_preview.png`)
     
     if (fs.existsSync(originalPath)) {
       fs.unlinkSync(originalPath)
@@ -249,6 +321,11 @@ function cleanupTempFiles(requestId) {
     if (fs.existsSync(watermarkedPath)) {
       fs.unlinkSync(watermarkedPath)
       console.log(`[SoraChecker] Deleted temp file: ${watermarkedPath}`)
+    }
+    
+    if (fs.existsSync(previewPath)) {
+      fs.unlinkSync(previewPath)
+      console.log(`[SoraChecker] Deleted temp file: ${previewPath}`)
     }
   } catch (error) {
     console.error(`[SoraChecker] Error cleaning up temp files for ${requestId}:`, error)
@@ -289,6 +366,10 @@ async function processPost(post) {
       })
       console.log(`[SoraChecker] Post ${post.id} updated with error message`)
       
+      // Удаляем пост из файла ремикса
+      const containerId = post.containerId || post.id
+      await deletePostFromRemixFile(containerId, post.id)
+      
       // Удаляем видео из OpenAI
       await deleteSoraVideo(post.requestId)
       
@@ -312,7 +393,22 @@ async function processPost(post) {
     const videoDuration = parseInt(videoStatus.seconds) || 12 // Используем длительность из Sora API
     const watermarkedPath = await addWatermark(downloadedPath, post.requestId, videoDuration)
     
-    // 6. Загружаем на Bunny Storage
+    // 6. Извлекаем превью из видео (первый кадр)
+    let previewUrl = null
+    const previewPath = await extractVideoPreview(watermarkedPath, post.requestId)
+    if (previewPath) {
+      // Загружаем превью на Bunny Storage
+      previewUrl = await uploadPreviewToBunnyStorage(previewPath, post.requestId)
+      if (previewUrl) {
+        console.log(`[SoraChecker] Preview uploaded successfully: ${previewUrl}`)
+      } else {
+        console.warn(`[SoraChecker] Failed to upload preview (non-critical)`)
+      }
+    } else {
+      console.warn(`[SoraChecker] Failed to extract preview (non-critical)`)
+    }
+    
+    // 7. Загружаем видео на Bunny Storage
     const bunnyUrl = await uploadToBunnyStorage(watermarkedPath, post.requestId)
     if (!bunnyUrl) {
       console.error(`[SoraChecker] Failed to upload to Bunny Storage for ${post.requestId}`)
@@ -320,21 +416,25 @@ async function processPost(post) {
       return false
     }
     
-    // 7. Обновляем пост
-    const updated = await updatePostWithVideo(post.id, bunnyUrl)
+    // 8. Обновляем пост с mediaUrl и previewUrl
+    const updated = await updatePostWithVideo(post.id, bunnyUrl, previewUrl)
     if (!updated) {
       console.error(`[SoraChecker] Failed to update post ${post.id}`)
       cleanupTempFiles(post.requestId)
       return false
     }
     
-    // 8. Удаляем видео из OpenAI
+    // 9. Обновляем файл ремикса (меняем type с ai-video на video и обновляем mediaUrl)
+    const containerId = post.containerId || post.id
+    await updateRemixFile(containerId, post.id, 'completed', bunnyUrl)
+    
+    // 9. Удаляем видео из OpenAI
     // await deleteSoraVideo(post.requestId)
     
-    // 9. Очищаем временные файлы
+    // 10. Очищаем временные файлы
     cleanupTempFiles(post.requestId)
     
-    // 10. Отправляем уведомление в SocketIO
+    // 11. Отправляем уведомление в SocketIO
     await sendNotificationToSocketIO(post.creatorId, post.id, 'updated')
     
     console.log(`[SoraChecker] ✅ Post ${post.id} processed successfully!`)
@@ -363,6 +463,66 @@ async function sendNotificationToSocketIO(userId, postId, status) {
   } catch (error) {
     // Не логируем ошибку, так как это не критично для работы SoraChecker
     console.log(`[SoraChecker] Failed to send notification for post ${postId} (non-critical)`)
+  }
+}
+
+/**
+ * Обновляет статус поста в файловой системе
+ * При status='completed' меняет type с 'ai-video' на 'video' и обновляет URL видео
+ */
+async function updateRemixFile(containerId, postId, status, mediaUrl = null) {
+  try {
+    console.log(`[SoraChecker] Updating remix file for post ${postId} with status ${status}...`)
+    
+    const updates = {}
+    
+    // Добавляем mediaUrl если передан
+    if (mediaUrl) {
+      updates.mediaUrl = mediaUrl
+      updates['media.url'] = mediaUrl
+      console.log(`[SoraChecker] Including mediaUrl: ${mediaUrl}`)
+    }
+    
+    // Если статус completed, меняем тип поста
+    if (status === 'completed') {
+      updates.type = 'video'
+      updates['media.type'] = 'video'
+    }
+    
+    const result = await updatePostInRemix(containerId, postId, updates)
+    
+    if (result) {
+      console.log(`[SoraChecker] ✅ Remix file updated successfully for post ${postId}`)
+    } else {
+      console.log(`[SoraChecker] ⚠️ Failed to update remix file for post ${postId} (non-critical)`)
+    }
+    
+    return result
+  } catch (error) {
+    console.error(`[SoraChecker] ⚠️ Failed to update remix file for post ${postId} (non-critical):`, error.message)
+    return false
+  }
+}
+
+/**
+ * Удаляет пост из файла ремикса (используется при ошибках)
+ */
+async function deletePostFromRemixFile(containerId, postId) {
+  try {
+    console.log(`[SoraChecker] Deleting post ${postId} from remix file...`)
+    
+    const result = await deletePostFromRemix(containerId, postId)
+    
+    if (result) {
+      console.log(`[SoraChecker] ✅ Post ${postId} deleted from remix file`)
+    } else {
+      console.log(`[SoraChecker] ⚠️ Failed to delete post from remix file (non-critical)`)
+    }
+    
+    return result
+  } catch (error) {
+    console.error(`[SoraChecker] ⚠️ Failed to delete post from remix file (non-critical):`, error.message)
+    return false
   }
 }
 

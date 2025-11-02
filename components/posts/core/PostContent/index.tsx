@@ -5,6 +5,8 @@ import Link from 'next/link'
 import { UnifiedPost, PostAction, PostCardVariant } from '@/types/posts'
 import { PostLocked } from '../PostLocked'
 import { TierBadge } from '../TierBadge'
+import { PostHeader } from '../PostHeader'
+import { PostActions } from '../PostActions'
 import { 
   needsPayment, 
   needsSubscription, 
@@ -13,6 +15,7 @@ import {
 } from '@/components/posts/utils/postHelpers'
 import { cn } from '@/lib/utils'
 import RemixPostModal from '@/components/RemixPostModal'
+import { RemixCarousel } from '../RemixCarousel'
 import { 
   // Category icons
   Squares2X2Icon, // All
@@ -42,6 +45,9 @@ export interface PostContentProps {
   variant?: PostCardVariant
   onAction?: (action: PostAction) => void
   className?: string
+  showHeader?: boolean // Для Instagram-style header поверх контента
+  showFooter?: boolean // Для Instagram-style footer с actions снизу
+  commentCount?: number // Для отображения количества комментариев
 }
 
 // Маппинг категорий к иконкам
@@ -74,12 +80,39 @@ export function PostContent({
   post,
   variant = 'full',
   onAction,
-  className
+  className,
+  showHeader = false,
+  showFooter = false,
+  commentCount = 0
 }: PostContentProps) {
   const [imageLoaded, setImageLoaded] = useState(false)
   const [imageError, setImageError] = useState(false)
   const [isTextExpanded, setIsTextExpanded] = useState(false)
   const [showRemixModal, setShowRemixModal] = useState(false)
+  const [isVideoPlaying, setIsVideoPlaying] = useState(false)
+  const [isFooterTextExpanded, setIsFooterTextExpanded] = useState(false)
+  const videoRef = React.useRef<HTMLVideoElement>(null)
+
+  // Функции управления видео
+  const handleVideoPlayPause = () => {
+    if (videoRef.current) {
+      if (isVideoPlaying) {
+        videoRef.current.pause()
+        setIsVideoPlaying(false)
+      } else {
+        videoRef.current.play()
+        setIsVideoPlaying(true)
+      }
+    }
+  }
+
+  const handleVideoClick = (e: React.MouseEvent) => {
+    // Игнорируем клики на кнопки
+    if ((e.target as HTMLElement).tagName === 'BUTTON' || (e.target as HTMLElement).closest('button')) {
+      return
+    }
+    handleVideoPlayPause()
+  }
   
   // Определяем длинный ли текст (больше 200 символов)
   const isLongText = post.content?.text && typeof post.content.text === 'string' && post.content.text.length > 200
@@ -154,16 +187,43 @@ export function PostContent({
     }
   }
 
+  // Если у поста есть remixId и загружена цепочка ремиксов, показываем RemixCarousel
+  
+  if (post.postRemixes && post.postRemixes.length > 1) {
+    return (
+      <div className={cn('space-y-3', className)}>
+        <RemixCarousel
+          post={post}
+          onAction={onAction}
+          variant={variant}
+          className="remix-chain-carousel"
+          showIndicators={true}
+          showNavigation={true}
+          enableKeyboard={true}
+          enableTouch={true}
+        />
+        
+        
+        <div className="flex items-center justify-center gap-2 text-xs text-gray-500 dark:text-slate-400">
+          <ArrowPathIcon className="w-4 h-4" />
+          <span>Цепочка ремиксов ({post.postRemixes?.length} постов)</span>
+        </div>
+      </div>
+    )
+  }
+  
   return (
     <div className={cn('space-y-3', className)}>
-      {/* Title */}
-      <h3 className={cn(
-        'font-bold text-gray-900 dark:text-white',
-        getTitleSize(),
-        variant !== 'full' && 'line-clamp-2'
-      )}>
-        {post.content.title}
-      </h3>
+      {/* Title - показываем только если нет showHeader или нет медиа */}
+      {(!showHeader || !post.media.url) && (
+        <h3 className={cn(
+          'font-bold text-gray-900 dark:text-white',
+          getTitleSize(),
+          variant !== 'full' && 'line-clamp-2'
+        )}>
+          {post.content.title}
+        </h3>
+      )}
 
       {/* Media Content */}
       {post.media.url && (
@@ -183,6 +243,18 @@ export function PostContent({
               )}
               onClick={handleClick}
             >
+              {/* Instagram-style Header поверх контента */}
+              {showHeader && (
+                <div className="absolute top-0 left-0 right-0 z-20 bg-gradient-to-b from-black/80 via-black/60 to-transparent pt-3 pb-16 px-3 sm:px-4">
+                  <PostHeader 
+                    post={post}
+                    variant={variant}
+                    onAction={onAction}
+                    overlay={true}
+                    className="mb-0" // Убираем отступ так как title теперь внизу
+                  />
+                </div>
+              )}
               {/* Media based on type */}
               {post.media.type === 'image' && (
                 <>
@@ -246,13 +318,32 @@ export function PostContent({
               )}
 
               {(post.media.type === 'video') && !post.media.error && (
-                <div className="relative w-full h-full">
+                <div className="relative w-full h-full cursor-pointer" onClick={handleVideoClick}>
                   <video
+                    ref={videoRef}
                     src={post.media.url}
                     className="w-full h-full object-contain"
                     preload="auto"
-                    controls
+                    playsInline
+                    onPlay={() => setIsVideoPlaying(true)}
+                    onPause={() => setIsVideoPlaying(false)}
+                    onEnded={() => setIsVideoPlaying(false)}
                   />
+                  
+                  {/* Play button в центре */}
+                  {!isVideoPlaying && (
+                    <button
+                      onClick={handleVideoPlayPause}
+                      className="absolute inset-0 flex items-center justify-center z-20 transition-opacity hover:opacity-90"
+                      aria-label="Play video"
+                    >
+                      <div className="w-20 h-20 flex items-center justify-center bg-black/60 hover:bg-black/70 text-white rounded-full backdrop-blur-sm transition-all">
+                        <svg className="w-10 h-10 ml-1" fill="currentColor" viewBox="0 0 24 24">
+                          <path d="M8 5v14l11-7z" />
+                        </svg>
+                      </div>
+                    </button>
+                  )}
                   
                   {/* Remix button for videos with requestId */}
                   {post.media.requestId && (
@@ -261,19 +352,24 @@ export function PostContent({
                         e.stopPropagation()
                         setShowRemixModal(true)
                       }}
-                      className="absolute top-4 right-4 w-10 h-10 flex items-center justify-center bg-purple-500/80 hover:bg-purple-600/80 text-white rounded-full transition-colors backdrop-blur-sm"
+                      className={cn(
+                        "absolute right-3 w-8 h-8 sm:w-10 sm:h-10 sm:right-4 flex items-center justify-center bg-purple-500/80 hover:bg-purple-600/80 text-white rounded-full transition-colors backdrop-blur-sm z-30",
+                        showHeader ? "top-20 sm:top-13" : "top-4" // Опускаем под header если он есть
+                      )}
                       aria-label="Remix video"
                     >
-                      <ArrowPathIcon className="w-5 h-5" />
+                      <ArrowPathIcon className="w-4 h-4 sm:w-5 sm:h-5" />
                     </button>
                   )}
                   
+                  {/* Download button - теперь на всех устройствах */}
                   <a
                     href={`/api/download?url=${encodeURIComponent(post.media.url)}`}
-                    className="absolute bottom-4 right-4 w-10 h-10 flex items-center justify-center bg-black/50 hover:bg-black/70 text-white rounded-full transition-colors sm:hidden backdrop-blur-sm"
+                    onClick={(e) => e.stopPropagation()}
+                    className="absolute bottom-3 right-3 w-8 h-8 sm:w-10 sm:h-10 sm:bottom-4 sm:right-4 flex items-center justify-center bg-black/50 hover:bg-black/70 text-white rounded-full transition-colors backdrop-blur-sm z-30"
                     aria-label="Download video"
                   >
-                    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
                     </svg>
                   </a>
@@ -288,10 +384,69 @@ export function PostContent({
                 </div>
               )}
 
+              {/* Overlay для затемнения контента при раскрытом тексте */}
+              {isFooterTextExpanded && showFooter && (
+                <div 
+                  className="absolute inset-0 bg-black/80 z-40 transition-opacity duration-300"
+                  onClick={() => setIsFooterTextExpanded(false)}
+                />
+              )}
+
+              {/* Instagram-style Footer с actions снизу */}
+              {showFooter && !shouldHideContent && post.media.type !== 'ai-video' && (
+                <div className={cn(
+                  'absolute bottom-0 left-0 right-0 px-3 sm:px-4 pb-3 transition-all duration-300',
+                  isFooterTextExpanded 
+                    ? 'z-50 bg-black/95 pt-4 max-h-[80vh] overflow-y-auto' 
+                    : 'z-20 bg-gradient-to-t from-black/80 via-black/60 to-transparent pt-16'
+                )}>
+                  {/* Title */}
+                  {post.content.title && (
+                    <h3 className={cn(
+                      'font-bold text-white drop-shadow-lg mb-1.5',
+                      variant === 'minimal' ? 'text-xs' : variant === 'compact' ? 'text-sm' : 'text-base sm:text-lg',
+                      'line-clamp-2'
+                    )}>
+                      {post.content.title}
+                    </h3>
+                  )}
+                  
+                  {/* Description */}
+                  {post.content?.text && typeof post.content.text === 'string' && (
+                    <div
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        setIsFooterTextExpanded(!isFooterTextExpanded)
+                      }}
+                      className={cn(
+                        'text-white/90 drop-shadow-md mb-2.5 cursor-pointer transition-all duration-300 hover:text-white',
+                        variant === 'minimal' ? 'text-xs' : 'text-xs sm:text-sm',
+                        isFooterTextExpanded ? 'whitespace-pre-line' : 'line-clamp-2'
+                      )}
+                    >
+                      {post.content.text}
+                      {!isFooterTextExpanded && post.content.text.length > 100 && (
+                        <span className="text-white/70 ml-1 font-medium">... ещё</span>
+                      )}
+                    </div>
+                  )}
+                  
+                  {/* PostActions */}
+                  {!isFooterTextExpanded && (
+                    <PostActions
+                      post={post}
+                      commentCount={commentCount}
+                      onAction={onAction}
+                      variant={variant}
+                      overlay={true}
+                    />
+                  )}
+                </div>
+              )}
 
               {/* Sold overlay */}
               {isSold && (
-                <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
+                <div className="absolute inset-0 bg-black/50 flex items-center justify-center z-10">
                   <div className="text-white text-2xl font-bold">ПРОДАНО</div>
                 </div>
               )}
@@ -300,9 +455,9 @@ export function PostContent({
         </div>
       )}
 
-      {/* Text Content */}
+      {/* Text Content - скрываем когда используем footer */}
       {/* [post_content_render_2025_017] Добавлена проверка типа для предотвращения ошибок рендеринга */}
-      {!shouldHideContent && post.content?.text && typeof post.content.text === 'string' && (
+      {!showFooter && !shouldHideContent && post.content?.text && typeof post.content.text === 'string' && (
         <div className="space-y-2">
           <p className={cn(
             'text-gray-700 dark:text-slate-300 whitespace-pre-line',
@@ -324,8 +479,8 @@ export function PostContent({
         </div>
       )}
 
-      {/* Category & Tags & Tier */}
-      {variant === 'full' && (post.content.category || post.content.tags.length > 0 || post?.access?.tier) && (
+      {/* Category & Tags & Tier - скрываем когда используем footer */}
+      {!showFooter && variant === 'full' && (post.content.category || post.content.tags.length > 0 || post?.access?.tier) && (
         <div className="flex flex-wrap items-center gap-2">
           {post.content.category && (
             <Link

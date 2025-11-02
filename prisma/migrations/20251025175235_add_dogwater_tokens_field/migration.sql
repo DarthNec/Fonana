@@ -1,0 +1,3 @@
+-- AlterTable
+ALTER TABLE "users" ADD COLUMN "dogWaterTokens" DOUBLE PRECISION NOT NULL DEFAULT 0;
+

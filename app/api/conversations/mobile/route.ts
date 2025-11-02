@@ -337,4 +337,77 @@ export async function POST(request: Request) {
   }
 }
 
-
+// DELETE /api/conversations/mobile?conversationId=xxx - удалить чат и все его сообщения
+export async function DELETE(request: Request) {
+  try {
+    console.log('[API/conversations/mobile] Starting DELETE request')
+    
+    const { searchParams } = new URL(request.url)
+    const conversationId = searchParams.get('conversationId')
+    
+    // Валидация conversationId
+    if (!conversationId) {
+      console.log('[API/conversations/mobile] No conversationId provided')
+      return NextResponse.json({ error: 'Conversation ID is required' }, { status: 400 })
+    }
+    
+    console.log('[API/conversations/mobile] Deleting conversation:', conversationId)
+    
+    // Проверяем существование разговора
+    const conversation = await prisma.conversation.findUnique({
+      where: { id: conversationId }
+    })
+    
+    if (!conversation) {
+      console.log('[API/conversations/mobile] Conversation not found')
+      return NextResponse.json({ error: 'Conversation not found' }, { status: 404 })
+    }
+    
+    // Удаляем все связанные данные в транзакции
+    await prisma.$transaction(async (tx) => {
+      // 1. Получаем все сообщения в этом разговоре
+      const messages = await tx.message.findMany({
+        where: { conversationId: conversationId },
+        select: { id: true }
+      })
+      
+      const messageIds = messages.map(m => m.id)
+      console.log('[API/conversations/mobile] Found messages to delete:', messageIds.length)
+      
+      if (messageIds.length > 0) {
+        // 2. Удаляем покупки сообщений
+        const deletedPurchases = await tx.messagePurchase.deleteMany({
+          where: { messageId: { in: messageIds } }
+        })
+        console.log('[API/conversations/mobile] Deleted message purchases:', deletedPurchases.count)
+        
+        // 3. Удаляем сами сообщения
+        const deletedMessages = await tx.message.deleteMany({
+          where: { conversationId: conversationId }
+        })
+        console.log('[API/conversations/mobile] Deleted messages:', deletedMessages.count)
+      }
+      
+      // 4. Удаляем сам разговор
+      await tx.conversation.delete({
+        where: { id: conversationId }
+      })
+      console.log('[API/conversations/mobile] Deleted conversation:', conversationId)
+    })
+    
+    console.log('[API/conversations/mobile] Successfully deleted conversation and all related data')
+    
+    return NextResponse.json({
+      success: true,
+      message: 'Conversation deleted successfully',
+      conversationId: conversationId
+    })
+    
+  } catch (error) {
+    console.error('[API/conversations/mobile] DELETE Error:', error)
+    return NextResponse.json({ 
+      error: 'Failed to delete conversation',
+      details: error instanceof Error ? error.message : 'Unknown error'
+    }, { status: 500 })
+  }
+}

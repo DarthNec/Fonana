@@ -30,7 +30,7 @@ export function NavigationControls({
   const canGoNext = currentIndex < totalCount - 1
   
   return (
-    <div className={cn('navigation-controls', className)}>
+    <div className={cn('navigation-controls flex justify-between items-center', className)}>
       <button
         className="nav-button nav-button-previous"
         onClick={onPrevious}
@@ -38,7 +38,7 @@ export function NavigationControls({
         aria-label="Previous post"
         title={`Previous post (${currentIndex}/${totalCount - 1})`}
       >
-        <ChevronLeftIcon className="w-5 h-5" />
+        <ChevronLeftIcon className="w-6 h-6" />
         {showLabels && <span>Previous</span>}
       </button>
       
@@ -49,7 +49,7 @@ export function NavigationControls({
         aria-label="Next post"
         title={`Next post (${currentIndex + 2}/${totalCount})`}
       >
-        <ChevronRightIcon className="w-5 h-5" />
+        <ChevronRightIcon className="w-6 h-6" />
         {showLabels && <span>Next</span>}
       </button>
     </div>

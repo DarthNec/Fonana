@@ -183,3 +183,15 @@ pm2 logs sora-checker --lines 10
   <em>Требуется создание файла .env с API ключом OpenAI</em>
 </div>
 
+
+
+
+
+
+
+
+
+
+
+
+

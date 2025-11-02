@@ -34,7 +34,7 @@ function MessagesPageClientInner() {
   const isJwtReady = true;
   const [conversations, setConversations] = useState<Conversation[]>([])
   const [isLoading, setIsLoading] = useState(true)
-  const [conversationIdForDelete, setConversationIdForDelete] = useState(null)
+  const [conversationIdForDelete, setConversationIdForDelete] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [openMenuId, setOpenMenuId] = useState<string | null>(null)
   const menuRef = useRef<HTMLDivElement>(null)
@@ -143,20 +143,13 @@ function MessagesPageClientInner() {
     }
   }, [conversationsData, queryError])
 
-  // Функция удаления чата
+  // Функция удаления чата (без аутентификации)
   const deleteConversation = async (conversationId: string) => {
     try {
-      const token = await jwtManager.getToken()
-      console.log('Token:', token)
-      if (!token) {
-        throw new Error('Authentication required - no JWT token available')
-      }
+      console.log('[deleteConversation] Deleting conversation:', conversationId)
 
-      const response = await fetch(`/api/conversations?conversationId=${conversationId}`, {
-        method: 'DELETE',
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
+      const response = await fetch(`/api/conversations/mobile?conversationId=${conversationId}`, {
+        method: 'DELETE'
       })
 
       if (!response.ok) {
@@ -164,15 +157,18 @@ function MessagesPageClientInner() {
         throw new Error(errorData.error || 'Failed to delete conversation')
       }
 
+      const result = await response.json()
+      console.log('[deleteConversation] Delete result:', result)
+
       // Удаляем чат из локального состояния
       setConversations(prev => prev.filter(conv => conv.id !== conversationId))
       
       // Обновляем данные через React Query
       refetchConversations()
       setConversationIdForDelete(null)
-      console.log('Conversation deleted successfully:', conversationId)
+      console.log('[deleteConversation] Conversation deleted successfully:', conversationId)
     } catch (error) {
-      console.error('Error deleting conversation:', error)
+      console.error('[deleteConversation] Error:', error)
       throw error
     }
   }

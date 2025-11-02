@@ -31,6 +31,7 @@ interface UseOptimizedPostsReturn {
   addNewPost: (post: UnifiedPost) => void
   loadPostById: (postId: string) => Promise<UnifiedPost | null>
   refreshWithoutCache: () => void
+  loadVideos: () => Promise<UnifiedPost[]>
 }
 
 /**
@@ -107,6 +108,7 @@ export function useOptimizedPosts(options: UseOptimizedPostsOptions = {}): UseOp
       const data = await response.json()
       let likesData = []
       let rawPosts = data.posts || []
+      let emotionsData = []
       
       // 🚀 PAGINATION: Обрабатываем данные пагинации из API
       const apiTotalPages = data.totalPages || 0
@@ -143,11 +145,30 @@ export function useOptimizedPosts(options: UseOptimizedPostsOptions = {}): UseOp
         }
       }
 
+
+      if(user?.id) {
+        if(localStorage.getItem('user_emotions') !== null) {
+          emotionsData = JSON.parse(localStorage.getItem('user_emotions') || '[]')
+        } else {
+          const emotionsResponse = await fetch(`/api/emotions/user?userId=${user.id}`, {
+          })
+          if (!emotionsResponse.ok) {
+            throw new Error(`HTTP ${emotionsResponse.status}: ${emotionsResponse.statusText}`)
+          }
+          const data = await emotionsResponse.json()
+          emotionsData = data.data || []
+          localStorage.setItem('user_emotions', JSON.stringify(emotionsData || null))
+          console.log(`[useOptimizedPosts] User emotions:`, emotionsData);
+        }
+      }
+
+
       console.log(`[useOptimizedPosts] Received ${rawPosts.length} posts from API`)
       console.log(`[useOptimizedPosts] Raw posts2:`, rawPosts);
       // Normalize posts
-      console.log('ПРЯМО ПЕРЕД normalizeMany:', rawPosts[0]);
-      const normalizedPosts = PostNormalizer.normalizeMany(rawPosts, likesData);
+      // [iscreatorpost_normalizer_fix_2025_025] Передаём user.id для корректного вычисления isCreatorPost
+      console.log('ПРЯМО ПЕРЕД normalizeMany:', rawPosts);
+      const normalizedPosts = PostNormalizer.normalizeMany(rawPosts, likesData, emotionsData);
       
       console.log(`[useOptimizedPosts] Normalized ${normalizedPosts.length} posts successfully`)
       console.log('ПОСТЫ ПОСЛЕ normalizeMany:', normalizedPosts);
@@ -262,8 +283,18 @@ export function useOptimizedPosts(options: UseOptimizedPostsOptions = {}): UseOp
       
       console.log(`[useOptimizedPosts] LoadMore received ${rawPosts.length} additional posts`)
       
+      // Загружаем эмоции пользователя
+      let emotionsData = []
+      if (user?.id) {
+        const userEmotions = localStorage.getItem('user_emotions')
+        if (userEmotions) {
+          emotionsData = JSON.parse(userEmotions)
+        }
+      }
+      
       // Normalize posts
-      const normalizedPosts = PostNormalizer.normalizeMany(rawPosts, likesData)
+      // [iscreatorpost_normalizer_fix_2025_025] Передаём user.id для корректного вычисления isCreatorPost
+      const normalizedPosts = PostNormalizer.normalizeMany(rawPosts, likesData, emotionsData)
       
       // Добавляем новые посты к существующим
       setPosts(prev => [...prev, ...normalizedPosts])
@@ -411,6 +442,173 @@ export function useOptimizedPosts(options: UseOptimizedPostsOptions = {}): UseOp
     }
   }, [])
 
+  // Обработка эмоций
+  const handleEmotion = useCallback(async (postId: string, emotionId: number) => {
+    console.log('🎯 [useOptimizedPosts] handleEmotion called for post:', postId, 'emotionId:', emotionId)
+    
+    const userId = await getUserId()
+    if (!userId) {
+      console.log('🎯 [useOptimizedPosts] No userId available for emotion')
+      toast.error('Подключите кошелек для реакций')
+      return
+    }
+
+    await performEmotion(postId, userId, emotionId)
+  }, [getUserId])
+
+  // Выполнение эмоции
+  const performEmotion = useCallback(async (postId: string, userId: string, emotionId: number) => {
+    console.log('🎯 [useOptimizedPosts] performEmotion called:', { postId, userId, emotionId })
+    
+    try {
+      console.log('🎯 [useOptimizedPosts] Sending request to API...')
+      const response = await fetch(`/api/posts/${postId}/emotions`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ userId, emotionId }),
+      })
+
+      console.log('🎯 [useOptimizedPosts] API response status:', response.status)
+      
+      if (!response.ok) {
+        const errorText = await response.text()
+        console.error('🎯 [useOptimizedPosts] API error response:', errorText)
+        throw new Error(`Failed to update emotion: ${response.status} ${errorText}`)
+      }
+
+      const data = await response.json()
+      console.log('🎯 [useOptimizedPosts] API response data:', data)
+      
+      // Обновляем локальное состояние постов
+      setPosts(prevPosts => 
+        prevPosts.map(post => {
+          if (post.id !== postId) return post
+          
+          // Находим пост и обновляем его эмоции
+          let updatedEmotions = [...(post.emotions || [])]
+          let updatedUserEmotion = post.userEmotion
+          
+          if (data.action === 'created') {
+            // Добавляем новую эмоцию
+            const newEmotion = {
+              id: data.data.id,
+              emotionId: emotionId,
+              userId: userId,
+              createdAt: data.data.createdAt,
+              user: {
+                id: userId,
+                name: 'You',
+                username: 'you',
+                avatar: null
+              }
+            }
+            updatedEmotions.push(newEmotion)
+            updatedUserEmotion = newEmotion
+            
+            // Добавляем в localStorage
+            try {
+              const storedEmotions = localStorage.getItem('user_emotions')
+              const emotions = storedEmotions ? JSON.parse(storedEmotions) : []
+              
+              // Добавляем новую эмоцию
+              emotions.push({
+                postId: postId,
+                emotionId: emotionId,
+                userId: userId,
+                createdAt: data.data.createdAt
+              })
+              
+              localStorage.setItem('user_emotions', JSON.stringify(emotions))
+              console.log('🎯 [useOptimizedPosts] Emotion added to localStorage')
+            } catch (error) {
+              console.error('Failed to update localStorage:', error)
+            }
+            
+          } else if (data.action === 'removed') {
+            // Удаляем эмоцию пользователя
+            updatedEmotions = updatedEmotions.filter(e => !(e.userId === userId && e.emotionId === emotionId))
+            updatedUserEmotion = undefined
+            
+            // Удаляем из localStorage
+            try {
+              const storedEmotions = localStorage.getItem('user_emotions')
+              if (storedEmotions) {
+                const emotions = JSON.parse(storedEmotions)
+                const filteredEmotions = emotions.filter((e: any) => 
+                  !(e.postId === postId && e.emotionId === emotionId)
+                )
+                localStorage.setItem('user_emotions', JSON.stringify(filteredEmotions))
+                console.log('🎯 [useOptimizedPosts] Emotion removed from localStorage')
+              }
+            } catch (error) {
+              console.error('Failed to update localStorage:', error)
+            }
+            
+          } else if (data.action === 'updated') {
+            // Обновляем существующую эмоцию
+            updatedEmotions = updatedEmotions.map(e => {
+              if (e.userId === userId) {
+                return {
+                  ...e,
+                  emotionId: emotionId,
+                  id: data.data.id,
+                  createdAt: data.data.createdAt
+                }
+              }
+              return e
+            })
+            updatedUserEmotion = updatedEmotions.find(e => e.userId === userId)
+            
+            // Обновляем в localStorage
+            try {
+              const storedEmotions = localStorage.getItem('user_emotions')
+              if (storedEmotions) {
+                const emotions = JSON.parse(storedEmotions)
+                
+                // Находим и обновляем эмоцию для этого поста
+                const updatedStoredEmotions = emotions.map((e: any) => {
+                  if (e.postId === postId && e.userId === userId) {
+                    return {
+                      ...e,
+                      emotionId: emotionId,
+                      createdAt: data.data.createdAt
+                    }
+                  }
+                  return e
+                })
+                
+                localStorage.setItem('user_emotions', JSON.stringify(updatedStoredEmotions))
+                console.log('🎯 [useOptimizedPosts] Emotion updated in localStorage')
+              }
+            } catch (error) {
+              console.error('Failed to update localStorage:', error)
+            }
+          }
+          
+          return {
+            ...post,
+            emotions: updatedEmotions,
+            userEmotion: updatedUserEmotion,
+            emotionsCount: updatedEmotions.length
+          }
+        })
+      )
+      
+      if (data.action === 'created') {
+        toast.success('Эмоция добавлена!')
+      } else if (data.action === 'removed') {
+        toast('Эмоция убрана')
+      } else if (data.action === 'updated') {
+        toast.success('Эмоция изменена!')
+      }
+    } catch (error) {
+      console.error('Emotion error:', error)
+      toast.error('Ошибка при обновлении эмоции')
+    }
+  }, [])
+
   // Удалить пост
   const handleDelete = useCallback(async (postId: string) => {
     console.log('🎯 [useOptimizedPosts] handleDelete called for post:', postId)
@@ -476,6 +674,12 @@ export function useOptimizedPosts(options: UseOptimizedPostsOptions = {}): UseOp
         case 'unlike':
           void await handleLike(action.postId) // Используем тот же API для toggle
           break
+        case 'add-emotion':
+        case 'remove-emotion':
+          if (action.emotionId !== undefined) {
+            void await handleEmotion(action.postId, action.emotionId)
+          }
+          break
         case 'comment':
           console.log('Comment action:', action)
           break
@@ -502,15 +706,16 @@ export function useOptimizedPosts(options: UseOptimizedPostsOptions = {}): UseOp
       toast.error('Ошибка выполнения действия')
     }
     return // Явно возвращаем void
-  }, [handleLike, handleDelete])
+  }, [handleLike, handleEmotion, handleDelete])
   
   // [tier_access_system_2025_017] Добавляем функцию для локального добавления нового поста
   // [post_content_render_2025_017] Исправлено: нормализуем пост перед добавлением
+  // [iscreatorpost_normalizer_fix_2025_025] Передаём user.id для корректного вычисления isCreatorPost
   const addNewPost = useCallback((newPost: UnifiedPost) => {
     console.log('[useOptimizedPosts] Adding new post locally:', newPost.id)
     const normalizedPost = PostNormalizer.normalize(newPost)
     setPosts(prevPosts => [normalizedPost, ...prevPosts])
-  }, [])
+  }, [user?.id])
 
   // Функция для загрузки конкретного поста по ID
   const loadPostById = useCallback(async (postId: string): Promise<UnifiedPost | null> => {
@@ -558,8 +763,24 @@ export function useOptimizedPosts(options: UseOptimizedPostsOptions = {}): UseOp
         }
       }
       console.log(`Post data by id:`, postData);
+      
+      // Загружаем эмоции пользователя, если пользователь авторизован
+      let emotionsData = []
+      if (user?.id) {
+        try {
+          const emotionsResponse = await fetch(`/api/emotions/user?userId=${user.id}`)
+          if (emotionsResponse.ok) {
+            const data = await emotionsResponse.json()
+            emotionsData = data.data || []
+          }
+        } catch (emotionsError) {
+          console.warn('[useOptimizedPosts] Failed to load user emotions:', emotionsError)
+        }
+      }
+      
       // Нормализуем пост через PostNormalizer
-      const normalizedPosts = PostNormalizer.normalizeMany([{...postData.post}], likesData)
+      // [iscreatorpost_normalizer_fix_2025_025] Передаём user.id для корректного вычисления isCreatorPost
+      const normalizedPosts = PostNormalizer.normalizeMany([{...postData.post}], likesData, emotionsData)
       
       if (normalizedPosts.length === 0) {
         throw new Error('Ошибка при нормализации поста')
@@ -570,6 +791,60 @@ export function useOptimizedPosts(options: UseOptimizedPostsOptions = {}): UseOp
       
     } catch (error) {
       console.error(`[useOptimizedPosts] Error loading post ${postId}:`, error)
+      throw error
+    }
+  }, [user?.id, publicKeyString])
+  
+  // Функция для загрузки всех видео
+  const loadVideos = useCallback(async (): Promise<UnifiedPost[]> => {
+    try {
+      console.log('[useOptimizedPosts] Loading videos...')
+      
+      // Build API params
+      const params = new URLSearchParams()
+      if (publicKeyString) params.append('userWallet', publicKeyString)
+      if (user?.id) params.append('userId', user.id)
+      
+      const response = await fetch(`/api/posts/video?${params}`)
+      
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`)
+      }
+      
+      const data = await response.json()
+      const rawPosts = data.posts || []
+      
+      console.log(`[useOptimizedPosts] Received ${rawPosts.length} videos from API`)
+      
+      // Загружаем лайки пользователя, если пользователь авторизован
+      let likesData = []
+      let emotionsData = []
+      
+      if (user?.id) {
+        try {
+          const userLikes = localStorage.getItem('user_likes')
+          if (userLikes) {
+            likesData = JSON.parse(userLikes)
+          }
+          
+          const userEmotions = localStorage.getItem('user_emotions')
+          if (userEmotions) {
+            emotionsData = JSON.parse(userEmotions)
+          }
+        } catch (error) {
+          console.warn('[useOptimizedPosts] Failed to load user data from localStorage:', error)
+        }
+      }
+      
+      // Нормализуем видео
+      const normalizedVideos = PostNormalizer.normalizeMany(rawPosts, likesData, emotionsData)
+      
+      console.log(`[useOptimizedPosts] Normalized ${normalizedVideos.length} videos successfully`)
+      
+      return normalizedVideos
+      
+    } catch (error) {
+      console.error('[useOptimizedPosts] Error loading videos:', error)
       throw error
     }
   }, [user?.id, publicKeyString])
@@ -587,6 +862,7 @@ export function useOptimizedPosts(options: UseOptimizedPostsOptions = {}): UseOp
     handleAction,
     addNewPost,
     loadPostById,
-    refreshWithoutCache
+    refreshWithoutCache,
+    loadVideos
   }
 }

@@ -54,3 +54,15 @@ echo "   pm2 logs sora-checker --lines 0 -f"
 echo ""
 echo "✅ Скрипт завершен!"
 
+
+
+
+
+
+
+
+
+
+
+
+

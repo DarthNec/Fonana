@@ -30,7 +30,12 @@ export class PostNormalizer {
       media: this.normalizeMedia(rawPost),
       access: this.normalizeAccess(rawPost),
       commerce: this.normalizeCommerce(rawPost),
+      remixId: rawPost.remixId ?? null,
       engagement: this.normalizeEngagement(rawPost),
+      emotions: rawPost.emotions || [],
+      userEmotion: rawPost.userEmotion,
+      emotionsCount: rawPost.emotions?.length || 0,
+      postRemixes: this.normalizeRemixes(rawPost.postRemixes),
       createdAt: rawPost.createdAt,
       updatedAt: rawPost.updatedAt || rawPost.createdAt
     }
@@ -222,9 +227,21 @@ export class PostNormalizer {
   }
 
   /**
+   * Нормализует массив ремиксов
+   */
+  private static normalizeRemixes(rawRemixes: any): UnifiedPost[] {
+    if (!rawRemixes || !Array.isArray(rawRemixes)) {
+      return []
+    }
+    
+    // Рекурсивно нормализуем каждый ремикс
+    return rawRemixes.map(remix => this.normalize(remix))
+  }
+
+  /**
    * Нормализует массив постов
    */
-  static normalizeMany(rawPosts: any[], likesData: any[]): UnifiedPost[] {
+  static normalizeMany(rawPosts: any[], likesData: any[], emotionsData: any[]): UnifiedPost[] {
     console.log(`[PostNormalizer] Likes data:`, likesData);
     console.log(`[PostNormalizer] Raw posts:`, rawPosts);
     if(likesData != undefined) {
@@ -234,6 +251,18 @@ export class PostNormalizer {
         return {
           ...post,
           isLiked: like ? true : false
+          }
+        })
+      }
+    }
+
+    if(emotionsData != undefined) {
+      if(emotionsData.length > 0) {
+        rawPosts = rawPosts.map(post => {
+          const emotion = emotionsData.find(emotion => emotion.postId === post.id);
+          return {
+            ...post,
+            userEmotion: emotion
           }
         })
       }

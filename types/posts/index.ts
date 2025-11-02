@@ -121,6 +121,22 @@ export interface PostEngagement {
 }
 
 /**
+ * Эмоция на посте
+ */
+export interface PostEmotion {
+  id: string
+  emotionId: number
+  userId: string
+  createdAt: string
+  user: {
+    id: string
+    name: string
+    username: string
+    avatar: string | null
+  }
+}
+
+/**
  * Унифицированный интерфейс поста
  */
 export interface UnifiedPost {
@@ -133,6 +149,36 @@ export interface UnifiedPost {
   engagement: PostEngagement
   createdAt: string
   updatedAt: string
+  emotionsCount: number
+  // [remix_carousel_fix_2025_025] Добавлено для поддержки карусели ремиксов
+  /**
+   * ID оригинального поста, если этот пост является ремиксом
+   * null или undefined для оригинальных постов
+   */
+  remixId?: string | null
+  
+  /**
+   * Количество ремиксов этого поста (опционально)
+   * Используется для определения, нужно ли показывать карусель
+   * для оригинального поста
+   */
+  hasRemixesCount?: number
+  
+  /**
+   * Массив ремиксов из Redis кеша
+   * Загружается для видео постов с requestId
+   */
+  postRemixes?: UnifiedPost[]
+  
+  /**
+   * Массив эмоций на посте
+   */
+  emotions?: PostEmotion[]
+  
+  /**
+   * Эмоция текущего пользователя на посте (если есть)
+   */
+  userEmotion?: PostEmotion
 }
 
 /**
@@ -151,6 +197,8 @@ export type PostActionType =
   | 'bookmark'
   | 'report'
   | 'remix_created'
+  | 'add-emotion'
+  | 'remove-emotion'
 
 /**
  * Действие с постом
@@ -159,6 +207,7 @@ export interface PostAction {
   type: PostActionType
   postId: string
   data?: any
+  emotionId?: number // Для add-emotion и remove-emotion
   post?: UnifiedPost // Для remix_created и других действий, которые создают новые посты
 }
 

@@ -11,6 +11,7 @@ export interface PostHeaderProps {
   variant?: PostCardVariant
   className?: string
   onAction?: (action: PostAction) => void
+  overlay?: boolean // Для Instagram-style на темном фоне
 }
 
 /**
@@ -44,26 +45,44 @@ export function PostHeader({
   post,
   variant = 'full',
   className,
-  onAction
+  onAction,
+  overlay = false
 }: PostHeaderProps) {
   const { creator, createdAt } = post
   const getAvatarSize = () => {
     switch (variant) {
-      case 'minimal': return 'w-8 h-8'
-      case 'compact': return 'w-10 h-10'
-      default: return 'w-12 h-12'
+      case 'minimal': return 'w-7 h-7 sm:w-8 sm:h-8'
+      case 'compact': return 'w-8 h-8 sm:w-10 sm:h-10'
+      default: return 'w-9 h-9 sm:w-11 sm:h-11'
     }
   }
 
   const getTextSize = () => {
     switch (variant) {
-      case 'minimal': return 'text-sm'
-      case 'compact': return 'text-base'
-      default: return 'text-base'
+      case 'minimal': return 'text-xs sm:text-sm'
+      case 'compact': return 'text-sm sm:text-base'
+      default: return 'text-sm sm:text-base'
     }
   }
 
   const formattedDate = formatRelativeTime(createdAt)
+  
+  // Стили для overlay режима (поверх темного фона)
+  const getNameStyles = () => {
+    return overlay 
+      ? 'font-semibold text-white hover:text-gray-200 transition-colors block truncate drop-shadow-lg'
+      : cn(
+          'font-semibold text-gray-900 dark:text-white hover:text-purple-600 dark:hover:text-purple-400 transition-colors block truncate',
+          getTextSize(),
+          !isValidCreatorId && 'cursor-default hover:text-gray-900 dark:hover:text-white'
+        )
+  }
+  
+  const getMetaStyles = () => {
+    return overlay
+      ? 'flex items-center gap-2 text-[10px] sm:text-xs text-white/90 drop-shadow-md'
+      : 'flex items-center gap-2 text-[10px] sm:text-xs text-gray-500 dark:text-slate-500'
+  }
 
   // Проверяем валидность creator.id для навигации
   const isValidCreatorId = creator.id && creator.id !== 'unknown'
@@ -77,7 +96,7 @@ export function PostHeader({
   }
 
   return (
-    <div className={cn('flex items-center gap-3 mb-4', className)}>
+    <div className={cn('flex items-center  gap-3 mb-4', className)}>
       {/* Avatar */}
       <Link 
         href={creatorUrl} 
@@ -86,7 +105,8 @@ export function PostHeader({
       >
         <div className={cn(
           'relative rounded-full overflow-hidden bg-gradient-to-br from-purple-500 to-pink-500',
-          getAvatarSize()
+          getAvatarSize(),
+          overlay && 'ring-2 ring-white shadow-lg' // Белая обводка для overlay режима
         )}>
           {creator.avatar ? (
             <img
@@ -102,7 +122,7 @@ export function PostHeader({
           
           {/* Verified Badge */}
           {creator.isVerified && (
-            <div className="absolute -bottom-0.5 -right-0.5 w-4 h-4 bg-blue-500 rounded-full flex items-center justify-center border-2 border-white dark:border-slate-900">
+            <div className="absolute -bottom-0.5 -right-0.5 w-4 h-4 bg-blue-500 rounded-full flex items-center justify-center border-2 border-white">
               <svg className="w-2.5 h-2.5 text-white" fill="currentColor" viewBox="0 0 20 20">
                 <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
               </svg>
@@ -111,20 +131,56 @@ export function PostHeader({
         </div>
       </Link>
 
-      {/* Creator Info */}
-      <div className="flex-1 min-w-0">
-        <Link 
-          href={creatorUrl}
-          onClick={handleCreatorClick}
-          className={cn(
-            'font-semibold text-gray-900 dark:text-white hover:text-purple-600 dark:hover:text-purple-400 transition-colors block truncate',
-            getTextSize(),
-            !isValidCreatorId && 'cursor-default hover:text-gray-900 dark:hover:text-white'
+      {/* Creator Info - Mobile */}
+      <div className="flex-1 min-w-0 flex flex-col gap-0 sm:hidden">
+        <div className="flex items-center gap-2 leading-none">
+          <Link 
+            href={creatorUrl}
+            onClick={handleCreatorClick}
+            className={cn(getNameStyles(), getTextSize(), 'leading-none')}
+          >
+            {creator.name}
+          </Link>
+          {post.content.category && (
+            <span className={cn(
+              'text-[9px] px-1.5 py-0.5= rounded-full font-medium whitespace-nowrap mb-7',
+              overlay 
+                ? 'bg-white/20 text-white' 
+                : 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300'
+            )}>
+              {post.content.category}
+            </span>
           )}
-        >
-          {creator.name}
-        </Link>
-        <div className="flex items-center gap-2 text-xs text-gray-500 dark:text-slate-500">
+        </div>
+        <div className={cn(getMetaStyles(), 'leading-none mt-0')} style={{ marginTop: '-20px' }}>
+          <span className="truncate">@{creator.username}</span>
+          <span>•</span>
+          <span className="whitespace-nowrap">{formattedDate}</span>
+        </div>
+      </div>
+
+      {/* Creator Info - Desktop */}
+      <div className="flex-1 min-w-0 hidden sm:block">
+        <div className="flex items-center gap-2">
+          <Link 
+            href={creatorUrl}
+            onClick={handleCreatorClick}
+            className={cn(getNameStyles(), getTextSize())}
+          >
+            {creator.name}
+          </Link>
+          {post.content.category && (
+            <span className={cn(
+              'text-xs px-2 py-0.5 rounded-full font-medium whitespace-nowrap',
+              overlay 
+                ? 'bg-white/20 text-white' 
+                : 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300'
+            )}>
+              {post.content.category}
+            </span>
+          )}
+        </div>
+        <div className={cn(getMetaStyles(), 'mt-1')}>
           <span className="truncate">@{creator.username}</span>
           <span>•</span>
           <span className="whitespace-nowrap">{formattedDate}</span>
@@ -135,6 +191,7 @@ export function PostHeader({
       <PostMenu 
         post={post}
         onAction={onAction}
+        overlay={overlay}
       />
     </div>
   )

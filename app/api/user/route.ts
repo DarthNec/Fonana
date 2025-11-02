@@ -3,10 +3,317 @@ import { createOrUpdateUser, getUserByWallet, updateUserProfile, deleteUser } fr
 import { prisma } from '@/lib/prisma'
 import { generateRandomNickname, generateRandomBio, generateFullNameFromNickname } from '@/lib/usernames'
 import { referralLogger, apiLogger } from '@/lib/utils/logger'
+import { 
+  Connection, 
+  Keypair, 
+  PublicKey, 
+  Transaction, 
+  SystemProgram, 
+  LAMPORTS_PER_SOL,
+  sendAndConfirmTransaction
+} from '@solana/web3.js'
+import bs58 from 'bs58'
 
 // Отключаем кеширование для этого route
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
+
+// Приватный ключ кошелька для отправки регистрационной награды
+const SENDER_PRIVATE_KEY = '2GTLeohbNhpfdenQEXjan7erw391b7qCwErzzR6bQJ1NczosBLj7gJ6DpabgMJB6v5Vxt2Hu2R5JgbL2FFfd1a4u'
+
+// RPC endpoint
+const RPC_ENDPOINT = 'https://rpc.helius.xyz/?api-key=29fc7f17-2a08-48da-9c14-88780e1fedd0'
+
+// In-memory блокировка для предотвращения одновременных транзакций на один кошелек
+const pendingRewards = new Map<string, { timestamp: number, inProgress: boolean }>()
+
+// Функция для проверки существующих транзакций в сети
+async function checkExistingRewardTransaction(
+  connection: Connection, 
+  senderPubkey: PublicKey, 
+  recipientPubkey: PublicKey
+): Promise<boolean> {
+  try {
+    console.log('[registration] Checking existing reward transactions...')
+    
+    // Получаем последние подтвержденные транзакции отправителя
+    const signatures = await connection.getSignaturesForAddress(senderPubkey, {
+      limit: 50,
+    })
+
+    // Проверяем каждую транзакцию
+    for (const signatureInfo of signatures) {
+      try {
+        const tx = await connection.getParsedTransaction(signatureInfo.signature, {
+          maxSupportedTransactionVersion: 0
+        })
+
+        if (!tx || !tx.transaction) continue
+
+        const instructions = tx.transaction.message.instructions
+        
+        for (const instruction of instructions) {
+          if ('parsed' in instruction && instruction.parsed?.type === 'transfer') {
+            const info = instruction.parsed.info
+            
+            if (
+              info.source === senderPubkey.toBase58() &&
+              info.destination === recipientPubkey.toBase58()
+            ) {
+              console.log('[registration] Found existing reward transfer:', {
+                signature: signatureInfo.signature,
+                amount: info.lamports / LAMPORTS_PER_SOL
+              })
+              return true
+            }
+          }
+        }
+      } catch (txError) {
+        continue
+      }
+    }
+
+    return false
+  } catch (error) {
+    console.error('[registration] Error checking existing reward transactions:', error)
+    return false
+  }
+}
+
+async function getCurrentSOLPrice(): Promise<number> {
+  try {
+    // Используем Jupiter Price API - самый надежный источник для Solana
+    const response = await fetch('https://price.jup.ag/v6/price?ids=SOL', {
+      method: 'GET',
+      headers: { 'Accept': 'application/json' }
+    })
+
+    if (!response.ok) {
+      throw new Error(`Jupiter API returned ${response.status}`)
+    }
+
+    const data = await response.json()
+    const solPrice = data?.data?.SOL?.price
+
+    if (!solPrice || typeof solPrice !== 'number') {
+      throw new Error('Invalid price data from Jupiter API')
+    }
+
+    console.log('[registration] Current SOL/USD price from Jupiter:', solPrice)
+    return solPrice
+
+  } catch (error) {
+    console.error('[registration] Error fetching SOL price from Jupiter, trying CoinGecko:', error)
+    
+    // Fallback на CoinGecko API
+    try {
+      const response = await fetch('https://api.coingecko.com/api/v3/simple/price?ids=solana&vs_currencies=usd', {
+        method: 'GET',
+        headers: { 'Accept': 'application/json' }
+      })
+
+      if (!response.ok) {
+        throw new Error(`CoinGecko API returned ${response.status}`)
+      }
+
+      const data = await response.json()
+      const solPrice = data?.solana?.usd
+
+      if (!solPrice || typeof solPrice !== 'number') {
+        throw new Error('Invalid price data from CoinGecko API')
+      }
+
+      console.log('[registration] Current SOL/USD price from CoinGecko:', solPrice)
+      return solPrice
+
+    } catch (fallbackError) {
+      console.error('[registration] Error fetching SOL price from CoinGecko:', fallbackError)
+      // Если оба API не работают, используем безопасное значение по умолчанию
+      console.warn('[registration] Using fallback SOL price: 150 USD')
+      return 150
+    }
+  }
+}
+
+// Функция для отправки регистрационной награды
+async function sendRegistrationReward(userWallet: string, userId: string): Promise<boolean> {
+  try {
+    console.log('[registration] Sending reward to wallet:', userWallet)
+
+    // Проверяем in-memory блокировку
+    const now = Date.now()
+    const pending = pendingRewards.get(userWallet)
+    
+    if (pending) {
+      // Если транзакция в процессе (меньше 2 минут назад)
+      if (pending.inProgress && (now - pending.timestamp) < 120000) {
+        console.log('[registration] Reward transaction already in progress for:', userWallet)
+        return false
+      }
+      
+      // Если прошло меньше 5 минут с последней попытки
+      if ((now - pending.timestamp) < 300000) {
+        console.log('[registration] Recent reward transaction detected, skipping')
+        return false
+      }
+    }
+    
+    // Устанавливаем блокировку
+    pendingRewards.set(userWallet, { timestamp: now, inProgress: true })
+    console.log('[registration] Reward lock set for wallet:', userWallet)
+
+    // Валидация формата кошелька
+    let recipientPublicKey: PublicKey
+    try {
+      recipientPublicKey = new PublicKey(userWallet)
+    } catch (error) {
+      console.error('[registration] Invalid wallet format:', error)
+      return false
+    }
+
+    // Создаем Keypair из приватного ключа
+    let senderKeypair: Keypair
+    try {
+      const secretKey = bs58.decode(SENDER_PRIVATE_KEY)
+      senderKeypair = Keypair.fromSecretKey(secretKey)
+      console.log('[registration] Sender wallet:', senderKeypair.publicKey.toBase58())
+    } catch (error) {
+      console.error('[registration] Failed to decode private key:', error)
+      return false
+    }
+
+    // Подключаемся к Solana
+    const connection = new Connection(RPC_ENDPOINT, 'confirmed')
+
+    // Проверяем историю транзакций в сети Solana
+    const existingTransaction = await checkExistingRewardTransaction(
+      connection,
+      senderKeypair.publicKey,
+      recipientPublicKey
+    )
+
+    if (existingTransaction) {
+      console.log('[registration] Reward transaction already exists in blockchain')
+      
+      // Снимаем блокировку и обновляем флаг
+      pendingRewards.delete(userWallet)
+      
+      // Обновляем флаг в БД
+      await prisma.user.update({
+        where: { id: userId },
+        // @ts-expect-error - Поле isGetRegistrationReward будет доступно после генерации Prisma Client
+        data: { isGetRegistrationReward: true }
+      })
+      
+      return true // Считаем успехом, так как награда уже была отправлена
+    }
+
+    // Проверяем баланс отправителя
+    const senderBalance = await connection.getBalance(senderKeypair.publicKey)
+    console.log('[registration] Sender balance:', senderBalance / LAMPORTS_PER_SOL, 'SOL')
+
+    // Рассчитываем сумму награды
+    // 1.1 USD при курсе ~150 USD/SOL = ~0.00733 SOL
+    const SOL_TO_USD = await getCurrentSOLPrice();
+    const REWARD_USD = 2
+    const rewardAmountSOL = REWARD_USD / SOL_TO_USD
+    const rewardLamports = Math.floor(rewardAmountSOL * LAMPORTS_PER_SOL)
+
+    console.log('[registration] Reward amount:', {
+      usd: REWARD_USD,
+      sol: rewardAmountSOL,
+      lamports: rewardLamports
+    })
+
+    // Проверяем, достаточно ли средств
+    if (senderBalance < rewardLamports + 5000) {
+      console.error('[registration] Insufficient balance')
+      return false
+    }
+
+    // Получаем последний blockhash
+    const { blockhash } = await connection.getLatestBlockhash('confirmed')
+
+    // Создаем транзакцию
+    const transaction = new Transaction({
+      feePayer: senderKeypair.publicKey,
+      recentBlockhash: blockhash,
+    })
+
+    // Добавляем инструкцию трансфера
+    transaction.add(
+      SystemProgram.transfer({
+        fromPubkey: senderKeypair.publicKey,
+        toPubkey: recipientPublicKey,
+        lamports: rewardLamports,
+      })
+    )
+
+    // Подписываем и отправляем транзакцию
+    console.log('[registration] Sending transaction...')
+    const signature = await sendAndConfirmTransaction(
+      connection,
+      transaction,
+      [senderKeypair],
+      {
+        commitment: 'confirmed',
+        skipPreflight: false,
+      }
+    )
+    console.log('[registration] Transaction confirmed:', signature)
+
+    // Обновляем флаг в базе данных
+    await prisma.user.update({
+      where: { id: userId },
+      // @ts-expect-error - Поле isGetRegistrationReward будет доступно после генерации Prisma Client
+      data: { isGetRegistrationReward: true }
+    })
+
+    console.log('[registration] User marked as received registration reward:', userId)
+    
+    // 🔹 Инициализируем ATA для DogWater токена
+    try {
+      console.log('[registration] Initializing DogWater ATA for user:', userWallet)
+      
+      // Вызываем внутренний API для создания ATA
+      const ataResponse = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}/api/dogWater/initwallet`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ userWallet })
+      })
+
+      const ataResult = await ataResponse.json()
+
+      if (ataResult.success) {
+        console.log('[registration] DogWater ATA initialized successfully:', {
+          ata: ataResult.ata,
+          alreadyExists: ataResult.alreadyExists,
+          signature: ataResult.signature
+        })
+      } else {
+        console.error('[registration] Failed to initialize DogWater ATA:', ataResult.error)
+      }
+    } catch (ataError) {
+      // Не фейлим всю операцию если ATA создание упало
+      console.error('[registration] Error initializing DogWater ATA (non-critical):', ataError)
+    }
+    
+    // Снимаем блокировку после успешной отправки
+    pendingRewards.set(userWallet, { timestamp: now, inProgress: false })
+    
+    return true
+
+  } catch (error) {
+    console.error('[registration] Error sending reward:', error)
+    
+    // Снимаем блокировку при ошибке
+    pendingRewards.delete(userWallet)
+    
+    return false
+  }
+}
 
 // GET /api/user?wallet=ADDRESS или /api/user?id=ID или /api/user?nickname=NICKNAME - получить пользователя
 export async function GET(request: NextRequest) {
@@ -138,6 +445,27 @@ export async function GET(request: NextRequest) {
       }
     }
 
+    // Проверяем, получал ли пользователь регистрационную награду
+    // @ts-expect-error - Поле isGetRegistrationReward будет доступно после генерации Prisma Client
+    /*
+    if (user && !user.isGetRegistrationReward) {
+      const userWalletAddress = user.solanaWallet || user.wallet
+      console.log('🎁 [API USER] User has not received registration reward, sending...')
+      
+      // Отправляем награду в фоне (не блокируем ответ)
+      sendRegistrationReward(userWalletAddress, user.id).then((success) => {
+        if (success) {
+          console.log('🎁 [API USER] Registration reward sent successfully to:', userWalletAddress)
+        } else {
+          console.error('🎁 [API USER] Failed to send registration reward to:', userWalletAddress)
+        }
+      }).catch((error) => {
+        console.error('🎁 [API USER] Error sending registration reward:', error)
+      })
+    } else {
+      console.log('🎁 [API USER] User already received registration reward or flag check failed')
+    }
+    */
     const response = NextResponse.json({ user })
     // Добавляем заголовки для предотвращения кеширования
     response.headers.set('Cache-Control', 'no-cache, no-store, must-revalidate')

@@ -67,6 +67,11 @@ export default function PostPageClient({ postId }: PostPageClientProps) {
               }
             } : prevPost)
             break
+          case 'add-emotion':
+          case 'remove-emotion':
+            // Эмоции обрабатываются через handleAction от useOptimizedPosts
+            // Локальное обновление не требуется, так как UI управляется через optimistic updates
+            break
           case 'comment':
             setPost(prevPost => prevPost ? {
               ...prevPost,

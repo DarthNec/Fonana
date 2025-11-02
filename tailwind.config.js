@@ -97,6 +97,7 @@ module.exports = {
         'shimmer': 'shimmer 2s infinite',
         'slide-in-from-top': 'slideInFromTop 300ms ease-out',
         'fade-in': 'fadeIn 0.3s ease-in-out',
+        'slide-up': 'slideUp 0.3s ease-out',
       },
       keyframes: {
         float: {
@@ -126,6 +127,10 @@ module.exports = {
         fadeIn: {
           '0%': { opacity: '0', transform: 'scale(0.9)' },
           '100%': { opacity: '1', transform: 'scale(1)' },
+        },
+        slideUp: {
+          '0%': { transform: 'translateY(100%)' },
+          '100%': { transform: 'translateY(0)' },
         },
       },
     },

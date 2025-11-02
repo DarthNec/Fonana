@@ -1,7 +1,7 @@
 # 📚 INDEX - Центральный индекс документации Fonana
 
 > **Центральная точка входа в документацию проекта Fonana**  
-> Последнее обновление: 21 октября 2025  
+> Последнее обновление: 27 октября 2025  
 > Версия проекта: v0.1.0-alpha
 
 ---
@@ -73,6 +73,16 @@
 - [🛒 API покупки постов](./MOBILE_BUY_POST_API.md) - API для покупки постов
 - [📊 Логика обновления подписок](./docs/SUBSCRIPTION_SIMPLE_UPDATE.md) - Логика обновления подписок
 - [⬆️ Логика апгрейда подписок](./docs/SUBSCRIPTION_UPGRADE_LOGIC.md) - Логика апгрейда подписок
+
+### Blockchain & Tokens API
+- [🪙 DogWater ATA Инициализация](./docs/DOGWATER_ATA_INITIALIZATION.md) - Автоматическое создание Token Accounts
+- [🚀 DogWater Quick Start](./DOGWATER_ATA_QUICKSTART.md) - Быстрый старт с DogWater ATA
+
+### User Management API
+- [🎨 User Generations API](./docs/API_USER_GENERATIONS.md) - Управление счетчиком AI генераций
+- [⚡ Generations Quick Start](./docs/USER_GENERATIONS_QUICK_START.md) - Быстрый старт с API генераций
+- [🤖 Sora-2 Generations Integration](./docs/SORA2_GENERATIONS_INTEGRATION.md) - Интеграция системы генераций в CreatePostModal
+- [🗑️ Delete Conversations API](./docs/API_CONVERSATIONS_MOBILE_DELETE.md) - Удаление диалогов без аутентификации
 
 ---
 

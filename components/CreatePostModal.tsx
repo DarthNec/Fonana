@@ -18,11 +18,12 @@ import {
   SparklesIcon,
   LockClosedIcon,
   StarIcon,
-  ScissorsIcon
+  ScissorsIcon,
+  QuestionMarkCircleIcon
 } from '@heroicons/react/24/outline'
 import ImageCropModal from './ImageCropModal'
 import { useSolRate } from '@/lib/hooks/useSolRate'
-import axios from 'axios'
+import { createFFmpeg, fetchFile } from '@ffmpeg/ffmpeg'
 
 const categories = [
   'Art', 'Music', 'Gaming', 'Lifestyle', 'Fitness', 
@@ -46,6 +47,9 @@ export default function CreatePostModal({ onPostCreated, onPostUpdated, onClose,
   const [isUploading, setIsUploading] = useState(false)
   const [showCropModal, setShowCropModal] = useState(false)
   const [originalImage, setOriginalImage] = useState<string>('')
+  const [isCompressing, setIsCompressing] = useState(false)
+  const [compressionProgress, setCompressionProgress] = useState(0)
+  const ffmpegRef = useRef<any>(null)
   
   // ✅ КРИТИЧЕСКАЯ ПРОВЕРКА: предотвращаем React Error #185
   console.log(user);
@@ -57,6 +61,11 @@ export default function CreatePostModal({ onPostCreated, onPostUpdated, onClose,
   const [isLoadingPost, setIsLoadingPost] = useState(false)
   const [postData, setPostData] = useState<any>(null)
   const [hasInitialized, setHasInitialized] = useState(false)
+  
+  // Состояния для генераций AI
+  const [availableGenerations, setAvailableGenerations] = useState<number | null>(null)
+  const [isLoadingGenerations, setIsLoadingGenerations] = useState(false)
+  const [showGenerationTooltip, setShowGenerationTooltip] = useState(false)
   
   // 🔥 M7 FIX: SINGLE DEBUG useEffect WITH STABLE DEPENDENCIES (removed triple duplicates)
   useEffect(() => {
@@ -176,6 +185,41 @@ export default function CreatePostModal({ onPostCreated, onPostUpdated, onClose,
     }
   }, [])
 
+  // Загрузка доступных генераций при открытии модалки
+  useEffect(() => {
+    const fetchGenerations = async () => {
+      if (!publicKeyString) {
+        console.log('[CreatePostModal] No wallet connected, skipping generations fetch')
+        return
+      }
+      
+      setIsLoadingGenerations(true)
+      try {
+        console.log('[CreatePostModal] Fetching available generations for:', publicKeyString)
+        
+        const response = await fetch(`/api/user/generations?userWallet=${publicKeyString}`)
+        
+        if (!response.ok) {
+          const error = await response.json()
+          throw new Error(error.error || 'Failed to fetch generations')
+        }
+        
+        const data = await response.json()
+        console.log('[CreatePostModal] Generations fetched:', data.availableGenerationCount)
+        
+        setAvailableGenerations(data.availableGenerationCount)
+      } catch (error) {
+        console.error('[CreatePostModal] Error fetching generations:', error)
+        toast.error('Failed to load generation count')
+        setAvailableGenerations(0)
+      } finally {
+        setIsLoadingGenerations(false)
+      }
+    }
+    
+    fetchGenerations()
+  }, [publicKeyString])
+
   // Загрузка данных поста в режиме редактирования
   const loadPostData = async (postId: string) => {
     if (mode !== 'edit' || !postId) return
@@ -266,7 +310,101 @@ export default function CreatePostModal({ onPostCreated, onPostUpdated, onClose,
     }
   }, [mode])
 
-  const handleFileUpload = (file: File) => {
+  // Инициализация FFmpeg
+  useEffect(() => {
+    const loadFFmpeg = async () => {
+      if (!ffmpegRef.current) {
+        const ffmpeg = createFFmpeg({ 
+          log: true,
+          progress: ({ ratio }) => {
+            setCompressionProgress(Math.round(ratio * 100))
+          }
+        })
+        ffmpegRef.current = ffmpeg
+      }
+    }
+    loadFFmpeg()
+  }, [])
+
+  // Функция сжатия видео
+  const compressVideo = async (file: File): Promise<File> => {
+    try {
+      setIsCompressing(true)
+      setCompressionProgress(0)
+      
+      const ffmpeg = ffmpegRef.current
+      
+      if (!ffmpeg) {
+        throw new Error('FFmpeg not initialized')
+      }
+      
+      // Загружаем FFmpeg, если еще не загружен
+      if (!ffmpeg.isLoaded()) {
+        console.log('[CreatePostModal] Loading FFmpeg...')
+        toast.loading('Initializing video compressor...', { id: 'ffmpeg-load' })
+        await ffmpeg.load()
+        toast.dismiss('ffmpeg-load')
+        console.log('[CreatePostModal] FFmpeg loaded successfully')
+      }
+      
+      console.log('[CreatePostModal] Starting video compression:', {
+        originalSize: (file.size / (1024 * 1024)).toFixed(2) + 'MB',
+        fileName: file.name
+      })
+      
+      toast.loading('Compressing video...', { id: 'compress' })
+      
+      // Записываем входной файл
+      ffmpeg.FS('writeFile', 'input.mp4', await fetchFile(file))
+      
+      // Сжимаем видео
+      await ffmpeg.run(
+        '-i', 'input.mp4',
+        '-vcodec', 'libx264',
+        '-b:v', '1000k',  // битрейт видео (примерно 1 Мбит/с)
+        '-vf', 'scale=1280:-1', // уменьшение разрешения
+        '-preset', 'fast',
+        'output.mp4'
+      )
+      
+      // Читаем выходной файл
+      const data = ffmpeg.FS('readFile', 'output.mp4')
+      const compressedBlob = new Blob([data.buffer], { type: 'video/mp4' })
+      
+      // Очищаем файловую систему FFmpeg
+      try {
+        ffmpeg.FS('unlink', 'input.mp4')
+        ffmpeg.FS('unlink', 'output.mp4')
+      } catch (e) {
+        console.warn('[CreatePostModal] Error cleaning up FFmpeg files:', e)
+      }
+      
+      const compressedFile = new File([compressedBlob], file.name, {
+        type: 'video/mp4'
+      })
+      
+      console.log('[CreatePostModal] Video compressed successfully:', {
+        originalSize: (file.size / (1024 * 1024)).toFixed(2) + 'MB',
+        compressedSize: (compressedFile.size / (1024 * 1024)).toFixed(2) + 'MB',
+        reduction: (((file.size - compressedFile.size) / file.size) * 100).toFixed(1) + '%'
+      })
+      
+      toast.dismiss('compress')
+      toast.success(`Video compressed: ${(file.size / (1024 * 1024)).toFixed(1)}MB → ${(compressedFile.size / (1024 * 1024)).toFixed(1)}MB`)
+      
+      return compressedFile
+    } catch (error) {
+      console.error('[CreatePostModal] Video compression error:', error)
+      toast.dismiss('compress')
+      toast.error('Failed to compress video. Uploading original file.')
+      return file // Возвращаем оригинальный файл в случае ошибки
+    } finally {
+      setIsCompressing(false)
+      setCompressionProgress(0)
+    }
+  }
+
+  const handleFileUpload = async (file: File) => {
     // Determine content type based on file
     let contentType: 'image' | 'video' | 'audio' = 'image'
     const maxSizes = {
@@ -354,11 +492,19 @@ export default function CreatePostModal({ onPostCreated, onPostUpdated, onClose,
       
       reader.readAsDataURL(file)
     } else {
-      // For video and audio, set directly
-      const preview = URL.createObjectURL(file)
+      // For video and audio, check if compression is needed
+      let processedFile = file
+      
+      // Сжимаем видео, если размер больше 20МБ
+      if (contentType === 'video' && file.size > 20 * 1024 * 1024) {
+        console.log('[CreatePostModal] Video size exceeds 20MB, starting compression...')
+        processedFile = await compressVideo(file)
+      }
+      
+      const preview = URL.createObjectURL(processedFile)
       setFormData(prev => ({
         ...prev,
-        file, // Сохраняем оригинальный файл для отправки на сервер
+        file: processedFile, // Сохраняем обработанный файл для отправки на сервер
         type: contentType,
         preview, // Object URL для preview
         category: getSmartCategory(contentType)
@@ -568,81 +714,62 @@ export default function CreatePostModal({ onPostCreated, onPostUpdated, onClose,
   // Функция для генерации видео через Sora-2
   const generateSoraVideo = async (): Promise<string | null> => {
     try {
-      const apiKey = process.env.NEXT_PUBLIC_OPENAI_API_KEY
+      console.log('[CreatePostModal] Starting Sora-2 video generation via API...')
+
+      // Подготавливаем данные для API
+      let referenceImageBase64 = null
       
-      if (!apiKey) {
-        throw new Error('OPENAI_API_KEY not found')
-      }
-
-      console.log('[CreatePostModal] Starting Sora-2 video generation...')
-
-      const soraFormData = new FormData()
-      soraFormData.append('model', 'sora-2')
-      soraFormData.append('prompt', formData.soraPrompt)
-      soraFormData.append('seconds', formData.soraDuration)
-      soraFormData.append('size', formData.soraSize)
-
-      // Если есть референсное изображение, изменяем его размер и добавляем
+      // Если есть референсное изображение, конвертируем его в base64
       if (formData.soraReferenceImage) {
         const [width, height] = formData.soraSize.split('x').map(Number)
         console.log(`[CreatePostModal] Resizing reference image to ${width}x${height}...`)
         const resizedBlob = await resizeImage(formData.soraReferenceImage, width, height)
-        soraFormData.append('input_reference', resizedBlob, 'reference.png')
+        
+        // Конвертируем blob в base64
+        referenceImageBase64 = await new Promise<string>((resolve, reject) => {
+          const reader = new FileReader()
+          reader.onloadend = () => resolve(reader.result as string)
+          reader.onerror = reject
+          reader.readAsDataURL(resizedBlob)
+        })
+        
+        console.log('[CreatePostModal] Reference image converted to base64')
       }
 
-      const response = await axios.post(
-        'https://api.openai.com/v1/videos',
-        soraFormData,
-        {
-          headers: {
-            'Authorization': `Bearer ${apiKey}`,
-            'Content-Type': 'multipart/form-data',
-          },
-        }
-      )
+      // Отправляем запрос на наш внутренний API
+      const response = await fetch('/api/sora/mobile', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          prompt: formData.soraPrompt,
+          seconds: formData.soraDuration,
+          size: formData.soraSize,
+          referenceImage: referenceImageBase64
+        })
+      })
 
-      console.log('[CreatePostModal] Sora-2 generation response:', response.data)
+      if (!response.ok) {
+        const error = await response.json()
+        throw new Error(error.error || 'Failed to generate video')
+      }
+
+      const data = await response.json()
+      console.log('[CreatePostModal] Sora-2 API response:', data)
       
-      const generatedVideoId = response.data.id || response.data.video_id
+      const generatedVideoId = data.videoId
       
       if (!generatedVideoId) {
-        throw new Error('Video ID not found in Sora response')
+        throw new Error('Video ID not found in response')
       }
 
-      // Создаем запись в AI_Creations таблице
-      /*
-      try {
-        await fetch('/api/aicreation', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            user_id: user.id,
-            type: 'video',
-            requestId: generatedVideoId,
-            model: 'sora2',
-            size: formData.soraSize,
-            prompt: formData.soraPrompt,
-            status: 'created'
-          })
-        })
-        console.log('[CreatePostModal] AI Creation record created in database')
-      } catch (dbError) {
-        console.error('[CreatePostModal] Failed to create AI_Creations record:', dbError)
-        // Не прерываем процесс, если запись в БД не удалась
-      }
-      */
       toast.success('🎥 Sora-2 video generation started!')
       return generatedVideoId
 
     } catch (error) {
       console.error('[CreatePostModal] Sora-2 generation error:', error)
-      if (axios.isAxiosError(error)) {
-        toast.error(error.response?.data?.error?.message || error.message || 'Failed to generate video')
-      } else {
-        toast.error(error instanceof Error ? error.message : 'Failed to generate video')
-      }
+      toast.error(error instanceof Error ? error.message : 'Failed to generate video')
       return null
     }
   }
@@ -753,6 +880,7 @@ export default function CreatePostModal({ onPostCreated, onPostUpdated, onClose,
     try {
       let mediaUrl = null
       let thumbnail = null
+      let previewUrl = null
       let blurUrl = null
       let requestId = null
       let postType = formData.type
@@ -795,6 +923,7 @@ export default function CreatePostModal({ onPostCreated, onPostUpdated, onClose,
         })
         
         mediaUrl = uploadResult.fileUrl
+        previewUrl = uploadResult.previewUrl || null
         blurUrl = uploadResult.blurUrl || null
         
         // Use thumbUrl from upload result or fallback to placeholder
@@ -812,12 +941,14 @@ export default function CreatePostModal({ onPostCreated, onPostUpdated, onClose,
         // В режиме редактирования используем существующие медиа
         mediaUrl = postData.mediaUrl
         thumbnail = postData.thumbnail
+        previewUrl = postData.previewUrl
         blurUrl = postData.blurUrl
       }
 
       console.log('[CreatePostModal] 🔥 FINAL MEDIA DEBUG:', {
         mediaUrl,
         thumbnail,
+        previewUrl,
         blurUrl,
         requestId,
         contentSource: formData.contentSource,
@@ -837,6 +968,7 @@ export default function CreatePostModal({ onPostCreated, onPostUpdated, onClose,
         tags: formData.tags,
         thumbnail,
         mediaUrl,
+        previewUrl, // Добавляем previewUrl для превью видео и изображений
         blurUrl, // Добавляем blurUrl для размытого превью
         requestId, // Добавляем requestId для Sora-2
         isLocked: formData.accessType !== 'free',
@@ -886,6 +1018,12 @@ export default function CreatePostModal({ onPostCreated, onPostUpdated, onClose,
       const result = await response.json()
       const post = result.post || result
       console.log(`[CreatePostModal] Post ${mode === 'edit' ? 'updated' : 'created'}:`, post)
+      
+      // Обновляем счетчик генераций после успешного создания Sora-2 поста
+      if (mode === 'create' && formData.contentSource === 'sora2' && availableGenerations !== null) {
+        setAvailableGenerations(availableGenerations - 1)
+        console.log('[CreatePostModal] Updated generation count:', availableGenerations - 1)
+      }
       
       toast.success(`Post ${mode === 'edit' ? 'updated' : 'created'} successfully!`)
       
@@ -978,6 +1116,35 @@ export default function CreatePostModal({ onPostCreated, onPostUpdated, onClose,
 
   return (
     <>
+      {/* Video Compression Overlay */}
+      {isCompressing && (
+        <div className="fixed inset-0 bg-black/90 backdrop-blur-sm z-[150] flex items-center justify-center">
+          <div className="bg-white dark:bg-slate-800 rounded-2xl p-8 max-w-md mx-4 shadow-2xl">
+            <div className="text-center">
+              <VideoCameraIcon className="w-16 h-16 mx-auto mb-4 text-purple-500 animate-pulse" />
+              <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2">
+                Compressing Video
+              </h3>
+              <p className="text-sm text-gray-600 dark:text-gray-400 mb-6">
+                This may take a few moments...
+              </p>
+              
+              {/* Progress Bar */}
+              <div className="relative w-full h-3 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden mb-3">
+                <div 
+                  className="absolute top-0 left-0 h-full bg-gradient-to-r from-purple-500 to-pink-500 transition-all duration-300 ease-out"
+                  style={{ width: `${compressionProgress}%` }}
+                />
+              </div>
+              
+              <p className="text-lg font-semibold text-purple-600 dark:text-purple-400">
+                {compressionProgress}%
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+      
       {/* Main Modal */}
       <div className={`fixed inset-0 bg-black/85 backdrop-blur-sm z-[100] flex items-start justify-center p-0 sm:p-4 overflow-y-auto animate-fade-in ${showCropModal ? 'pointer-events-none' : ''}`}>
         <div className="modal-content bg-white dark:bg-slate-900 backdrop-blur-xl w-full h-full sm:h-auto sm:max-w-4xl rounded-none sm:rounded-3xl my-0 sm:my-8 border-y sm:border border-gray-200 dark:border-slate-700/50 shadow-2xl animate-slideInUp relative overflow-y-auto">
@@ -1166,6 +1333,53 @@ export default function CreatePostModal({ onPostCreated, onPostUpdated, onClose,
               ) : formData.type !== 'text' && formData.contentSource === 'sora2' ? (
                 /* Sora-2 Generation Fields */
                 <div className="space-y-4">
+                  {/* Available Generations Counter */}
+                  <div className="bg-gradient-to-r from-pink-50 to-purple-50 dark:from-pink-900/20 dark:to-purple-900/20 border border-pink-200 dark:border-pink-800 rounded-xl p-4">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <SparklesIcon className="w-5 h-5 text-pink-600 dark:text-pink-400" />
+                        <span className="text-sm font-medium text-gray-700 dark:text-slate-300">
+                          Available generations:
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        {isLoadingGenerations ? (
+                          <div className="w-4 h-4 border-2 border-pink-500/30 border-t-pink-500 rounded-full animate-spin"></div>
+                        ) : (
+                          <>
+                            <span className={`text-lg font-bold ${
+                              (availableGenerations || 0) > 0 
+                                ? 'text-green-600 dark:text-green-400' 
+                                : 'text-red-600 dark:text-red-400'
+                            }`}>
+                              {availableGenerations ?? 0}
+                            </span>
+                            <div 
+                              className="relative"
+                              onMouseEnter={() => setShowGenerationTooltip(true)}
+                              onMouseLeave={() => setShowGenerationTooltip(false)}
+                            >
+                              <QuestionMarkCircleIcon className="w-5 h-5 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 cursor-help transition-colors" />
+                              {showGenerationTooltip && (
+                                <div className="absolute z-50 bottom-full right-0 mb-2 w-64 px-3 py-2 text-xs text-white bg-gray-900 dark:bg-gray-800 rounded-lg shadow-lg border border-gray-700">
+                                  <div className="relative">
+                                    Количество Sora-2 генераций, которые вы можете использовать в сутки, автоматически обновляется раз в 24 часа
+                                    <div className="absolute -bottom-1 right-4 w-2 h-2 bg-gray-900 dark:bg-gray-800 border-r border-b border-gray-700 transform rotate-45"></div>
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                          </>
+                        )}
+                      </div>
+                    </div>
+                    {availableGenerations === 0 && (
+                      <p className="text-xs text-red-600 dark:text-red-400 mt-2">
+                        ⚠️ No generations available. You cannot create Sora-2 videos.
+                      </p>
+                    )}
+                  </div>
+                  
                   {/* Prompt */}
                   <div>
                     <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-2">
@@ -1697,32 +1911,40 @@ export default function CreatePostModal({ onPostCreated, onPostUpdated, onClose,
                 }))
                 console.log('🔍 [CreatePostModal DEBUG] Upload state:', JSON.stringify({ isUploading }))
                 console.log('🔍 [CreatePostModal DEBUG] Edit mode state:', JSON.stringify({ mode, isLoadingPost }))
+                console.log('🔍 [CreatePostModal DEBUG] Compression state:', JSON.stringify({ isCompressing }))
                 
-                const condition1 = isUploading
+                const condition1 = isUploading || isCompressing
                 // 🔧 ИСПРАВЛЕНИЕ: Используем реальное состояние кошелька как fallback
                 const condition2 = !connected && !publicKeyString && !realConnected && !realPublicKey
                 const condition3 = mode === 'edit' && isLoadingPost
-                const isDisabled = condition1 || condition2 || condition3
+                // Проверка генераций для Sora-2
+                const condition4 = formData.contentSource === 'sora2' && (availableGenerations === null || availableGenerations <= 0)
+                const isDisabled = condition1 || condition2 || condition3 || condition4
                 
                 console.log('🎯 [CreatePostModal DEBUG] Disable conditions:', JSON.stringify({ 
                   condition1_isUploading: condition1,
                   condition2_noWallet: condition2, 
                   condition3_editLoading: condition3,
+                  condition4_noGenerations: condition4,
                   finalDisabled: isDisabled,
                   connected_value: connected,
                   publicKeyString_value: publicKeyString || null,
                   realConnected_value: realConnected,
-                  realPublicKey_value: realPublicKey ? realPublicKey.toString() : null
+                  realPublicKey_value: realPublicKey ? realPublicKey.toString() : null,
+                  contentSource: formData.contentSource,
+                  availableGenerations: availableGenerations
                 }))
                 
                 if (isDisabled) {
                   console.log('❌ [CreatePostModal DEBUG] Button DISABLED because:', 
                     condition1 ? 'isUploading=true' : 
                     condition2 ? `no wallet connected (useWallet: connected=${connected}, publicKeyString=${!!publicKeyString}) AND (window.solana: connected=${realConnected}, publicKey=${!!realPublicKey})` : 
-                    condition3 ? 'edit mode loading' : 'unknown')
+                    condition3 ? 'edit mode loading' : 
+                    condition4 ? 'no generations available for Sora-2' : 'unknown')
                 } else {
                   console.log('✅ [CreatePostModal DEBUG] Button ENABLED - wallet detected:', {
-                    source: connected && publicKeyString ? 'useWallet' : realConnected && realPublicKey ? 'window.solana' : 'unknown'
+                    source: connected && publicKeyString ? 'useWallet' : realConnected && realPublicKey ? 'window.solana' : 'unknown',
+                    hasGenerations: formData.contentSource === 'sora2' ? availableGenerations : 'N/A'
                   })
                 }
                 
@@ -1730,7 +1952,12 @@ export default function CreatePostModal({ onPostCreated, onPostUpdated, onClose,
               })()}
               className="flex-1 px-6 py-3 bg-gradient-to-r from-purple-500 to-pink-500 text-white font-medium rounded-xl hover:from-purple-600 hover:to-pink-600 transform hover:scale-105 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none flex items-center justify-center gap-2"
             >
-              {isUploading ? (
+              {isCompressing ? (
+                <>
+                  <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                  Compressing video... {compressionProgress}%
+                </>
+              ) : isUploading ? (
                 <>
                   <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
                   {mode === 'edit' ? 'Saving...' : 'Publishing...'}

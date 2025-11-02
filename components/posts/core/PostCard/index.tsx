@@ -4,7 +4,6 @@ import React, { useState } from 'react'
 import { UnifiedPost, PostAction, PostCardVariant } from '@/types/posts'
 import { PostHeader } from '../PostHeader'
 import { PostContent } from '../PostContent'
-import { RemixCarousel } from '../RemixCarousel'
 import { PostActions } from '../PostActions'
 import { PostTierBadge } from '../PostTierBadge'
 import { PostFlashSale } from '../PostFlashSale'
@@ -56,9 +55,11 @@ export function PostCard({
 
   // Обработка действий с добавлением поддержки комментариев
   const handleAction = (action: PostAction) => {
+    console.log('[PostCard] handleAction called:', action.type, 'showComments:', showComments)
     if (action.type === 'comment') {
       // Переключаем видимость комментариев
       setShowComments(!showComments)
+      console.log('[PostCard] Toggle comments to:', !showComments)
     } else if (onAction) {
       onAction(action)
     }
@@ -78,9 +79,6 @@ export function PostCard({
   const showTierBadge = !!post?.access?.tier && (needsSubscription(post) || needsTierUpgrade(post))
   const showAuctionBadge = isActiveAuction(post.commerce)
   const isSold = isPostSold(post.commerce)
-  
-  // Определяем, нужно ли показывать карусель ремиксов
-  const shouldShowRemixCarousel = hasRemixes(post.id)
 
   // [content_access_system_2025_017] Определяем визуальные параметры
   const accessType = getPostAccessType({
@@ -111,7 +109,6 @@ export function PostCard({
     }
     
     // Применяем стили
-    const borderClasses = visualStyle ? `border-2 ${visualStyle.border}` : 'border border-gray-200 dark:border-slate-700/50'
     const backgroundClasses = visualStyle ? `bg-gradient-to-br ${visualStyle.gradient}` : 'bg-white dark:bg-slate-900'
     
     switch (variant) {
@@ -119,7 +116,6 @@ export function PostCard({
         return cn(
           baseStyles,
           backgroundClasses,
-          borderClasses,
           'rounded-none sm:rounded-3xl',
           'hover:shadow-lg transition-shadow'
         )
@@ -127,7 +123,6 @@ export function PostCard({
         return cn(
           baseStyles,
           backgroundClasses,
-          borderClasses,
           'rounded-xl sm:rounded-2xl',
           'hover:shadow-md transition-shadow'
         )
@@ -135,7 +130,6 @@ export function PostCard({
         return cn(
           baseStyles,
           backgroundClasses,
-          borderClasses,
           'rounded-lg',
           'hover:shadow-sm transition-shadow'
         )
@@ -198,16 +192,7 @@ export function PostCard({
         shouldBlur ? TIER_BLUR_STYLES.content : ''
         // [tier_access_visual_fix_2025_017] Dim стили теперь применены к всей карточке
       )}>
-          {/* Header */}
-          {showCreator && (
-            <PostHeader 
-              post={post}
-              variant={variant}
-              onAction={onAction}
-            />
-          )}
-
-          {/* Post Menu for own posts - show when not showing creator header */}
+          {/* Post Menu for own posts when not showing creator header */}
           {!showCreator && (
             <div className="flex justify-end mb-4">
               <PostMenu 
@@ -217,27 +202,18 @@ export function PostCard({
           </div>
         )}
 
-        {/* Content */}
-        {shouldShowRemixCarousel ? (
-          <RemixCarousel 
-            post={convertUnifiedPostToPostAPI(post)}
-            variant={variant}
-            onAction={onAction}
-            showIndicators={variant !== 'minimal'}
-            showNavigation={variant !== 'minimal'}
-            enableTouch={true}
-            enableKeyboard={true}
-          />
-        ) : (
-          <PostContent 
-            post={post}
-            variant={variant}
-            onAction={onAction}
-          />
-        )}
+        {/* Content with Instagram-style Header & Footer */}
+        <PostContent 
+          post={post}
+          variant={variant}
+          onAction={handleAction}
+          showHeader={showCreator}
+          showFooter={Boolean(showCreator && post.media?.url && post.media.type !== 'ai-video')} // Показываем footer только если есть медиа, showCreator и НЕ AI видео
+          commentCount={commentCount}
+        />
 
-        {/* Actions */}
-        {variant !== 'minimal' && (
+        {/* Actions - показываем только если НЕ используем footer в контенте */}
+        {variant !== 'minimal' && !(showCreator && post.media?.url && post.media.type !== 'ai-video') && (
           <PostActions
             post={post}
             commentCount={commentCount}
@@ -245,6 +221,9 @@ export function PostCard({
             variant={variant}
           />
         )}
+
+        {/* Smart Remix Indicator - Фаза 1: Минимальная интеграция */}
+
       </div>
 
       {/* [content_access_system_2025_017] Blur Overlay с Upgrade Prompt */}
@@ -291,68 +270,54 @@ export function PostCard({
         </div>
       )}
 
-      {/* Секция комментариев */}
+      {/* Модальное окно комментариев */}
       {showComments && (
         <>
-          {/* Десктопная версия */}
+          {console.log('[PostCard] Rendering comments modal, showComments:', showComments)}
+          {/* Desktop Modal - Внутри поста с overlay сверху */}
           <div className="hidden sm:block">
-            <CommentsSection
-              postId={post.id}
-              post={post}
-              onCommentAdded={handleCommentAdded}
-              onCommentDeleted={handleCommentDeleted}
-              onClose={() => setShowComments(false)}
-              className="animate-fade-in"
-            />
+            <div className="absolute inset-0 z-40">
+              {/* Overlay - затемнение сверху (40% контента) */}
+              <div 
+                className="absolute inset-0 bg-black/70 cursor-pointer"
+                onClick={() => setShowComments(false)}
+              />
+              
+              {/* Comments Modal - 60% высоты снизу */}
+              <div className="absolute bottom-0 left-0 right-0 h-[60%] bg-white dark:bg-slate-900 rounded-t-2xl shadow-2xl z-50 overflow-hidden animate-slide-up">
+                <CommentsSection
+                  postId={post.id}
+                  post={post}
+                  onCommentAdded={handleCommentAdded}
+                  onCommentDeleted={handleCommentDeleted}
+                  onClose={() => setShowComments(false)}
+                  className="h-full"
+                />
+              </div>
+            </div>
           </div>
           
-          {/* Мобильная версия */}
+          {/* Mobile Modal - Выезжает снизу экрана */}
           <div className="block sm:hidden">
-            <MobileCommentsSection
-              postId={post.id}
-              post={post}
-              onCommentAdded={handleCommentAdded}
-              onCommentDeleted={handleCommentDeleted}
-              onClose={() => setShowComments(false)}
-              className="animate-fade-in"
+            {/* Full screen overlay */}
+            <div 
+              className="fixed inset-0 bg-black/70 z-[60] cursor-pointer"
+              onClick={() => setShowComments(false)}
             />
+            
+            {/* Comments drawer - 50% высоты экрана */}
+            <div className="fixed bottom-0 left-0 right-0 h-[50vh] max-h-[50vh] bg-white dark:bg-slate-900 rounded-t-2xl shadow-2xl z-[70] overflow-hidden animate-slide-up">
+              <MobileCommentsSection
+                postId={post.id}
+                post={post}
+                onCommentAdded={handleCommentAdded}
+                onCommentDeleted={handleCommentDeleted}
+                onClose={() => setShowComments(false)}
+              />
+            </div>
           </div>
         </>
       )}
     </article>
   )
-}
-
-// Вспомогательная функция для проверки наличия ремиксов
-function hasRemixes(postId: string): boolean {
-  // В реальном приложении здесь может быть проверка через API
-  // Пока возвращаем false, так как загрузка будет происходить через API
-  return false
-}
-
-// Функция конвертации UnifiedPost в PostAPI
-function convertUnifiedPostToPostAPI(post: UnifiedPost): any {
-  return {
-    id: post.id,
-    title: post.content.title,
-    content: post.content.text,
-    type: post.media.type,
-    category: post.content.category,
-    thumbnail: post.media.thumbnail,
-    mediaUrl: post.media.url,
-    requestId: post.media.requestId,
-    isLocked: post.access.isLocked,
-    minSubscriptionTier: post.access.tier,
-    remixId: null, // UnifiedPost не имеет этого поля
-    createdAt: post.createdAt,
-    updatedAt: post.updatedAt,
-    creator: {
-      id: post.creator.id,
-      nickname: post.creator.username,
-      avatar: post.creator.avatar,
-      fullName: post.creator.name
-    },
-    likesCount: post.engagement.likes,
-    commentsCount: post.engagement.comments
-  }
 } 

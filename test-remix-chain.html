@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Remix Chain API</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            margin: 20px 0;
+        }
+        button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background: #0056b3;
+        }
+        .result {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 4px;
+            margin: 10px 0;
+            border-left: 4px solid #007bff;
+        }
+        .error {
+            border-left-color: #dc3545;
+            background: #f8d7da;
+        }
+        .success {
+            border-left-color: #28a745;
+            background: #d4edda;
+        }
+        .post-item {
+            background: #e9ecef;
+            padding: 10px;
+            margin: 5px 0;
+            border-radius: 4px;
+            border-left: 3px solid #6c757d;
+        }
+        .post-title {
+            font-weight: bold;
+            color: #495057;
+        }
+        .post-meta {
+            font-size: 12px;
+            color: #6c757d;
+            margin-top: 5px;
+        }
+        input {
+            padding: 8px;
+            border: 1px solid #ced4da;
+            border-radius: 4px;
+            margin: 5px;
+            width: 300px;
+        }
+    </style>
+</head>
+<body>
+    <h1>🔗 Test Remix Chain API</h1>
+    
+    <div class="container">
+        <h2>Test Remix Chain</h2>
+        <p>Enter a post ID to get the remix chain starting from that post:</p>
+        
+        <input type="text" id="postId" placeholder="Enter post ID" value="">
+        <button onclick="testRemixChain()">Get Remix Chain</button>
+        <button onclick="getAllPosts()">Get All Posts (to find IDs)</button>
+        
+        <div id="results"></div>
+    </div>
+
+    <script>
+        async function testRemixChain() {
+            const postId = document.getElementById('postId').value.trim();
+            const resultsDiv = document.getElementById('results');
+            
+            if (!postId) {
+                showResult('Please enter a post ID', 'error');
+                return;
+            }
+            
+            resultsDiv.innerHTML = '<div class="result">Loading remix chain...</div>';
+            
+            try {
+                const response = await fetch(`/api/posts/remix?postId=${encodeURIComponent(postId)}`);
+                const data = await response.json();
+                
+                if (response.ok && data.success) {
+                    let html = `<div class="result success">
+                        <h3>✅ Remix Chain Found</h3>
+                        <p><strong>Start Post ID:</strong> ${data.data.startPostId}</p>
+                        <p><strong>Chain Length:</strong> ${data.data.totalCount} posts</p>
+                    </div>`;
+                    
+                    if (data.data.chain.length > 0) {
+                        html += '<h4>Complete Remix Chain (sorted by creation date):</h4>';
+                        
+                        // Найдем стартовый пост в цепочке
+                        const startPost = data.data.chain.find(p => p.id === data.data.startPostId);
+                        const startIndex = startPost ? data.data.chain.indexOf(startPost) : -1;
+                        
+                        data.data.chain.forEach((post, index) => {
+                            const isStartPost = post.id === data.data.startPostId;
+                            const isOriginal = !post.remixId;
+                            const borderColor = isStartPost ? '#007bff' : (isOriginal ? '#28a745' : '#6c757d');
+                            
+                            html += `
+                                <div class="post-item" style="border-left-color: ${borderColor};">
+                                    <div class="post-title">
+                                        ${index + 1}. ${post.title || 'Untitled'}
+                                        ${isStartPost ? ' 🎯 (Start Post)' : ''}
+                                        ${isOriginal ? ' 🌟 (Original)' : ''}
+                                    </div>
+                                    <div class="post-meta">
+                                        ID: ${post.id} | 
+                                        Creator: ${post.creator.nickname || post.creator.fullName || 'Unknown'} | 
+                                        Type: ${post.type} | 
+                                        Likes: ${post.likesCount} | 
+                                        Comments: ${post.commentsCount} |
+                                        Created: ${new Date(post.createdAt).toLocaleString()}
+                                        ${post.remixId ? `<br>↳ Remixes: ${post.remixId}` : '<br>↳ Original post (no remixId)'}
+                                    </div>
+                                </div>
+                            `;
+                        });
+                        
+                        html += `
+                            <div class="result" style="margin-top: 15px; font-size: 12px;">
+                                <strong>Legend:</strong><br>
+                                🎯 Start Post - The post you searched for<br>
+                                🌟 Original - Post with no remixId (root of chain)<br>
+                                Blue border - Start post | Green border - Original post | Gray border - Remix
+                            </div>
+                        `;
+                    } else {
+                        html += '<div class="result">No related posts found for this post.</div>';
+                    }
+                    
+                    resultsDiv.innerHTML = html;
+                } else {
+                    showResult(`❌ Error: ${data.error || 'Unknown error'}`, 'error');
+                }
+            } catch (error) {
+                showResult(`❌ Network Error: ${error.message}`, 'error');
+            }
+        }
+        
+        async function getAllPosts() {
+            const resultsDiv = document.getElementById('results');
+            resultsDiv.innerHTML = '<div class="result">Loading all posts...</div>';
+            
+            try {
+                const response = await fetch('/api/posts?limit=20');
+                const data = await response.json();
+                
+                if (response.ok && data.posts) {
+                    let html = `<div class="result success">
+                        <h3>📋 All Posts (first 20)</h3>
+                        <p>Click on a post ID to test its remix chain:</p>
+                    </div>`;
+                    
+                    data.posts.forEach(post => {
+                        const hasRemix = post.remixId ? ' (is remix)' : '';
+                        html += `
+                            <div class="post-item" style="cursor: pointer;" onclick="document.getElementById('postId').value='${post.id}'; testRemixChain();">
+                                <div class="post-title">${post.title || 'Untitled'}${hasRemix}</div>
+                                <div class="post-meta">
+                                    ID: ${post.id} | 
+                                    Creator: ${post.creator?.nickname || post.creator?.fullName || 'Unknown'} | 
+                                    Type: ${post.type}
+                                    ${post.remixId ? `| Remixes: ${post.remixId}` : ''}
+                                </div>
+                            </div>
+                        `;
+                    });
+                    
+                    resultsDiv.innerHTML = html;
+                } else {
+                    showResult(`❌ Error loading posts: ${data.error || 'Unknown error'}`, 'error');
+                }
+            } catch (error) {
+                showResult(`❌ Network Error: ${error.message}`, 'error');
+            }
+        }
+        
+        function showResult(message, type = 'result') {
+            const resultsDiv = document.getElementById('results');
+            resultsDiv.innerHTML = `<div class="result ${type}">${message}</div>`;
+        }
+        
+        // Auto-load posts on page load
+        window.addEventListener('load', () => {
+            getAllPosts();
+        });
+    </script>
+</body>
+</html>

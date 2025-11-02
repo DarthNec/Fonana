@@ -200,3 +200,15 @@ if (window.location.hostname === 'fonana.me' || window.location.hostname.endsWit
   <em>Требуется изменение клиентского кода</em>
 </div>
 
+
+
+
+
+
+
+
+
+
+
+
+

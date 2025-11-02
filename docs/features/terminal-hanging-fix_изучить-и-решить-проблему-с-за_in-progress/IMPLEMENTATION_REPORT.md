@@ -187,3 +187,15 @@ ssh fonana-server "echo SSH key authentication successful"
   <em>SSH ключи созданы, конфигурация настроена</em>
 </div>
 
+
+
+
+
+
+
+
+
+
+
+
+

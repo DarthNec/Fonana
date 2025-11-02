@@ -135,6 +135,13 @@ export default function HomePageClient() {
             */}
             
             <div className={`transition-all duration-500 ${!showInfoBlock ? 'animate-fadeOut' : ''}`}>
+              {/* Android Announcement Banner */}
+              <div className="inline-flex items-center px-6 py-3 rounded-full bg-gradient-to-r from-green-500/10 to-emerald-500/10 border border-green-500/30 backdrop-blur-sm mb-8 animate-pulse">
+                <span className="text-lg font-bold bg-gradient-to-r from-green-600 to-emerald-600 dark:from-green-400 dark:to-emerald-400 bg-clip-text text-transparent">
+                  📱 Fonana available on Android!
+                </span>
+              </div>
+              
               <h1 className="text-6xl md:text-8xl font-black mb-8 leading-tight">
                 <span className="bg-gradient-to-r from-purple-600 to-pink-600 dark:from-purple-400 dark:to-pink-400 bg-clip-text text-transparent">
                   Web3 Creator
@@ -191,6 +198,15 @@ export default function HomePageClient() {
               <Link href="/feed" className="group">
                 <div className="bg-gradient-to-r from-pink-500 to-violet-600 text-white px-8 py-4 rounded-2xl font-semibold transform group-hover:scale-105 transition-all duration-300 hover:shadow-xl hover:shadow-pink-500/25">
                   Start creating
+                </div>
+              </Link>
+              
+              <Link href="/download" className="group">
+                <div className="bg-gradient-to-r from-green-500 to-emerald-600 text-white px-8 py-4 rounded-2xl font-semibold flex items-center justify-center transform group-hover:scale-105 transition-all duration-300 hover:shadow-xl hover:shadow-green-500/25">
+                  <svg className="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/>
+                  </svg>
+                  Download
                 </div>
               </Link>
             </div>

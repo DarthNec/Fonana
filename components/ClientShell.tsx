@@ -9,6 +9,7 @@ import { Navbar } from '@/components/Navbar'
 import BottomNav from '@/components/BottomNav'
 import ErrorBoundary from '@/components/ErrorBoundary'
 import ReferralNotification from '@/components/ReferralNotification'
+import VerifyAccountPopup from '@/components/VerifyAccountPopup'
 import Footer from '@/components/Footer'
 import ServiceWorkerRegistration from '@/components/ServiceWorkerRegistration'
 import { useState, useEffect } from 'react'
@@ -97,6 +98,9 @@ export default function ClientShell({ children }: { children: React.ReactNode })
                 </div>
               </div>
               <ServiceWorkerRegistration />
+              {/*
+              <VerifyAccountPopup />
+              */}
               <Toaster
                 position="top-right"
                 toastOptions={{

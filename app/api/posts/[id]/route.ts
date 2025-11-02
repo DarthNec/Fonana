@@ -212,7 +212,7 @@ export async function PUT(
         }
       }
     }
-
+    console.log('dataToUpdate', dataToUpdate)
     // Обновляем пост
     const updatedPost = await prisma.post.update({
       where: { id: params.id },

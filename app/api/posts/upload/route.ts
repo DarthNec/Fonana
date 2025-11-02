@@ -1,9 +1,85 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { uploadToBunnyStorage } from '@/lib/utils/bunny-upload'
 import sharp from 'sharp'
+import ffmpeg from 'fluent-ffmpeg'
+import fs from 'fs'
+import path from 'path'
+import { promisify } from 'util'
+
+const writeFile = promisify(fs.writeFile)
+const unlink = promisify(fs.unlink)
 
 // 🔧 ФИКС M7: App Router body size configuration (Next.js 14 syntax)
 export const maxDuration = 30 // Allow time for large file processing
+
+/**
+ * Извлекает первый кадр из видео и создает превью
+ */
+async function extractVideoFrame(videoFile: File): Promise<Buffer | null> {
+  const tempDir = path.join(process.cwd(), 'temp_uploads')
+  
+  // Создаем временную директорию если её нет
+  if (!fs.existsSync(tempDir)) {
+    fs.mkdirSync(tempDir, { recursive: true })
+  }
+  
+  const tempVideoPath = path.join(tempDir, `video_${Date.now()}.mp4`)
+  const tempFramePath = path.join(tempDir, `frame_${Date.now()}.png`)
+  
+  try {
+    // Сохраняем видео во временный файл
+    const arrayBuffer = await videoFile.arrayBuffer()
+    const buffer = Buffer.from(arrayBuffer)
+    await writeFile(tempVideoPath, buffer)
+    
+    console.log('🎯 [VIDEO PREVIEW] Extracting first frame from video...')
+    
+    // Извлекаем первый кадр с помощью ffmpeg
+    await new Promise<void>((resolve, reject) => {
+      ffmpeg(tempVideoPath)
+        .screenshots({
+          timestamps: ['00:00:00.001'], // Первый кадр
+          filename: path.basename(tempFramePath),
+          folder: tempDir,
+          size: '1920x?', // Сохраняем соотношение сторон
+        })
+        .on('end', () => resolve())
+        .on('error', (err: Error) => reject(err))
+    })
+    
+    // Читаем созданный кадр
+    const frameBuffer = fs.readFileSync(tempFramePath)
+    
+    // Конвертируем в WebP с хорошим качеством
+    const webpBuffer = await sharp(frameBuffer)
+      .webp({ quality: 85 })
+      .toBuffer()
+    
+    console.log('🎯 [VIDEO PREVIEW] Frame extracted and converted to WebP:', {
+      originalSize: `${(frameBuffer.length / 1024).toFixed(2)} KB`,
+      webpSize: `${(webpBuffer.length / 1024).toFixed(2)} KB`
+    })
+    
+    // Удаляем временные файлы
+    await unlink(tempVideoPath)
+    await unlink(tempFramePath)
+    
+    return webpBuffer
+    
+  } catch (error) {
+    console.error('🎯 [VIDEO PREVIEW] Failed to extract frame:', error)
+    
+    // Очистка временных файлов при ошибке
+    try {
+      if (fs.existsSync(tempVideoPath)) await unlink(tempVideoPath)
+      if (fs.existsSync(tempFramePath)) await unlink(tempFramePath)
+    } catch (cleanupError) {
+      console.error('🎯 [VIDEO PREVIEW] Cleanup error:', cleanupError)
+    }
+    
+    return null
+  }
+}
 
 export async function POST(request: NextRequest) {
   try {
@@ -98,6 +174,37 @@ export async function POST(request: NextRequest) {
       }, { status: 500 })
     }
 
+    // Для видео создаем превью из первого кадра
+    let videoPreviewUrl: string | undefined
+    if (type === 'video') {
+      try {
+        console.log('🎯 [BUNNY UPLOAD API] Creating video preview from first frame...')
+        
+        const frameBuffer = await extractVideoFrame(file)
+        
+        if (frameBuffer) {
+          // Создаем File объект для превью
+          const previewBlob = new Blob([new Uint8Array(frameBuffer)], { type: 'image/webp' })
+          const originalName = file.name.replace(/\.[^/.]+$/, '')
+          const previewFile = new File([previewBlob], `${originalName}_preview.webp`, { type: 'image/webp' })
+          
+          // Загружаем превью в posts/videos/preview папку
+          const previewUploadResult = await uploadToBunnyStorage(previewFile, 'video-preview')
+          
+          if (previewUploadResult.success && previewUploadResult.fileUrl) {
+            videoPreviewUrl = previewUploadResult.fileUrl
+            console.log('🎯 [BUNNY UPLOAD API] Video preview uploaded:', videoPreviewUrl)
+          } else {
+            console.error('🎯 [BUNNY UPLOAD API] Failed to upload video preview:', previewUploadResult.error)
+          }
+        }
+        
+      } catch (previewError) {
+        console.error('🎯 [BUNNY UPLOAD API] Video preview creation failed:', previewError)
+        // Не прерываем процесс если preview не удался
+      }
+    }
+
     // Для изображений создаем сильно размытую копию ТОЛЬКО если контент платный
     let blurUrl: string | undefined
     const needsBlur = type === 'image' && accessType !== 'free'
@@ -151,14 +258,29 @@ export async function POST(request: NextRequest) {
       fileUrl: uploadResult.fileUrl,
       thumbUrl: uploadResult.thumbUrl,
       previewUrl: uploadResult.previewUrl,
+      videoPreviewUrl,
       blurUrl
     })
-
+    
+    // Формируем итоговый previewUrl в зависимости от типа контента
+    let finalPreviewUrl: string | undefined
+    if (type === 'video') {
+      // Для видео используем только videoPreviewUrl (превью из первого кадра)
+      finalPreviewUrl = videoPreviewUrl
+    } else if (type === 'image') {
+      // Для изображений используем uploadResult.previewUrl или сам файл
+      finalPreviewUrl = uploadResult.previewUrl || uploadResult.fileUrl
+    } else {
+      // Для остальных типов не устанавливаем preview
+      finalPreviewUrl = undefined
+    }
+    
     return NextResponse.json({
       success: true,
       fileUrl: uploadResult.fileUrl,
       thumbUrl: uploadResult.thumbUrl,
-      previewUrl: uploadResult.previewUrl,
+      previewUrl: finalPreviewUrl, // Правильный previewUrl в зависимости от типа
+      videoPreviewUrl: videoPreviewUrl || undefined, // Превью из первого кадра видео (deprecated, используйте previewUrl)
       blurUrl
     })
 

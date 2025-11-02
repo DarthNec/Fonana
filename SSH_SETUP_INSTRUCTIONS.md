@@ -69,3 +69,15 @@ chmod +x setup-server-ssh.sh
 ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIH203TA1liL4SjCAQV9B6oFZW/n/kjcPoLn461+xIlyq blitz@DarthNec
 ```
 
+
+
+
+
+
+
+
+
+
+
+
+

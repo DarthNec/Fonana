@@ -49,3 +49,15 @@ echo "   pm2 show sora-checker"
 echo ""
 echo "✅ Скрипт завершен!"
 
+
+
+
+
+
+
+
+
+
+
+
+

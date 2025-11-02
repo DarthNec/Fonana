@@ -269,8 +269,9 @@ export default function FeedPageClient() {
       let likesData = [];
       if(user?.id) {
         if(localStorage.getItem('fonana_user_wallet') !== null) {
-          if(JSON.parse(localStorage.getItem('user_likes')) !== null) {
-            likesData = JSON.parse(localStorage.getItem('user_likes') || '[]')
+          const userLikesData = localStorage.getItem('user_likes')
+          if(userLikesData !== null && JSON.parse(userLikesData) !== null) {
+            likesData = JSON.parse(userLikesData || '[]')
           } else {
             const likesResponse = await fetch(`/api/likes/user?userId=${user.id}`, {
             })
@@ -534,6 +535,11 @@ export default function FeedPageClient() {
         // Обрабатываем через handleAction от useOptimizedPosts
         handleAction(action)
         break
+      case 'add-emotion':
+      case 'remove-emotion':
+        // Обрабатываем через handleAction от useOptimizedPosts
+        handleAction(action)
+        break
       case 'delete':
         // Обрабатываем через handleAction от useOptimizedPosts
         handleAction(action)
@@ -545,7 +551,7 @@ export default function FeedPageClient() {
   console.log(`[HAS MORE]`, hasMore);
   console.log(`[IS LOADING MORE] `, isLoadingMore);
   return (
-    <div className="min-h-screen bg-white dark:bg-slate-900 pt-16 sm:pt-20">
+    <div className="min-h-screen bg-white dark:bg-slate-900 pt-16 sm:pt-4">
       <div className="max-w-2xl mx-auto px-0 sm:px-4 pb-20">
         {/* Banner для новых постов */}
         {hasNewPosts && (
@@ -561,7 +567,7 @@ export default function FeedPageClient() {
         )}
 
         {/* Categories - non-sticky horizontal scroll */}
-        <div className="mb-4">
+        {/* <div className="mb-4">
           <div className="relative">
             <div 
               ref={categoryScrollRef}
@@ -583,25 +589,25 @@ export default function FeedPageClient() {
                     title={category} // Добавляем tooltip с названием категории
                   >
                     {/* Показываем иконку на мобильных устройствах */}
-                    <div className="md:hidden flex items-center justify-center">
+                    {/* <div className="md:hidden flex items-center justify-center">
                       <div className="w-10">
                         <IconComponent className="w-5 h-5" />
                       </div>
-                    </div>
+                    </div> */}
                     {/* Показываем текст на десктопе */}
-                    <span className="hidden md:inline">{category}</span>
+                    {/* <span className="hidden md:inline">{category}</span>
                   </button>
                 )
               })}
             </div>
             
             {/* Gradient для индикации скролла */}
-            <div className="absolute right-0 top-0 bottom-0 w-8 bg-gradient-to-l from-white dark:from-slate-900 to-transparent pointer-events-none" />
+            {/* <div className="absolute right-0 top-0 bottom-0 w-8 bg-gradient-to-l from-white dark:from-slate-900 to-transparent pointer-events-none" />
           </div>
-        </div>
+        </div> */}
 
         {/* Sort options - компактная версия */}
-        <div className="mb-6 px-4 sm:px-0">
+        {/* <div className="mb-6 px-4 sm:px-0">
           <div className="flex gap-2 overflow-x-auto pb-2">
             {sortOptions.map((option) => (
               <button
@@ -624,7 +630,7 @@ export default function FeedPageClient() {
               </button>
             ))}
           </div>
-        </div>
+        </div> */}
 
         {/* Posts Container */}
         <div style={{ 
