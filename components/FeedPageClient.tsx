@@ -551,7 +551,7 @@ export default function FeedPageClient() {
   console.log(`[HAS MORE]`, hasMore);
   console.log(`[IS LOADING MORE] `, isLoadingMore);
   return (
-    <div className="min-h-screen bg-white dark:bg-slate-900 pt-16 sm:pt-4">
+    <div className="min-h-screen bg-white dark:bg-slate-900 pt-12 sm:-mt-14">
       <div className="max-w-2xl mx-auto px-0 sm:px-4 pb-20">
         {/* Banner для новых постов */}
         {hasNewPosts && (

@@ -145,7 +145,8 @@ export function PostCard({
     <article className={cn(
       getTierCardStyles(), 
       className,
-      shouldDim ? TIER_DIM_STYLES.content : '' // [tier_access_visual_fix_2025_017] Применяем dim к всей карточке
+      shouldDim ? TIER_DIM_STYLES.content : '', // [tier_access_visual_fix_2025_017] Применяем dim к всей карточке
+      'sm:h-[calc(100vh-80px)] sm:flex sm:flex-col' // Desktop: высота экрана минус navbar, flexbox
     )}>
       {/* Hover Glow Effect */}
       {needsUnlock && (
@@ -189,7 +190,8 @@ export function PostCard({
       {/* Card Content */}
       <div className={cn(
         variant === 'minimal' ? 'p-3' : 'p-3 sm:p-6',
-        shouldBlur ? TIER_BLUR_STYLES.content : ''
+        shouldBlur ? TIER_BLUR_STYLES.content : '',
+        'sm:flex-1 sm:flex sm:flex-col sm:overflow-hidden' // Desktop: занимает всё пространство, flexbox
         // [tier_access_visual_fix_2025_017] Dim стили теперь применены к всей карточке
       )}>
           {/* Post Menu for own posts when not showing creator header */}
@@ -203,14 +205,16 @@ export function PostCard({
         )}
 
         {/* Content with Instagram-style Header & Footer */}
-        <PostContent 
-          post={post}
-          variant={variant}
-          onAction={handleAction}
-          showHeader={showCreator}
-          showFooter={Boolean(showCreator && post.media?.url && post.media.type !== 'ai-video')} // Показываем footer только если есть медиа, showCreator и НЕ AI видео
-          commentCount={commentCount}
-        />
+        <div className="sm:flex-1 sm:min-h-0">
+          <PostContent 
+            post={post}
+            variant={variant}
+            onAction={handleAction}
+            showHeader={showCreator}
+            showFooter={Boolean(showCreator && post.media?.url && post.media.type !== 'ai-video')} // Показываем footer только если есть медиа, showCreator и НЕ AI видео
+            commentCount={commentCount}
+          />
+        </div>
 
         {/* Actions - показываем только если НЕ используем footer в контенте */}
         {variant !== 'minimal' && !(showCreator && post.media?.url && post.media.type !== 'ai-video') && (

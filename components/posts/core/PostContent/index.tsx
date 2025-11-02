@@ -171,13 +171,17 @@ export function PostContent({
       return 'h-full'
     }
     
-    // Для изображений используем aspect ratio
-    switch (post.media.aspectRatio) {
-      case 'vertical': return 'aspect-3/4'
-      case 'square': return 'aspect-square'
-      case 'horizontal': return 'aspect-video'
-      default: return 'aspect-video'
-    }
+    // Для изображений: на mobile используем aspect ratio, на desktop - без ограничений (будет заполнять flex-1)
+    const mobileAspect = (() => {
+      switch (post.media.aspectRatio) {
+        case 'vertical': return 'aspect-3/4'
+        case 'square': return 'aspect-square'
+        case 'horizontal': return 'aspect-video'
+        default: return 'aspect-video'
+      }
+    })()
+    
+    return `${mobileAspect} sm:aspect-auto`
   }
 
   const handleClick = () => {
@@ -213,7 +217,7 @@ export function PostContent({
   }
   
   return (
-    <div className={cn('space-y-3', className)}>
+    <div className={cn('space-y-3', 'sm:h-full sm:flex sm:flex-col', className)}>
       {/* Title - показываем только если нет showHeader или нет медиа */}
       {(!showHeader || !post.media.url) && (
         <h3 className={cn(
@@ -227,7 +231,7 @@ export function PostContent({
 
       {/* Media Content */}
       {post.media.url && (
-        <div className="relative">
+        <div className="relative sm:flex-1 sm:min-h-0">
           {shouldHideContent || isLocked ? (
             <PostLocked
               post={post}
@@ -239,7 +243,8 @@ export function PostContent({
               className={cn(
                 'relative overflow-hidden rounded-xl sm:rounded-2xl cursor-pointer',
                 'bg-gray-100 dark:bg-slate-800',
-                getAspectRatioClass()
+                getAspectRatioClass(),
+                'sm:h-full' // Desktop: занимает всю высоту родителя
               )}
               onClick={handleClick}
             >
@@ -267,7 +272,7 @@ export function PostContent({
                     src={post.media.url}
                     alt={post.content.title}
                     className={cn(
-                      'w-full h-full object-cover transition-opacity duration-300',
+                      'w-full h-full object-cover sm:object-contain transition-opacity duration-300',
                       imageLoaded ? 'opacity-100' : 'opacity-0'
                     )}
                     onLoad={() => setImageLoaded(true)}
