@@ -65,6 +65,7 @@ export function MobileWalletConnect() {
         window.location.href = deeplink
       }, 100)
     } else {
+      setVisible(true)
       // На десктопе или если Phantom установлен - используем стандартное поведение
       // Кнопка сама обработает клик
     }
@@ -103,6 +104,49 @@ export function MobileWalletConnect() {
     )
   }
 
-  // В остальных случаях используем стандартную кнопку
-  return <SafeWalletButton className="w-full flex items-center justify-center gap-3 py-3 px-4 text-white rounded-xl font-medium transition-all duration-200 hover:opacity-90" />
+  // В остальных случаях используем стандартную кнопку с wallet-adapter стилями
+  if(!connected) {  
+  return(
+    <button
+      onClick={handleMobileConnect}
+      className="w-full flex items-center justify-center wallet-adapter-button"
+      style={{
+        background: 'rgb(15, 20, 30)',
+        border: '1px solid rgba(71, 85, 105, 0.2)',
+        borderRadius: '1rem',
+        color: 'rgb(248, 250, 252)',
+        fontWeight: '600',
+        padding: '0.75rem 1rem',
+        transition: 'all 0.3s ease',
+        WebkitBackdropFilter: 'blur(8px)',
+        backdropFilter: 'blur(8px)',
+        cursor: 'pointer',
+        whiteSpace: 'nowrap',
+        overflow: 'hidden',
+        textOverflow: 'ellipsis',
+        fontSize: 'clamp(0.875rem, 4vw, 1rem)' // Адаптивный размер от 14px до 16px
+      }}
+      onMouseEnter={(e) => {
+        e.currentTarget.style.borderColor = 'rgba(99, 102, 241, 0.3)'
+        e.currentTarget.style.boxShadow = '0 0 20px rgba(99, 102, 241, 0.1)'
+        e.currentTarget.style.transform = 'translateY(-1px)'
+      }}
+      onMouseLeave={(e) => {
+        e.currentTarget.style.borderColor = 'rgba(71, 85, 105, 0.2)'
+        e.currentTarget.style.boxShadow = 'none'
+        e.currentTarget.style.transform = 'translateY(0)'
+      }}
+    >
+      Select Wallet
+      <div style={{ display: 'none' }}>
+        <SafeWalletButton className="w-full flex items-center justify-center gap-3 py-3 px-4 text-white rounded-xl font-medium transition-all duration-200 hover:opacity-90" />
+      </div>
+    </button>
+  )
+  }
+
+  if(connected)
+  {
+    return <SafeWalletButton className="w-full flex items-center justify-center gap-3 py-3 px-4 text-white rounded-xl font-medium transition-all duration-200 hover:opacity-90" />
+  }
 } 

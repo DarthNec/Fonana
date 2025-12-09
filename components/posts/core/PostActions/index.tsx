@@ -123,6 +123,10 @@ export function PostActions({
   const textSize = 'text-sm'
 
   const handleLikeButtonClick = () => {
+    if(!localStorage.getItem('fonana_user_wallet')) {
+      toast.error('Подключите кошелек для взаимодействия с постом');
+      return
+    }
     // Открываем/закрываем выбор эмоций
     setShowEmotionPicker(!showEmotionPicker)
   }

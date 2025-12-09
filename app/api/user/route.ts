@@ -13,6 +13,8 @@ import {
   sendAndConfirmTransaction
 } from '@solana/web3.js'
 import bs58 from 'bs58'
+import fs from 'fs'
+import path from 'path'
 
 // Отключаем кеширование для этого route
 export const dynamic = 'force-dynamic'
@@ -315,6 +317,70 @@ async function sendRegistrationReward(userWallet: string, userId: string): Promi
   }
 }
 
+// Функция для получения уникального имени из usernames.json
+async function getUniqueUsernameFromFile(): Promise<string> {
+  try {
+    // Читаем файл с именами
+    const usernamesPath = path.join(process.cwd(), 'app', 'api', 'usernames.json')
+    const usernamesFile = fs.readFileSync(usernamesPath, 'utf-8')
+    const usernamesData = JSON.parse(usernamesFile)
+    const usernames: string[] = usernamesData.usernames
+
+    if (!usernames || usernames.length === 0) {
+      throw new Error('No usernames available in file')
+    }
+
+    console.log('[getUniqueUsername] Total usernames in file:', usernames.length)
+
+    // Пытаемся найти уникальное имя (максимум 50 попыток)
+    const maxAttempts = 50
+    for (let attempt = 0; attempt < maxAttempts; attempt++) {
+      // Выбираем случайное имя
+      const randomIndex = Math.floor(Math.random() * usernames.length)
+      const randomUsername = usernames[randomIndex]
+
+      console.log(`[getUniqueUsername] Attempt ${attempt + 1}: Checking username "${randomUsername}"`)
+
+      // Проверяем, занято ли это имя (в nickname или fullName)
+      const existingUser = await prisma.user.findFirst({
+        where: {
+          OR: [
+            {
+              nickname: {
+                equals: randomUsername,
+                mode: 'insensitive'
+              }
+            },
+            {
+              fullName: {
+                equals: randomUsername,
+                mode: 'insensitive'
+              }
+            }
+          ]
+        }
+      })
+
+      if (!existingUser) {
+        console.log(`[getUniqueUsername] Found unique username: "${randomUsername}"`)
+        return randomUsername
+      }
+
+      console.log(`[getUniqueUsername] Username "${randomUsername}" already taken, trying another...`)
+    }
+
+    // Если не нашли уникальное имя за 50 попыток, добавляем случайные цифры
+    const fallbackUsername = usernames[Math.floor(Math.random() * usernames.length)] + Math.floor(Math.random() * 10000)
+    console.log(`[getUniqueUsername] Max attempts reached, using fallback: "${fallbackUsername}"`)
+    return fallbackUsername
+
+  } catch (error) {
+    console.error('[getUniqueUsername] Error reading usernames file:', error)
+    // Fallback на старый метод генерации
+    throw error
+  }
+}
+
 // GET /api/user?wallet=ADDRESS или /api/user?id=ID или /api/user?nickname=NICKNAME - получить пользователя
 export async function GET(request: NextRequest) {
   try {
@@ -412,14 +478,25 @@ export async function GET(request: NextRequest) {
       console.log('🎯 [API USER] User not found, creating new user with wallet:', wallet)
       
       try {
+        // Получаем уникальное имя из usernames.json
+        let uniqueUsername: string
+        try {
+          uniqueUsername = await getUniqueUsernameFromFile()
+          console.log('🎯 [API USER] Generated unique username:', uniqueUsername)
+        } catch (error) {
+          // Fallback: используем старый метод с wallet
+          uniqueUsername = `user_${wallet!.slice(0, 8).toLowerCase()}`
+          console.log('🎯 [API USER] Using fallback username:', uniqueUsername)
+        }
+        
         // Создаем нового пользователя
         user = await prisma.user.create({
           data: {
             wallet: wallet!,
-            nickname: `user_${wallet!.slice(0, 8).toLowerCase()}`,
+            nickname: uniqueUsername,
             referalCount: 0,
-            fullName: `user_${wallet!.slice(0, 8).toLowerCase()}`,
-            name: `user_${wallet!.slice(0, 8).toLowerCase()}`,
+            fullName: uniqueUsername,
+            name: uniqueUsername,
             solanaWallet: wallet!
           },
           include: {
@@ -530,12 +607,21 @@ export async function POST(request: NextRequest) {
       })
     }
     
-    // Создаем нового пользователя БЕЗ автоматической генерации данных
-    // Пользователь сам заполнит профиль через модалку
+    // Получаем уникальное имя из usernames.json
+    let uniqueUsername: string
+    try {
+      uniqueUsername = await getUniqueUsernameFromFile()
+      console.log('[POST /api/user] Generated unique username:', uniqueUsername)
+    } catch (error) {
+      // Fallback: используем старый метод с wallet
+      uniqueUsername = `user_${wallet.slice(0, 8).toLowerCase()}`
+      console.log('[POST /api/user] Using fallback username:', uniqueUsername)
+    }
+    
+    // Создаем нового пользователя с автоматически сгенерированным именем
     const newUser = await createOrUpdateUser(wallet, {
-      // Оставляем пустые поля, чтобы пользователь заполнил их сам
-      nickname: undefined,
-      fullName: undefined,
+      nickname: uniqueUsername,  // Используем уникальное имя из файла
+      fullName: uniqueUsername,  // Устанавливаем то же имя в fullName
       bio: undefined
     }, referrerNickname)
     

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { getUserByWallet } from '@/lib/db'
+import { verifyJWT } from '@/lib/utils/jwt-server'
 
 // GET /api/user/settings - получить настройки пользователя
 export async function GET(request: NextRequest) {
@@ -80,6 +81,47 @@ export async function PUT(request: NextRequest) {
     })
     
     return NextResponse.json({ settings })
+  } catch (error) {
+    console.error('Error updating user settings:', error)
+    return NextResponse.json({ error: 'Failed to update settings' }, { status: 500 })
+  }
+}
+
+// PATCH /api/user/settings - обновить настройки пользователя через JWT (для isAutoAnswerInChat)
+export async function PATCH(request: NextRequest) {
+  try {
+    // Получаем JWT токен из headers
+    const authHeader = request.headers.get('Authorization')
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return NextResponse.json({ error: 'Authorization required' }, { status: 401 })
+    }
+
+    const token = authHeader.substring(7)
+    const payload = await verifyJWT(token)
+    
+    if (!payload || !payload.userId) {
+      return NextResponse.json({ error: 'Invalid token' }, { status: 401 })
+    }
+
+    const userId = payload.userId as string
+    const data = await request.json()
+    
+    // Обновляем isAutoAnswerInChat в таблице users
+    const updatedUser = await prisma.user.update({
+      where: { id: userId },
+      data: {
+        isAutoAnswerInChat: data.isAutoAnswerInChat
+      },
+      select: {
+        id: true,
+        isAutoAnswerInChat: true
+      }
+    })
+    
+    return NextResponse.json({ 
+      success: true,
+      user: updatedUser
+    })
   } catch (error) {
     console.error('Error updating user settings:', error)
     return NextResponse.json({ error: 'Failed to update settings' }, { status: 500 })

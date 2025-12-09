@@ -1,4 +1,5 @@
 import DownloadApplicationPage from '@/components/DownloadApplicationPage'
+import ClientShell from '@/components/ClientShell'
 
 export const metadata = {
   title: 'Download Fonana - Mobile App',
@@ -6,6 +7,10 @@ export const metadata = {
 }
 
 export default function DownloadPage() {
-  return <DownloadApplicationPage />
+  return (
+    <ClientShell>
+      <DownloadApplicationPage />
+    </ClientShell>
+  )
 }
 

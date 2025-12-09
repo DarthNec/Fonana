@@ -37,6 +37,7 @@ model User {
   isGetRegistrationReward Boolean            @default(false)
   dogWaterTokens       Float                 @default(0)
   availableGenerationCount Int               @default(3)
+  isAutoAnswerInChat   Boolean               @default(true)
   accounts             Account[]
   auctionBids          AuctionBid[]
   auctionDeposits      AuctionDeposit[]
@@ -61,6 +62,7 @@ model User {
   tierSettings         CreatorTierSettings?  @relation("UserTierSettings")
   postPurchases        PostPurchase[]        @relation("UserPostPurchases")
   supportTickets       SupportTicket[]       @relation("UserSupportTickets")
+  stories              Story[]
 
   @@map("users")
 }
@@ -166,16 +168,20 @@ model Emotion {
   postId    String?
   emotionId Int
   commentId String?
+  storyId   String?
   creatorId String?
   createdAt DateTime @default(now())
   comment   Comment? @relation(fields: [commentId], references: [id], onDelete: Cascade)
   post      Post?    @relation(fields: [postId], references: [id], onDelete: Cascade)
+  story     Story?   @relation(fields: [storyId], references: [id], onDelete: Cascade)
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([userId, postId, emotionId])
   @@unique([userId, commentId, emotionId])
+  @@unique([userId, storyId, emotionId])
   @@index([postId])
   @@index([commentId])
+  @@index([storyId])
   @@map("emotions")
 }
 
@@ -610,4 +616,29 @@ model AI_Creations {
   @@index([user_id])
   @@index([requestId])
   @@map("AI_Creations")
+}
+
+model Story {
+  id         String    @id @default(cuid())
+  userId     String
+  type       String
+  mediaUrl   String
+  likesCount Int       @default(0)
+  viewsCount Int       @default(0)
+  createdAt  DateTime  @default(now())
+  emotions   Emotion[]
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([createdAt])
+  @@map("stories")
+}
+
+model Version {
+  id        String   @id @default(cuid())
+  version   String   @default("1")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("versions")
 }

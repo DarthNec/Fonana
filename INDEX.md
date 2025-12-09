@@ -82,6 +82,7 @@
 - [🎨 User Generations API](./docs/API_USER_GENERATIONS.md) - Управление счетчиком AI генераций
 - [⚡ Generations Quick Start](./docs/USER_GENERATIONS_QUICK_START.md) - Быстрый старт с API генераций
 - [🤖 Sora-2 Generations Integration](./docs/SORA2_GENERATIONS_INTEGRATION.md) - Интеграция системы генераций в CreatePostModal
+- [💡 Предложения по вирусному контенту](./docs/SORA_VIRAL_CONTENT_INTEGRATION_PROPOSAL.md) - **НОВЫЙ** - Предложения по интеграции концепций вирусного контента из SORAREADME.md
 - [🗑️ Delete Conversations API](./docs/API_CONVERSATIONS_MOBILE_DELETE.md) - Удаление диалогов без аутентификации
 
 ---

@@ -15,6 +15,7 @@ import {
 } from '@/components/posts/utils/postHelpers'
 import { cn } from '@/lib/utils'
 import RemixPostModal from '@/components/RemixPostModal'
+import RemixImagePostModal from '@/components/RemixImagePostModal'
 import { RemixCarousel } from '../RemixCarousel'
 import { 
   // Category icons
@@ -37,7 +38,9 @@ import {
   SparklesIcon, // Party
   PhotoIcon, // Landscape
   BriefcaseIcon, // Work
-  ArrowPathIcon // Remix
+  ArrowPathIcon, // Remix
+  ChevronLeftIcon,
+  ChevronRightIcon
 } from '@heroicons/react/24/outline'
 
 export interface PostContentProps {
@@ -89,9 +92,31 @@ export function PostContent({
   const [imageError, setImageError] = useState(false)
   const [isTextExpanded, setIsTextExpanded] = useState(false)
   const [showRemixModal, setShowRemixModal] = useState(false)
+  const [showRemixImageModal, setShowRemixImageModal] = useState(false)
   const [isVideoPlaying, setIsVideoPlaying] = useState(false)
   const [isFooterTextExpanded, setIsFooterTextExpanded] = useState(false)
+  
+  // Находим индекс текущего поста в массиве ремиксов (если есть)
+  const initialRemixIndex = React.useMemo(() => {
+    if (post.postRemixes && post.postRemixes.length > 1) {
+      const index = post.postRemixes.findIndex(p => p.id === post.id)
+      return index !== -1 ? index : 0
+    }
+    return 0
+  }, [post.id, post.postRemixes])
+  
+  const [currentRemixIndex, setCurrentRemixIndex] = useState(initialRemixIndex)
   const videoRef = React.useRef<HTMLVideoElement>(null)
+  
+  // Обновляем индекс когда меняется пост
+  React.useEffect(() => {
+    setCurrentRemixIndex(initialRemixIndex)
+  }, [initialRemixIndex])
+  
+  // Получаем текущий пост для отображения (если есть ремиксы, показываем текущий из цепочки)
+  const currentPost = post.postRemixes && post.postRemixes.length > 1 
+    ? post.postRemixes[currentRemixIndex] 
+    : post
 
   // Функции управления видео
   const handleVideoPlayPause = () => {
@@ -115,11 +140,11 @@ export function PostContent({
   }
   
   // Определяем длинный ли текст (больше 200 символов)
-  const isLongText = post.content?.text && typeof post.content.text === 'string' && post.content.text.length > 200
+  const isLongText = currentPost.content?.text && typeof currentPost.content.text === 'string' && currentPost.content.text.length > 200
   
   // Определяем много ли строк в тексте (больше 3 строк)
-  const hasManyLines = post.content?.text && typeof post.content.text === 'string' && 
-    post.content.text.split('\n').length > 3
+  const hasManyLines = currentPost.content?.text && typeof currentPost.content.text === 'string' && 
+    currentPost.content.text.split('\n').length > 3
   
   // Показываем кнопку для длинных текстов ИЛИ для текстов с большим количеством строк
   const shouldShowExpandButton = isLongText || hasManyLines
@@ -167,13 +192,13 @@ export function PostContent({
   // Aspect ratio классы (для видео используем фиксированную высоту)
   const getAspectRatioClass = () => {
     // Для видео используем фиксированную высоту
-    if (post.media.type === 'video') {
+    if (currentPost.media.type === 'video') {
       return 'h-full'
     }
     
     // Для изображений: на mobile используем aspect ratio, на desktop - без ограничений (будет заполнять flex-1)
     const mobileAspect = (() => {
-      switch (post.media.aspectRatio) {
+      switch (currentPost.media.aspectRatio) {
         case 'vertical': return 'aspect-3/4'
         case 'square': return 'aspect-square'
         case 'horizontal': return 'aspect-video'
@@ -191,8 +216,25 @@ export function PostContent({
     }
   }
 
+  // Функции навигации по ремиксам
+  const handlePreviousRemix = () => {
+    if (post.postRemixes && post.postRemixes.length > 1) {
+      setCurrentRemixIndex((prev) => 
+        prev === 0 ? post.postRemixes!.length - 1 : prev - 1
+      )
+    }
+  }
+
+  const handleNextRemix = () => {
+    if (post.postRemixes && post.postRemixes.length > 1) {
+      setCurrentRemixIndex((prev) => 
+        prev === post.postRemixes!.length - 1 ? 0 : prev + 1
+      )
+    }
+  }
+
   // Если у поста есть remixId и загружена цепочка ремиксов, показываем RemixCarousel
-  
+  /*
   if (post.postRemixes && post.postRemixes.length > 1) {
     return (
       <div className={cn('space-y-3', className)}>
@@ -215,42 +257,62 @@ export function PostContent({
       </div>
     )
   }
-  
+  */
   return (
     <div className={cn('space-y-3', 'sm:h-full sm:flex sm:flex-col', className)}>
       {/* Title - показываем только если нет showHeader или нет медиа */}
-      {(!showHeader || !post.media.url) && (
+      {(!showHeader || !currentPost.media.url) && (
         <h3 className={cn(
           'font-bold text-gray-900 dark:text-white',
           getTitleSize(),
           variant !== 'full' && 'line-clamp-2'
         )}>
-          {post.content.title}
+          {currentPost.content.title}
         </h3>
       )}
 
       {/* Media Content */}
-      {post.media.url && (
+      {currentPost.media.url && (
         <div className="relative sm:flex-1 sm:min-h-0">
-          {shouldHideContent || isLocked ? (
-            <PostLocked
-              post={post}
-              onAction={onAction}
-              variant={variant}
-            />
-          ) : (
-            <div 
-              className={cn(
-                'relative overflow-hidden rounded-xl sm:rounded-2xl cursor-pointer',
-                'bg-gray-100 dark:bg-slate-800',
-                getAspectRatioClass(),
-                'sm:h-full' // Desktop: занимает всю высоту родителя
-              )}
-              onClick={handleClick}
-            >
+          <div 
+            className={cn(
+              'relative overflow-hidden rounded-xl sm:rounded-2xl cursor-pointer',
+              'bg-gray-100 dark:bg-slate-800',
+              getAspectRatioClass(),
+              'sm:h-full' // Desktop: занимает всю высоту родителя
+            )}
+            onClick={handleClick}
+          >
+            {/* Заблокированный контент или медиа */}
+            {shouldHideContent || isLocked ? (
+              <>
+                {/* PostLocked на z-10 */}
+                <PostLocked
+                  post={post}
+                  onAction={onAction}
+                  variant={variant}
+                  className="absolute inset-0 z-10"
+                  isOverlay={true}
+                />
+                
+                {/* Header поверх заблокированного контента */}
+                {showHeader && (
+                  <div className="absolute top-0 left-0 right-0 z-30 bg-gradient-to-b from-black/80 via-black/60 to-transparent pt-3 pb-16 px-3 sm:px-4">
+                    <PostHeader 
+                      post={post}
+                      variant={variant}
+                      onAction={onAction}
+                      overlay={true}
+                      className="mb-0"
+                    />
+                  </div>
+                )}
+              </>
+            ) : (
+              <>
               {/* Instagram-style Header поверх контента */}
               {showHeader && (
-                <div className="absolute top-0 left-0 right-0 z-20 bg-gradient-to-b from-black/80 via-black/60 to-transparent pt-3 pb-16 px-3 sm:px-4">
+                <div className="absolute top-0 left-0 right-0 z-30 bg-gradient-to-b from-black/80 via-black/60 to-transparent pt-3 pb-16 px-3 sm:px-4">
                   <PostHeader 
                     post={post}
                     variant={variant}
@@ -261,7 +323,7 @@ export function PostContent({
                 </div>
               )}
               {/* Media based on type */}
-              {post.media.type === 'image' && (
+              {currentPost.media.type === 'image' && (
                 <>
                   {!imageLoaded && !imageError && (
                     <div className="absolute inset-0 flex items-center justify-center">
@@ -269,8 +331,8 @@ export function PostContent({
                     </div>
                   )}
                   <img
-                    src={post.media.url}
-                    alt={post.content.title}
+                    src={currentPost.media.url}
+                    alt={currentPost.content.title}
                     className={cn(
                       'w-full h-full object-cover sm:object-contain transition-opacity duration-300',
                       imageLoaded ? 'opacity-100' : 'opacity-0'
@@ -285,10 +347,37 @@ export function PostContent({
                       </svg>
                     </div>
                   )}
+                  
+                  {/* Remix button for images */}
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      setShowRemixImageModal(true)
+                    }}
+                    className={cn(
+                      "absolute right-3 w-8 h-8 sm:w-10 sm:h-10 sm:right-4 flex items-center justify-center bg-purple-500/80 hover:bg-purple-600/80 text-white rounded-full transition-colors backdrop-blur-sm z-30",
+                      showHeader ? "top-20 sm:top-13" : "top-4" // Опускаем под header если он есть
+                    )}
+                    aria-label="Remix image"
+                  >
+                    <ArrowPathIcon className="w-4 h-4 sm:w-5 sm:h-5" />
+                  </button>
+                  
+                  {/* Download button для изображений */}
+                  <a
+                    href={`/api/download?url=${encodeURIComponent(currentPost.media.url)}`}
+                    onClick={(e) => e.stopPropagation()}
+                    className="absolute bottom-3 right-3 w-8 h-8 sm:w-10 sm:h-10 sm:bottom-4 sm:right-4 flex items-center justify-center bg-black/50 hover:bg-black/70 text-white rounded-full transition-colors backdrop-blur-sm z-30"
+                    aria-label="Download image"
+                  >
+                    <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                    </svg>
+                  </a>
                 </>
               )}
 
-              {post.media.type === 'ai-video' && !post.media.error && (
+              {currentPost.media.type === 'ai-video' && !currentPost.media.error && (
                 <div className="flex items-center justify-center h-full bg-gradient-to-br from-purple-500 to-pink-500">
                   <div className="text-center">
                     <div className="w-12 h-12 border-4 border-white/30 border-t-white rounded-full animate-spin mx-auto mb-3" />
@@ -298,35 +387,35 @@ export function PostContent({
                 </div>
               )}
 
-              {post.media.type === 'ai-video' && post.media.error && (
+              {currentPost.media.type === 'ai-video' && currentPost.media.error && (
                 <div className="flex items-center justify-center h-full bg-gradient-to-br from-red-500 to-pink-500">
                   <div className="text-center p-6">
                     <svg className="w-12 h-12 text-white mx-auto mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
                     </svg>
                     <p className="text-sm text-white font-medium mb-2">Generation Failed</p>
-                    <p className="text-xs text-white/90 max-w-sm mx-auto">{post.media.error}</p>
+                    <p className="text-xs text-white/90 max-w-sm mx-auto">{currentPost.media.error}</p>
                   </div>
                 </div>
               )}
 
-              {(post.media.type === 'video') && post.media.error && (
+              {(currentPost.media.type === 'video') && currentPost.media.error && (
                 <div className="flex items-center justify-center h-full bg-gradient-to-br from-red-500 to-pink-500">
                   <div className="text-center p-6">
                     <svg className="w-12 h-12 text-white mx-auto mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
                     </svg>
                     <p className="text-sm text-white font-medium mb-2">Video Error</p>
-                    <p className="text-xs text-white/90 max-w-sm mx-auto">{post.media.error}</p>
+                    <p className="text-xs text-white/90 max-w-sm mx-auto">{currentPost.media.error}</p>
                   </div>
                 </div>
               )}
 
-              {(post.media.type === 'video') && !post.media.error && (
+              {(currentPost.media.type === 'video') && !currentPost.media.error && (
                 <div className="relative w-full h-full cursor-pointer" onClick={handleVideoClick}>
                   <video
                     ref={videoRef}
-                    src={post.media.url}
+                    src={currentPost.media.url}
                     className="w-full h-full object-contain"
                     preload="auto"
                     playsInline
@@ -350,26 +439,24 @@ export function PostContent({
                     </button>
                   )}
                   
-                  {/* Remix button for videos with requestId */}
-                  {post.media.requestId && (
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        setShowRemixModal(true)
-                      }}
-                      className={cn(
-                        "absolute right-3 w-8 h-8 sm:w-10 sm:h-10 sm:right-4 flex items-center justify-center bg-purple-500/80 hover:bg-purple-600/80 text-white rounded-full transition-colors backdrop-blur-sm z-30",
-                        showHeader ? "top-20 sm:top-13" : "top-4" // Опускаем под header если он есть
-                      )}
-                      aria-label="Remix video"
-                    >
-                      <ArrowPathIcon className="w-4 h-4 sm:w-5 sm:h-5" />
-                    </button>
-                  )}
+                  {/* Remix button for videos */}
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      setShowRemixModal(true)
+                    }}
+                    className={cn(
+                      "absolute right-3 w-8 h-8 sm:w-10 sm:h-10 sm:right-4 flex items-center justify-center bg-purple-500/80 hover:bg-purple-600/80 text-white rounded-full transition-colors backdrop-blur-sm z-30",
+                      showHeader ? "top-20 sm:top-13" : "top-4" // Опускаем под header если он есть
+                    )}
+                    aria-label="Remix video"
+                  >
+                    <ArrowPathIcon className="w-4 h-4 sm:w-5 sm:h-5" />
+                  </button>
                   
                   {/* Download button - теперь на всех устройствах */}
                   <a
-                    href={`/api/download?url=${encodeURIComponent(post.media.url)}`}
+                    href={`/api/download?url=${encodeURIComponent(currentPost.media.url || '')}`}
                     onClick={(e) => e.stopPropagation()}
                     className="absolute bottom-3 right-3 w-8 h-8 sm:w-10 sm:h-10 sm:bottom-4 sm:right-4 flex items-center justify-center bg-black/50 hover:bg-black/70 text-white rounded-full transition-colors backdrop-blur-sm z-30"
                     aria-label="Download video"
@@ -388,88 +475,126 @@ export function PostContent({
                   </svg>
                 </div>
               )}
+              </>
+            )}
 
-              {/* Overlay для затемнения контента при раскрытом тексте */}
-              {isFooterTextExpanded && showFooter && (
-                <div 
-                  className="absolute inset-0 bg-black/80 z-40 transition-opacity duration-300"
-                  onClick={() => setIsFooterTextExpanded(false)}
-                />
-              )}
+            {/* Overlay для затемнения контента при раскрытом тексте - только для незаблокированного */}
+            {!shouldHideContent && !isLocked && isFooterTextExpanded && showFooter && (
+              <div 
+                className="absolute inset-0 bg-black/80 z-40 transition-opacity duration-300"
+                onClick={() => setIsFooterTextExpanded(false)}
+              />
+            )}
 
-              {/* Instagram-style Footer с actions снизу */}
-              {showFooter && !shouldHideContent && post.media.type !== 'ai-video' && (
-                <div className={cn(
-                  'absolute bottom-0 left-0 right-0 px-3 sm:px-4 pb-3 transition-all duration-300',
-                  isFooterTextExpanded 
-                    ? 'z-50 bg-black/95 pt-4 max-h-[80vh] overflow-y-auto' 
-                    : 'z-20 bg-gradient-to-t from-black/80 via-black/60 to-transparent pt-16'
-                )}>
-                  {/* Title */}
-                  {post.content.title && (
-                    <h3 className={cn(
-                      'font-bold text-white drop-shadow-lg mb-1.5',
-                      variant === 'minimal' ? 'text-xs' : variant === 'compact' ? 'text-sm' : 'text-base sm:text-lg',
-                      'line-clamp-2'
-                    )}>
-                      {post.content.title}
-                    </h3>
-                  )}
-                  
-                  {/* Description */}
-                  {post.content?.text && typeof post.content.text === 'string' && (
-                    <div
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        setIsFooterTextExpanded(!isFooterTextExpanded)
-                      }}
-                      className={cn(
-                        'text-white/90 drop-shadow-md mb-2.5 cursor-pointer transition-all duration-300 hover:text-white',
-                        variant === 'minimal' ? 'text-xs' : 'text-xs sm:text-sm',
-                        isFooterTextExpanded ? 'whitespace-pre-line' : 'line-clamp-2'
-                      )}
-                    >
-                      {post.content.text}
-                      {!isFooterTextExpanded && post.content.text.length > 100 && (
-                        <span className="text-white/70 ml-1 font-medium">... ещё</span>
-                      )}
-                    </div>
-                  )}
-                  
-                  {/* PostActions */}
-                  {!isFooterTextExpanded && (
-                    <PostActions
-                      post={post}
-                      commentCount={commentCount}
-                      onAction={onAction}
-                      variant={variant}
-                      overlay={true}
-                    />
-                  )}
+            {/* Instagram-style Footer с actions снизу - ТОЛЬКО для незаблокированного контента */}
+            {!shouldHideContent && !isLocked && showFooter && post.media.type !== 'ai-video' && (
+              <div className={cn(
+                'absolute bottom-0 left-0 right-0 px-3 sm:px-4 pb-3 transition-all duration-300',
+                isFooterTextExpanded 
+                  ? 'z-50 bg-black/95 pt-4 max-h-[80vh] overflow-y-auto' 
+                  : 'z-20 bg-gradient-to-t from-black/80 via-black/60 to-transparent pt-16'
+              )}>
+                {/* Title */}
+                {post.content.title && (
+                  <h3 className={cn(
+                    'font-bold text-white drop-shadow-lg mb-1.5',
+                    variant === 'minimal' ? 'text-xs' : variant === 'compact' ? 'text-sm' : 'text-base sm:text-lg',
+                    'line-clamp-2'
+                  )}>
+                    {post.content.title}
+                  </h3>
+                )}
+                
+                {/* Description */}
+                {post.content?.text && typeof post.content.text === 'string' && (
+                  <div
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      setIsFooterTextExpanded(!isFooterTextExpanded)
+                    }}
+                    className={cn(
+                      'text-white/90 drop-shadow-md mb-2.5 cursor-pointer transition-all duration-300 hover:text-white',
+                      variant === 'minimal' ? 'text-xs' : 'text-xs sm:text-sm',
+                      isFooterTextExpanded ? 'whitespace-pre-line' : 'line-clamp-2'
+                    )}
+                  >
+                    {post.content.text}
+                    {!isFooterTextExpanded && post.content.text.length > 100 && (
+                      <span className="text-white/70 ml-1 font-medium">... ещё</span>
+                    )}
+                  </div>
+                )}
+                
+                {/* PostActions */}
+                {!isFooterTextExpanded && (
+                  <PostActions
+                    post={post}
+                    commentCount={commentCount}
+                    onAction={onAction}
+                    variant={variant}
+                    overlay={true}
+                  />
+                )}
+              </div>
+            )}
+
+            {/* Sold overlay */}
+            {isSold && (
+              <div className="absolute inset-0 bg-black/50 flex items-center justify-center z-10">
+                <div className="text-white text-2xl font-bold">ПРОДАНО</div>
+              </div>
+            )}
+
+            {/* Remix Navigation Controls - внутри медиа-контейнера */}
+            {post.postRemixes && post.postRemixes.length > 1 && (
+              <div className="absolute bottom-4 left-0 right-0 flex items-center justify-center gap-3 z-40 px-4">
+                {/* Кнопка назад */}
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    handlePreviousRemix()
+                  }}
+                  className="p-2.5 bg-black/70 hover:bg-black/80 rounded-full shadow-xl border border-white/20 backdrop-blur-sm transition-all duration-200 group"
+                  aria-label="Предыдущий ремикс"
+                >
+                  <ChevronLeftIcon className="w-5 h-5 text-white group-hover:text-purple-400 transition-colors" />
+                </button>
+
+                {/* Индикатор текущего ремикса */}
+                <div className="flex items-center gap-2 px-3 py-1.5 bg-black/70 backdrop-blur-sm rounded-full shadow-lg border border-white/20">
+                  <ArrowPathIcon className="w-3.5 h-3.5 text-purple-400" />
+                  <span className="text-xs font-semibold text-white">
+                    {currentRemixIndex + 1} / {post.postRemixes.length}
+                  </span>
                 </div>
-              )}
 
-              {/* Sold overlay */}
-              {isSold && (
-                <div className="absolute inset-0 bg-black/50 flex items-center justify-center z-10">
-                  <div className="text-white text-2xl font-bold">ПРОДАНО</div>
-                </div>
-              )}
-            </div>
-          )}
+                {/* Кнопка вперед */}
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    handleNextRemix()
+                  }}
+                  className="p-2.5 bg-black/70 hover:bg-black/80 rounded-full shadow-xl border border-white/20 backdrop-blur-sm transition-all duration-200 group"
+                  aria-label="Следующий ремикс"
+                >
+                  <ChevronRightIcon className="w-5 h-5 text-white group-hover:text-purple-400 transition-colors" />
+                </button>
+              </div>
+            )}
+          </div>
         </div>
       )}
 
       {/* Text Content - скрываем когда используем footer */}
       {/* [post_content_render_2025_017] Добавлена проверка типа для предотвращения ошибок рендеринга */}
-      {!showFooter && !shouldHideContent && post.content?.text && typeof post.content.text === 'string' && (
+      {!showFooter && !shouldHideContent && currentPost.content?.text && typeof currentPost.content.text === 'string' && (
         <div className="space-y-2">
           <p className={cn(
             'text-gray-700 dark:text-slate-300 whitespace-pre-line',
             getContentSize(),
             shouldShowExpandButton && !isTextExpanded && 'line-clamp-3'
           )}>
-            {post.content.text}
+            {currentPost.content.text}
           </p>
           
           {/* Кнопка разворачивания/сворачивания */}
@@ -485,26 +610,26 @@ export function PostContent({
       )}
 
       {/* Category & Tags & Tier - скрываем когда используем footer */}
-      {!showFooter && variant === 'full' && (post.content.category || post.content.tags.length > 0 || post?.access?.tier) && (
+      {!showFooter && variant === 'full' && (currentPost.content.category || currentPost.content.tags.length > 0 || post?.access?.tier) && (
         <div className="flex flex-wrap items-center gap-2">
-          {post.content.category && (
+          {currentPost.content.category && (
             <Link
-              href={`/category/${post.content.category.toLowerCase()}`}
+              href={`/category/${currentPost.content.category.toLowerCase()}`}
               className="px-3 py-1 bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 rounded-full text-xs font-medium hover:bg-purple-200 dark:hover:bg-purple-900/50 transition-colors flex items-center gap-1"
-              title={post.content.category}
+              title={currentPost.content.category}
             >
               {/* Показываем иконку на мобильных устройствах */}
               <div className="md:hidden flex items-center justify-center">
                 {(() => {
-                  const IconComponent = categoryIcons[post.content.category] || Squares2X2Icon
+                  const IconComponent = categoryIcons[currentPost.content.category] || Squares2X2Icon
                   return <div className="w-5"> <IconComponent /> </div>
                 })()}
               </div>
               {/* Показываем текст на десктопе */}
-              <span className="hidden md:inline">{post.content.category}</span>
+              <span className="hidden md:inline">{currentPost.content.category}</span>
             </Link>
           )}
-          {post.content.tags.map(tag => (
+          {currentPost.content.tags.map(tag => (
             <span
               key={tag}
               className="px-3 py-1 bg-gray-100 dark:bg-slate-800 text-gray-600 dark:text-slate-400 rounded-full text-xs"
@@ -526,7 +651,7 @@ export function PostContent({
         </div>
       )}
       
-      {/* Remix Modal */}
+      {/* Remix Modal for Videos */}
       {showRemixModal && (
         <RemixPostModal
           post={post}
@@ -534,6 +659,22 @@ export function PostContent({
           onRemixCreated={(remixPost) => {
             console.log('[PostContent] Remix created:', remixPost)
             setShowRemixModal(false)
+            // Можно добавить callback для обновления ленты
+            if (onAction) {
+              onAction({ type: 'remix_created', postId: post.id, post: remixPost })
+            }
+          }}
+        />
+      )}
+
+      {/* Remix Modal for Images */}
+      {showRemixImageModal && (
+        <RemixImagePostModal
+          post={post}
+          onClose={() => setShowRemixImageModal(false)}
+          onRemixCreated={(remixPost) => {
+            console.log('[PostContent] Video generated from image:', remixPost)
+            setShowRemixImageModal(false)
             // Можно добавить callback для обновления ленты
             if (onAction) {
               onAction({ type: 'remix_created', postId: post.id, post: remixPost })

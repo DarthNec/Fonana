@@ -7,10 +7,13 @@ import { useOptimizedRealtimePosts } from '@/lib/hooks/useOptimizedRealtimePosts
 import { PostsContainer } from '@/components/posts/layouts/PostsContainer'
 import { UnifiedPost, PostAction } from '@/types/posts'
 import CreatePostModal from '@/components/CreatePostModal'
+import CreateStoryModal from '@/components/CreateStoryModal'
+import StoryViewPopup from '@/components/StoryViewPopup'
 import SubscribeModal from '@/components/SubscribeModal'
 import PurchaseModal from '@/components/PurchaseModal'
 import SellablePostModal from '@/components/SellablePostModal'
 import FloatingActionButton from '@/components/ui/FloatingActionButton'
+import Avatar from '@/components/Avatar'
 import { hasAccessToTier } from '@/lib/utils/access'
 import { useSafeWalletModal } from '@/lib/hooks/useSafeWalletModal'
 import { jwtManager } from '@/lib/utils/jwt'
@@ -110,6 +113,7 @@ export default function FeedPageClient() {
   
   // Модалки
   const [showCreateModal, setShowCreateModal] = useState(false)
+  const [showCreateStoryModal, setShowCreateStoryModal] = useState(false)
   const [showSubscribeModal, setShowSubscribeModal] = useState(false)
   const [showPurchaseModal, setShowPurchaseModal] = useState(false)
   const [showEditModal, setShowEditModal] = useState(false)
@@ -117,8 +121,62 @@ export default function FeedPageClient() {
   const [selectedPost, setSelectedPost] = useState<any>(null)
   const [selectedCreator, setSelectedCreator] = useState<any>(null)
   const [filteredAndSortedPosts, setFilteredAndSortedPosts] = useState<UnifiedPost[]>([])
+  
+  // Stories
+  const [stories, setStories] = useState<any[]>([])
+  const [isLoadingStories, setIsLoadingStories] = useState(false)
+  const [showStoryViewer, setShowStoryViewer] = useState(false)
+  const [selectedStoryIndex, setSelectedStoryIndex] = useState(0)
+  const [selectedUserStories, setSelectedUserStories] = useState<any[]>([]) // Истории выбранного пользователя
 
   console.log('[FeedPageClient] user:', user);
+  
+  // Функция для загрузки историй
+  const loadStories = async () => {
+    try {
+      setIsLoadingStories(true)
+      console.log('[FeedPageClient] Loading stories...')
+      
+      const response = await fetch('/api/stories')
+      if (!response.ok) {
+        throw new Error('Failed to load stories')
+      }
+      
+      const data = await response.json()
+      console.log('[FeedPageClient] Stories loaded:', data.stories)
+      setStories(data.stories || [])
+    } catch (error) {
+      console.error('[FeedPageClient] Error loading stories:', error)
+    } finally {
+      setIsLoadingStories(false)
+    }
+  }
+  
+  // Загружаем истории при монтировании
+  useEffect(() => {
+    loadStories()
+  }, [])
+
+  // Группируем истории по пользователям
+  const groupedStories = useMemo(() => {
+    const grouped = new Map<string, { user: any, stories: any[], firstIndex: number }>()
+    
+    stories.forEach((story, index) => {
+      const userId = story.userId
+      if (!grouped.has(userId)) {
+        grouped.set(userId, {
+          user: story.user,
+          stories: [story],
+          firstIndex: index
+        })
+      } else {
+        grouped.get(userId)!.stories.push(story)
+      }
+    })
+    
+    return Array.from(grouped.values())
+  }, [stories])
+  
   // Функция для проверки аутентификации перед созданием поста
   const handleCreatePost = async () => {
     console.log('[FeedPageClient] handleCreatePost');
@@ -553,6 +611,77 @@ export default function FeedPageClient() {
   return (
     <div className="min-h-screen bg-white dark:bg-slate-900 pt-12 sm:-mt-14">
       <div className="max-w-2xl mx-auto px-0 sm:px-4 pb-20">
+        {/* Stories Section */}
+        <div className="mb-4 px-4 sm:px-0 pt-4">
+          <div className="flex gap-3 overflow-x-auto pb-3 scrollbar-hide">
+            {/* Add Story Button */}
+            <button
+              onClick={() => {
+                if (!user) {
+                  setVisible(true)
+                  toast.success('Подключите кошелек для создания истории')
+                  return
+                }
+                setShowCreateStoryModal(true)
+              }}
+              className="flex-shrink-0 flex flex-col items-center gap-2 group"
+            >
+              <div className="w-16 h-16 rounded-full border-2 border-dashed border-purple-500 dark:border-purple-400 flex items-center justify-center bg-gradient-to-br from-purple-50 to-pink-50 dark:from-purple-900/20 dark:to-pink-900/20 hover:from-purple-100 hover:to-pink-100 dark:hover:from-purple-900/30 dark:hover:to-pink-900/30 transition-all group-hover:scale-105">
+                <PlusIcon className="w-8 h-8 text-purple-600 dark:text-purple-400" />
+              </div>
+              <span className="text-xs font-medium text-gray-700 dark:text-slate-300">
+                Add Story
+              </span>
+            </button>
+
+            {/* Real stories from users */}
+            {isLoadingStories ? (
+              // Loading skeleton
+              <div className="flex gap-3">
+                {[1, 2, 3].map((i) => (
+                  <div key={i} className="flex-shrink-0 flex flex-col items-center gap-2 animate-pulse">
+                    <div className="w-16 h-16 rounded-full bg-gray-300 dark:bg-slate-700" />
+                    <div className="w-12 h-3 bg-gray-300 dark:bg-slate-700 rounded" />
+                  </div>
+                ))}
+              </div>
+            ) : (
+              groupedStories.map((group) => (
+                <button
+                  key={group.user.id}
+                  onClick={() => {
+                    // Передаем только истории выбранного пользователя
+                    console.log('[FeedPageClient] Opening stories for user:', group.user.nickname || group.user.fullName)
+                    console.log('[FeedPageClient] User stories count:', group.stories.length)
+                    console.log('[FeedPageClient] User stories:', group.stories)
+                    setSelectedUserStories(group.stories)
+                    setSelectedStoryIndex(0) // Начинаем с первой истории пользователя
+                    setShowStoryViewer(true)
+                  }}
+                  className="flex-shrink-0 flex flex-col items-center gap-2 group relative"
+                >
+                  <div className="w-16 h-16 rounded-full bg-gradient-to-tr from-purple-500 via-pink-500 to-orange-500 p-[2px] group-hover:scale-105 transition-transform">
+                    <div className="w-full h-full rounded-full bg-white dark:bg-slate-900 p-[2px]">
+                      <Avatar
+                        src={group.user.avatar}
+                        alt={group.user.fullName || group.user.nickname}
+                        seed={group.user.nickname || group.user.id}
+                        size={56}
+                        rounded="full"
+                        className="w-full h-full"
+                      />
+                    </div>
+                  </div>
+                  
+                  <span className="text-xs font-medium text-gray-700 dark:text-slate-300 max-w-[64px] truncate">
+                    {group.user.fullName || group.user.nickname || 'User'}
+                  </span>
+                </button>
+              ))
+            )}
+          </div>
+        </div>
+
         {/* Banner для новых постов */}
         {hasNewPosts && (
           <div className="mb-4 px-4 sm:px-0">
@@ -719,6 +848,23 @@ export default function FeedPageClient() {
         />
       )}
 
+      {/* Create Story Modal */}
+      {showCreateStoryModal && (
+        <CreateStoryModal
+          onClose={() => setShowCreateStoryModal(false)}
+          onStoryCreated={() => {
+            console.log('[FeedPage] Story created successfully')
+            setShowCreateStoryModal(false)
+            // Обновляем список историй
+            loadStories()
+            toast.success('История успешно создана!', {
+              duration: 3000,
+              icon: '📸'
+            })
+          }}
+        />
+      )}
+
       {/* Other Modals */}
       {showSubscribeModal && selectedCreator && (
         <SubscribeModal
@@ -771,6 +917,15 @@ export default function FeedPageClient() {
             setSelectedPost(null)
           }}
           post={selectedPost}
+        />
+      )}
+
+      {/* Story Viewer Popup */}
+      {showStoryViewer && selectedUserStories.length > 0 && (
+        <StoryViewPopup
+          stories={selectedUserStories}
+          initialStoryIndex={selectedStoryIndex}
+          onClose={() => setShowStoryViewer(false)}
         />
       )}
     </div>

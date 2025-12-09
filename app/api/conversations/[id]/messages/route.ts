@@ -2,6 +2,12 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import jwt from 'jsonwebtoken'
 import { ENV } from '@/lib/constants/env'
+import OpenAI from 'openai'
+
+// Инициализация OpenAI клиента
+const openai = new OpenAI({
+  apiKey: process.env.NEXT_PUBLIC_OPENAI_API_KEY,
+})
 
 // Получение сообщений
 export async function GET(
@@ -234,6 +240,120 @@ export async function POST(
           }
         }
       })
+    
+    // Проверяем, нужно ли автоматически ответить от имени получателя
+    const recipient = await prisma.user.findUnique({
+      where: { id: recipientId },
+      select: {
+        id: true,
+        nickname: true,
+        fullName: true,
+        isAutoAnswerInChat: true
+      }
+    })
+    
+    // Если у получателя включен автоответ, генерируем ответ через OpenAI
+    if (recipient?.isAutoAnswerInChat && process.env.NEXT_PUBLIC_OPENAI_API_KEY && !isPaid && content) {
+      try {
+        console.log('[Auto-reply] Generating automatic response for recipient:', recipientId)
+        
+        // Получаем последние 10 сообщений для контекста
+        const recentMessages = await prisma.message.findMany({
+          where: { conversationId },
+          orderBy: { createdAt: 'desc' },
+          take: 10,
+          select: {
+            senderId: true,
+            content: true,
+            createdAt: true
+          }
+        })
+        
+        // Формируем историю чата для контекста
+        const chatHistory = recentMessages
+          .reverse()
+          .map(msg => {
+            const isRecipient = msg.senderId === recipientId
+            const senderName = isRecipient ? (recipient.nickname || recipient.fullName || 'Me') : (user.nickname || user.fullName || 'User')
+            return `${senderName}: ${msg.content || '[Media]'}`
+          })
+          .join('\n')
+        
+        // Системный промпт для генерации ответа
+        const systemPrompt = `Ты - ${recipient.nickname || recipient.fullName || 'пользователь'}, участник чата.
+Твоя задача - отвечать на сообщения естественным, дружелюбным образом.
+
+Правила:
+- Отвечай кратко и по существу (1-3 предложения)
+- Сохраняй контекст предыдущих сообщений
+- Будь вежливым и естественным
+- Используй тот же язык, что и собеседник
+- Не упоминай, что ты AI или автоматический бот
+- Отвечай как обычный человек в переписке
+
+История чата:
+${chatHistory}
+
+Последнее сообщение от ${user.nickname || user.fullName || 'собеседника'}: ${content}
+
+Сгенерируй естественный ответ от имени ${recipient.nickname || recipient.fullName || 'меня'}.`
+
+        // Генерируем ответ через OpenAI
+        const completion = await openai.chat.completions.create({
+          model: 'gpt-4o',
+          messages: [
+            {
+              role: 'system',
+              content: systemPrompt
+            },
+            {
+              role: 'user',
+              content: content
+            }
+          ],
+          temperature: 0.8,
+          max_tokens: 200
+        })
+        
+        const autoReplyContent = completion.choices[0].message.content
+        
+        if (autoReplyContent) {
+          console.log('[Auto-reply] Generated response:', autoReplyContent.substring(0, 100))
+          
+          // Создаем автоматическое сообщение от имени получателя
+          const autoMessage = await prisma.message.create({
+            data: {
+              conversationId,
+              senderId: recipientId,
+              content: autoReplyContent,
+              isPaid: false
+            }
+          })
+          
+          console.log('[Auto-reply] Auto-reply message created:', autoMessage.id)
+          
+          // Создаем уведомление для отправителя о автоответе
+          await prisma.notification.create({
+            data: {
+              userId: user.id,
+              type: 'NEW_MESSAGE',
+              title: 'New message',
+              message: `${recipient.nickname || 'User'}: ${autoReplyContent.substring(0, 50)}`,
+              metadata: {
+                conversationId,
+                messageId: autoMessage.id,
+                senderId: recipientId,
+                senderName: recipient.nickname || 'User',
+                isAutoReply: true
+              }
+            }
+          })
+        }
+      } catch (autoReplyError) {
+        console.error('[Auto-reply] Error generating automatic response:', autoReplyError)
+        // Не падаем если автоответ не сработал, просто логируем ошибку
+      }
+    }
     
     return NextResponse.json({ message })
   } catch (error) {

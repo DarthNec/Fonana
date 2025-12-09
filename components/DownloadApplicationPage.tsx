@@ -6,7 +6,7 @@ import Image from 'next/image'
 
 export default function DownloadApplicationPage() {
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900/10 to-slate-900 dark:from-black dark:via-purple-900/5 dark:to-black">
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900/10 to-slate-900 dark:from-black dark:via-purple-900/5 dark:to-black overflow-hidden">
       {/* Back Button */}
       <div className="container mx-auto px-4 py-6">
         <Link href="/" className="inline-flex items-center text-gray-600 dark:text-slate-400 hover:text-purple-600 dark:hover:text-purple-400 transition-colors">
@@ -33,38 +33,39 @@ export default function DownloadApplicationPage() {
           <div className="grid lg:grid-cols-2 gap-12 items-center">
             {/* Left Side - Platform Logos */}
             <div className="space-y-8">
-              {/* Android */}
-              <div className="bg-white dark:bg-slate-900 rounded-3xl p-8 border border-gray-200 dark:border-slate-700 hover:border-green-500/50 transition-all duration-300 shadow-lg">
+              {/* Google Play */}
+              <a
+                href="https://play.google.com/store/apps/details?id=com.fonana"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="block bg-white dark:bg-slate-900 rounded-3xl p-8 border border-gray-200 dark:border-slate-700 hover:border-blue-500/50 hover:shadow-2xl transition-all duration-300 shadow-lg"
+              >
                 <div className="flex items-center gap-6">
-                  {/* Android Logo */}
+                  {/* Google Play Logo */}
                   <div className="flex-shrink-0">
-                    <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-green-500 to-emerald-600 flex items-center justify-center">
+                    <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-blue-500 via-green-500 to-yellow-500 flex items-center justify-center">
                       <svg className="w-12 h-12 text-white" viewBox="0 0 24 24" fill="currentColor">
-                        <path d="M17.6,9.48l1.84-3.18c0.16-0.31,0.04-0.69-0.26-0.85c-0.29-0.15-0.65-0.06-0.83,0.22l-1.88,3.24 c-2.86-1.21-6.08-1.21-8.94,0L5.65,5.67c-0.19-0.29-0.58-0.38-0.87-0.2C4.5,5.65,4.41,6.01,4.56,6.3L6.4,9.48 C3.3,11.25,1.28,14.44,1,18h22C22.72,14.44,20.7,11.25,17.6,9.48z M7,15.25c-0.69,0-1.25-0.56-1.25-1.25 c0-0.69,0.56-1.25,1.25-1.25S8.25,13.31,8.25,14C8.25,14.69,7.69,15.25,7,15.25z M17,15.25c-0.69,0-1.25-0.56-1.25-1.25 c0-0.69,0.56-1.25,1.25-1.25s1.25,0.56,1.25,1.25C18.25,14.69,17.69,15.25,17,15.25z"/>
+                        <path d="M3,20.5V3.5C3,2.91,3.34,2.39,3.84,2.15L13.69,12L3.84,21.85C3.34,21.6,3,21.09,3,20.5M16.81,15.12L6.05,21.34L14.54,12.85L16.81,15.12M20.16,10.81C20.5,11.08,20.75,11.5,20.75,12C20.75,12.5,20.53,12.9,20.18,13.18L17.89,14.5L15.39,12L17.89,9.5L20.16,10.81M6.05,2.66L16.81,8.88L14.54,11.15L6.05,2.66Z"/>
                       </svg>
                     </div>
                   </div>
                   
                   <div className="flex-1">
                     <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
-                      Android
+                      Google Play
                     </h3>
                     <p className="text-gray-600 dark:text-slate-400 mb-4">
-                      Download for Android devices
+                      Download from Google Play Store
                     </p>
-                    <a 
-                      href="/mobileapp/fonana.apk" 
-                      download="Fonana.apk"
-                      className="inline-flex items-center bg-gradient-to-r from-green-500 to-emerald-600 text-white px-6 py-3 rounded-xl font-semibold hover:scale-105 hover:shadow-xl hover:shadow-green-500/30 transition-all duration-300"
-                    >
-                      <svg className="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 24 24">
-                        <path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/>
+                    <div className="inline-flex items-center bg-black text-white px-6 py-3 rounded-xl font-semibold hover:scale-105 hover:shadow-xl hover:shadow-blue-500/30 transition-all duration-300">
+                      <svg className="w-5 h-5 mr-2" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M3,20.5V3.5C3,2.91,3.34,2.39,3.84,2.15L13.69,12L3.84,21.85C3.34,21.6,3,21.09,3,20.5M16.81,15.12L6.05,21.34L14.54,12.85L16.81,15.12M20.16,10.81C20.5,11.08,20.75,11.5,20.75,12C20.75,12.5,20.53,12.9,20.18,13.18L17.89,14.5L15.39,12L17.89,9.5L20.16,10.81M6.05,2.66L16.81,8.88L14.54,11.15L6.05,2.66Z"/>
                       </svg>
-                      Download APK
-                    </a>
+                      Get it on Google Play
+                    </div>
                   </div>
                 </div>
-              </div>
+              </a>
 
               {/* Apple */}
               <div className="bg-white dark:bg-slate-900 rounded-3xl p-8 border border-gray-200 dark:border-slate-700 opacity-60">

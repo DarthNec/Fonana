@@ -67,6 +67,16 @@ export default function CreatePostModal({ onPostCreated, onPostUpdated, onClose,
   const [isLoadingGenerations, setIsLoadingGenerations] = useState(false)
   const [showGenerationTooltip, setShowGenerationTooltip] = useState(false)
   
+  // Состояния для оптимизации промптов
+  const [showPromptWarning, setShowPromptWarning] = useState(false)
+  const [optimizedPromptData, setOptimizedPromptData] = useState<{
+    optimizedPrompt: string
+    originalPrompt: string
+    warningMessage: string
+    modifiedContent: string[]
+  } | null>(null)
+  const [isOptimizingPrompt, setIsOptimizingPrompt] = useState(false)
+  
   // 🔥 M7 FIX: SINGLE DEBUG useEffect WITH STABLE DEPENDENCIES (removed triple duplicates)
   useEffect(() => {
     const isDisabled = isUploading || (!connected && !publicKeyString) || (mode === 'edit' && isLoadingPost)
@@ -711,10 +721,156 @@ export default function CreatePostModal({ onPostCreated, onPostUpdated, onClose,
     }
   }
 
-  // Функция для генерации видео через Sora-2
-  const generateSoraVideo = async (): Promise<string | null> => {
+  // Функция для обработки выбора "Оставить" оптимизированный промпт
+  const handleAcceptOptimizedPrompt = async () => {
+    if (!optimizedPromptData) return
+    
+    console.log('[CreatePostModal] User accepted optimized prompt')
+    setShowPromptWarning(false)
+    setIsUploading(true)
+    
     try {
-      console.log('[CreatePostModal] Starting Sora-2 video generation via API...')
+      // Генерируем видео с оптимизированным промптом
+      const videoId = await generateSoraVideo(optimizedPromptData.optimizedPrompt)
+      if (!videoId) {
+        throw new Error('Failed to generate Sora-2 video')
+      }
+      
+      // Продолжаем создание поста с requestId
+      await continuePostCreation(videoId, 'ai-video')
+      
+    } catch (error) {
+      console.error('[CreatePostModal] Error after accepting optimized prompt:', error)
+      toast.error(error instanceof Error ? error.message : 'Failed to create post')
+      setIsUploading(false)
+    } finally {
+      setOptimizedPromptData(null)
+    }
+  }
+  
+  // Функция для обработки выбора "Отказаться"
+  const handleRejectOptimizedPrompt = () => {
+    console.log('[CreatePostModal] User rejected optimized prompt')
+    setShowPromptWarning(false)
+    setOptimizedPromptData(null)
+    setIsUploading(false)
+    toast('Пожалуйста, измените промпт и попробуйте снова', {
+      icon: 'ℹ️'
+    })
+  }
+  
+  // Вспомогательная функция для продолжения создания поста после генерации видео
+  const continuePostCreation = async (videoId: string, postType: string) => {
+    const windowSolana = typeof window !== 'undefined' ? (window as any).solana : null
+    const realPublicKey = windowSolana?.publicKey
+    const walletAddress = publicKeyString || realPublicKey?.toString()
+    
+    if (!walletAddress) {
+      throw new Error('Wallet not connected')
+    }
+    
+    const postData = {
+      userWallet: walletAddress,
+      type: postType,
+      title: formData.title,
+      content: formData.content,
+      category: formData.category,
+      tags: formData.tags,
+      accessType: formData.accessType,
+      price: formData.accessType === 'paid' ? formData.price : 0,
+      currency: formData.currency,
+      mediaUrl: null,
+      thumbnail: '/placeholder-video-enhanced.png',
+      previewUrl: null,
+      blurUrl: null,
+      requestId: videoId,
+      isSellable: formData.isSellable,
+      sellType: formData.isSellable ? formData.sellType : null,
+      quantity: formData.isSellable ? formData.quantity : null,
+      auctionStartPrice: formData.sellType === 'AUCTION' ? formData.auctionStartPrice : null,
+      auctionStepPrice: formData.sellType === 'AUCTION' ? formData.auctionStepPrice : null,
+      auctionDuration: formData.sellType === 'AUCTION' ? formData.auctionDuration : null,
+      auctionDepositAmount: formData.sellType === 'AUCTION' ? formData.auctionDepositAmount : null,
+    }
+    
+    const response = await fetch('/api/posts', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(postData)
+    })
+    
+    if (!response.ok) {
+      const error = await response.json()
+      throw new Error(error.error || 'Failed to create post')
+    }
+    
+    const result = await response.json()
+    const newPost = result.post || result
+    
+    toast.success('Post created successfully!')
+    
+    if (onClose) onClose()
+    if (onPostCreated) {
+      const postCreatedEvent = new CustomEvent('post-created', {
+        detail: { post: newPost }
+      })
+      window.dispatchEvent(postCreatedEvent)
+      onPostCreated(newPost)
+    }
+    
+    setIsUploading(false)
+  }
+
+  // Функция для оптимизации промпта через OpenAI
+  const optimizePrompt = async (prompt: string): Promise<{ optimizedPrompt: string, hasWarning: boolean, warningMessage: string | null, modifiedContent: string[] } | null> => {
+    try {
+      console.log('[CreatePostModal] Optimizing prompt via OpenAI...')
+      setIsOptimizingPrompt(true)
+      
+      const response = await fetch('/api/sora/chat', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ prompt })
+      })
+
+      if (!response.ok) {
+        const error = await response.json()
+        throw new Error(error.error || 'Failed to optimize prompt')
+      }
+
+      const data = await response.json()
+      console.log('[CreatePostModal] Prompt optimization result:', {
+        hasWarning: data.hasWarning,
+        modifiedCount: data.modifiedContent?.length || 0
+      })
+
+      return {
+        optimizedPrompt: data.optimizedPrompt,
+        hasWarning: data.hasWarning,
+        warningMessage: data.warningMessage,
+        modifiedContent: data.modifiedContent || []
+      }
+
+    } catch (error) {
+      console.error('[CreatePostModal] Prompt optimization error:', error)
+      toast.error('Failed to optimize prompt, using original')
+      return null
+    } finally {
+      setIsOptimizingPrompt(false)
+    }
+  }
+
+  // Функция для генерации видео через Sora-2
+  const generateSoraVideo = async (promptToUse?: string): Promise<string | null> => {
+    try {
+      const finalPrompt = promptToUse || formData.soraPrompt
+      console.log('[CreatePostModal] Starting Sora-2 video generation via API...', {
+        promptLength: finalPrompt.length
+      })
 
       // Подготавливаем данные для API
       let referenceImageBase64 = null
@@ -743,7 +899,7 @@ export default function CreatePostModal({ onPostCreated, onPostUpdated, onClose,
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          prompt: formData.soraPrompt,
+          prompt: finalPrompt, // Используем оптимизированный промпт
           seconds: formData.soraDuration,
           size: formData.soraSize,
           referenceImage: referenceImageBase64
@@ -889,7 +1045,40 @@ export default function CreatePostModal({ onPostCreated, onPostUpdated, onClose,
       if (formData.contentSource === 'sora2') {
         console.log('[CreatePostModal] Processing Sora-2 video generation...')
         
-        const videoId = await generateSoraVideo()
+        // Сначала оптимизируем промпт через OpenAI
+        // const optimizationResult = await optimizePrompt(formData.soraPrompt)
+        const optimizationResult = {
+          optimizedPrompt: formData.soraPrompt,
+          hasWarning: false,
+          warningMessage: null,
+          modifiedContent: []
+        }
+        if (!optimizationResult) {
+          throw new Error('Failed to optimize prompt')
+        }
+        
+
+        console.log('[CreatePostModal] Optimization result:', optimizationResult)
+        
+        // Если есть предупреждение, показываем попап и ждём решения пользователя
+        if (optimizationResult.hasWarning) {
+          console.log('[CreatePostModal] Prompt has warning, showing dialog...')
+          
+          // Сохраняем данные для попапа
+          setOptimizedPromptData({
+            optimizedPrompt: optimizationResult.optimizedPrompt,
+            originalPrompt: formData.soraPrompt,
+            warningMessage: optimizationResult.warningMessage || '',
+            modifiedContent: optimizationResult.modifiedContent
+          })
+          setShowPromptWarning(true)
+          setIsUploading(false) // Останавливаем загрузку, ждём решения пользователя
+          return // Прерываем выполнение, продолжим после выбора пользователя
+        }
+        
+        // Если предупреждений нет, сразу используем оптимизированный промпт
+        console.log('[CreatePostModal] No warnings, using optimized prompt')
+        const videoId = await generateSoraVideo(optimizationResult.optimizedPrompt)
         if (!videoId) {
           throw new Error('Failed to generate Sora-2 video')
         }
@@ -901,7 +1090,7 @@ export default function CreatePostModal({ onPostCreated, onPostUpdated, onClose,
         
         console.log('[CreatePostModal] Sora-2 video generation initiated:', {
           requestId,
-          prompt: formData.soraPrompt
+          usedOptimizedPrompt: true
         })
       }
       // Upload media file if present (только для новых файлов и не Sora-2)
@@ -1694,197 +1883,7 @@ export default function CreatePostModal({ onPostCreated, onPostUpdated, onClose,
                 </div>
               )}
 
-              {/* Секция для продаваемых постов */}
-              <div className="border-t border-gray-200 dark:border-gray-700 pt-6">
-                <label className="flex items-center gap-3 mb-4">
-                  <input
-                    type="checkbox"
-                    checked={formData.isSellable}
-                    onChange={(e) => setFormData(prev => ({
-                      ...prev,
-                      isSellable: e.target.checked,
-                      ...(e.target.checked ? {} : {
-                        sellType: 'FIXED_PRICE' as const,
-                        quantity: 1,
-                        auctionStartPrice: 0,
-                        auctionStepPrice: 0,
-                        auctionDepositAmount: 0,
-                        auctionDuration: 24
-                      })
-                    }))}
-                    className="w-5 h-5 text-purple-600 bg-gray-100 border-gray-300 rounded focus:ring-purple-500 dark:focus:ring-purple-600 dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600"
-                  />
-                  <div>
-                    <span className="text-lg font-semibold text-gray-900 dark:text-white">
-                      💰 Make this post sellable
-                    </span>
-                    <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
-                      Продажа физических или цифровых товаров через пост. Это НЕ для открытия доступа к контенту поста.
-                    </p>
-                  </div>
-                </label>
-
-                {formData.isSellable && (
-                  <div className="mt-4 space-y-4">
-                    {/* Выбор типа продажи */}
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-2">
-                        Selling Method
-                      </label>
-                      <div className="grid grid-cols-2 gap-3">
-                        <button
-                          type="button"
-                          onClick={() => setFormData(prev => ({
-                            ...prev, 
-                            sellType: 'FIXED_PRICE',
-                            auctionStartPrice: 0,
-                            auctionStepPrice: 0,
-                            auctionDepositAmount: 0,
-                            auctionDuration: 24
-                          }))}
-                          className={`p-3 rounded-lg border-2 transition-all ${
-                            formData.sellType === 'FIXED_PRICE'
-                              ? 'border-purple-500 bg-purple-50 dark:bg-purple-900/20'
-                              : 'border-gray-300 dark:border-gray-600 hover:border-gray-400'
-                          }`}
-                        >
-                          <div className="font-medium text-gray-900 dark:text-white">💵 Fixed Price</div>
-                          <div className="text-sm text-gray-600 dark:text-gray-400 mt-1">
-                            One-time purchase
-                          </div>
-                        </button>
-                        
-                        <button
-                          type="button"
-                          onClick={() => setFormData(prev => ({ ...prev, sellType: 'AUCTION' }))}
-                          className={`p-3 rounded-lg border-2 transition-all ${
-                            formData.sellType === 'AUCTION'
-                              ? 'border-purple-500 bg-purple-50 dark:bg-purple-900/20'
-                              : 'border-gray-300 dark:border-gray-600 hover:border-gray-400'
-                          }`}
-                        >
-                          <div className="font-medium text-gray-900 dark:text-white">🕒 Auction</div>
-                          <div className="text-sm text-gray-600 dark:text-gray-400 mt-1">
-                            Highest bidder wins
-                          </div>
-                        </button>
-                      </div>
-                    </div>
-
-                    {/* Настройки для фиксированной цены */}
-                    {formData.sellType === 'FIXED_PRICE' && (
-                      <div className="grid grid-cols-2 gap-4">
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-2">
-                            Selling Price (SOL)
-                          </label>
-                          <input
-                            type="number"
-                            step="0.01"
-                            min="0.01"
-                            max="1000"
-                            value={formData.price}
-                            onChange={(e) => setFormData(prev => ({ ...prev, price: parseFloat(e.target.value) || 0 }))}
-                            className="w-full px-4 py-2 bg-white dark:bg-slate-800/50 border border-gray-300 dark:border-slate-700 rounded-xl text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-yellow-500 focus:border-transparent"
-                            placeholder="0.00"
-                            required={formData.isSellable}
-                          />
-                          {formData.price > 0 && (
-                            <div className="flex items-center gap-2 mt-2">
-                              <span className="text-xs text-purple-600 dark:text-purple-300">Курс SOL/USD: {isRateLoading ? '...' : `$${solToUsdRate.toFixed(2)}`}</span>
-                              <span className="text-xs text-gray-400">(курс обновляется автоматически)</span>
-                            </div>
-                          )}
-                        </div>
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-2">
-                            Quantity
-                          </label>
-                          <input
-                            type="number"
-                            step="1"
-                            min="1"
-                            max="9999"
-                            value={formData.quantity}
-                            onChange={(e) => setFormData(prev => ({ ...prev, quantity: parseInt(e.target.value) || 1 }))}
-                            className="w-full px-4 py-2 bg-white dark:bg-slate-800/50 border border-gray-300 dark:border-slate-700 rounded-xl text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-yellow-500 focus:border-transparent"
-                            placeholder="1"
-                            required={formData.isSellable}
-                          />
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Настройки для аукциона */}
-                    {formData.sellType === 'AUCTION' && (
-                      <div className="space-y-4 p-4 bg-amber-50 dark:bg-amber-900/10 rounded-lg">
-                        <div className="grid grid-cols-2 gap-4">
-                          <div>
-                            <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1">
-                              Starting Price (SOL)
-                            </label>
-                            <input
-                              type="number"
-                              step="0.1"
-                              min="0"
-                              value={formData.auctionStartPrice}
-                              onChange={(e) => setFormData(prev => ({ ...prev, auctionStartPrice: parseFloat(e.target.value) || 0 }))}
-                              className="w-full px-3 py-2 bg-white dark:bg-slate-700 border border-gray-300 dark:border-slate-600 rounded-lg"
-                              placeholder="1.0"
-                            />
-                            {formData.auctionStartPrice > 0 && (
-                              <div className="flex items-center gap-2 mt-2">
-                                <span className="text-xs text-purple-600 dark:text-purple-300">Курс SOL/USD: {isRateLoading ? '...' : `$${solToUsdRate.toFixed(2)}`}</span>
-                                <span className="text-xs text-gray-400">(курс обновляется автоматически)</span>
-                              </div>
-                            )}
-                          </div>
-                          
-                          <div>
-                            <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1">
-                              Bid Increment (SOL)
-                            </label>
-                            <input
-                              type="number"
-                              step="0.1"
-                              min="0"
-                              value={formData.auctionStepPrice}
-                              onChange={(e) => setFormData(prev => ({ ...prev, auctionStepPrice: parseFloat(e.target.value) || 0 }))}
-                              className="w-full px-3 py-2 bg-white dark:bg-slate-700 border border-gray-300 dark:border-slate-600 rounded-lg"
-                              placeholder="0.5"
-                            />
-                          </div>
-                        </div>
-                        
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1">
-                            Duration (hours)
-                          </label>
-                          <select
-                            value={formData.auctionDuration}
-                            onChange={(e) => setFormData(prev => ({ ...prev, auctionDuration: parseInt(e.target.value) }))}
-                            className="w-full px-3 py-2 bg-white dark:bg-slate-700 border border-gray-300 dark:border-slate-600 rounded-lg"
-                          >
-                            <option value="1">1 hour</option>
-                            <option value="6">6 hours</option>
-                            <option value="12">12 hours</option>
-                            <option value="24">24 hours</option>
-                            <option value="48">48 hours</option>
-                            <option value="72">72 hours</option>
-                            <option value="168">7 days</option>
-                          </select>
-                        </div>
-                        
-                        <div className="p-3 bg-amber-100 dark:bg-amber-900/20 rounded-lg">
-                          <p className="text-sm text-amber-800 dark:text-amber-200">
-                            ⚠️ Participants pay a deposit to bid. The winner pays the full amount after the auction ends.
-                          </p>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                )}
-              </div>
+              
             </div>
           </div>
 
@@ -1995,6 +1994,118 @@ export default function CreatePostModal({ onPostCreated, onPostUpdated, onClose,
           }
         }}
       />
+    )}
+    
+    {/* Prompt Warning Modal */}
+    {showPromptWarning && optimizedPromptData && (
+      <div className="fixed inset-0 bg-black/85 backdrop-blur-sm z-[150] flex items-center justify-center p-4 animate-fade-in">
+        <div className="bg-white dark:bg-slate-900 rounded-3xl max-w-2xl w-full border border-gray-200 dark:border-slate-700/50 shadow-2xl animate-slideInUp overflow-hidden">
+          {/* Header */}
+          <div className="bg-gradient-to-r from-orange-500 to-red-500 p-6">
+            <div className="flex items-center gap-3">
+              <div className="w-12 h-12 bg-white/20 rounded-full flex items-center justify-center">
+                <span className="text-3xl">⚠️</span>
+              </div>
+              <div>
+                <h3 className="text-xl font-bold text-white">
+                  Prompt Content Warning
+                </h3>
+                <p className="text-sm text-white/80 mt-1">
+                  Your prompt was modified to comply with our guidelines
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* Content */}
+          <div className="p-6 space-y-6 max-h-[60vh] overflow-y-auto">
+            {/* Warning Message */}
+            <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl p-4">
+              <p className="text-sm text-red-900 dark:text-red-200 leading-relaxed">
+                {optimizedPromptData.warningMessage}
+              </p>
+            </div>
+
+            {/* Modified Content Tags */}
+            {optimizedPromptData.modifiedContent.length > 0 && (
+              <div>
+                <p className="text-sm font-medium text-gray-700 dark:text-slate-300 mb-2">
+                  Detected issues:
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  {optimizedPromptData.modifiedContent.map((item, index) => (
+                    <span
+                      key={index}
+                      className="px-3 py-1 bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300 rounded-full text-xs font-medium"
+                    >
+                      {item}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Original Prompt */}
+            <div>
+              <p className="text-sm font-medium text-gray-700 dark:text-slate-300 mb-2">
+                ❌ Ваш оригинальный промпт:
+              </p>
+              <div className="bg-gray-100 dark:bg-slate-800 rounded-xl p-4">
+                <p className="text-sm text-gray-700 dark:text-slate-300 leading-relaxed">
+                  {optimizedPromptData.originalPrompt}
+                </p>
+              </div>
+            </div>
+
+            {/* Optimized Prompt */}
+            <div>
+              <p className="text-sm font-medium text-gray-700 dark:text-slate-300 mb-2">
+                ✅ Исправленный промпт:
+              </p>
+              <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-xl p-4">
+                <p className="text-sm text-green-900 dark:text-green-200 leading-relaxed">
+                  {optimizedPromptData.optimizedPrompt}
+                </p>
+              </div>
+            </div>
+
+            {/* Info */}
+            <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-xl p-4">
+              <p className="text-xs text-blue-900 dark:text-blue-200">
+                💡 Мы автоматически оптимизировали ваш промпт для лучших результатов и соблюдения правил платформы.
+              </p>
+            </div>
+          </div>
+
+          {/* Actions */}
+          <div className="p-6 bg-gray-50 dark:bg-slate-800/50 border-t border-gray-200 dark:border-slate-700/50 flex gap-3">
+            <button
+              onClick={handleAcceptOptimizedPrompt}
+              disabled={isUploading}
+              className="flex-1 px-6 py-3 bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white font-medium rounded-xl transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+            >
+              {isUploading ? (
+                <>
+                  <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                  Generating...
+                </>
+              ) : (
+                <>
+                  <SparklesIcon className="w-5 h-5" />
+                  Оставить исправленный
+                </>
+              )}
+            </button>
+            <button
+              onClick={handleRejectOptimizedPrompt}
+              disabled={isUploading}
+              className="px-6 py-3 bg-gray-200 dark:bg-slate-700 hover:bg-gray-300 dark:hover:bg-slate-600 text-gray-700 dark:text-slate-300 font-medium rounded-xl transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              Отказаться
+            </button>
+          </div>
+        </div>
+      </div>
     )}
     </>
   )

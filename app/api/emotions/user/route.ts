@@ -51,6 +51,22 @@ export async function GET(request: NextRequest) {
             createdAt: true,
             postId: true
           }
+        },
+        story: {
+          select: {
+            id: true,
+            type: true,
+            mediaUrl: true,
+            createdAt: true,
+            user: {
+              select: {
+                id: true,
+                nickname: true,
+                fullName: true,
+                avatar: true
+              }
+            }
+          }
         }
       },
       orderBy: {
@@ -60,12 +76,23 @@ export async function GET(request: NextRequest) {
 
     console.log('[Emotions User API] Found emotions:', emotions.length)
 
-    // Форматируем ответ
+    // Форматируем ответ с проверкой на null
     const formattedEmotions = emotions.map((emotion: any) => ({
       id: emotion.id,
       emotionId: emotion.emotionId,
       createdAt: emotion.createdAt,
-      postId: emotion.post.id
+      // Определяем тип целевого объекта
+      postId: emotion.post?.id || null,
+      commentId: emotion.comment?.id || null,
+      storyId: emotion.story?.id || null,
+      // Добавляем данные о целевом объекте
+      target: emotion.post 
+        ? { type: 'post', data: emotion.post }
+        : emotion.comment
+        ? { type: 'comment', data: emotion.comment }
+        : emotion.story
+        ? { type: 'story', data: emotion.story }
+        : null
     }))
 
     return NextResponse.json({

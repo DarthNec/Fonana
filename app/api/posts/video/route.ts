@@ -9,11 +9,11 @@ const prisma = new PrismaClient()
  */
 export async function GET(request: NextRequest) {
   try {
+    // userId опциональный - только для проверки isLiked
     const { searchParams } = new URL(request.url)
-    const userId = searchParams.get('userId')
-    const userWallet = searchParams.get('userWallet')
+    const userId = searchParams.get('userId') || undefined
 
-    console.log('[API /posts/video] GET request:', { userId, userWallet })
+    console.log('[API /posts/video] GET request - fetching all videos', userId ? `(userId: ${userId})` : '')
 
     // Получаем все посты с типом video
     const videos = await prisma.post.findMany({
@@ -33,15 +33,18 @@ export async function GET(request: NextRequest) {
             isVerified: true
           }
         },
-        likes: userId ? {
-          where: {
-            userId: userId
-          },
-          select: {
-            id: true,
-            userId: true
+        // Лайки включаем только если userId передан
+        ...(userId && {
+          likes: {
+            where: {
+              userId: userId
+            },
+            select: {
+              id: true,
+              userId: true
+            }
           }
-        } : false,
+        }),
         emotions: {
           select: {
             id: true,
@@ -91,7 +94,7 @@ export async function GET(request: NextRequest) {
       emotionsCount: video._count.emotions,
       commentsCount: video._count.comments,
       viewsCount: 0, // TODO: Add views tracking
-      isLiked: userId ? video.likes.length > 0 : false,
+      isLiked: userId && 'likes' in video ? (video.likes as any[]).length > 0 : false,
       emotions: video.emotions
     }))
 

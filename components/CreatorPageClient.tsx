@@ -12,6 +12,7 @@ import CreatePostModal from './CreatePostModal'
 import SubscribeModal from './SubscribeModal'
 import PurchaseModal from './PurchaseModal'
 import { ProfileSharePopup } from './ProfileSharePopup'
+import { FollowersPopup } from './FollowersPopup'
 import { useSafeWalletModal } from '@/lib/hooks/useSafeWalletModal'
 import { CheckBadgeIcon, UsersIcon, DocumentTextIcon, CurrencyDollarIcon, PencilIcon, ShareIcon, PhotoIcon, ChatBubbleLeftIcon } from '@heroicons/react/24/outline'
 import { HeartIcon as HeartSolidIcon } from '@heroicons/react/24/solid'
@@ -70,6 +71,8 @@ export default function CreatorPageClient({ creatorId }: CreatorPageClientProps)
   const [showPurchaseModal, setShowPurchaseModal] = useState(false)
   const [showEditPostModal, setShowEditPostModal] = useState(false)
   const [showProfileSharePopup, setShowProfileSharePopup] = useState(false)
+  const [showFollowersPopup, setShowFollowersPopup] = useState(false)
+  const [followersPopupType, setFollowersPopupType] = useState<'followers' | 'following'>('followers')
   const [selectedPost, setSelectedPost] = useState<any>(null)
   const [selectedCreator, setSelectedCreator] = useState<any>(null)
   const [filteredPosts, setFilteredPosts] = useState<any>([]);
@@ -569,13 +572,13 @@ export default function CreatorPageClient({ creatorId }: CreatorPageClientProps)
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-slate-900 pt-20 pb-8">
       {/* Background Image */}
-      <div className="absolute top-0 left-0 w-full h-80 overflow-hidden">
+      <div className="absolute top-0 left-0 w-full h-[48rem] overflow-hidden">
         {creator.backgroundImage ? (
           <>
             <img 
               src={creator.backgroundImage}
               alt={`${creator.fullName || creator.nickname} background`}
-              className="w-full h-full object-cover opacity-30"
+              className="w-full h-full object-cover object-center opacity-30"
             />
             <div className="absolute inset-0 bg-gradient-to-b from-transparent to-gray-50 dark:to-slate-900"></div>
           </>
@@ -600,11 +603,15 @@ export default function CreatorPageClient({ creatorId }: CreatorPageClientProps)
           {/* Header Section with Background */}
           <div className="relative">
             {/* Background Image Layer - только для header части */}
+            
             {creator.backgroundImage && (
+              /*
               <div 
                 className="absolute inset-0 bg-cover bg-center opacity-20 dark:opacity-10 pointer-events-none"
                 style={{ backgroundImage: `url(${creator.backgroundImage})` }}
               />
+              */ 
+              <></>
             )}
             
             {/* Content Overlay */}
@@ -612,14 +619,18 @@ export default function CreatorPageClient({ creatorId }: CreatorPageClientProps)
             <div className="flex flex-col md:flex-row gap-6">
               {/* Avatar Section */}
               <div className="flex-shrink-0">
-                <Avatar
-                  src={creator.avatar}
-                  alt={creator.fullName || creator.nickname || 'Creator'}
-                  seed={creator.nickname || creator.id}
-                  size={120}
-                  rounded="3xl"
-                  className="border-4 border-white dark:border-slate-800 shadow-lg"
-                />
+                <div className="relative">
+                  <Avatar
+                    src={creator.avatar}
+                    alt={creator.fullName || creator.nickname || 'Creator'}
+                    seed={creator.nickname || creator.id}
+                    size={120}
+                    rounded="full"
+                    className="border-4 border-white dark:border-slate-800 shadow-lg"
+                  />
+                  {/* Online Status Indicator */}
+                  <div className="absolute bottom-1 right-1 w-6 h-6 bg-green-500 rounded-full border-4 border-white dark:border-slate-800"></div>
+                </div>
               </div>
 
               {/* Info Section */}
@@ -740,13 +751,19 @@ export default function CreatorPageClient({ creatorId }: CreatorPageClientProps)
 
         {/* Stats Cards */}
         <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mb-6">
-          <div className="bg-white dark:bg-slate-800 rounded-lg p-4 text-center">
+          <button
+            onClick={() => {
+              setFollowersPopupType('followers')
+              setShowFollowersPopup(true)
+            }}
+            className="bg-white dark:bg-slate-800 rounded-lg p-4 text-center hover:bg-gray-50 dark:hover:bg-slate-700 transition-colors cursor-pointer"
+          >
             <UsersIcon className="w-6 h-6 text-purple-500 mx-auto mb-2" />
             <div className="text-2xl font-bold text-gray-900 dark:text-white">
               {creator.followersCount.toLocaleString()}
             </div>
             <div className="text-sm text-gray-600 dark:text-gray-400">Followers</div>
-          </div>
+          </button>
           
           <div className="bg-white dark:bg-slate-800 rounded-lg p-4 text-center">
             <DocumentTextIcon className="w-6 h-6 text-green-500 mx-auto mb-2" />
@@ -756,13 +773,19 @@ export default function CreatorPageClient({ creatorId }: CreatorPageClientProps)
             <div className="text-sm text-gray-600 dark:text-gray-400">Posts</div>
           </div>
           
-          <div className="bg-white dark:bg-slate-800 rounded-lg p-4 text-center col-span-2 md:col-span-1">
+          <button
+            onClick={() => {
+              setFollowersPopupType('following')
+              setShowFollowersPopup(true)
+            }}
+            className="bg-white dark:bg-slate-800 rounded-lg p-4 text-center col-span-2 md:col-span-1 hover:bg-gray-50 dark:hover:bg-slate-700 transition-colors cursor-pointer"
+          >
             <CurrencyDollarIcon className="w-6 h-6 text-yellow-500 mx-auto mb-2" />
             <div className="text-2xl font-bold text-gray-900 dark:text-white">
               {creator.followingCount.toLocaleString()}
             </div>
             <div className="text-sm text-gray-600 dark:text-gray-400">Following</div>
-          </div>
+          </button>
         </div>
 
         {/* Posts Section */}
@@ -892,6 +915,16 @@ export default function CreatorPageClient({ creatorId }: CreatorPageClientProps)
           }}
           isOpen={showProfileSharePopup}
           onClose={() => setShowProfileSharePopup(false)}
+        />
+      )}
+
+      {/* Followers/Following Popup */}
+      {showFollowersPopup && creator && (
+        <FollowersPopup
+          userId={creator.id}
+          type={followersPopupType}
+          isOpen={showFollowersPopup}
+          onClose={() => setShowFollowersPopup(false)}
         />
       )}
     </div>

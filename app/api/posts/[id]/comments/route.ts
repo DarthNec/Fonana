@@ -10,6 +10,10 @@ export async function GET(
   { params }: { params: { id: string } }
 ) {
   try {
+    // Получаем userId из query параметров (опционально)
+    const { searchParams } = new URL(request.url)
+    const userId = searchParams.get('userId')
+
     const comments = await prisma.comment.findMany({
       where: {
         postId: params.id,
@@ -36,12 +40,14 @@ export async function GET(
                 isVerified: true
               }
             },
+            emotions: true, // Включаем эмоции для ответов
             _count: {
               select: { likes: true }
             }
           },
           orderBy: { createdAt: 'asc' }
         },
+        emotions: true, // Включаем все эмоции для комментария
         _count: {
           select: { likes: true }
         }
@@ -50,38 +56,80 @@ export async function GET(
     })
 
     // Форматируем комментарии для клиента
-    const formattedComments = comments.map(comment => ({
-      id: comment.id,
-      userId: comment.userId,
-      user: {
-        id: comment.user.id,
-        nickname: comment.user.nickname,
-        fullName: comment.user.fullName,
-        avatar: comment.user.avatar,
-        isVerified: comment.user.isVerified
-      },
-      content: comment.content,
-      createdAt: comment.createdAt.toISOString(),
-      likesCount: comment._count.likes,
-      isAnonymous: comment.isAnonymous,
-      parentId: comment.parentId,
-      replies: comment.replies.map(reply => ({
-        id: reply.id,
-        userId: reply.userId,
+    const formattedComments = comments.map(comment => {
+      // Находим эмоцию текущего пользователя для этого комментария
+      const userEmotion = userId 
+        ? comment.emotions.find((e: any) => e.userId === userId)
+        : undefined
+
+      return {
+        id: comment.id,
+        userId: comment.userId,
         user: {
-          id: reply.user.id,
-          nickname: reply.user.nickname,
-          fullName: reply.user.fullName,
-          avatar: reply.user.avatar,
-          isVerified: reply.user.isVerified
+          id: comment.user.id,
+          nickname: comment.user.nickname,
+          fullName: comment.user.fullName,
+          avatar: comment.user.avatar,
+          isVerified: comment.user.isVerified
         },
-        content: reply.content,
-        createdAt: reply.createdAt.toISOString(),
-        likesCount: reply._count.likes,
-        isAnonymous: reply.isAnonymous,
-        parentId: reply.parentId
-      }))
-    }))
+        content: comment.content,
+        createdAt: comment.createdAt.toISOString(),
+        likesCount: comment._count.likes,
+        isAnonymous: comment.isAnonymous,
+        parentId: comment.parentId,
+        emotions: comment.emotions.map((emotion: any) => ({
+          id: emotion.id,
+          userId: emotion.userId,
+          commentId: emotion.commentId,
+          emotionId: emotion.emotionId,
+          createdAt: emotion.createdAt.toISOString()
+        })),
+        userEmotion: userEmotion ? {
+          id: userEmotion.id,
+          userId: userEmotion.userId,
+          commentId: userEmotion.commentId,
+          emotionId: userEmotion.emotionId,
+          createdAt: userEmotion.createdAt.toISOString()
+        } : undefined,
+        replies: comment.replies.map(reply => {
+          // Находим эмоцию текущего пользователя для этого ответа
+          const replyUserEmotion = userId 
+            ? reply.emotions.find((e: any) => e.userId === userId)
+            : undefined
+
+          return {
+            id: reply.id,
+            userId: reply.userId,
+            user: {
+              id: reply.user.id,
+              nickname: reply.user.nickname,
+              fullName: reply.user.fullName,
+              avatar: reply.user.avatar,
+              isVerified: reply.user.isVerified
+            },
+            content: reply.content,
+            createdAt: reply.createdAt.toISOString(),
+            likesCount: reply._count.likes,
+            isAnonymous: reply.isAnonymous,
+            parentId: reply.parentId,
+            emotions: reply.emotions.map((emotion: any) => ({
+              id: emotion.id,
+              userId: emotion.userId,
+              commentId: emotion.commentId,
+              emotionId: emotion.emotionId,
+              createdAt: emotion.createdAt.toISOString()
+            })),
+            userEmotion: replyUserEmotion ? {
+              id: replyUserEmotion.id,
+              userId: replyUserEmotion.userId,
+              commentId: replyUserEmotion.commentId,
+              emotionId: replyUserEmotion.emotionId,
+              createdAt: replyUserEmotion.createdAt.toISOString()
+            } : undefined
+          }
+        })
+      }
+    })
 
     return NextResponse.json({ comments: formattedComments })
   } catch (error) {

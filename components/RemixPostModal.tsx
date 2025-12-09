@@ -7,9 +7,11 @@ import { toast } from 'react-hot-toast'
 import { 
   XMarkIcon,
   PaperAirplaneIcon,
-  SparklesIcon
+  SparklesIcon,
+  QuestionMarkCircleIcon
 } from '@heroicons/react/24/outline'
 import { UnifiedPost } from '@/types/posts'
+import { useSafeWalletModal } from '@/lib/hooks/useSafeWalletModal'
 
 interface RemixPostModalProps {
   post: UnifiedPost
@@ -22,10 +24,19 @@ export default function RemixPostModal({ post, onClose, onRemixCreated }: RemixP
   const user = useUser()
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [remixPrompt, setRemixPrompt] = useState('')
+  const { setVisible, visible } = useSafeWalletModal()
+  
+  // Состояния для генераций AI
+  const [availableGenerations, setAvailableGenerations] = useState<number | null>(null)
+  const [isLoadingGenerations, setIsLoadingGenerations] = useState(false)
+  const [showGenerationTooltip, setShowGenerationTooltip] = useState(false)
   
   // ✅ КРИТИЧЕСКАЯ ПРОВЕРКА: предотвращаем React Error #185
   console.log(user);
   if (!user) {
+    if(!visible) {
+      setVisible(true)
+    }
     return null
   }
 
@@ -39,6 +50,41 @@ export default function RemixPostModal({ post, onClose, onRemixCreated }: RemixP
       }
     }
   }, [])
+
+  // Загрузка доступных генераций при открытии модалки
+  useEffect(() => {
+    const fetchGenerations = async () => {
+      if (!publicKeyString) {
+        console.log('[RemixPostModal] No wallet connected, skipping generations fetch')
+        return
+      }
+      
+      setIsLoadingGenerations(true)
+      try {
+        console.log('[RemixPostModal] Fetching available generations for:', publicKeyString)
+        
+        const response = await fetch(`/api/user/generations?userWallet=${publicKeyString}`)
+        
+        if (!response.ok) {
+          const error = await response.json()
+          throw new Error(error.error || 'Failed to fetch generations')
+        }
+        
+        const data = await response.json()
+        console.log('[RemixPostModal] Generations fetched:', data.availableGenerationCount)
+        
+        setAvailableGenerations(data.availableGenerationCount)
+      } catch (error) {
+        console.error('[RemixPostModal] Error fetching generations:', error)
+        toast.error('Failed to load generation count')
+        setAvailableGenerations(0)
+      } finally {
+        setIsLoadingGenerations(false)
+      }
+    }
+
+    fetchGenerations()
+  }, [publicKeyString])
 
   // Функция для создания ремикса через наш API
   const createRemix = async (videoId: string, prompt: string): Promise<string | null> => {
@@ -259,6 +305,53 @@ export default function RemixPostModal({ post, onClose, onRemixCreated }: RemixP
                 </p>
               </div>
 
+              {/* Available Generations Counter */}
+              <div className="bg-gradient-to-r from-pink-50 to-purple-50 dark:from-pink-900/20 dark:to-purple-900/20 border border-pink-200 dark:border-pink-800 rounded-xl p-4">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <SparklesIcon className="w-5 h-5 text-pink-600 dark:text-pink-400" />
+                    <span className="text-sm font-medium text-gray-700 dark:text-slate-300">
+                      Available generations:
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {isLoadingGenerations ? (
+                      <div className="w-4 h-4 border-2 border-pink-500/30 border-t-pink-500 rounded-full animate-spin"></div>
+                    ) : (
+                      <>
+                        <span className={`text-lg font-bold ${
+                          (availableGenerations || 0) > 0 
+                            ? 'text-green-600 dark:text-green-400' 
+                            : 'text-red-600 dark:text-red-400'
+                        }`}>
+                          {availableGenerations ?? 0}
+                        </span>
+                        <div 
+                          className="relative"
+                          onMouseEnter={() => setShowGenerationTooltip(true)}
+                          onMouseLeave={() => setShowGenerationTooltip(false)}
+                        >
+                          <QuestionMarkCircleIcon className="w-5 h-5 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 cursor-help transition-colors" />
+                          {showGenerationTooltip && (
+                            <div className="absolute z-50 bottom-full right-0 mb-2 w-64 px-3 py-2 text-xs text-white bg-gray-900 dark:bg-gray-800 rounded-lg shadow-lg border border-gray-700">
+                              <div className="relative">
+                                Количество Sora-2 генераций, которые вы можете использовать в сутки, автоматически обновляется раз в 24 часа
+                                <div className="absolute -bottom-1 right-4 w-2 h-2 bg-gray-900 dark:bg-gray-800 border-r border-b border-gray-700 transform rotate-45"></div>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      </>
+                    )}
+                  </div>
+                </div>
+                {availableGenerations === 0 && (
+                  <p className="text-xs text-red-600 dark:text-red-400 mt-2">
+                    ⚠️ No generations available. You cannot create remixes.
+                  </p>
+                )}
+              </div>
+
               {/* Info */}
               <div className="bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-800 rounded-xl p-4">
                 <div className="flex items-start gap-3">
@@ -288,7 +381,8 @@ export default function RemixPostModal({ post, onClose, onRemixCreated }: RemixP
                   const condition1 = isSubmitting
                   const condition2 = !connected && !publicKeyString && !realConnected && !realPublicKey
                   const condition3 = !remixPrompt.trim()
-                  const isDisabled = condition1 || condition2 || condition3
+                  const condition4 = availableGenerations === 0 // Блокируем, если нет генераций
+                  const isDisabled = condition1 || condition2 || condition3 || condition4
                   
                   return isDisabled
                 })()}

@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { PostCreator, PostCardVariant, UnifiedPost, PostAction } from '@/types/posts'
 import { cn } from '@/lib/utils'
 import { PostMenu } from '../PostMenu'
+import Avatar from '@/components/Avatar'
 
 export interface PostHeaderProps {
   post: UnifiedPost
@@ -57,6 +58,14 @@ export function PostHeader({
     }
   }
 
+  const getAvatarPixelSize = () => {
+    switch (variant) {
+      case 'minimal': return 30
+      case 'compact': return 36
+      default: return 40
+    }
+  }
+
   const getTextSize = () => {
     switch (variant) {
       case 'minimal': return 'text-xs sm:text-sm'
@@ -103,22 +112,17 @@ export function PostHeader({
         onClick={handleCreatorClick}
         className="flex-shrink-0"
       >
-        <div className={cn(
-          'relative rounded-full overflow-hidden bg-gradient-to-br from-purple-500 to-pink-500',
-          getAvatarSize(),
-          overlay && 'ring-2 ring-white shadow-lg' // Белая обводка для overlay режима
-        )}>
-          {creator.avatar ? (
-            <img
-              src={creator.avatar}
-              alt={creator.name}
-              className="w-full h-full object-cover"
-            />
-          ) : (
-            <div className="w-full h-full flex items-center justify-center text-white font-semibold">
-              {creator.name?.charAt(0)?.toUpperCase() || '?'}
-            </div>
-          )}
+        <div className="relative">
+          <Avatar
+            src={creator.avatar}
+            alt={creator.name || 'User'}
+            seed={creator.username || creator.id}
+            size={getAvatarPixelSize()}
+            rounded="full"
+            className={cn(
+              overlay && 'ring-2 ring-white shadow-lg' // Белая обводка для overlay режима
+            )}
+          />
           
           {/* Verified Badge */}
           {creator.isVerified && (

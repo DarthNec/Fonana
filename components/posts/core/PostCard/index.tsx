@@ -141,12 +141,18 @@ export function PostCard({
   // Hover эффект для платного/премиум контента
   const needsUnlock = needsPayment(post) || needsSubscription(post) || needsTierUpgrade(post)
   
+  // Определяем тип поста по aspectRatio для правильной высоты
+  const isVerticalPost = post.media?.aspectRatio === 'vertical' || post.media?.requestId || post.media?.type === 'video'
+  
   return (
     <article className={cn(
       getTierCardStyles(), 
       className,
       shouldDim ? TIER_DIM_STYLES.content : '', // [tier_access_visual_fix_2025_017] Применяем dim к всей карточке
-      'sm:h-[calc(100vh-80px)] sm:flex sm:flex-col' // Desktop: высота экрана минус navbar, flexbox
+      // Desktop: вертикальные - высота экрана, горизонтальные/квадратные - высота контента
+      isVerticalPost 
+        ? 'sm:h-[calc(100vh-80px)] sm:flex sm:flex-col' 
+        : 'sm:flex sm:flex-col sm:h-auto'
     )}>
       {/* Hover Glow Effect */}
       {needsUnlock && (
@@ -189,7 +195,7 @@ export function PostCard({
 
       {/* Card Content */}
       <div className={cn(
-        variant === 'minimal' ? 'p-3' : 'p-3 sm:p-6',
+        variant === 'minimal' ? 'p-3' : 'p-3 sm:p-3',
         shouldBlur ? TIER_BLUR_STYLES.content : '',
         'sm:flex-1 sm:flex sm:flex-col sm:overflow-hidden' // Desktop: занимает всё пространство, flexbox
         // [tier_access_visual_fix_2025_017] Dim стили теперь применены к всей карточке

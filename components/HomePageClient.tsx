@@ -4,9 +4,12 @@ import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { ArrowRightIcon, SparklesIcon, UsersIcon, ShieldCheckIcon, CurrencyDollarIcon, PlayIcon, StarIcon } from '@heroicons/react/24/outline'
 import CreatorsExplorer from '@/components/CreatorsExplorer'
+import CreatePostModal from '@/components/CreatePostModal'
 import { useRouter } from 'next/navigation'
 import { useWallet } from '@/lib/hooks/useSafeWallet'
+import { useSafeWalletModal } from '@/lib/hooks/useSafeWalletModal'
 import { useUser, useUserLoading } from '@/lib/store/appStore'
+import { toast } from 'react-hot-toast'
 
 const features = [
   {
@@ -45,12 +48,14 @@ const stats = [
 export default function HomePageClient() {
   const router = useRouter()
   const { connected } = useWallet()
+  const { setVisible } = useSafeWalletModal()
   const user = useUser()
   const [mounted, setMounted] = useState(false)
   const [showInfoBlock, setShowInfoBlock] = useState(true)
   const [showOffers, setShowOffers] = useState(false)
   const [currentOffer, setCurrentOffer] = useState(0)
   const [version, setVersion] = useState('')
+  const [showCreateModal, setShowCreateModal] = useState(false)
   
   useEffect(() => {
     setMounted(true)
@@ -64,6 +69,18 @@ export default function HomePageClient() {
 
     return () => clearTimeout(timer)
   }, [])
+
+  // Обработчик открытия создания поста
+  const handleStartCreating = () => {
+    if (!connected || !user) {
+      // Открываем модальное окно подключения кошелька
+      setVisible(true)
+      toast.success('Подключите кошелек для создания поста')
+      return
+    }
+    
+    setShowCreateModal(true)
+  }
   
   // Offers rotation
   const offers = [
@@ -103,13 +120,14 @@ export default function HomePageClient() {
     }
   }, [showOffers])
   
+  /*
   useEffect(() => {
     fetch('/api/version')
       .then(res => res.text())
       .then(setVersion)
       .catch(() => setVersion('unknown'))
   }, [])
-  
+  */
   // Предотвращаем проблемы с SSR на мобильных
   if (!mounted) {
     return (
@@ -133,15 +151,15 @@ export default function HomePageClient() {
               </span>
             </div>
             */}
-            
+            {/*
+            <div className="inline-flex items-center px-6 py-3 rounded-full bg-gradient-to-r from-green-500/10 to-emerald-500/10 border border-green-500/30 backdrop-blur-sm mb-8 animate-pulse">
+              <span className="text-lg font-bold bg-gradient-to-r from-green-600 to-emerald-600 dark:from-green-400 dark:to-emerald-400 bg-clip-text text-transparent">
+                📱 Fonana available on Google Play!
+              </span>
+            </div>
+              */}
             <div className={`transition-all duration-500 ${!showInfoBlock ? 'animate-fadeOut' : ''}`}>
               {/* Android Announcement Banner */}
-              <div className="inline-flex items-center px-6 py-3 rounded-full bg-gradient-to-r from-green-500/10 to-emerald-500/10 border border-green-500/30 backdrop-blur-sm mb-8 animate-pulse">
-                <span className="text-lg font-bold bg-gradient-to-r from-green-600 to-emerald-600 dark:from-green-400 dark:to-emerald-400 bg-clip-text text-transparent">
-                  📱 Fonana available on Android!
-                </span>
-              </div>
-              
               <h1 className="text-6xl md:text-8xl font-black mb-8 leading-tight">
                 <span className="bg-gradient-to-r from-purple-600 to-pink-600 dark:from-purple-400 dark:to-pink-400 bg-clip-text text-transparent">
                   Web3 Creator
@@ -186,24 +204,27 @@ export default function HomePageClient() {
               </div>
             )}
 
-            <div className="flex flex-col sm:flex-row gap-6 justify-center mb-20 mt-10">
-              <Link href="/creators" className="group">
-                <div className="bg-gradient-to-r from-purple-600 to-blue-600 text-white px-8 py-4 rounded-2xl font-semibold flex items-center justify-center transform group-hover:scale-105 transition-all duration-300 hover:shadow-xl hover:shadow-purple-500/25">
-                  <PlayIcon className="w-6 h-6 mr-3" />
+            <div className="flex flex-col sm:flex-row gap-8 justify-center mb-20 mt-10">
+              <Link href="/feed" className="group">
+                <div className="bg-gradient-to-r from-purple-600 to-blue-600 text-white px-12 py-6 rounded-2xl font-semibold text-xl flex items-center justify-center min-h-[72px] transform group-hover:scale-105 transition-all duration-300 hover:shadow-xl hover:shadow-purple-500/30">
+                  <PlayIcon className="w-9 h-9 mr-4" />
                   Explore creators
-                  <ArrowRightIcon className="w-6 h-6 ml-3 group-hover:translate-x-1 transition-transform" />
+                  <ArrowRightIcon className="w-9 h-9 ml-4 group-hover:translate-x-1 transition-transform" />
                 </div>
               </Link>
               
-              <Link href="/feed" className="group">
-                <div className="bg-gradient-to-r from-pink-500 to-violet-600 text-white px-8 py-4 rounded-2xl font-semibold transform group-hover:scale-105 transition-all duration-300 hover:shadow-xl hover:shadow-pink-500/25">
+              <button 
+                onClick={handleStartCreating}
+                className="group"
+              >
+                <div className="bg-gradient-to-r from-pink-500 to-violet-600 text-white px-12 py-6 rounded-2xl font-semibold text-xl flex items-center justify-center min-h-[72px] transform group-hover:scale-105 transition-all duration-300 hover:shadow-xl hover:shadow-pink-500/30">
                   Start creating
                 </div>
-              </Link>
+              </button>
               
               <Link href="/download" className="group">
-                <div className="bg-gradient-to-r from-green-500 to-emerald-600 text-white px-8 py-4 rounded-2xl font-semibold flex items-center justify-center transform group-hover:scale-105 transition-all duration-300 hover:shadow-xl hover:shadow-green-500/25">
-                  <svg className="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 24 24">
+                <div className="bg-gradient-to-r from-green-500 to-emerald-600 text-white px-12 py-6 rounded-2xl font-semibold text-xl flex items-center justify-center min-h-[72px] transform group-hover:scale-105 transition-all duration-300 hover:shadow-xl hover:shadow-green-500/30">
+                  <svg className="w-8 h-8 mr-3" fill="currentColor" viewBox="0 0 24 24">
                     <path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/>
                   </svg>
                   Download
@@ -313,13 +334,16 @@ export default function HomePageClient() {
                 Join thousands of creators already earning cryptocurrency through decentralized content creation
               </p>
               <div className="flex flex-col sm:flex-row gap-6 justify-center">
-                <Link href="/feed" className="group">
+                <button 
+                  onClick={handleStartCreating}
+                  className="group"
+                >
                   <div className="bg-gradient-to-r from-purple-600 to-pink-600 text-white px-8 py-4 rounded-2xl font-bold flex items-center justify-center transform group-hover:scale-105 transition-all duration-300 hover:shadow-xl hover:shadow-purple-500/25">
                     <SparklesIcon className="w-6 h-6 mr-3" />
                     Start creating today
                     <ArrowRightIcon className="w-6 h-6 ml-3 group-hover:translate-x-1 transition-transform" />
                   </div>
-                </Link>
+                </button>
                 <Link href="/creators" className="group">
                   <div className="relative bg-white dark:bg-slate-800/50 backdrop-blur-sm text-gray-700 dark:text-white px-8 py-4 rounded-2xl font-semibold border border-gray-200 dark:border-slate-600 hover:border-purple-500/50 dark:hover:border-purple-500/50 transform group-hover:scale-[1.02] transition-all duration-300 hover:shadow-lg hover:shadow-purple-500/10 dark:hover:shadow-purple-500/20">
                     Explore creators
@@ -330,6 +354,25 @@ export default function HomePageClient() {
           </div>
         </div>
       </section>
+
+      {/* Create Post Modal */}
+      {showCreateModal && (
+        <CreatePostModal 
+          onClose={() => setShowCreateModal(false)}
+          onPostCreated={() => {
+            toast.success('Пост успешно создан!')
+            setShowCreateModal(false)
+            
+            // Испускаем событие
+            window.dispatchEvent(new CustomEvent('post-created', { 
+              detail: { timestamp: Date.now() } 
+            }))
+            
+            // Переходим на страницу feed
+            router.push('/feed')
+          }}
+        />
+      )}
     </div>
   )
 } 

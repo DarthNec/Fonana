@@ -35,6 +35,7 @@ export interface User {
     solanaWallet?: string
   } | null
   referalCount?: number
+  isAutoAnswerInChat?: boolean
 }
 
 export interface ProfileData {

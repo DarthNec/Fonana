@@ -155,6 +155,25 @@ export default function BottomNav() {
               )
             }
             
+            if(item.name === 'Profile' && !publicKeyString) {
+              return (
+                <button
+                  key={item.name}
+                  onClick={() => {
+                    toast.success('Подключите кошелек для перехода в профиль')
+                    setVisible(true)
+                  }}
+                  className={`flex flex-col items-center justify-center gap-0.5 relative w-full h-full ${
+                    isItemActive ? 'text-purple-600 dark:text-purple-400' : 'text-gray-600 dark:text-slate-400'
+                  }`}
+                >
+                  <div className="relative">
+                    <Icon className="w-7 h-7" />
+                  </div>
+                </button>
+              )
+            }
+
             return (
               <Link
                 key={item.name}

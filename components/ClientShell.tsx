@@ -69,6 +69,8 @@ export default function ClientShell({ children }: { children: React.ReactNode })
   const isIndividualChatPage = pathname?.startsWith('/messages/') && pathname !== '/messages'
   // Скрываем Navbar на странице реферальной регистрации
   const isRefPage = pathname === '/ref'
+  // Скрываем Navbar на странице загрузки приложения
+  const isDownloadPage = pathname === '/download'
 
   if (!mounted) {
     return (
@@ -86,14 +88,14 @@ export default function ClientShell({ children }: { children: React.ReactNode })
             <WalletPersistenceProvider>
               <AppProvider>
               <div className="min-h-screen bg-gray-50 dark:bg-slate-900 flex flex-col">
-                <div className={`block ${isMessagesPage ? 'md:block hidden' : isRefPage ? 'hidden' : 'block'}`}>
+                <div className={`block ${isMessagesPage ? 'md:block hidden' : (isRefPage || isDownloadPage) ? 'hidden' : 'block'}`}>
                   <Navbar />
                 </div>
-                <main className={`pt-0 flex-1 ${isRefPage ? 'pb-0 md:pt-0' : 'pb-14 md:pb-0 md:pt-20'}`}>
+                <main className={`pt-0 flex-1 ${(isRefPage || isDownloadPage) ? 'pb-0 md:pt-0' : 'pb-14 md:pb-0 md:pt-20'}`}>
                   {children}
                 </main>
                 {/* <Footer /> */}
-                <div className={`block md:hidden ${isIndividualChatPage || isRefPage ? 'hidden' : 'block'}`}>
+                <div className={`block md:hidden ${isIndividualChatPage || isRefPage || isDownloadPage ? 'hidden' : 'block'}`}>
                   <BottomNav />
                 </div>
               </div>

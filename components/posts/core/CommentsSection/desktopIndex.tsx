@@ -1,10 +1,29 @@
 'use client'
 
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import { cn } from '@/lib/utils'
 import { useUser } from '@/lib/store/appStore'
 import toast from 'react-hot-toast'
 import Avatar from '@/components/Avatar'
+import EmojiPicker from 'emoji-picker-react'
+
+// Типы эмоций (такие же как в PostActions)
+const EMOTIONS = [
+  { id: 1, emoji: '😂', label: 'Смешно', color: 'hover:bg-yellow-50 dark:hover:bg-yellow-900/20' },
+  { id: 2, emoji: '🤡', label: 'Клоун', color: 'hover:bg-purple-50 dark:hover:bg-purple-900/20' },
+  { id: 3, emoji: '🔥', label: 'Огонь', color: 'hover:bg-orange-50 dark:hover:bg-orange-900/20' },
+  { id: 4, emoji: '💩', label: 'Какашка', color: 'hover:bg-amber-50 dark:hover:bg-amber-900/20' },
+  { id: 5, emoji: '❤️', label: 'Сердечко', color: 'hover:bg-red-50 dark:hover:bg-red-900/20' },
+  { id: 6, emoji: '👍', label: 'Палец вверх', color: 'hover:bg-blue-50 dark:hover:bg-blue-900/20' },
+]
+
+export interface CommentEmotion {
+  id: string
+  userId: string
+  commentId: string
+  emotionId: number
+  createdAt: string
+}
 
 export interface Comment {
   id: string
@@ -21,6 +40,8 @@ export interface Comment {
   isAnonymous: boolean
   parentId?: string
   replies?: Comment[]
+  emotions?: CommentEmotion[]
+  userEmotion?: CommentEmotion
 }
 
 export interface CommentsSectionProps {
@@ -43,6 +64,15 @@ export function CommentsSection({ postId, post, className, onClose, onCommentAdd
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [isAnonymous, setIsAnonymous] = useState(false)
   const [expandedComments, setExpandedComments] = useState<Set<string>>(new Set())
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false)
+  const emojiPickerRef = useRef<HTMLDivElement>(null)
+  const textareaRef = useRef<HTMLTextAreaElement>(null)
+  
+  // Состояния для emotion picker
+  const [showEmotionPicker, setShowEmotionPicker] = useState<string | null>(null) // ID комментария
+  const [emotionProcessing, setEmotionProcessing] = useState<string | null>(null)
+  const emotionPickerRefs = useRef<{ [key: string]: HTMLDivElement | null }>({})
+  const emotionContainerRefs = useRef<{ [key: string]: HTMLDivElement | null }>({})
 
   // Функции для работы с развернутыми комментариями
   const toggleCommentExpansion = (commentId: string) => {
@@ -77,7 +107,12 @@ export function CommentsSection({ postId, post, className, onClose, onCommentAdd
   const fetchComments = async () => {
     try {
       setLoading(true)
-      const response = await fetch(`/api/posts/${postId}/comments`)
+      // Добавляем userId в query параметры если пользователь авторизован
+      const url = user?.id 
+        ? `/api/posts/${postId}/comments?userId=${user.id}`
+        : `/api/posts/${postId}/comments`
+      
+      const response = await fetch(url)
       if (response.ok) {
         const data = await response.json()
         setComments(data.comments || [])
@@ -175,6 +210,167 @@ export function CommentsSection({ postId, post, className, onClose, onCommentAdd
     return date.toLocaleDateString('ru-RU')
   }
 
+  // Обработчик выбора эмодзи
+  const handleEmojiClick = (emojiData: any) => {
+    const emojiText = emojiData.emoji
+    const textarea = textareaRef.current
+    if (textarea) {
+      const start = textarea.selectionStart
+      const end = textarea.selectionEnd
+      const text = newComment
+      const newText = text.substring(0, start) + emojiText + text.substring(end)
+      if (newText.length <= 300) {
+        setNewComment(newText)
+        // Устанавливаем курсор после вставленного эмодзи
+        setTimeout(() => {
+          textarea.focus()
+          textarea.setSelectionRange(start + emojiText.length, start + emojiText.length)
+        }, 0)
+      }
+    }
+    setShowEmojiPicker(false)
+  }
+
+  // Закрытие пикера при клике вне его
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (emojiPickerRef.current && !emojiPickerRef.current.contains(event.target as Node)) {
+        setShowEmojiPicker(false)
+      }
+    }
+
+    if (showEmojiPicker) {
+      document.addEventListener('mousedown', handleClickOutside)
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside)
+    }
+  }, [showEmojiPicker])
+
+  // Закрытие emotion picker при клике вне его
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (!showEmotionPicker) return
+      
+      const pickerEl = emotionPickerRefs.current[showEmotionPicker]
+      const containerEl = emotionContainerRefs.current[showEmotionPicker]
+      
+      if (
+        pickerEl && !pickerEl.contains(event.target as Node) &&
+        containerEl && !containerEl.contains(event.target as Node)
+      ) {
+        setShowEmotionPicker(null)
+      }
+    }
+
+    if (showEmotionPicker) {
+      document.addEventListener('mousedown', handleClickOutside)
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside)
+    }
+  }, [showEmotionPicker])
+
+  // Обработчик выбора эмоции для комментария
+  const handleCommentEmotionSelect = async (commentId: string, emotionId: number) => {
+    if (!user?.wallet) {
+      toast.error('Подключите кошелек для реакций')
+      return
+    }
+
+    if (emotionProcessing === commentId) return
+
+    try {
+      setEmotionProcessing(commentId)
+      
+      const response = await fetch(`/api/comments/${commentId}/emotion`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userWallet: user.wallet,
+          emotionId
+        })
+      })
+
+      if (!response.ok) {
+        throw new Error('Failed to update emotion')
+      }
+
+      const data = await response.json()
+      
+      // Обновляем локальное состояние комментариев
+      setComments(prevComments => 
+        prevComments.map(comment => {
+          if (comment.id !== commentId) return comment
+
+          const emotions = comment.emotions || []
+          let newEmotions = [...emotions]
+          
+          if (data.action === 'removed') {
+            // Удаляем эмоцию
+            newEmotions = newEmotions.filter(e => !(e.userId === user.id && e.emotionId === emotionId))
+            return {
+              ...comment,
+              emotions: newEmotions,
+              userEmotion: undefined
+            }
+          } else {
+            // Добавляем/заменяем эмоцию
+            // Сначала удаляем старую эмоцию пользователя
+            newEmotions = newEmotions.filter(e => e.userId !== user.id)
+            // Добавляем новую
+            newEmotions.push({
+              id: data.emotion?.id || '',
+              userId: user.id,
+              commentId,
+              emotionId,
+              createdAt: new Date().toISOString()
+            })
+            
+            return {
+              ...comment,
+              emotions: newEmotions,
+              userEmotion: {
+                id: data.emotion?.id || '',
+                userId: user.id,
+                commentId,
+                emotionId,
+                createdAt: new Date().toISOString()
+              }
+            }
+          }
+        })
+      )
+
+      // Закрываем picker через небольшую задержку
+      setTimeout(() => {
+        setShowEmotionPicker(null)
+      }, 500)
+
+    } catch (error) {
+      console.error('Error updating comment emotion:', error)
+      toast.error('Ошибка при обновлении реакции')
+    } finally {
+      setTimeout(() => {
+        setEmotionProcessing(null)
+      }, 300)
+    }
+  }
+
+  // Получение количества эмоций для комментария
+  const getEmotionCounts = (comment: Comment): Record<number, number> => {
+    const counts: Record<number, number> = {}
+    if (!comment.emotions || comment.emotions.length === 0) return counts
+    
+    comment.emotions.forEach(emotion => {
+      counts[emotion.emotionId] = (counts[emotion.emotionId] || 0) + 1
+    })
+    
+    return counts
+  }
+
   return (
     <div className={cn(
       'border-t border-gray-200 dark:border-slate-700/50 pt-4 pb-4 px-3 sm:px-6',
@@ -210,18 +406,49 @@ export function CommentsSection({ postId, post, className, onClose, onCommentAdd
               rounded="full"
             />
             <div className="flex-1">
-              <textarea
-                value={newComment}
-                onChange={(e) => {
-                  if (e.target.value.length <= 300) {
-                    setNewComment(e.target.value)
-                  }
-                }}
-                placeholder="Написать комментарий..."
-                className="w-full px-4 py-2 bg-gray-100 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-slate-400"
-                rows={3}
-                maxLength={300}
-              />
+              {/* Контейнер для textarea с кнопкой эмодзи */}
+              <div className="relative">
+                <textarea
+                  ref={textareaRef}
+                  value={newComment}
+                  onChange={(e) => {
+                    if (e.target.value.length <= 300) {
+                      setNewComment(e.target.value)
+                    }
+                  }}
+                  placeholder="Написать комментарий..."
+                  className="w-full px-4 py-2 pr-12 bg-gray-100 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-slate-400"
+                  rows={3}
+                  maxLength={300}
+                />
+                {/* Кнопка эмодзи - внутри textarea справа снизу */}
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.preventDefault()
+                    setShowEmojiPicker(!showEmojiPicker)
+                  }}
+                  className="absolute right-3 bottom-3 p-1 text-gray-500 dark:text-slate-400 hover:text-purple-600 dark:hover:text-purple-400 transition-colors rounded hover:bg-gray-200/50 dark:hover:bg-slate-700/50"
+                  title="Добавить эмодзи"
+                >
+                  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.828 14.828a4 4 0 01-5.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                </button>
+                {/* Эмодзи пикер */}
+                {showEmojiPicker && (
+                  <div 
+                    ref={emojiPickerRef}
+                    className="absolute right-0 top-full mt-2 z-[9999]"
+                  >
+                    <EmojiPicker
+                      onEmojiClick={handleEmojiClick}
+                      width={350}
+                      height={400}
+                    />
+                  </div>
+                )}
+              </div>
               <div className="mt-2 flex items-center justify-between">
                 <div className="flex items-center gap-4">
                   <label className="flex items-center gap-2 text-sm text-gray-600 dark:text-slate-400">
@@ -301,12 +528,98 @@ export function CommentsSection({ postId, post, className, onClose, onCommentAdd
                   </div>
                 </div>
                 <div className="mt-2 flex items-center gap-4">
-                  <button className="text-xs text-gray-500 dark:text-slate-400 hover:text-purple-600 dark:hover:text-purple-400 transition-colors flex items-center gap-1">
-                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
-                    </svg>
-                    {comment.likesCount}
-                  </button>
+                  {/* Emotion button with picker */}
+                  <div className="relative" ref={el => { emotionContainerRefs.current[comment.id] = el }}>
+                    {(() => {
+                      const emotionCounts = getEmotionCounts(comment)
+                      const hasEmotions = Object.keys(emotionCounts).length > 0
+                      const userEmotionId = comment.userEmotion?.emotionId || null
+
+                      if (hasEmotions) {
+                        // Показываем эмоции с количеством
+                        return (
+                          <div className="flex items-center gap-1">
+                            {EMOTIONS.map((emotion) => {
+                              const count = emotionCounts[emotion.id]
+                              if (!count || count === 0) return null
+                              
+                              const isUserEmotion = userEmotionId === emotion.id
+                              
+                              return (
+                                <button
+                                  key={emotion.id}
+                                  onClick={() => setShowEmotionPicker(comment.id)}
+                                  disabled={emotionProcessing === comment.id}
+                                  className={cn(
+                                    'flex items-center gap-1 px-1.5 py-0.5 rounded-md transition-all text-xs',
+                                    emotion.color,
+                                    'hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed',
+                                    isUserEmotion && 'bg-blue-50 dark:bg-blue-900/20 ring-1 ring-blue-200 dark:ring-blue-800'
+                                  )}
+                                >
+                                  <span className="text-sm">{emotion.emoji}</span>
+                                  <span className="text-xs font-medium text-gray-700 dark:text-slate-300">{count}</span>
+                                </button>
+                              )
+                            })}
+                          </div>
+                        )
+                      } else {
+                        // Показываем обычную кнопку лайка
+                        return (
+                          <button
+                            onClick={() => setShowEmotionPicker(comment.id)}
+                            disabled={emotionProcessing === comment.id}
+                            className="text-xs text-gray-500 dark:text-slate-400 hover:text-red-500 dark:hover:text-red-400 transition-colors flex items-center gap-1 disabled:opacity-50"
+                          >
+                            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+                            </svg>
+                          </button>
+                        )
+                      }
+                    })()}
+
+                    {/* Emotion picker popup */}
+                    {showEmotionPicker === comment.id && (
+                      <div
+                        ref={el => { emotionPickerRefs.current[comment.id] = el }}
+                        className="absolute bottom-full left-0 mb-2 bg-white dark:bg-slate-800 rounded-xl shadow-lg border border-gray-200 dark:border-slate-700 p-2 z-50 animate-in fade-in slide-in-from-bottom-2 duration-200"
+                      >
+                        <div className="flex gap-1">
+                          {EMOTIONS.map((emotion) => {
+                            const isSelected = comment.userEmotion?.emotionId === emotion.id
+                            return (
+                              <button
+                                key={emotion.id}
+                                onClick={() => handleCommentEmotionSelect(comment.id, emotion.id)}
+                                disabled={emotionProcessing === comment.id}
+                                className={cn(
+                                  'relative flex flex-col items-center gap-1 p-2 rounded-lg transition-all',
+                                  emotion.color,
+                                  'disabled:opacity-50 disabled:cursor-not-allowed',
+                                  isSelected && 'ring-2 ring-red-500 dark:ring-red-400'
+                                )}
+                                title={emotion.label}
+                              >
+                                <span className="text-xl">{emotion.emoji}</span>
+                                {isSelected && (
+                                  <div className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 dark:bg-red-400 rounded-full flex items-center justify-center">
+                                    <svg className="w-2 h-2 text-white" fill="currentColor" viewBox="0 0 20 20">
+                                      <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                                    </svg>
+                                  </div>
+                                )}
+                              </button>
+                            )
+                          })}
+                        </div>
+                        <div className="text-xs text-gray-500 dark:text-slate-400 text-center mt-1 px-2">
+                          Выберите эмоцию
+                        </div>
+                      </div>
+                    )}
+                  </div>
                   {comment.userId === user?.id && (
                     <button 
                       onClick={() => handleDeleteComment(comment.id)}

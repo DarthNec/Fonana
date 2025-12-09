@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
+import { usePathname } from 'next/navigation'
 import { useUser } from '@/lib/store/appStore'
 import { useStableWallet } from './useStableWallet' // 🔥 M7 FIX: STABLE WALLET HOOK
 import { PostNormalizer } from '@/services/posts/normalizer' // 🔥 FIX: Correct path
@@ -46,6 +47,7 @@ interface UseOptimizedPostsReturn {
 export function useOptimizedPosts(options: UseOptimizedPostsOptions = {}): UseOptimizedPostsReturn {
   const user = useUser()
   const { publicKeyString } = useStableWallet() // 🔥 M7 FIX: STABLE DEPENDENCY!
+  const pathname = usePathname() // Получаем текущий путь
   
   // Core state
   const [posts, setPosts] = useState<UnifiedPost[]>([])
@@ -187,9 +189,20 @@ export function useOptimizedPosts(options: UseOptimizedPostsOptions = {}): UseOp
     }
   }, [options.sortBy, options.category, options.creatorId, publicKeyString, user?.id])
   
+  
   useEffect(() => {
     const controller = new AbortController()  // ✅ Created in useEffect
-    console.log(`[useOptimizedPosts] useEffect loadPosts`)
+    console.log(`[useOptimizedPosts] useEffect loadPosts, pathname:`, pathname)
+    
+    // ✅ Проверка пути: загружаем посты только на /feed или /creator/{creatorId}
+    const shouldLoadPosts = pathname?.startsWith('/feed') || pathname?.startsWith('/creator/')
+    
+    if (!shouldLoadPosts) {
+      console.log(`[useOptimizedPosts] Skipping posts load - not on feed or creator page`)
+      setIsLoading(false)
+      setIsFeedLoading(false)
+      return
+    }
     
     // 🚀 PAGINATION: Сбрасываем пагинацию при изменении параметров
     setCurrentPage(1)
@@ -203,11 +216,8 @@ export function useOptimizedPosts(options: UseOptimizedPostsOptions = {}): UseOp
       controller.abort()
     }
   }, [
-    options.sortBy, 
-    options.category, 
-    options.creatorId,
-    publicKeyString, // 🔥 M7 FIX: STABLE STRING DEPENDENCY!
-    user?.id
+    pathname, // Проверяем путь перед загрузкой
+    loadPosts // loadPosts уже содержит все остальные зависимости в useCallback
   ])
   
   // 🔥 IMPLEMENTED: Refresh functionality for real-time updates

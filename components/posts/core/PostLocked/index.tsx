@@ -22,6 +22,7 @@ export interface PostLockedProps {
   onAction?: (action: PostAction) => void
   variant?: PostCardVariant
   className?: string
+  isOverlay?: boolean // Когда true, использует h-full вместо фиксированных высот
 }
 
 /**
@@ -31,7 +32,8 @@ export function PostLocked({
   post,
   onAction,
   variant = 'full',
-  className
+  className,
+  isOverlay = false
 }: PostLockedProps) {
   const { rate: solRate } = useSolRate()
 
@@ -47,6 +49,11 @@ export function PostLocked({
 
   // Стили для разных вариантов
   const getContainerHeight = () => {
+    // Если это overlay (например, в PostContent), используем h-full для растяжения на весь контейнер
+    if (isOverlay) {
+      return 'h-full'
+    }
+    
     switch (variant) {
       case 'minimal': return 'h-48'
       case 'compact': return 'h-64'
@@ -131,7 +138,7 @@ export function PostLocked({
             getGradientStyle()
           )} />
         )}
-        <div className="absolute inset-0 bg-black/40 backdrop-blur-md" />
+        <div className="absolute inset-0 bg-black/40 " /> 
       </div>
 
       {/* Lock content */}

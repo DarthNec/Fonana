@@ -38,7 +38,7 @@ const navigation = [
   { name: 'Home', href: '/', icon: HomeIcon },
   { name: 'Creators', href: '/creators', icon: UsersIcon },
   { name: 'Feed', href: '/feed', icon: HomeIcon },
-  { name: 'Messages', href: '/messages', icon: ChatBubbleLeftEllipsisIcon, hasIndicator: true },
+  { name: 'Messages', href: '/messages', isAction: true, icon: ChatBubbleLeftEllipsisIcon, hasIndicator: true },
   { name: 'Create', href: '#', icon: PlusIcon, isAction: true },
 ] // { name: '', href: '/version-check', icon: RocketLaunchIcon, isNew: false },
 
@@ -206,6 +206,17 @@ export function Navbar() {
       setShowCreateModal(true)
       setIsOpen(false) // Close mobile menu if open
     }
+    else if (item.isAction && item.name === 'Messages') {
+      if (!connected) {  
+        // 🔥 Открываем модальное окно подключения кошелька вместо ошибки
+        setVisible(true)
+        toast.success('Подключите кошелек для перехода в сообщения')
+        return
+      }
+      else {
+        router.push('/messages')
+      }
+    }
   }
 
   return (
@@ -282,6 +293,7 @@ export function Navbar() {
               <SolanaRateDisplay />
 
               {/* Notifications */}
+              
               <NotificationsDropdown />
 
               {/* Wallet */}
@@ -379,7 +391,9 @@ export function Navbar() {
               ) : null}
 
               {/* DogWater Token - Desktop only */}
-              {(connected && user) ?
+              
+              {/* {(connected && user) ?
+              
               <Link
                 href="https://gmgn.ai/sol/token/99smS99MkGP8WFggmUZWaVbe18Y8iWuC3YhGtUMMBray"
                 target="_blank"
@@ -406,12 +420,12 @@ export function Navbar() {
                   })()}
                 </span>
                 
-                {/* Tooltip on hover - снизу */}
+                
                 <div className="absolute top-full left-1/2 -translate-x-1/2 mt-2 px-3 py-1.5 bg-gray-900 dark:bg-slate-700 text-white text-sm rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200 whitespace-nowrap pointer-events-none z-50">
                   DogWater token
                   <div className="absolute bottom-full left-1/2 -translate-x-1/2 -mb-1 border-4 border-transparent border-b-gray-900 dark:border-b-slate-700"></div>
                 </div>
-              </Link> : null}
+              </Link> : null} */}
             </div>
 
             {/* Mobile Actions - Messages & Burger Menu */}
