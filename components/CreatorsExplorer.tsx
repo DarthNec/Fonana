@@ -27,7 +27,11 @@ const categories = ['All', 'Art', 'Music', 'Gaming', 'Lifestyle', 'Fitness', 'Te
 // Alias for backwards compatibility
 type Creator = ComponentCreator
 
-function CreatorsExplorerInner() {
+interface CreatorsExplorerProps {
+  mode?: 'normal' | 'top' // 'top' = show top 10 popular creators for homepage
+}
+
+function CreatorsExplorerInner({ mode = 'normal' }: CreatorsExplorerProps) {
   const [selectedCategory, setSelectedCategory] = useState('All')
   const [favorites, setFavorites] = useState<string[]>([])
   const [showSubscribeModal, setShowSubscribeModal] = useState(false)
@@ -255,6 +259,13 @@ function CreatorsExplorerInner() {
   // Фильтруем авторов в зависимости от активной вкладки
   const getFilteredCreators = () => {
     let filtered = creators
+
+    // 🎯 TOP MODE для homepage: показываем топ-10 по subscribers
+    if (mode === 'top') {
+      // Сортируем по subscribers (от большего к меньшему) и берем первых 10
+      filtered = [...creators].sort((a, b) => (b.subscribers || 0) - (a.subscribers || 0)).slice(0, 10)
+      return filtered
+    }
 
     if (activeTab === 'subscriptions') {
       // Показываем только тех, на кого подписан пользователь и кто не скрыт
@@ -513,11 +524,12 @@ function CreatorsExplorerInner() {
 
 
 
-        {/* Top Tabs */}
-        <div className="mb-8 px-4 sm:px-0">
-          <div className="overflow-x-auto -mx-4 sm:mx-0">
-            <div className="flex sm:justify-center min-w-max px-4 sm:px-0">
-              <div className="inline-flex bg-white dark:bg-slate-800/50 backdrop-blur-sm rounded-2xl p-1 border border-gray-200 dark:border-slate-700/50">
+        {/* Top Tabs - скрываем в режиме 'top' */}
+        {mode !== 'top' && (
+          <div className="mb-8 px-4 sm:px-0">
+            <div className="overflow-x-auto -mx-4 sm:mx-0">
+              <div className="flex sm:justify-center min-w-max px-4 sm:px-0">
+                <div className="inline-flex bg-white dark:bg-slate-800/50 backdrop-blur-sm rounded-2xl p-1 border border-gray-200 dark:border-slate-700/50">
                 {publicKey && (
                   <>
                     <button
@@ -565,9 +577,10 @@ function CreatorsExplorerInner() {
             </div>
           </div>
         </div>
+        )}
 
-        {/* Category Filter (only for "All Authors" tab) */}
-        {activeTab === 'all' && (
+        {/* Category Filter (only for "All Authors" tab) - скрываем в режиме 'top' */}
+        {mode !== 'top' && activeTab === 'all' && (
           <div className="px-4 sm:px-0 mb-8">
             <div className="overflow-x-auto -mx-4 sm:mx-0">
               <div className="flex gap-2 pb-2 px-4 sm:px-0 sm:flex-wrap sm:justify-center">
@@ -590,29 +603,46 @@ function CreatorsExplorerInner() {
         )}
 
         {/* Tab Content Title */}
-        {activeTab === 'subscriptions' && filteredCreators.length > 0 && (
-          <div className={`text-center mb-8 transition-all duration-500 ${!showInfoBlocks ? 'animate-fadeOut' : ''}`}>
-            <h3 className="text-2xl font-bold text-gray-900 dark:text-white">Your subscriptions</h3>
-            <p className="text-gray-600 dark:text-slate-400 mt-2">Creators you are subscribed to</p>
-          </div>
-        )}
-
-        {activeTab === 'recommendations' && (
-          <div className={`text-center mb-8 transition-all duration-500 ${!showInfoBlocks ? 'animate-fadeOut' : ''}`}>
-            <h3 className="text-2xl font-bold text-gray-900 dark:text-white">Discover creators</h3>
-            <p className="text-gray-600 dark:text-slate-400 mt-2">Creators that might interest you</p>
-          </div>
-        )}
-
-        {activeTab === 'all' && (
-          <div className={`text-center mb-8 transition-all duration-500 ${!showInfoBlocks ? 'animate-fadeOut' : ''}`}>
-            <h3 className="text-2xl font-bold text-gray-900 dark:text-white">All creators</h3>
-            <p className="text-gray-600 dark:text-slate-400 mt-2">
-              {selectedCategory === 'All' 
-                ? 'All platform creators' 
-                : `Creators in category ${selectedCategory}`}
+        {mode === 'top' ? (
+          // Заголовок для homepage топ-10
+          <div className="text-center mb-8">
+            <h3 className="text-5xl md:text-6xl font-black mb-8">
+              <span className="text-gray-900 dark:text-white">Top </span>
+              <span className="bg-gradient-to-r from-purple-600 to-pink-600 dark:from-purple-400 dark:to-pink-400 bg-clip-text text-transparent">
+                Creators
+              </span>
+            </h3>
+            <p className="text-xl text-gray-700 dark:text-slate-300 max-w-3xl mx-auto leading-relaxed">
+              Most popular creators on Fonana with the biggest subscriber base
             </p>
           </div>
+        ) : (
+          <>
+            {activeTab === 'subscriptions' && filteredCreators.length > 0 && (
+              <div className={`text-center mb-8 transition-all duration-500 ${!showInfoBlocks ? 'animate-fadeOut' : ''}`}>
+                <h3 className="text-2xl font-bold text-gray-900 dark:text-white">Your subscriptions</h3>
+                <p className="text-gray-600 dark:text-slate-400 mt-2">Creators you are subscribed to</p>
+              </div>
+            )}
+
+            {activeTab === 'recommendations' && (
+              <div className={`text-center mb-8 transition-all duration-500 ${!showInfoBlocks ? 'animate-fadeOut' : ''}`}>
+                <h3 className="text-2xl font-bold text-gray-900 dark:text-white">Discover creators</h3>
+                <p className="text-gray-600 dark:text-slate-400 mt-2">Creators that might interest you</p>
+              </div>
+            )}
+
+            {activeTab === 'all' && (
+              <div className={`text-center mb-8 transition-all duration-500 ${!showInfoBlocks ? 'animate-fadeOut' : ''}`}>
+                <h3 className="text-2xl font-bold text-gray-900 dark:text-white">All creators</h3>
+                <p className="text-gray-600 dark:text-slate-400 mt-2">
+                  {selectedCategory === 'All' 
+                    ? 'All platform creators' 
+                    : `Creators in category ${selectedCategory}`}
+                </p>
+              </div>
+            )}
+          </>
         )}
 
         {/* Creators Grid */}
@@ -672,13 +702,13 @@ function CreatorsExplorerInner() {
 }
 
 // 🔥 ENTERPRISE WRAPPER: Export component with error boundary
-export default function CreatorsExplorer() {
+export default function CreatorsExplorer(props: CreatorsExplorerProps = { mode: 'normal' }) {
   return (
     <EnterpriseErrorBoundary 
       context="CreatorsExplorer" 
       queryKey={['creators', 'userSubscriptions']}
     >
-      <CreatorsExplorerInner />
+      <CreatorsExplorerInner {...props} />
     </EnterpriseErrorBoundary>
   )
 } 

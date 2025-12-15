@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
-import { ArrowRightIcon, SparklesIcon, UsersIcon, ShieldCheckIcon, CurrencyDollarIcon, PlayIcon, StarIcon } from '@heroicons/react/24/outline'
+import { ArrowRightIcon, SparklesIcon, UsersIcon, ShieldCheckIcon, CurrencyDollarIcon, PlayIcon, StarIcon, ChevronDownIcon } from '@heroicons/react/24/outline'
 import CreatorsExplorer from '@/components/CreatorsExplorer'
 import CreatePostModal from '@/components/CreatePostModal'
 import { useRouter } from 'next/navigation'
@@ -17,24 +17,28 @@ const features = [
     description: 'Accept SOL, USDC and other tokens directly to your wallet',
     icon: CurrencyDollarIcon,
     gradient: 'from-emerald-400 to-teal-600',
+    learnMoreUrl: '/features/crypto-payments'
   },
   {
     name: 'NFT Subscriptions', 
     description: 'Create unique NFTs for subscribers with exclusive privileges',
     icon: SparklesIcon,
     gradient: 'from-violet-400 to-purple-600',
+    learnMoreUrl: '/features/nft-subscriptions'
   },
   {
     name: 'Security',
     description: 'Full control over funds through decentralized technologies',
     icon: ShieldCheckIcon,
     gradient: 'from-blue-400 to-indigo-600',
+    learnMoreUrl: '/features/security'
   },
   {
     name: 'Community',
     description: 'Build loyal audience with token-gating features',
     icon: UsersIcon,
     gradient: 'from-rose-400 to-pink-600',
+    learnMoreUrl: '/features/community'
   },
 ]
 
@@ -43,6 +47,37 @@ const stats = [
   { name: 'Monthly volume', value: '$2.4M', icon: '💰' },
   { name: 'NFTs created', value: '50K+', icon: '🎨' },
   { name: 'Platform fee', value: '2.5%', icon: '⚡' },
+]
+
+const faqs = [
+  {
+    question: "Do I need crypto experience to use Fonana?",
+    answer: "No! Fonana is designed for everyone. We guide you through wallet setup, and our platform handles all the technical blockchain details. You can start earning crypto even if you've never used it before."
+  },
+  {
+    question: "What wallets are supported?",
+    answer: "Fonana supports all major Solana wallets including Phantom, Solflare, Backpack, and more. We use Solana Wallet Adapter for seamless connection across desktop and mobile devices."
+  },
+  {
+    question: "What are the fees?",
+    answer: "Fonana charges only 2.5% platform fee on transactions - one of the lowest in the industry. Unlike traditional platforms that take 20-30%, you keep 97.5% of your earnings. Plus, all funds go directly to your wallet."
+  },
+  {
+    question: "How do I withdraw my earnings?",
+    answer: "Your earnings go directly to your connected wallet instantly. There's no withdrawal process - you already own your crypto! You can swap to fiat currency using any crypto exchange whenever you want."
+  },
+  {
+    question: "Is my content and data secure?",
+    answer: "Yes! Your content is stored securely, and all transactions happen on the blockchain which is immutable and transparent. You maintain full ownership of your content and audience data - we never sell your information."
+  },
+  {
+    question: "Can I generate videos with AI?",
+    answer: "Absolutely! Fonana integrates OpenAI's Sora 2 technology, allowing you to generate stunning AI videos directly within the platform. This feature helps you create engaging content quickly and stand out from the crowd."
+  },
+  {
+    question: "What cryptocurrencies can I accept?",
+    answer: "Currently, Fonana supports SOL (Solana) and USDC stablecoin for payments. We're continuously adding support for more tokens based on community feedback."
+  }
 ]
 
 export default function HomePageClient() {
@@ -56,6 +91,7 @@ export default function HomePageClient() {
   const [currentOffer, setCurrentOffer] = useState(0)
   const [version, setVersion] = useState('')
   const [showCreateModal, setShowCreateModal] = useState(false)
+  const [openFaqIndex, setOpenFaqIndex] = useState<number | null>(null)
   
   useEffect(() => {
     setMounted(true)
@@ -85,6 +121,11 @@ export default function HomePageClient() {
   // Offers rotation
   const offers = [
     {
+      title: "Generate videos with Sora 2",
+      description: "Create stunning AI-generated videos with OpenAI's latest technology",
+      icon: "🎬"
+    },
+    {
       title: "Start earning today",
       description: "Share exclusive content and get paid in crypto",
       icon: "💰"
@@ -107,12 +148,12 @@ export default function HomePageClient() {
       setShowOffers(true)
     }, 3000)
 
-    // Rotate offers every 5 seconds
+    // Rotate offers every 8 seconds (was 5s - too fast for reading)
     const interval = setInterval(() => {
       if (showOffers) {
         setCurrentOffer((prev) => (prev + 1) % offers.length)
       }
-    }, 5000)
+    }, 8000)
 
     return () => {
       clearTimeout(timer)
@@ -170,8 +211,9 @@ export default function HomePageClient() {
                 </span>
               </h1>
               
-              <p className="text-xl md:text-2xl text-gray-700 dark:text-slate-300 max-w-4xl mx-auto mb-12 leading-relaxed font-light">
-                Discover talented content creators earning cryptocurrency through exclusive materials and NFT subscriptions
+              {/* Value Proposition Subtitle */}
+              <p className="text-xl md:text-2xl text-gray-700 dark:text-slate-300 mb-8 max-w-3xl mx-auto font-light leading-relaxed">
+                Earn crypto from content. No platform fees. You own your audience.
               </p>
             </div>
 
@@ -227,7 +269,10 @@ export default function HomePageClient() {
                   <svg className="w-8 h-8 mr-3" fill="currentColor" viewBox="0 0 24 24">
                     <path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/>
                   </svg>
-                  Download
+                  <div className="flex flex-col items-start">
+                    <span className="text-base font-semibold">Get Mobile App</span>
+                    <span className="text-xs opacity-90 font-normal">iOS & Android</span>
+                  </div>
                 </div>
               </Link>
             </div>
@@ -258,9 +303,119 @@ export default function HomePageClient() {
         </div>
       </section>
 
+      {/* Sora 2 Showcase Section */}
+      <section className="py-20 bg-gradient-to-b from-gray-50 to-white dark:from-slate-900 dark:to-slate-800 relative overflow-hidden">
+        {/* Background effects */}
+        <div className="absolute top-0 left-1/4 w-96 h-96 bg-purple-500/5 dark:bg-purple-500/10 rounded-full blur-3xl"></div>
+        <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-blue-500/5 dark:bg-blue-500/10 rounded-full blur-3xl"></div>
+        
+        <div className="container mx-auto px-4 relative z-10">
+          <div className="text-center mb-16">
+            <h2 className="text-5xl md:text-6xl font-black mb-8">
+              <span className="text-gray-900 dark:text-white">Generate Videos with </span>
+              <span className="bg-gradient-to-r from-purple-600 to-pink-600 dark:from-purple-400 dark:to-pink-400 bg-clip-text text-transparent">
+                Sora 2
+              </span>
+            </h2>
+            <p className="text-xl text-gray-700 dark:text-slate-300 max-w-3xl mx-auto leading-relaxed">
+              Create stunning AI-generated videos directly on Fonana with OpenAI's latest technology
+            </p>
+          </div>
+
+          <div className="grid lg:grid-cols-2 gap-8 mb-12">
+            {/* Feature Card 1 */}
+            <div className="group bg-white dark:bg-slate-900 rounded-3xl p-8 border border-gray-200 dark:border-slate-700/50 hover:border-purple-500/50 dark:hover:border-purple-500/30 transition-all duration-500 shadow-lg">
+              <div className="flex items-start gap-6">
+                <div className="flex-shrink-0">
+                  <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center">
+                    <SparklesIcon className="w-8 h-8 text-white" />
+                  </div>
+                </div>
+                <div>
+                  <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-3">AI-Powered Creation</h3>
+                  <p className="text-gray-700 dark:text-slate-300 leading-relaxed">
+                    Generate professional videos from text prompts in minutes. No expensive equipment or video editing skills required.
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* Feature Card 2 */}
+            <div className="group bg-white dark:bg-slate-900 rounded-3xl p-8 border border-gray-200 dark:border-slate-700/50 hover:border-purple-500/50 dark:hover:border-purple-500/30 transition-all duration-500 shadow-lg">
+              <div className="flex items-start gap-6">
+                <div className="flex-shrink-0">
+                  <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-blue-500 to-purple-500 flex items-center justify-center">
+                    <PlayIcon className="w-8 h-8 text-white" />
+                  </div>
+                </div>
+                <div>
+                  <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-3">High Quality Output</h3>
+                  <p className="text-gray-700 dark:text-slate-300 leading-relaxed">
+                    Create cinematic-quality videos up to 20 seconds long with realistic motion, lighting, and camera movements.
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* Feature Card 3 */}
+            <div className="group bg-white dark:bg-slate-900 rounded-3xl p-8 border border-gray-200 dark:border-slate-700/50 hover:border-purple-500/50 dark:hover:border-purple-500/30 transition-all duration-500 shadow-lg">
+              <div className="flex items-start gap-6">
+                <div className="flex-shrink-0">
+                  <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-500 flex items-center justify-center">
+                    <CurrencyDollarIcon className="w-8 h-8 text-white" />
+                  </div>
+                </div>
+                <div>
+                  <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-3">Monetize Instantly</h3>
+                  <p className="text-gray-700 dark:text-slate-300 leading-relaxed">
+                    Generate engaging video content and start earning crypto immediately. Perfect for creators looking to scale.
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* Feature Card 4 */}
+            <div className="group bg-white dark:bg-slate-900 rounded-3xl p-8 border border-gray-200 dark:border-slate-700/50 hover:border-purple-500/50 dark:hover:border-purple-500/30 transition-all duration-500 shadow-lg">
+              <div className="flex items-start gap-6">
+                <div className="flex-shrink-0">
+                  <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-rose-500 to-pink-500 flex items-center justify-center">
+                    <span className="text-3xl">⚡</span>
+                  </div>
+                </div>
+                <div>
+                  <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-3">Fast & Easy</h3>
+                  <p className="text-gray-700 dark:text-slate-300 leading-relaxed">
+                    Integrated directly into your posting workflow. Write a prompt, generate video, publish - all in one place.
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* CTA Card */}
+          <div className="bg-gradient-to-r from-purple-600/10 to-pink-600/10 rounded-3xl p-8 md:p-12 backdrop-blur-md border border-purple-500/20 text-center">
+            <div className="text-6xl mb-6">🎬</div>
+            <h3 className="text-3xl md:text-4xl font-bold text-gray-900 dark:text-white mb-4">
+              Ready to Create AI Videos?
+            </h3>
+            <p className="text-lg text-gray-700 dark:text-slate-300 mb-8 max-w-2xl mx-auto">
+              Start creating stunning videos with Sora 2 today. Available to all Fonana creators with no additional setup required.
+            </p>
+            <button
+              onClick={handleStartCreating}
+              className="inline-flex items-center gap-3 bg-gradient-to-r from-purple-600 to-pink-600 text-white px-8 py-4 rounded-2xl font-bold transform hover:scale-105 transition-all duration-300 hover:shadow-xl hover:shadow-purple-500/25"
+            >
+              <SparklesIcon className="w-6 h-6" />
+              <span>Try Sora 2 Now</span>
+              <ArrowRightIcon className="w-6 h-6" />
+            </button>
+          </div>
+        </div>
+      </section>
+
       {/* Creators Explorer Section */}
       <div id="creators">
-        <CreatorsExplorer />
+        <CreatorsExplorer mode="top" />
       </div>
 
       {/* Features Section */}
@@ -296,18 +451,75 @@ export default function HomePageClient() {
                         </div>
                       </div>
                     </div>
-                    <div>
+                    <div className="flex-1">
                       <h3 className="text-2xl font-bold text-gray-900 dark:text-white group-hover:text-purple-600 dark:group-hover:text-purple-300 transition-colors mb-4">
                         {feature.name}
                       </h3>
-                      <p className="text-gray-700 dark:text-slate-300 leading-relaxed text-lg">
+                      <p className="text-gray-700 dark:text-slate-300 leading-relaxed text-lg mb-4">
                         {feature.description}
                       </p>
+                      <Link 
+                        href={feature.learnMoreUrl}
+                        className="inline-flex items-center gap-2 text-purple-600 dark:text-purple-400 font-semibold hover:gap-3 transition-all duration-300"
+                      >
+                        <span>Learn more</span>
+                        <ArrowRightIcon className="w-5 h-5" />
+                      </Link>
                     </div>
                   </div>
                   
                   {/* Hover glow effect */}
                   <div className={`absolute -inset-1 bg-gradient-to-br ${feature.gradient} rounded-3xl opacity-0 group-hover:opacity-10 dark:group-hover:opacity-20 blur-xl transition-opacity duration-500`}></div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* FAQ Section */}
+      <section className="py-20">
+        <div className="container mx-auto px-4">
+          <div className="text-center mb-16">
+            <h2 className="text-5xl md:text-6xl font-black mb-8">
+              <span className="text-gray-900 dark:text-white">Frequently Asked </span>
+              <span className="bg-gradient-to-r from-purple-600 to-pink-600 dark:from-purple-400 dark:to-pink-400 bg-clip-text text-transparent">
+                Questions
+              </span>
+            </h2>
+            <p className="text-xl text-gray-700 dark:text-slate-300 max-w-3xl mx-auto leading-relaxed">
+              Everything you need to know about getting started with Fonana
+            </p>
+          </div>
+
+          <div className="max-w-4xl mx-auto space-y-4">
+            {faqs.map((faq, index) => (
+              <div 
+                key={index}
+                className="bg-white dark:bg-slate-900 backdrop-blur-xl rounded-2xl border border-gray-200 dark:border-slate-700/50 overflow-hidden shadow-lg hover:shadow-xl transition-all duration-300"
+              >
+                <button
+                  onClick={() => setOpenFaqIndex(openFaqIndex === index ? null : index)}
+                  className="w-full px-6 md:px-8 py-6 flex items-center justify-between text-left hover:bg-gray-50 dark:hover:bg-slate-800/50 transition-colors duration-200"
+                >
+                  <span className="text-lg md:text-xl font-bold text-gray-900 dark:text-white pr-4">
+                    {faq.question}
+                  </span>
+                  <ChevronDownIcon 
+                    className={`w-6 h-6 text-purple-600 dark:text-purple-400 flex-shrink-0 transition-transform duration-300 ${
+                      openFaqIndex === index ? 'rotate-180' : ''
+                    }`}
+                  />
+                </button>
+                
+                <div 
+                  className={`overflow-hidden transition-all duration-300 ease-in-out ${
+                    openFaqIndex === index ? 'max-h-96 opacity-100' : 'max-h-0 opacity-0'
+                  }`}
+                >
+                  <div className="px-6 md:px-8 pb-6 text-gray-700 dark:text-slate-300 text-lg leading-relaxed">
+                    {faq.answer}
+                  </div>
                 </div>
               </div>
             ))}
@@ -344,11 +556,6 @@ export default function HomePageClient() {
                     <ArrowRightIcon className="w-6 h-6 ml-3 group-hover:translate-x-1 transition-transform" />
                   </div>
                 </button>
-                <Link href="/creators" className="group">
-                  <div className="relative bg-white dark:bg-slate-800/50 backdrop-blur-sm text-gray-700 dark:text-white px-8 py-4 rounded-2xl font-semibold border border-gray-200 dark:border-slate-600 hover:border-purple-500/50 dark:hover:border-purple-500/50 transform group-hover:scale-[1.02] transition-all duration-300 hover:shadow-lg hover:shadow-purple-500/10 dark:hover:shadow-purple-500/20">
-                    Explore creators
-                  </div>
-                </Link>
               </div>
             </div>
           </div>

@@ -46,3 +46,9 @@ ALTER TABLE "stories" ADD CONSTRAINT "stories_userId_fkey" FOREIGN KEY ("userId"
 
 
 
+
+
+
+
+
+

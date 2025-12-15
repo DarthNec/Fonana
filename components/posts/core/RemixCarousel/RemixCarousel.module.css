@@ -36,7 +36,7 @@
 /* Navigation controls */
 .navigation-controls {
   position: absolute;
-  top: 50%;
+  top: 35%;
   left: 0;
   right: 0;
   transform: translateY(-50%);

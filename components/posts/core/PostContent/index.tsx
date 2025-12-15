@@ -416,6 +416,7 @@ export function PostContent({
                   <video
                     ref={videoRef}
                     src={currentPost.media.url}
+                    poster={currentPost.media.preview?.startsWith('https://fonanastorage.b-cdn.net/') ? currentPost.media.preview : undefined}
                     className="w-full h-full object-contain"
                     preload="auto"
                     playsInline
@@ -547,7 +548,7 @@ export function PostContent({
 
             {/* Remix Navigation Controls - внутри медиа-контейнера */}
             {post.postRemixes && post.postRemixes.length > 1 && (
-              <div className="absolute bottom-4 left-0 right-0 flex items-center justify-center gap-3 z-40 px-4">
+              <div className="absolute bottom-20 left-0 right-0 flex items-center justify-center gap-3 z-30 px-4">
                 {/* Кнопка назад */}
                 <button
                   onClick={(e) => {

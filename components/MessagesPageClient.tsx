@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
-import { useUser, useJwtReady } from '@/lib/store/appStore'
+import { useUser, useJwtReady, useAppStore } from '@/lib/store/appStore'
 import { 
   ChatBubbleLeftEllipsisIcon, 
   UserIcon, 
@@ -97,6 +97,7 @@ interface Message {
 
 function MessagesPageClientInner() {
   const user = useUser()
+  const setUser = useAppStore(state => state.setUser)
   const router = useRouter()
   const { publicKey, sendTransaction } = useWallet()
   const publicKeyString = publicKey?.toBase58() ?? null
@@ -841,25 +842,16 @@ function MessagesPageClientInner() {
   const showRightPanel = !isMobile && conversations.length > 0 && !isLoading
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-slate-900 pt-4 sm:pt-20 pb-20">
+    <div className={`min-h-screen ${isMobile ? 'bg-white dark:bg-slate-900' : 'bg-gray-50 dark:bg-slate-900'} pt-4 sm:pt-20 pb-20`}>
       <div className={`${showRightPanel ? 'max-w-7xl' : 'max-w-2xl'} mx-auto px-4`}>
         <div className={`${showRightPanel ? 'grid grid-cols-3 gap-4' : ''}`}>
           {/* Левая панель - список чатов (на desktop всегда видна, на мобилке скрыта когда открыт чат) */}
           <div className={`${showRightPanel ? 'col-span-1' : ''}`}>
-            {/* Заголовок с настройками */}
-            {!isMobile && conversations.length > 0 && (
-              <div className="flex items-center justify-between mb-4">
-                <h2 className="text-xl font-bold text-gray-900 dark:text-white">
-          Messages
-                </h2>
-                <button
-                  onClick={() => setShowSettingsModal(true)}
-                  className="p-2 hover:bg-gray-200 dark:hover:bg-slate-700 rounded-lg transition-colors"
-                  title="Settings"
-                >
-                  <Cog6ToothIcon className="w-6 h-6 text-gray-600 dark:text-gray-400" />
-                </button>
-              </div>
+            {/* Заголовок Messages - НАД блоком чатов */}
+            {!isMobile && conversations.length > 0 && !isLoading && (
+              <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-3 h-8 flex items-center">
+                Messages
+              </h2>
             )}
             
         {isLoading ? (
@@ -867,7 +859,12 @@ function MessagesPageClientInner() {
             <ChatBubbleLeftEllipsisIcon className="w-16 h-16 text-gray-400 mx-auto mb-4 animate-pulse" />
             <p className="text-gray-600 dark:text-gray-400">Loading conversations...</p>
           </div>
-        ) : error ? (
+        ) : (
+            <>
+            {/* Блок со списком чатов */}
+            <div className={`${isMobile ? 'bg-transparent' : 'bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg'} overflow-y-auto ${isMobile ? 'h-auto' : 'h-[calc(100vh-12rem)]'}`}>
+              <div className={isMobile ? '' : 'p-4'}>
+        {error ? (
           <div className="text-center py-12">
             <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-6">
               <h3 className="text-red-800 dark:text-red-400 font-medium mb-2">Error Loading Messages</h3>
@@ -881,7 +878,7 @@ function MessagesPageClientInner() {
             </div>
           </div>
         ) : conversations.length === 0 ? (
-          <div className="text-center py-12">
+          <div className={`text-center ${isMobile ? 'py-8' : 'py-12'}`}>
             <ChatBubbleLeftEllipsisIcon className="w-16 h-16 text-gray-400 mx-auto mb-4" />
             <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">No conversations yet</h3>
             <p className="text-gray-600 dark:text-gray-400 mb-6">
@@ -899,13 +896,14 @@ function MessagesPageClientInner() {
             </button>
           </div>
         ) : (
+          <>
           <div className="space-y-1">
             {conversations.map((conversation) => (
               <div
                 key={conversation.id}
                 onClick={() => handleConversationClick(conversation.id)}
-                className={`block bg-white dark:bg-slate-800 hover:bg-gray-50 dark:hover:bg-slate-700 border border-gray-200 dark:border-slate-700 rounded-lg p-4 transition-colors cursor-pointer ${
-                  selectedConversationId === conversation.id && !isMobile ? 'ring-2 ring-purple-500' : ''
+                className={`block hover:bg-gray-100 dark:hover:bg-slate-700 border border-gray-200 dark:border-slate-700 rounded-lg p-4 transition-colors cursor-pointer ${
+                  selectedConversationId === conversation.id && !isMobile ? 'ring-2 ring-purple-500 bg-gray-50 dark:bg-slate-700' : 'bg-transparent'
                 }`}
               >
                 <div className="flex items-center space-x-3">
@@ -993,16 +991,47 @@ function MessagesPageClientInner() {
               </div>
             ))}
           </div>
+          
+          {/* Кнопка добавления нового чата */}
+          <button
+            onClick={() => {
+              setShowCreatorsModal(true)
+              loadCreators()
+            }}
+            className="w-full mt-4 flex items-center justify-center gap-2 px-6 py-3 bg-transparent hover:bg-gray-100 dark:hover:bg-slate-700 border-2 border-dashed border-gray-300 dark:border-slate-600 text-gray-600 dark:text-gray-400 font-medium rounded-lg transition-colors"
+          >
+            <PaperAirplaneIcon className="w-5 h-5" />
+            Start New Conversation
+          </button>
+          </>
+        )}
+              </div>
+            </div>
+            </>
         )}
           </div>
 
           {/* Правая панель - содержимое чата (только на desktop и если есть чаты) */}
           {showRightPanel && (
-            <div className="col-span-2 bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg overflow-hidden">
+            <div className={`${showRightPanel ? 'col-span-2' : ''}`}>
+              {/* Настройки - НАД блоком чата */}
+              <div className="flex items-center justify-end mb-3 h-8">
+                <button
+                  onClick={() => setShowSettingsModal(true)}
+                  className="p-2 hover:bg-gray-100 dark:hover:bg-slate-800 rounded-lg transition-colors"
+                  title="Settings"
+                >
+                  <Cog6ToothIcon className="w-6 h-6 text-gray-600 dark:text-gray-400" />
+                </button>
+              </div>
+              
+              {/* Блок чата */}
+              <div className="bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg overflow-hidden">
               {selectedConversationId ? (
                 selectedConversation ? (
-                  <div className="h-[calc(100vh-8rem)]">
-                    <div className="border-b border-gray-200 dark:border-slate-700 p-4">
+                  <div className="h-[calc(100vh-12rem)] flex flex-col">
+                    {/* Header участника */}
+                    <div className="flex-shrink-0 border-b border-gray-200 dark:border-slate-700 p-4">
                       <div className="flex items-center justify-between">
                         <Link 
                           href={`/creator/${selectedConversation.participant.id}`}
@@ -1037,7 +1066,7 @@ function MessagesPageClientInner() {
                     </div>
                   
                   {/* Messages Area */}
-                  <div className="flex-1 overflow-y-auto p-4 h-[calc(100vh-20rem)]">
+                  <div className="flex-1 overflow-y-auto p-4">
                     {isLoadingMessages ? (
                       <div className="flex items-center justify-center h-full">
                         <div className="text-center">
@@ -1232,7 +1261,7 @@ function MessagesPageClientInner() {
                   </div>
 
                   {/* Input Area */}
-                  <div className="border-t border-gray-200 dark:border-slate-700 p-4">
+                  <div className="flex-shrink-0 border-t border-gray-200 dark:border-slate-700 p-4 max-h-[40vh] overflow-y-auto">
                     {/* Media Preview */}
                     {selectedMedia && (
                       <div className="mb-3 relative inline-block">
@@ -1373,7 +1402,7 @@ function MessagesPageClientInner() {
                   </div>
                 </div>
                 ) : (
-                  <div className="h-[calc(100vh-8rem)] flex items-center justify-center">
+                  <div className="h-[calc(100vh-12rem)] flex items-center justify-center">
                     <div className="text-center">
                       <div className="w-16 h-16 border-4 border-purple-500/30 border-t-purple-500 rounded-full animate-spin mx-auto mb-4"></div>
                       <p className="text-gray-600 dark:text-slate-400">Загрузка чата...</p>
@@ -1381,7 +1410,7 @@ function MessagesPageClientInner() {
                   </div>
                 )
               ) : (
-                <div className="h-[calc(100vh-8rem)] flex items-center justify-center">
+                <div className="h-[calc(100vh-12rem)] flex items-center justify-center">
                   <div className="text-center">
                     <ChatBubbleLeftEllipsisIcon className="w-20 h-20 text-gray-300 dark:text-slate-600 mx-auto mb-4" />
                     <h3 className="text-xl font-semibold text-gray-700 dark:text-slate-300 mb-2">
@@ -1393,6 +1422,7 @@ function MessagesPageClientInner() {
                   </div>
                 </div>
               )}
+              </div>
             </div>
           )}
         </div>
@@ -1617,36 +1647,39 @@ function MessagesPageClientInner() {
                 <label className="relative inline-flex items-center cursor-pointer">
                   <input
                     type="checkbox"
-                    checked={user?.isAutoAnswerInChat ?? true}
-                    onChange={async (e) => {
-                      const newValue = e.target.checked
-                      
-                      // Update backend
-                      try {
-                        const token = await jwtManager.getToken()
-                        if (!token) return
+                  checked={user?.isAutoAnswerInChat ?? true}
+                  onChange={async (e) => {
+                    const newValue = e.target.checked
+                    
+                    // Update backend
+                    try {
+                      if (!publicKeyString || !user) return
 
-                        const response = await fetch('/api/user/settings', {
-                          method: 'PATCH',
-                          headers: {
-                            'Content-Type': 'application/json',
-                            'Authorization': `Bearer ${token}`
-                          },
-                          body: JSON.stringify({
-                            isAutoAnswerInChat: newValue
-                          })
+                      const response = await fetch(`/api/user/settings?wallet=${publicKeyString}`, {
+                        method: 'PATCH',
+                        headers: {
+                          'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                          isAutoAnswerInChat: newValue
                         })
+                      })
 
-                        if (response.ok) {
-                          toast.success(`AI Auto-Reply ${newValue ? 'enabled' : 'disabled'}`)
-                        } else {
-                          toast.error('Failed to update settings')
-                        }
-                      } catch (error) {
-                        console.error('Error updating settings:', error)
+                      if (response.ok) {
+                        // Update local user state
+                        setUser({
+                          ...user,
+                          isAutoAnswerInChat: newValue
+                        })
+                        toast.success(`AI Auto-Reply ${newValue ? 'enabled' : 'disabled'}`)
+                      } else {
                         toast.error('Failed to update settings')
                       }
-                    }}
+                    } catch (error) {
+                      console.error('Error updating settings:', error)
+                      toast.error('Failed to update settings')
+                    }
+                  }}
                     className="sr-only peer"
                   />
                   <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-purple-300 dark:peer-focus:ring-purple-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-purple-600"></div>

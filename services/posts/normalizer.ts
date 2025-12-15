@@ -85,11 +85,12 @@ export class PostNormalizer {
    * Нормализует медиа данные
    */
   private static normalizeMedia(rawPost: any): PostMedia {
+    console.log('PostNormalizer: Normalizing media', rawPost);
     return {
       type: rawPost.type || 'text',
       url: transformMediaUrl(rawPost.mediaUrl || rawPost.image),
       thumbnail: transformMediaUrl(rawPost.thumbnail),
-      preview: transformMediaUrl(rawPost.preview),
+      preview: transformMediaUrl(rawPost.previewUrl),
       aspectRatio: rawPost.imageAspectRatio,
       requestId: rawPost.requestId,
       error: rawPost.error || null

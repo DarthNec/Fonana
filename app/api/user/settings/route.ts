@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { getUserByWallet } from '@/lib/db'
-import { verifyJWT } from '@/lib/utils/jwt-server'
 
 // GET /api/user/settings - получить настройки пользователя
 export async function GET(request: NextRequest) {
@@ -87,28 +86,26 @@ export async function PUT(request: NextRequest) {
   }
 }
 
-// PATCH /api/user/settings - обновить настройки пользователя через JWT (для isAutoAnswerInChat)
+// PATCH /api/user/settings - обновить настройки пользователя (для isAutoAnswerInChat)
 export async function PATCH(request: NextRequest) {
   try {
-    // Получаем JWT токен из headers
-    const authHeader = request.headers.get('Authorization')
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return NextResponse.json({ error: 'Authorization required' }, { status: 401 })
-    }
-
-    const token = authHeader.substring(7)
-    const payload = await verifyJWT(token)
+    const { searchParams } = new URL(request.url)
+    const wallet = searchParams.get('wallet')
     
-    if (!payload || !payload.userId) {
-      return NextResponse.json({ error: 'Invalid token' }, { status: 401 })
+    if (!wallet) {
+      return NextResponse.json({ error: 'Wallet required' }, { status: 400 })
     }
-
-    const userId = payload.userId as string
+    
+    const user = await getUserByWallet(wallet)
+    if (!user) {
+      return NextResponse.json({ error: 'User not found' }, { status: 404 })
+    }
+    
     const data = await request.json()
     
     // Обновляем isAutoAnswerInChat в таблице users
     const updatedUser = await prisma.user.update({
-      where: { id: userId },
+      where: { id: user.id },
       data: {
         isAutoAnswerInChat: data.isAutoAnswerInChat
       },

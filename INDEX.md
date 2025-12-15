@@ -1,7 +1,7 @@
 # 📚 INDEX - Центральный индекс документации Fonana
 
 > **Центральная точка входа в документацию проекта Fonana**  
-> Последнее обновление: 27 октября 2025  
+> Последнее обновление: 15 декабря 2025  
 > Версия проекта: v0.1.0-alpha
 
 ---
@@ -105,6 +105,14 @@
 - [🔄 Исправление бесконечных циклов](./docs/features/complete-infinite-loop-elimination-2025-024/) - Исправление бесконечных циклов
 - [🏗️ Критический архитектурный анализ](./docs/features/critical-architecture-deep-analysis-2025-024/) - Глубокий анализ архитектуры
 
+### UX/UI Улучшения
+- [🎨 Homepage Audit 2025-12-15](./docs/features/homepage-audit-2025-12-15/) - **НОВЫЙ** - Полный аудит и улучшения главной страницы
+  - [📋 Краткий итог (RU)](./docs/features/homepage-audit-2025-12-15/SUMMARY_RU.md) - Краткий анализ и рекомендации
+  - [📊 Discovery Report](./docs/features/homepage-audit-2025-12-15/DISCOVERY_REPORT.md) - Детальный отчет (400+ строк)
+  - [✅ Implementation Report](./docs/features/homepage-audit-2025-12-15/IMPLEMENTATION_REPORT.md) - Реализация Value Prop + FAQ
+  - [🏆 Top 10 Creators](./docs/features/homepage-audit-2025-12-15/TOP_10_CREATORS_IMPLEMENTATION.md) - Топ криэйторов вместо recommendations
+  - [⚡ Major Improvements](./docs/features/homepage-audit-2025-12-15/MAJOR_IMPROVEMENTS_IMPLEMENTATION.md) - Sora 2 showcase, улучшенный Download button, Learn more links
+
 ---
 
 ## 🚀 Деплой
@@ -126,6 +134,13 @@
 ## 📱 Мобильные приложения
 
 **Документация для мобильной разработки** - API и спецификации для мобильных приложений.
+
+### Мобильное приложение
+- [📱 **Fonana Mobile App (React Native)**](https://play.google.com/store/apps/details?id=com.fonana) - **ДОСТУПНО В GOOGLE PLAY** ✅
+  - Зеркальный функционал веб-платформы
+  - Phantom wallet интеграция
+  - Полная поддержка контента и монетизации
+  - iOS & Android support
 
 ### API для мобильных
 - [📱 Полный API для мобильных](./docs/MOBILE_API_COMPLETE_SUMMARY.md) - Основная документация API
@@ -191,6 +206,7 @@
 
 ### Ресурсы
 - [🌐 Демо сайт](https://fonana.app) - Демонстрационная версия платформы
+- [📱 Мобильное приложение](https://play.google.com/store/apps/details?id=com.fonana) - Fonana для Android (Google Play)
 - [📖 Документация](./ROADMAP.md) - Дополнительная документация
 - [🗺️ Roadmap](./ROADMAP.md) - План развития проекта
 
@@ -206,10 +222,13 @@
 ## 📋 Статус документации
 
 - **Общее количество MD файлов**: 100+
-- **Последнее обновление**: 21 октября 2025
+- **Последнее обновление**: 15 декабря 2025
 - **Статус актуальности**: ✅ Актуально
 - **Покрытие документации**: 100%
-- **Новые документы**: 4 критически важных документа созданы
+- **Новые документы**: 
+  - 5 документов по Homepage Audit & Improvements (2025-12-15)
+  - Интеграция мобильного приложения (Google Play)
+  - ~2000 строк новой документации
 
 ---
 

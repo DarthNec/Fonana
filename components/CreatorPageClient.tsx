@@ -14,7 +14,7 @@ import PurchaseModal from './PurchaseModal'
 import { ProfileSharePopup } from './ProfileSharePopup'
 import { FollowersPopup } from './FollowersPopup'
 import { useSafeWalletModal } from '@/lib/hooks/useSafeWalletModal'
-import { CheckBadgeIcon, UsersIcon, DocumentTextIcon, CurrencyDollarIcon, PencilIcon, ShareIcon, PhotoIcon, ChatBubbleLeftIcon } from '@heroicons/react/24/outline'
+import { CheckBadgeIcon, UsersIcon, DocumentTextIcon, CurrencyDollarIcon, PencilIcon, ShareIcon, PhotoIcon, ChatBubbleLeftIcon, GlobeAltIcon, HashtagIcon, PaperAirplaneIcon } from '@heroicons/react/24/outline'
 import { HeartIcon as HeartSolidIcon } from '@heroicons/react/24/solid'
 import Link from 'next/link'
 import toast from 'react-hot-toast'
@@ -661,9 +661,10 @@ export default function CreatorPageClient({ creatorId }: CreatorPageClientProps)
                       href={creator.website}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="text-blue-500 hover:text-blue-600"
+                      className="inline-flex items-center gap-1.5 text-blue-500 hover:text-blue-600 transition-colors"
                     >
-                      🌐 Website
+                      <GlobeAltIcon className="w-4 h-4" />
+                      <span>Website</span>
                     </a>
                   )}
                   {creator.twitter && (
@@ -671,9 +672,10 @@ export default function CreatorPageClient({ creatorId }: CreatorPageClientProps)
                       href={`https://twitter.com/${creator.twitter}`}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="text-blue-500 hover:text-blue-600"
+                      className="inline-flex items-center gap-1.5 text-blue-500 hover:text-blue-600 transition-colors"
                     >
-                      🐦 Twitter
+                      <HashtagIcon className="w-4 h-4" />
+                      <span>Twitter</span>
                     </a>
                   )}
                   {creator.telegram && (
@@ -681,9 +683,10 @@ export default function CreatorPageClient({ creatorId }: CreatorPageClientProps)
                       href={`https://t.me/${creator.telegram}`}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="text-blue-600 hover:text-blue-700"
+                      className="inline-flex items-center gap-1.5 text-blue-600 hover:text-blue-700 transition-colors"
                     >
-                      ✈️ Telegram
+                      <PaperAirplaneIcon className="w-4 h-4" />
+                      <span>Telegram</span>
                     </a>
                   )}
                 </div>
@@ -712,6 +715,17 @@ export default function CreatorPageClient({ creatorId }: CreatorPageClientProps)
                   </>
                 ) : (
                   <>
+                    <button
+                      onClick={() => {
+                        setSelectedCreator(creator)
+                        setShowSubscribeModal(true)
+                      }}
+                      className="flex items-center justify-center gap-2 px-4 py-3 bg-gradient-to-r from-green-500 to-emerald-600 text-white rounded-lg hover:from-green-600 hover:to-emerald-700 transition-all duration-300 shadow-lg hover:shadow-xl font-semibold"
+                    >
+                      <CurrencyDollarIcon className="w-5 h-5" />
+                      Subscribe
+                    </button>
+                    
                     <button 
                       onClick={handleFollow}
                       disabled={isFollowLoading}

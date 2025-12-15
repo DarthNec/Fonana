@@ -22,7 +22,9 @@ import {
   MagnifyingGlassIcon,
   RocketLaunchIcon,
   QuestionMarkCircleIcon,
-  SparklesIcon
+  SparklesIcon,
+  EyeIcon,
+  EyeSlashIcon
 } from '@heroicons/react/24/outline'
 import { MobileWalletConnect } from './MobileWalletConnect'
 import { useWallet } from '@/lib/hooks/useSafeWallet'
@@ -49,6 +51,7 @@ export function Navbar() {
   const [unreadMessages, setUnreadMessages] = useState(0)
   const [showCreateModal, setShowCreateModal] = useState(false)
   const [showSearchModal, setShowSearchModal] = useState(false)
+  const [showSolanaRate, setShowSolanaRate] = useState(true)
   const { connected, disconnect, publicKey } = useWallet()
   const publicKeyString = publicKey?.toBase58() ?? null // 🔥 ALTERNATIVE FIX: Stable string
   const { setVisible } = useSafeWalletModal()
@@ -84,6 +87,21 @@ export function Navbar() {
     window.addEventListener('scroll', handleScroll)
     return () => window.removeEventListener('scroll', handleScroll)
   }, [])
+
+  // Load Solana Rate display preference from localStorage
+  useEffect(() => {
+    const savedPreference = localStorage.getItem('showSolanaRate')
+    if (savedPreference !== null) {
+      setShowSolanaRate(savedPreference === 'true')
+    }
+  }, [])
+
+  // Toggle Solana Rate display
+  const toggleSolanaRate = () => {
+    const newValue = !showSolanaRate
+    setShowSolanaRate(newValue)
+    localStorage.setItem('showSolanaRate', String(newValue))
+  }
 
   // Subscribe to unread messages - FIXED: [critical_regression_infinite_loop_2025_017]
   useEffect(() => {
@@ -289,8 +307,8 @@ export function Navbar() {
                 <MagnifyingGlassIcon className="w-5 h-5" />
               </button>
 
-              {/* Solana Rate Display - теперь всегда */}
-              <SolanaRateDisplay />
+              {/* Solana Rate Display - с возможностью скрыть */}
+              {showSolanaRate && <SolanaRateDisplay />}
 
               {/* Notifications */}
               
@@ -374,6 +392,35 @@ export function Navbar() {
                           <Cog6ToothIcon className="w-5 h-5" />
                           Dashboard
                         </Link>
+                        
+                        {/* Display Settings Section */}
+                        <div className="border-t border-gray-200 dark:border-slate-700/50 my-2"></div>
+                        
+                        <button
+                          onClick={toggleSolanaRate}
+                          className="w-full flex items-center justify-between gap-3 px-4 py-3 text-gray-600 dark:text-slate-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-slate-700/50 rounded-2xl transition-colors"
+                        >
+                          <div className="flex items-center gap-3">
+                            {showSolanaRate ? (
+                              <EyeIcon className="w-5 h-5" />
+                            ) : (
+                              <EyeSlashIcon className="w-5 h-5" />
+                            )}
+                            <span>SOL Rate Display</span>
+                          </div>
+                          <div className={`w-10 h-6 rounded-full transition-colors duration-300 ${
+                            showSolanaRate 
+                              ? 'bg-purple-600 dark:bg-purple-500' 
+                              : 'bg-gray-300 dark:bg-slate-600'
+                          } relative`}>
+                            <div className={`absolute top-1 left-1 w-4 h-4 bg-white rounded-full transition-transform duration-300 ${
+                              showSolanaRate ? 'translate-x-4' : 'translate-x-0'
+                            }`}></div>
+                          </div>
+                        </button>
+                        
+                        <div className="border-t border-gray-200 dark:border-slate-700/50 my-2"></div>
+                        
                         <button 
                           onClick={() => {
                             disconnect()
