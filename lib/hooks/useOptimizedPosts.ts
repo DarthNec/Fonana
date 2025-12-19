@@ -673,6 +673,67 @@ export function useOptimizedPosts(options: UseOptimizedPostsOptions = {}): UseOp
     }
   }, [publicKeyString])
 
+  // Административное удаление поста
+  const handleAdminDelete = useCallback(async (postId: string) => {
+    console.log('🛡️ [useOptimizedPosts] handleAdminDelete called for post:', postId)
+    
+    /*
+    if (!confirm('⚠️ АДМИНИСТРАТИВНОЕ УДАЛЕНИЕ\n\nВы уверены, что хотите удалить этот пост как администратор?')) {
+      console.log('🛡️ [useOptimizedPosts] Admin delete cancelled by user')
+      return
+    }
+    */
+    try {
+      console.log('🛡️ [useOptimizedPosts] Sending admin delete request to API...')
+      console.log('🛡️ [useOptimizedPosts] publicKeyString:', publicKeyString)
+      
+      // 🔥 SAFETY: Fallback на localStorage если publicKeyString недоступен
+      let walletAddress: string | undefined = publicKeyString
+      if (!walletAddress && typeof window !== 'undefined') {
+        const savedWallet = localStorage.getItem('fonana_user_wallet')
+        if (savedWallet) {
+          walletAddress = savedWallet
+          console.log('🛡️ [useOptimizedPosts] Using localStorage fallback for wallet address:', walletAddress.substring(0, 8) + '...')
+        }
+      }
+      
+      if (!walletAddress) {
+        console.error('🛡️ [useOptimizedPosts] No wallet address available for admin delete')
+        toast.error('Подключите кошелек для удаления поста')
+        return
+      }
+      
+      const response = await fetch(`/api/posts/${postId}/admin-delete?userWallet=${walletAddress}`, {
+        method: 'DELETE',
+      })
+
+      console.log('🛡️ [useOptimizedPosts] Admin delete API response status:', response.status)
+      
+      if (!response.ok) {
+        const errorText = await response.text()
+        console.error('🛡️ [useOptimizedPosts] Admin delete API error response:', errorText)
+        
+        if (response.status === 403) {
+          toast.error('У вас нет прав администратора')
+        } else {
+          throw new Error(`Failed to admin delete post: ${response.status} ${errorText}`)
+        }
+        return
+      }
+
+      const data = await response.json()
+      console.log('🛡️ [useOptimizedPosts] Admin delete API response data:', data)
+      
+      // Удаляем из локального состояния
+      setPosts(prevPosts => prevPosts.filter(post => post.id !== postId))
+      toast.success('Пост удален администратором')
+
+    } catch (error) {
+      console.error('Admin delete error:', error)
+      toast.error('Ошибка при административном удалении поста')
+    }
+  }, [publicKeyString])
+
   const handleAction = useCallback(async (action: PostAction) => {
     console.log('[useOptimizedPosts] handleAction called:', action)
     
@@ -705,6 +766,9 @@ export function useOptimizedPosts(options: UseOptimizedPostsOptions = {}): UseOp
         case 'delete':
           await handleDelete(action.postId)
           break
+        case 'adminDelete':
+          await handleAdminDelete(action.postId)
+          break
         case 'edit':
           console.log('Edit action:', action)
           break
@@ -716,7 +780,7 @@ export function useOptimizedPosts(options: UseOptimizedPostsOptions = {}): UseOp
       toast.error('Ошибка выполнения действия')
     }
     return // Явно возвращаем void
-  }, [handleLike, handleEmotion, handleDelete])
+  }, [handleLike, handleEmotion, handleDelete, handleAdminDelete])
   
   // [tier_access_system_2025_017] Добавляем функцию для локального добавления нового поста
   // [post_content_render_2025_017] Исправлено: нормализуем пост перед добавлением

@@ -10,9 +10,16 @@ import {
   TrashIcon,
   ShareIcon,
   FlagIcon,
-  BookmarkIcon
+  BookmarkIcon,
+  ShieldCheckIcon
 } from '@heroicons/react/24/outline'
 import { SharePopup } from '../SharePopup'
+
+// ID администраторов, которые могут удалять любые посты
+const ADMIN_IDS = [
+  'cmbymuez00004qoe1aeyoe7zf',
+  'cmfetoamd001spzkowc5pdygf'
+]
 
 export interface PostMenuProps {
   post: UnifiedPost
@@ -43,6 +50,9 @@ export function PostMenu({ post, onAction, className, overlay = false }: PostMen
     post?.creator?.id && 
     user.id === post.creator.id
   )
+  
+  // Проверяем, является ли пользователь администратором
+  const isAdmin = user?.id ? ADMIN_IDS.includes(user.id) : false
   
   // Закрытие меню при клике вне
   useEffect(() => {
@@ -147,9 +157,49 @@ export function PostMenu({ post, onAction, className, overlay = false }: PostMen
                 <TrashIcon className="w-4 h-4" />
                 <span className="text-sm font-medium">Delete Post</span>
               </button>
+              
+              {/* Admin delete button for creators */}
+              {isAdmin && (
+                <>
+                  <div className="my-1 h-px bg-gray-200 dark:bg-slate-700" />
+                  
+                  <button
+                    onClick={() => handleAction('adminDelete')}
+                    className={cn(
+                      'flex items-center gap-3 w-full px-4 py-2.5',
+                      'text-orange-600 dark:text-orange-400',
+                      'hover:bg-orange-50 dark:hover:bg-orange-900/20',
+                      'transition-colors'
+                    )}
+                  >
+                    <ShieldCheckIcon className="w-4 h-4" />
+                    <span className="text-sm font-medium">Delete As Administrator</span>
+                  </button>
+                </>
+              )}
             </>
           ) : (
             <>
+              {/* Admin delete button for non-creators */}
+              {isAdmin && (
+                <>
+                  <button
+                    onClick={() => handleAction('adminDelete')}
+                    className={cn(
+                      'flex items-center gap-3 w-full px-4 py-2.5',
+                      'text-red-600 dark:text-red-400',
+                      'hover:bg-red-50 dark:hover:bg-red-900/20',
+                      'transition-colors'
+                    )}
+                  >
+                    <ShieldCheckIcon className="w-4 h-4" />
+                    <span className="text-sm font-medium">Delete As Administrator</span>
+                  </button>
+                  
+                  <div className="my-1 h-px bg-gray-200 dark:bg-slate-700" />
+                </>
+              )}
+              
               {/* Viewer actions */}
               <button
                 onClick={() => handleAction('share')}

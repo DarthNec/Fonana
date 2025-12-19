@@ -77,6 +77,12 @@ export default function CreatePostModal({ onPostCreated, onPostUpdated, onClose,
   } | null>(null)
   const [isOptimizingPrompt, setIsOptimizingPrompt] = useState(false)
   
+  // 🎯 UX IMPROVEMENT: Tooltip для Content Access
+  const [showAccessTooltip, setShowAccessTooltip] = useState(false)
+  
+  // 🎯 UX IMPROVEMENT: Preview Mode (кроме Sora-2)
+  const [showPreview, setShowPreview] = useState(false)
+  
   // 🔥 M7 FIX: SINGLE DEBUG useEffect WITH STABLE DEPENDENCIES (removed triple duplicates)
   useEffect(() => {
     const isDisabled = isUploading || (!connected && !publicKeyString) || (mode === 'edit' && isLoadingPost)
@@ -111,12 +117,12 @@ export default function CreatePostModal({ onPostCreated, onPostUpdated, onClose,
   const [formData, setFormData] = useState({
     title: '',
     content: '',
-    category: getSmartCategory('text'), // Устанавливаем категорию по умолчанию для текстовых постов
+    category: getSmartCategory('image'), // 🎯 UX IMPROVEMENT: Image по умолчанию (более популярный тип)
     tags: [] as string[],
     currentTag: '',
     file: null as File | null, // Оригинальный файл для отправки на сервер
     preview: '', // Base64 для preview
-    type: 'text' as 'text' | 'image' | 'video' | 'audio',
+    type: 'image' as 'text' | 'image' | 'video' | 'audio', // 🎯 UX IMPROVEMENT: Image по умолчанию
     accessType: 'free' as 'free' | 'subscribers' | 'premium' | 'paid' | 'vip',
     price: 0,
     currency: 'SOL' as 'SOL' | 'USDC',
@@ -194,6 +200,7 @@ export default function CreatePostModal({ onPostCreated, onPostUpdated, onClose,
       }
     }
   }, [])
+  
 
   // Загрузка доступных генераций при открытии модалки
   useEffect(() => {
@@ -1419,36 +1426,32 @@ export default function CreatePostModal({ onPostCreated, onPostUpdated, onClose,
                   <button
                     type="button"
                     onClick={() => setFormData(prev => ({ ...prev, contentSource: 'sora2', type: 'video' }))}
-                    className={`p-3 rounded-xl border-2 transition-all ${
+                    disabled={availableGenerations === 0}
+                    className={`p-3 rounded-xl border-2 transition-all relative ${
                       formData.contentSource === 'sora2'
                         ? 'border-pink-500 bg-pink-50 dark:bg-pink-900/20'
+                        : availableGenerations === 0
+                        ? 'border-gray-200 dark:border-slate-700 opacity-50 cursor-not-allowed'
                         : 'border-gray-200 dark:border-slate-700 hover:border-gray-300'
                     }`}
                   >
+                    {/* 🎯 UX IMPROVEMENT: Badge с количеством генераций */}
+                    {availableGenerations !== null && (
+                      <div className={`absolute -top-1 -right-1 px-1.5 py-0.5 rounded-full text-[10px] font-bold ${
+                        availableGenerations > 0 
+                          ? 'bg-green-500 text-white' 
+                          : 'bg-red-500 text-white'
+                      }`}>
+                        {availableGenerations}
+                      </div>
+                    )}
                     <SparklesIcon className="w-5 h-5 mx-auto mb-1 text-pink-600 dark:text-pink-400" />
                     <div className="text-xs font-medium text-gray-900 dark:text-white">Sora-2</div>
                   </button>
                 </div>
               </div>
 
-              {/* Content type info - automatically detected */}
-              {formData.type !== 'text' && formData.file && formData.contentSource === 'upload' && (
-                <div className="bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-800 rounded-xl p-4">
-                  <div className="flex items-center gap-3">
-                    {formData.type === 'image' && <PhotoIcon className="w-5 h-5 text-purple-600 dark:text-purple-400" />}
-                    {formData.type === 'video' && <VideoCameraIcon className="w-5 h-5 text-purple-600 dark:text-purple-400" />}
-                    {formData.type === 'audio' && <MusicalNoteIcon className="w-5 h-5 text-purple-600 dark:text-purple-400" />}
-                    <div>
-                      <p className="text-sm font-medium text-purple-900 dark:text-purple-200">
-                        {formData.type === 'image' ? 'Image' : formData.type === 'video' ? 'Video' : 'Audio'} content detected
-                      </p>
-                      <p className="text-xs text-purple-700 dark:text-purple-300">
-                        {formData.file.name}
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              )}
+              {/* 🎯 UX IMPROVEMENT: Debug блок удалён - preview уже показывает контент */}
 
               {/* File upload or Sora-2 generation - hidden for text posts */}
               {formData.type !== 'text' && formData.contentSource === 'upload' ? (
@@ -1727,8 +1730,9 @@ export default function CreatePostModal({ onPostCreated, onPostUpdated, onClose,
                 </select>
               </div>
 
+              {/* 🎯 UX IMPROVEMENT: Tags скрыты - низкое использование
               {/* Tags */}
-              <div>
+              {/* <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-2">
                   Tags (max. 5)
                 </label>
@@ -1768,7 +1772,7 @@ export default function CreatePostModal({ onPostCreated, onPostUpdated, onClose,
                     </button>
                   </div>
                 )}
-              </div>
+              </div> */}
             </div>
 
             {/* Right column */}
@@ -1808,38 +1812,50 @@ export default function CreatePostModal({ onPostCreated, onPostUpdated, onClose,
                 </p>
               </div>
 
-              {/* Access type */}
+              {/* Access type - 🎯 UX IMPROVEMENT: Простой dropdown с tooltip */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-3">
-                  Content access
-                </label>
-                <div className="grid grid-cols-2 gap-3">
-                  {accessTypes.map((access) => (
-                    <button
-                      key={access.value}
-                      type="button"
-                      onClick={() => setFormData(prev => ({ 
-                        ...prev, 
-                        accessType: access.value as any,
-                        // Сбрасываем цену если выбран не платный доступ
-                        price: access.value === 'paid' ? prev.price : 0
-                      }))}
-                      className={`p-3 rounded-xl border-2 text-left transition-all ${
-                        formData.accessType === access.value
-                          ? 'border-purple-500 bg-purple-500/10'
-                          : 'border-gray-200 dark:border-slate-700 hover:border-gray-300 dark:hover:border-slate-600 bg-gray-50 dark:bg-slate-800/50'
-                      }`}
-                    >
-                      <div className="flex items-center gap-2 mb-1">
-                        <div className={`p-1 rounded-lg bg-gradient-to-r ${access.color} bg-opacity-20`}>
-                          <access.icon className="w-4 h-4 text-white" />
+                <label className="flex items-center gap-2 text-sm font-medium text-gray-700 dark:text-slate-300 mb-2">
+                  <span>Content access</span>
+                  {/* Tooltip с объяснением */}
+                  <div 
+                    className="relative"
+                    onMouseEnter={() => setShowAccessTooltip(true)}
+                    onMouseLeave={() => setShowAccessTooltip(false)}
+                  >
+                    <QuestionMarkCircleIcon className="w-4 h-4 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 cursor-help transition-colors" />
+                    {showAccessTooltip && (
+                      <div className="absolute z-50 bottom-full left-1/2 -translate-x-1/2 mb-2 w-64 px-3 py-2 text-xs text-white bg-gray-900 dark:bg-gray-800 rounded-lg shadow-lg border border-gray-700">
+                        <div className="relative">
+                          <p className="font-medium mb-1">Content Access Levels:</p>
+                          <ul className="space-y-0.5 text-gray-200">
+                            <li>• <strong>Free</strong> - Everyone can see</li>
+                            <li>• <strong>Subscribers</strong> - Basic tier+</li>
+                            <li>• <strong>Premium</strong> - Premium tier+</li>
+                            <li>• <strong>VIP</strong> - Only VIP subscribers</li>
+                            <li>• <strong>Paid</strong> - One-time purchase</li>
+                          </ul>
+                          <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-2 h-2 bg-gray-900 dark:bg-gray-800 border-r border-b border-gray-700 transform rotate-45"></div>
                         </div>
-                        <div className="font-medium text-gray-900 dark:text-white text-sm">{access.label}</div>
                       </div>
-                      <div className="text-xs text-gray-600 dark:text-slate-400 ml-7">{access.desc}</div>
-                    </button>
-                  ))}
-                </div>
+                    )}
+                  </div>
+                </label>
+                <select
+                  value={formData.accessType}
+                  onChange={(e) => setFormData(prev => ({ 
+                    ...prev, 
+                    accessType: e.target.value as any,
+                    // Сбрасываем цену если выбран не платный доступ
+                    price: e.target.value === 'paid' ? prev.price : 0
+                  }))}
+                  className="w-full px-4 py-2 bg-white dark:bg-slate-800/50 border border-gray-300 dark:border-slate-700 rounded-xl text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent font-sans"
+                >
+                  <option value="free" className="font-sans">🌍 Free - Available to all</option>
+                  <option value="subscribers" className="font-sans">👥 For subscribers - Basic and above</option>
+                  <option value="premium" className="font-sans">✨ Premium - Premium and VIP</option>
+                  <option value="vip" className="font-sans">⭐ VIP content - Only VIP</option>
+                  <option value="paid" className="font-sans">💰 Paid - One-time purchase</option>
+                </select>
               </div>
 
               {/* Price settings */}
@@ -1889,6 +1905,22 @@ export default function CreatePostModal({ onPostCreated, onPostUpdated, onClose,
 
           {/* Buttons */}
           <div className="flex gap-3 pt-4 border-t border-gray-200 dark:border-slate-700/50 pb-safe sm:pb-0">
+            {/* 🎯 UX IMPROVEMENT: Preview button - показываем только когда есть что показывать */}
+            {formData.contentSource === 'upload' && mode === 'create' && (
+              // Для текста: нужны title И content. Для медиа: нужен файл
+              formData.type === 'text' 
+                ? (formData.title && formData.content)
+                : (formData.file || formData.preview)
+            ) && (
+              <button
+                type="button"
+                onClick={() => setShowPreview(true)}
+                className="px-6 py-3 bg-gray-100 dark:bg-slate-700/50 hover:bg-gray-200 dark:hover:bg-slate-700 text-gray-700 dark:text-slate-300 hover:text-gray-900 dark:hover:text-white font-medium rounded-xl transition-colors"
+              >
+                👁️ Preview
+              </button>
+            )}
+            
             <button
               type="submit"
               disabled={(() => {
@@ -2102,6 +2134,286 @@ export default function CreatePostModal({ onPostCreated, onPostUpdated, onClose,
               className="px-6 py-3 bg-gray-200 dark:bg-slate-700 hover:bg-gray-300 dark:hover:bg-slate-600 text-gray-700 dark:text-slate-300 font-medium rounded-xl transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
               Отказаться
+            </button>
+          </div>
+        </div>
+      </div>
+    )}
+    
+    {/* 🎯 UX IMPROVEMENT: Preview Modal (показывает как пост будет выглядеть) */}
+    {showPreview && (
+      <div className="fixed inset-0 bg-black/85 backdrop-blur-sm z-[150] flex items-center justify-center p-4 animate-fade-in">
+        <div className="bg-white dark:bg-slate-900 rounded-3xl max-w-2xl w-full max-h-[90vh] overflow-y-auto border border-gray-200 dark:border-slate-700/50 shadow-2xl animate-slideInUp">
+          {/* Header */}
+          <div className="sticky top-0 bg-white dark:bg-slate-900 border-b border-gray-200 dark:border-slate-700/50 p-6 flex items-center justify-between z-10">
+            <h3 className="text-xl font-bold bg-gradient-to-r from-purple-600 to-pink-600 dark:from-purple-400 dark:to-pink-400 bg-clip-text text-transparent">
+              👁️ Post Preview
+            </h3>
+            <button
+              onClick={() => setShowPreview(false)}
+              className="p-2 hover:bg-gray-100 dark:hover:bg-slate-700/50 rounded-xl transition-colors"
+            >
+              <XMarkIcon className="w-5 h-5 text-gray-600 dark:text-slate-400" />
+            </button>
+          </div>
+
+          {/* Preview Content - Instagram-style как в оригинальном PostContent */}
+          <div className="p-6">
+            {/* Post Card Preview */}
+            <div className="bg-white dark:bg-slate-900 rounded-2xl border border-gray-200 dark:border-slate-700 overflow-hidden shadow-lg">
+              
+              {/* Media Content с Instagram-style header поверх */}
+              {formData.preview ? (
+                <div className="relative aspect-square sm:aspect-video bg-gray-100 dark:bg-slate-800">
+                  {/* Media */}
+                  {formData.type === 'image' && (
+                    <img
+                      src={formData.preview}
+                      alt={formData.title || 'Preview'}
+                      className="w-full h-full object-cover"
+                    />
+                  )}
+                  {formData.type === 'video' && (
+                    <video
+                      src={formData.preview}
+                      className="w-full h-full object-cover"
+                      controls
+                    />
+                  )}
+                  {formData.type === 'audio' && (
+                    <div className="w-full h-full flex flex-col items-center justify-center bg-gradient-to-br from-purple-500 to-pink-500 p-8">
+                      <MusicalNoteIcon className="w-16 h-16 text-white mb-4" />
+                      <div className="w-full max-w-sm">
+                        <audio src={formData.preview} controls className="w-full" />
+                      </div>
+                    </div>
+                  )}
+                  
+                  {/* Instagram-style Header поверх контента */}
+                  <div className="absolute top-0 left-0 right-0 z-30 bg-gradient-to-b from-black/80 via-black/60 to-transparent pt-3 pb-16 px-3 sm:px-4">
+                    <div className="flex items-center gap-3">
+                      {/* Avatar с белым ring */}
+                      {user?.avatar ? (
+                        <img
+                          src={user.avatar}
+                          alt={user.fullName || user.nickname || 'User'}
+                          className="w-9 h-9 sm:w-11 sm:h-11 rounded-full object-cover ring-2 ring-white shadow-lg flex-shrink-0"
+                        />
+                      ) : (
+                        <div className="w-9 h-9 sm:w-11 sm:h-11 rounded-full bg-gradient-to-r from-purple-500 to-pink-500 flex items-center justify-center text-white font-bold ring-2 ring-white shadow-lg flex-shrink-0">
+                          {(user?.fullName?.[0] || user?.nickname?.[0] || 'U').toUpperCase()}
+                        </div>
+                      )}
+                      
+                      {/* Name & Time */}
+                      <div className="flex-1 min-w-0">
+                        <div className="font-semibold text-white text-sm sm:text-base drop-shadow-lg truncate">
+                          {user?.fullName || user?.nickname || 'Username'}
+                        </div>
+                        <div className="text-[10px] sm:text-xs text-white/90 drop-shadow-md">
+                          Just now
+                        </div>
+                      </div>
+                      
+                      {/* Access Type Badge */}
+                      {formData.accessType !== 'free' && (
+                        <div className={`px-2 py-1 rounded-lg text-xs font-medium backdrop-blur-sm ${
+                          formData.accessType === 'paid' 
+                            ? 'bg-red-500/90 text-white'
+                            : formData.accessType === 'vip'
+                            ? 'bg-yellow-500/90 text-white'
+                            : formData.accessType === 'premium'
+                            ? 'bg-purple-500/90 text-white'
+                            : 'bg-blue-500/90 text-white'
+                        }`}>
+                          {formData.accessType === 'paid' && `💰 ${formData.price} ${formData.currency}`}
+                          {formData.accessType === 'vip' && '⭐ VIP'}
+                          {formData.accessType === 'premium' && '✨ Premium'}
+                          {formData.accessType === 'subscribers' && '👥 Subscribers'}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                  
+                  {/* Instagram-style Footer снизу контента */}
+                  <div className="absolute bottom-0 left-0 right-0 z-20 bg-gradient-to-t from-black/80 via-black/60 to-transparent pt-16 px-3 sm:px-4 pb-3">
+                    {/* Title */}
+                    {formData.title && (
+                      <h3 className="font-bold text-white drop-shadow-lg mb-1.5 text-base sm:text-lg line-clamp-2">
+                        {formData.title}
+                      </h3>
+                    )}
+                    
+                    {/* Description */}
+                    {formData.content && (
+                      <p className="text-white/90 drop-shadow-md mb-2.5 text-xs sm:text-sm line-clamp-2">
+                        {formData.content}
+                      </p>
+                    )}
+                    
+                    {/* Actions - как в оригинале */}
+                    <div className="flex items-center gap-6">
+                      <div className="flex items-center gap-4">
+                        {/* Like button */}
+                        <button className="flex items-center gap-2 text-white group">
+                          <div className="rounded-lg hover:bg-white/20 transition-colors p-2">
+                            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+                            </svg>
+                          </div>
+                          <span className="text-sm font-medium">0</span>
+                        </button>
+                        
+                        {/* Comment button */}
+                        <button className="flex items-center gap-2 text-white group">
+                          <div className="rounded-lg hover:bg-white/20 transition-colors p-2">
+                            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                            </svg>
+                          </div>
+                          <span className="text-sm font-medium">0</span>
+                        </button>
+                        
+                        {/* View count */}
+                        <div className="flex items-center gap-2 text-white/80">
+                          <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                          </svg>
+                          <span className="text-sm font-medium">0</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                /* Text-only post */
+                <div className="p-4">
+                  {/* Header for text posts */}
+                  <div className="flex items-center gap-3 mb-4">
+                    {user?.avatar ? (
+                      <img
+                        src={user.avatar}
+                        alt={user.fullName || user.nickname || 'User'}
+                        className="w-10 h-10 rounded-full object-cover"
+                      />
+                    ) : (
+                      <div className="w-10 h-10 rounded-full bg-gradient-to-r from-purple-500 to-pink-500 flex items-center justify-center text-white font-bold">
+                        {(user?.fullName?.[0] || user?.nickname?.[0] || 'U').toUpperCase()}
+                      </div>
+                    )}
+                    <div className="flex-1">
+                      <div className="font-semibold text-gray-900 dark:text-white">
+                        {user?.fullName || user?.nickname || 'Username'}
+                      </div>
+                      <div className="text-xs text-gray-500 dark:text-gray-400">
+                        Just now
+                      </div>
+                    </div>
+                    {formData.accessType !== 'free' && (
+                      <div className={`px-2 py-1 rounded-lg text-xs font-medium ${
+                        formData.accessType === 'paid' 
+                          ? 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300'
+                          : formData.accessType === 'vip'
+                          ? 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-300'
+                          : formData.accessType === 'premium'
+                          ? 'bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300'
+                          : 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300'
+                      }`}>
+                        {formData.accessType === 'paid' && `💰 ${formData.price} ${formData.currency}`}
+                        {formData.accessType === 'vip' && '⭐ VIP'}
+                        {formData.accessType === 'premium' && '✨ Premium'}
+                        {formData.accessType === 'subscribers' && '👥 Subscribers'}
+                      </div>
+                    )}
+                  </div>
+                  
+                  {/* Title */}
+                  {formData.title && (
+                    <h3 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white mb-3">
+                      {formData.title}
+                    </h3>
+                  )}
+                  
+                  {/* Content */}
+                  {formData.content && (
+                    <p className="text-base text-gray-700 dark:text-slate-300 whitespace-pre-wrap mb-4">
+                      {formData.content}
+                    </p>
+                  )}
+                  
+                  {/* Category */}
+                  {formData.category && (
+                    <div className="flex items-center gap-2 mb-4">
+                      <span className="px-3 py-1 bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 rounded-full text-xs font-medium">
+                        {formData.category}
+                      </span>
+                    </div>
+                  )}
+                  
+                  {/* Actions for text posts */}
+                  <div className="pt-3 border-t border-gray-200 dark:border-slate-700">
+                    <div className="flex items-center gap-6">
+                      <button className="flex items-center gap-2 text-gray-600 dark:text-slate-400 hover:text-red-500 dark:hover:text-red-400 transition-colors group">
+                        <div className="rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors p-2">
+                          <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+                          </svg>
+                        </div>
+                        <span className="text-sm font-medium group-hover:text-red-500 dark:group-hover:text-red-400">0</span>
+                      </button>
+                      
+                      <button className="flex items-center gap-2 text-gray-600 dark:text-slate-400 hover:text-blue-500 dark:hover:text-blue-400 transition-colors group">
+                        <div className="rounded-lg hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors p-2">
+                          <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                          </svg>
+                        </div>
+                        <span className="text-sm font-medium group-hover:text-blue-500 dark:group-hover:text-blue-400">0</span>
+                      </button>
+                      
+                      <div className="flex items-center gap-2 text-gray-500 dark:text-slate-500">
+                        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                        </svg>
+                        <span className="text-sm font-medium">0</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Info Message */}
+            <div className="mt-4 p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-xl">
+              <p className="text-sm text-blue-900 dark:text-blue-200">
+                💡 This is how your post will appear in the feed. You can go back to edit or publish it now.
+              </p>
+            </div>
+          </div>
+
+          {/* Actions */}
+          <div className="sticky bottom-0 p-6 bg-gray-50 dark:bg-slate-800/50 border-t border-gray-200 dark:border-slate-700/50 flex gap-3">
+            <button
+              onClick={() => setShowPreview(false)}
+              className="flex-1 px-6 py-3 bg-gray-200 dark:bg-slate-700 hover:bg-gray-300 dark:hover:bg-slate-600 text-gray-700 dark:text-slate-300 font-medium rounded-xl transition-colors"
+            >
+              ← Back to Edit
+            </button>
+            <button
+              onClick={(e) => {
+                setShowPreview(false)
+                // Trigger form submit
+                const form = document.querySelector('form')
+                if (form) {
+                  form.dispatchEvent(new Event('submit', { cancelable: true, bubbles: true }))
+                }
+              }}
+              disabled={isUploading}
+              className="flex-1 px-6 py-3 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white font-medium rounded-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {isUploading ? 'Publishing...' : '🚀 Publish Now'}
             </button>
           </div>
         </div>

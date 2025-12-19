@@ -146,12 +146,7 @@ export function PostHeader({
             {creator.name}
           </Link>
           {post.content.category && (
-            <span className={cn(
-              'text-[9px] px-1.5 py-0.5= rounded-full font-medium whitespace-nowrap mb-7',
-              overlay 
-                ? 'bg-white/20 text-white' 
-                : 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300'
-            )}>
+            <span className="text-[9px] px-1.5 py-0.5= rounded-full font-medium whitespace-nowrap mb-7 bg-white/20 text-white dark:bg-white/20 dark:text-white">
               {post.content.category}
             </span>
           )}
@@ -174,12 +169,7 @@ export function PostHeader({
             {creator.name}
           </Link>
           {post.content.category && (
-            <span className={cn(
-              'text-xs px-2 py-0.5 rounded-full font-medium whitespace-nowrap',
-              overlay 
-                ? 'bg-white/20 text-white' 
-                : 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300'
-            )}>
+            <span className="text-xs px-2 py-0.5 rounded-full font-medium whitespace-nowrap bg-white/20 text-white dark:bg-white/20 dark:text-white">
               {post.content.category}
             </span>
           )}

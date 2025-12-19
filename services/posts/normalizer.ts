@@ -86,9 +86,18 @@ export class PostNormalizer {
    */
   private static normalizeMedia(rawPost: any): PostMedia {
     console.log('PostNormalizer: Normalizing media', rawPost);
+    
+    const postType = rawPost.type || 'text'
+    const hasMediaUrl = !!(rawPost.mediaUrl || rawPost.image)
+    
+    // Для текстовых постов без медиа не используем placeholder
+    const mediaUrl = (postType === 'text' && !hasMediaUrl) 
+      ? undefined 
+      : transformMediaUrl(rawPost.mediaUrl || rawPost.image)
+    
     return {
-      type: rawPost.type || 'text',
-      url: transformMediaUrl(rawPost.mediaUrl || rawPost.image),
+      type: postType,
+      url: mediaUrl,
       thumbnail: transformMediaUrl(rawPost.thumbnail),
       preview: transformMediaUrl(rawPost.previewUrl),
       aspectRatio: rawPost.imageAspectRatio,

@@ -27,6 +27,7 @@ import {
   HeartIcon,
   ChatBubbleLeftIcon,
   ArrowTrendingUpIcon,
+  ArrowUpIcon,
   PhotoIcon,
   VideoCameraIcon,
   DocumentTextIcon,
@@ -128,6 +129,9 @@ export default function FeedPageClient() {
   const [showStoryViewer, setShowStoryViewer] = useState(false)
   const [selectedStoryIndex, setSelectedStoryIndex] = useState(0)
   const [selectedUserStories, setSelectedUserStories] = useState<any[]>([]) // Истории выбранного пользователя
+
+  // Scroll to Top button
+  const [showScrollTop, setShowScrollTop] = useState(false)
 
   console.log('[FeedPageClient] user:', user);
   
@@ -297,6 +301,18 @@ export default function FeedPageClient() {
       refresh(true)
     }
   }, [selectedCategory, sortBy, isInitialized, refresh])
+
+  // Отслеживание скролла для кнопки Scroll to Top
+  useEffect(() => {
+    const handleScroll = () => {
+      const scrollTop = window.pageYOffset || document.documentElement.scrollTop
+      // Показываем кнопку если прокрутили больше 400px
+      setShowScrollTop(scrollTop > 400)
+    }
+
+    window.addEventListener('scroll', handleScroll, { passive: true })
+    return () => window.removeEventListener('scroll', handleScroll)
+  }, [])
   
 
   useEffect(() => {
@@ -602,6 +618,11 @@ export default function FeedPageClient() {
         // Обрабатываем через handleAction от useOptimizedPosts
         handleAction(action)
         break
+      case 'adminDelete':
+        // Административное удаление через handleAction от useOptimizedPosts
+        console.log('[Feed] Admin delete action:', action)
+        handleAction(action)
+        break
     }
   }, [filteredAndSortedPosts, handleAction])
 
@@ -611,7 +632,8 @@ export default function FeedPageClient() {
   return (
     <div className="min-h-screen bg-white dark:bg-slate-900 pt-12 sm:-mt-14">
       <div className="max-w-2xl mx-auto px-0 sm:px-4 pb-20">
-        {/* Stories Section */}
+        {/* Stories Section - показываем только после загрузки постов */}
+        {!isLoading && (
         <div className="mb-4 px-4 sm:px-0 pt-4">
           <div className="flex gap-3 overflow-x-auto pb-3 scrollbar-hide">
             {/* Add Story Button */}
@@ -681,6 +703,58 @@ export default function FeedPageClient() {
             )}
           </div>
         </div>
+        )}
+
+        {/* 🎯 NEW: Compact Filters Bar под Stories (non-sticky) - показываем только после загрузки постов */}
+        {!isLoading && (
+        <div className="mb-4 px-4 sm:px-0">
+          <div className="bg-white dark:bg-slate-900 border-b border-gray-200 dark:border-slate-700 py-3">
+            <div className="flex items-center gap-3">
+              
+              {/* Category Dropdown */}
+              <select
+                value={selectedCategory}
+                onChange={(e) => startTransition(() => setSelectedCategory(e.target.value))}
+                className="flex-1 px-3 py-2 bg-white dark:bg-slate-800 border border-gray-300 dark:border-slate-700 rounded-xl text-gray-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all cursor-pointer"
+              >
+                {categories.map((category) => {
+                  const icons: Record<string, string> = {
+                    'All': '📚', 'Art': '🎨', 'Music': '🎵', 'Gaming': '🎮',
+                    'Lifestyle': '🏠', 'Fitness': '💪', 'Tech': '💻', 'DeFi': '💰',
+                    'NFT': '🖼️', 'Trading': '📊', 'GameFi': '🎲', 'Blockchain': '🔗',
+                    'Intimate': '❤️', 'Education': '🎓', 'Comedy': '😂', 'Food': '🍰',
+                    'Party': '🎉', 'Landscape': '🏞️', 'Work': '💼', 'Adult': '🔞',
+                    'Couple': '👫', 'Solo': '🧍'
+                  }
+                  return (
+                    <option key={category} value={category}>
+                      {icons[category] || '📚'} {category}
+                    </option>
+                  )
+                })}
+              </select>
+
+              {/* Sort Dropdown */}
+              <select
+                value={sortBy}
+                onChange={(e) => startTransition(() => setSortBy(e.target.value as any))}
+                className="flex-1 px-3 py-2 bg-white dark:bg-slate-800 border border-gray-300 dark:border-slate-700 rounded-xl text-gray-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all cursor-pointer"
+              >
+                {sortOptions.map((option) => {
+                  const icons: Record<string, string> = {
+                    'latest': '🕒', 'popular': '🔥', 'trending': '📈', 'subscribed': '👥'
+                  }
+                  return (
+                    <option key={option.value} value={option.value}>
+                      {icons[option.value]} {option.label}
+                    </option>
+                  )
+                })}
+              </select>
+            </div>
+          </div>
+        </div>
+        )}
 
         {/* Banner для новых постов */}
         {hasNewPosts && (
@@ -807,12 +881,26 @@ export default function FeedPageClient() {
         )}
       </div>
 
+      {/* Scroll to Top Button - показывается при скролле вниз */}
+      {showScrollTop && (
+        <button
+          onClick={() => {
+            window.scrollTo({ top: 0, behavior: 'smooth' })
+          }}
+          className="fixed bottom-24 right-6 z-50 p-4 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white rounded-full shadow-lg transition-all duration-300 hover:scale-110 md:bottom-32 md:right-8"
+          aria-label="Scroll to top"
+        >
+          <ArrowUpIcon className="w-6 h-6" />
+        </button>
+      )}
+
       {/* Floating Action Button - скрыт на мобильных устройствах */}
       <div className="hidden md:block">
         <FloatingActionButton
           onClick={handleCreatePost}
           label="Create Post"
           hideOnScroll={true}
+          offset={{ bottom: 32, right: 32 }}
         />
       </div>
 

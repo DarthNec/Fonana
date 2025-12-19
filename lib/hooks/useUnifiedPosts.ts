@@ -69,8 +69,8 @@ export function useUnifiedPosts(options: UseUnifiedPostsOptions = {}): UseUnifie
       const rawPosts = data.posts || []
 
       // Нормализация постов
-      // [iscreatorpost_normalizer_fix_2025_025] Передаём undefined, так как этот хук не имеет user context
-      const normalizedPosts = PostNormalizer.normalizeMany(rawPosts, [], undefined)
+      // [iscreatorpost_normalizer_fix_2025_025] Передаём пустые массивы, так как этот хук не имеет likes и emotions data
+      const normalizedPosts = PostNormalizer.normalizeMany(rawPosts, [], [])
       setPosts(normalizedPosts)
 
     } catch (err) {
@@ -121,6 +121,9 @@ export function useUnifiedPosts(options: UseUnifiedPostsOptions = {}): UseUnifie
           break
         case 'delete':
           await handleDelete(action.postId)
+          break
+        case 'adminDelete':
+          await handleAdminDelete(action.postId)
           break
         default:
           console.warn('Unknown action type:', action.type)
@@ -380,6 +383,65 @@ export function useUnifiedPosts(options: UseUnifiedPostsOptions = {}): UseUnifie
     } catch (error) {
       console.error('Delete error:', error)
       toast.error('Ошибка при удалении поста')
+    }
+  }
+
+  // Административное удаление поста
+  const handleAdminDelete = async (postId: string) => {
+    console.log('🛡️ [useUnifiedPosts] handleAdminDelete called for post:', postId)
+    
+    if (!confirm('⚠️ АДМИНИСТРАТИВНОЕ УДАЛЕНИЕ\n\nВы уверены, что хотите удалить этот пост как администратор?')) {
+      console.log('🛡️ [useUnifiedPosts] Admin delete cancelled by user')
+      return
+    }
+
+    try {
+      console.log('🛡️ [useUnifiedPosts] Sending admin delete request to API...')
+      
+      // Получаем wallet address
+      let walletAddress = user?.wallet
+      if (!walletAddress && typeof window !== 'undefined') {
+        const savedWallet = localStorage.getItem('fonana_user_wallet')
+        if (savedWallet) {
+          walletAddress = savedWallet
+          console.log('🛡️ [useUnifiedPosts] Using localStorage fallback for wallet address')
+        }
+      }
+      
+      if (!walletAddress) {
+        console.error('🛡️ [useUnifiedPosts] No wallet address available for admin delete')
+        toast.error('Подключите кошелек для удаления поста')
+        return
+      }
+      
+      const response = await fetch(`/api/posts/${postId}/admin-delete?userWallet=${walletAddress}`, {
+        method: 'DELETE',
+      })
+
+      console.log('🛡️ [useUnifiedPosts] Admin delete API response status:', response.status)
+      
+      if (!response.ok) {
+        const errorText = await response.text()
+        console.error('🛡️ [useUnifiedPosts] Admin delete API error response:', errorText)
+        
+        if (response.status === 403) {
+          toast.error('У вас нет прав администратора')
+        } else {
+          throw new Error(`Failed to admin delete post: ${response.status} ${errorText}`)
+        }
+        return
+      }
+
+      const data = await response.json()
+      console.log('🛡️ [useUnifiedPosts] Admin delete API response data:', data)
+      
+      // Удаляем из локального состояния
+      setPosts(prevPosts => prevPosts.filter(post => post.id !== postId))
+      toast.success('Пост удален администратором')
+
+    } catch (error) {
+      console.error('Admin delete error:', error)
+      toast.error('Ошибка при административном удалении поста')
     }
   }
 

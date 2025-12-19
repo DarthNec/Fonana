@@ -1,7 +1,7 @@
 # 📚 INDEX - Центральный индекс документации Fonana
 
 > **Центральная точка входа в документацию проекта Fonana**  
-> Последнее обновление: 15 декабря 2025  
+> Последнее обновление: 16 декабря 2025 (Feed Filters Audit)  
 > Версия проекта: v0.1.0-alpha
 
 ---
@@ -106,12 +106,45 @@
 - [🏗️ Критический архитектурный анализ](./docs/features/critical-architecture-deep-analysis-2025-024/) - Глубокий анализ архитектуры
 
 ### UX/UI Улучшения
-- [🎨 Homepage Audit 2025-12-15](./docs/features/homepage-audit-2025-12-15/) - **НОВЫЙ** - Полный аудит и улучшения главной страницы
+- [🎨 Homepage Audit 2025-12-15](./docs/features/homepage-audit-2025-12-15/) - Полный аудит и улучшения главной страницы
   - [📋 Краткий итог (RU)](./docs/features/homepage-audit-2025-12-15/SUMMARY_RU.md) - Краткий анализ и рекомендации
   - [📊 Discovery Report](./docs/features/homepage-audit-2025-12-15/DISCOVERY_REPORT.md) - Детальный отчет (400+ строк)
   - [✅ Implementation Report](./docs/features/homepage-audit-2025-12-15/IMPLEMENTATION_REPORT.md) - Реализация Value Prop + FAQ
   - [🏆 Top 10 Creators](./docs/features/homepage-audit-2025-12-15/TOP_10_CREATORS_IMPLEMENTATION.md) - Топ криэйторов вместо recommendations
   - [⚡ Major Improvements](./docs/features/homepage-audit-2025-12-15/MAJOR_IMPROVEMENTS_IMPLEMENTATION.md) - Sora 2 showcase, улучшенный Download button, Learn more links
+
+- [📝 CreatePostModal Audit 2025-12-16](./docs/features/create-post-modal-audit-2025-12-16/) - Полный UX/UI аудит и улучшения модалки создания постов
+  - [⚡ Быстрая справка](./docs/features/create-post-modal-audit-2025-12-16/QUICK_REFERENCE.md) - Top 5 issues, roadmap, comparison (5 мин)
+  - [📊 Полный отчет (RU)](./docs/features/create-post-modal-audit-2025-12-16/AUDIT_REPORT_RU.md) - Детальный аудит, 990 строк (30 мин)
+  - [🔍 Детальный разбор](./docs/features/create-post-modal-audit-2025-12-16/DETAILED_UX_BREAKDOWN.md) - Построчный анализ 11 секций (45 мин)
+  - [✅ Сводка для пользователя](./docs/features/create-post-modal-audit-2025-12-16/SUMMARY_FOR_USER.md) - Итоги и roadmap
+  - **Overall Score**: 7.5/10 → Потенциал 9.5/10
+  - **Implemented Improvements** (16 декабря 2025):
+    - ✅ Default type = Image (вместо Text)
+    - ✅ Tags скрыты (низкое использование)
+    - ✅ Access Type = Dropdown с эмоджи иконками + Tooltip
+    - ✅ Sora-2 badge с количеством генераций
+    - ✅ Preview Mode (для Text/Image/Video/Audio, кроме Sora-2)
+    - ✅ Корректный avatar и fullName в preview
+
+- [🎯 Feed Filters Placement Audit 2025-12-16](./docs/features/feed-filters-placement-audit-2025-12-16/) - **НОВЫЙ** - M7 полный аудит размещения фильтров и категорий на Feed странице
+  - [⚡ Quick Reference](./docs/features/feed-filters-placement-audit-2025-12-16/QUICK_REFERENCE.md) - Рекомендация и быстрые выводы (5 мин)
+  - [📊 Full Audit Report (RU)](./docs/features/feed-filters-placement-audit-2025-12-16/AUDIT_REPORT_RU.md) - Полный аудит всех вариантов (30-40 мин)
+  - [🎨 Placement Options](./docs/features/feed-filters-placement-audit-2025-12-16/PLACEMENT_OPTIONS.md) - Визуальные mockup'ы 5 вариантов (20 мин)
+  - [📈 UX Metrics Analysis](./docs/features/feed-filters-placement-audit-2025-12-16/UX_METRICS_ANALYSIS.md) - Детальный анализ метрик (15 мин)
+  - **Recommended Solution**: Option 3 - Sticky Compact Bar (Score: 9.2/10)
+  - **Status**: ⏳ Audit Complete - Ready for Implementation
+  - **Problem**: 22 категории + 4 фильтра закомментированы в коде
+  - **Solution**: Sticky dropdown bar под Stories (48px height, always visible)
+
+- [📱 Feed Page UX Audit 2025-12-15](./docs/features/feed-page-ux-audit-2025-12-15/) - Аудит и улучшения страницы Feed
+  - [📋 Сводка (RU)](./docs/features/feed-page-ux-audit-2025-12-15/SUMMARY_RU.md) - Краткий анализ UX
+
+- [👤 Creator Profile Audits 2025-12-15](./docs/features/) - Аудиты профиля криэйтора
+  - [🎨 Design Audit](./docs/features/creator-profile-design-audit-2025-12-15/) - Аудит дизайна профиля
+  - [📊 Profile Audit](./docs/features/creator-profile-audit-2025-12-15/) - Аудит функционала профиля
+
+- [🧭 Navbar Audit 2025-12-15](./docs/features/navbar-audit-2025-12-15/) - Аудит навигационной панели
 
 ---
 

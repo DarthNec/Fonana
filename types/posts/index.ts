@@ -194,6 +194,7 @@ export type PostActionType =
   | 'bid'
   | 'edit'
   | 'delete'
+  | 'adminDelete'
   | 'bookmark'
   | 'report'
   | 'remix_created'

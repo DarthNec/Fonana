@@ -260,7 +260,18 @@ export function PostContent({
   */
   return (
     <div className={cn('space-y-3', 'sm:h-full sm:flex sm:flex-col', className)}>
-      {/* Title - показываем только если нет showHeader или нет медиа */}
+      {/* Header для текстовых постов без медиа */}
+      {showHeader && !currentPost.media.url && (
+        <PostHeader 
+          post={post}
+          variant={variant}
+          onAction={onAction}
+          overlay={false}
+          className="mb-3"
+        />
+      )}
+      
+      {/* Title - для текстовых постов показываем всегда, для медиа-постов только если нет showHeader */}
       {(!showHeader || !currentPost.media.url) && (
         <h3 className={cn(
           'font-bold text-gray-900 dark:text-white',
@@ -610,8 +621,8 @@ export function PostContent({
         </div>
       )}
 
-      {/* Category & Tags & Tier - скрываем когда используем footer */}
-      {!showFooter && variant === 'full' && (currentPost.content.category || currentPost.content.tags.length > 0 || post?.access?.tier) && (
+      {/* Category & Tags & Tier - скрываем когда используем footer или для текстовых постов */}
+      {!showFooter && variant === 'full' && currentPost.media.url && (currentPost.content.category || currentPost.content.tags.length > 0 || post?.access?.tier) && (
         <div className="flex flex-wrap items-center gap-2">
           {currentPost.content.category && (
             <Link

@@ -217,13 +217,13 @@ export function PostCard({
             variant={variant}
             onAction={handleAction}
             showHeader={showCreator}
-            showFooter={Boolean(showCreator && post.media?.url && post.media.type !== 'ai-video')} // Показываем footer только если есть медиа, showCreator и НЕ AI видео
+            showFooter={Boolean(showCreator && post.media?.url && post.media.type !== 'ai-video' && post.media.type !== 'text')} // Показываем footer только для постов с медиа (кроме AI видео и текстовых)
             commentCount={commentCount}
           />
         </div>
 
         {/* Actions - показываем только если НЕ используем footer в контенте */}
-        {variant !== 'minimal' && !(showCreator && post.media?.url && post.media.type !== 'ai-video') && (
+        {variant !== 'minimal' && !(showCreator && post.media?.url && post.media.type !== 'ai-video' && post.media.type !== 'text') && (
           <PostActions
             post={post}
             commentCount={commentCount}
