@@ -95,6 +95,7 @@ export function PostContent({
   const [showRemixImageModal, setShowRemixImageModal] = useState(false)
   const [isVideoPlaying, setIsVideoPlaying] = useState(false)
   const [isFooterTextExpanded, setIsFooterTextExpanded] = useState(false)
+  const [isEmojiPickerOpen, setIsEmojiPickerOpen] = useState(false)
   
   // Находим индекс текущего поста в массиве ремиксов (если есть)
   const initialRemixIndex = React.useMemo(() => {
@@ -366,8 +367,8 @@ export function PostContent({
                       setShowRemixImageModal(true)
                     }}
                     className={cn(
-                      "absolute right-3 w-8 h-8 sm:w-10 sm:h-10 sm:right-4 flex items-center justify-center bg-purple-500/80 hover:bg-purple-600/80 text-white rounded-full transition-colors backdrop-blur-sm z-30",
-                      showHeader ? "top-20 sm:top-13" : "top-4" // Опускаем под header если он есть
+                      "absolute right-3 w-8 h-8 sm:w-10 sm:h-10 sm:right-4 flex items-center justify-center bg-purple-500/80 hover:bg-purple-600/80 text-white rounded-full transition-colors backdrop-blur-sm z-50",
+                      showHeader ? "top-16 sm:top-16" : "top-4" // Опускаем под header если он есть
                     )}
                     aria-label="Remix image"
                   >
@@ -545,6 +546,7 @@ export function PostContent({
                     onAction={onAction}
                     variant={variant}
                     overlay={true}
+                    onEmojiPickerChange={setIsEmojiPickerOpen}
                   />
                 )}
               </div>
@@ -559,7 +561,10 @@ export function PostContent({
 
             {/* Remix Navigation Controls - внутри медиа-контейнера */}
             {post.postRemixes && post.postRemixes.length > 1 && (
-              <div className="absolute bottom-20 left-0 right-0 flex items-center justify-center gap-3 z-30 px-4">
+              <div className={cn(
+                "absolute bottom-20 left-0 right-0 flex items-center justify-center gap-3 px-4",
+                isEmojiPickerOpen ? "z-[15]" : "z-20"
+              )}>
                 {/* Кнопка назад */}
                 <button
                   onClick={(e) => {

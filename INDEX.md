@@ -1,7 +1,7 @@
 # 📚 INDEX - Центральный индекс документации Fonana
 
 > **Центральная точка входа в документацию проекта Fonana**  
-> Последнее обновление: 16 декабря 2025 (Feed Filters Audit)  
+> Последнее обновление: 20 декабря 2025 (Post Component Z-Index Fixes)  
 > Версия проекта: v0.1.0-alpha
 
 ---
@@ -146,6 +146,16 @@
 
 - [🧭 Navbar Audit 2025-12-15](./docs/features/navbar-audit-2025-12-15/) - Аудит навигационной панели
 
+- [🎨 Post Component Z-Index Fixes 2025-12-20](./docs/features/post-component-z-index-fixes-2025-12-20/) - **НОВЫЙ** - Исправление z-index иерархии в компонентах поста
+  - [⚡ Quick Summary](./docs/features/post-component-z-index-fixes-2025-12-20/SUMMARY.md) - Краткое описание проблемы и решения
+  - **Problem**: Конфликты z-index между header, меню поста, кнопкой ремикса, навигацией ремиксов и панелью эмоций
+  - **Solution**: Правильная иерархия z-index с динамическим управлением для панели эмоций
+  - **Components Updated**: 
+    - `PostContent/index.tsx` - управление состоянием панели эмоций
+    - `PostActions/index.tsx` - callback для синхронизации состояния
+    - `PostMenu/index.tsx` - увеличен z-index dropdown меню
+  - **Status**: ✅ Complete - All interaction layers now work correctly
+
 ---
 
 ## 🚀 Деплой
@@ -255,13 +265,14 @@
 ## 📋 Статус документации
 
 - **Общее количество MD файлов**: 100+
-- **Последнее обновление**: 15 декабря 2025
+- **Последнее обновление**: 20 декабря 2025
 - **Статус актуальности**: ✅ Актуально
 - **Покрытие документации**: 100%
 - **Новые документы**: 
+  - Post Component Z-Index Fixes (2025-12-20)
   - 5 документов по Homepage Audit & Improvements (2025-12-15)
   - Интеграция мобильного приложения (Google Play)
-  - ~2000 строк новой документации
+  - ~2000+ строк документации
 
 ---
 

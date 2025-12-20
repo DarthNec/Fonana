@@ -12,6 +12,7 @@ export interface PostActionsProps {
   variant?: PostCardVariant
   className?: string
   overlay?: boolean // Для Instagram-style на темном фоне
+  onEmojiPickerChange?: (isOpen: boolean) => void // Callback для изменения состояния панели эмоций
 }
 
 // Типы эмоций
@@ -33,7 +34,8 @@ export function PostActions({
   onAction,
   variant = 'full',
   className,
-  overlay = false
+  overlay = false,
+  onEmojiPickerChange
 }: PostActionsProps) {
   const [optimisticLikes, setOptimisticLikes] = useState(post.engagement.likes)
   const [isLiked, setIsLiked] = useState(post.engagement.isLiked)
@@ -82,6 +84,11 @@ export function PostActions({
     
     console.log('[PostActions] Updated localUserEmotionId to:', post.userEmotion?.emotionId || null)
   }, [post.emotions, post.userEmotion?.emotionId, post.emotionsCount])
+  
+  // Уведомляем родителя об изменении состояния панели эмоций
+  useEffect(() => {
+    onEmojiPickerChange?.(showEmotionPicker)
+  }, [showEmotionPicker, onEmojiPickerChange])
   
   // Определяем, есть ли эмоции на посте (используем локальное состояние)
   const hasEmotions = Object.keys(localEmotionCounts).length > 0
