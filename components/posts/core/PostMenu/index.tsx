@@ -26,6 +26,7 @@ export interface PostMenuProps {
   onAction?: (action: PostAction) => void
   className?: string
   overlay?: boolean // Для Instagram-style на темном фоне
+  onMenuOpenChange?: (isOpen: boolean) => void // Callback для передачи состояния меню
 }
 
 /**
@@ -33,7 +34,7 @@ export interface PostMenuProps {
  * Показывает опции редактирования и удаления для автора
  * Опции шаринга и жалобы для остальных
  */
-export function PostMenu({ post, onAction, className, overlay = false }: PostMenuProps) {
+export function PostMenu({ post, onAction, className, overlay = false, onMenuOpenChange }: PostMenuProps) {
   const user = useUser()
   const [isOpen, setIsOpen] = useState(false)
   const [isSharePopupOpen, setIsSharePopupOpen] = useState(false)
@@ -70,6 +71,11 @@ export function PostMenu({ post, onAction, className, overlay = false }: PostMen
       document.removeEventListener('mousedown', handleClickOutside)
     }
   }, [isOpen])
+  
+  // Уведомляем родителя об изменении состояния меню
+  useEffect(() => {
+    onMenuOpenChange?.(isOpen)
+  }, [isOpen, onMenuOpenChange])
   
   const handleMenuClick = (e: React.MouseEvent) => {
     e.stopPropagation()

@@ -440,7 +440,8 @@ export async function POST(request: NextRequest) {
     
     console.log('[API] Post created successfully:', post.id)
     
-    // 🔥 [REMIX_CACHE] Для AI-видео устанавливаем containerId = post.id
+    // 🔥 [REMIX_OPTIMIZATION_2025] Для AI-видео устанавливаем containerId = post.id, но НЕ создаём файл
+    // Файл будет создан только при создании первого ремикса
     if (postData.type === 'ai-video') {
       console.log('[API] 🎯 AI-video detected, setting containerId = post.id')
       // containerId will be available after migration
@@ -449,87 +450,11 @@ export async function POST(request: NextRequest) {
         data: { containerId: post.id } as any
       })
       console.log('[API] ✅ containerId set to:', post.id)
+      console.log('[API] ℹ️ File creation SKIPPED - will be created on first remix')
       
       // Обновляем объект post для дальнейшего использования
       // @ts-ignore - containerId will be available after migration
       post.containerId = post.id
-      
-      // 🔥 [REMIX_CACHE] Кешируем AI-видео в Redis для цепочек ремиксов
-      try {
-        console.log('[API] 🎯 AI-video post detected, caching in Redis for remix chain')
-        
-        // Создаем полный объект поста для кеширования
-        const fullPostForCache = {
-          ...post,
-          containerId: post.id,
-          creator: {
-            ...post.creator,
-            name: post.creator.fullName || post.creator.nickname || 'Unknown',
-            username: post.creator.nickname || 'unknown',
-          },
-          likes: post.likesCount || 0,
-          comments: post.commentsCount || 0,
-          isSubscribed: false,
-          hasPurchased: false,
-          isCreatorPost: true,
-          requiredTier: post.minSubscriptionTier,
-          userTier: null,
-          hasAccess: true,
-          shouldBlur: false,
-          shouldDim: false,
-          upgradePrompt: null,
-          accessType: 'creator',
-          access: {
-            isLocked: post.isLocked,
-            tier: post.minSubscriptionTier,
-            price: post.price,
-            currency: post.currency || 'SOL',
-            isPurchased: false,
-            isSubscribed: false,
-            userTier: null,
-            shouldHideContent: false,
-            isCreatorPost: true,
-            hasAccess: true,
-            shouldBlur: false,
-            shouldDim: false,
-            upgradePrompt: null,
-            requiredTier: post.minSubscriptionTier,
-          },
-          media: {
-            type: post.type,
-            url: post.mediaUrl,
-            thumbnail: post.thumbnail,
-            error: post.error,
-            blurUrl: post.blurUrl,
-            requestId: post.requestId
-          },
-          shouldHideContent: false
-        }
-        
-        // Отправляем в Redis cache (non-blocking)
-        const cacheResponse = await fetch('https://fonana.me/api/redis/remixcache', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            containerId: post.id,
-            post: fullPostForCache
-          })
-        })
-        
-        if (cacheResponse.ok) {
-          const cacheData = await cacheResponse.json()
-          console.log('[API] ✅ AI-video cached in Redis:', {
-            containerId: post.id,
-            postsCount: cacheData.data?.postsCount || 1
-          })
-        } else {
-          console.warn('[API] ⚠️ Failed to cache AI-video in Redis:', cacheResponse.status)
-        }
-        
-      } catch (cacheError) {
-        // Не блокируем создание поста при ошибке кеширования
-        console.error('[API] ⚠️ Redis cache error (non-critical):', cacheError instanceof Error ? cacheError.message : String(cacheError))
-      }
     }
     
     // NEW: WebSocket уведомление автора (non-blocking)
@@ -563,76 +488,6 @@ export async function POST(request: NextRequest) {
       requiredTier: post.minSubscriptionTier,
       userTier: null, // Автор не нуждается в подписке на себя
       shouldHideContent: false
-    }
-    
-    // 🔥 [REMIX_CACHE] Кеширование AI-видео постов в Redis для цепочек ремиксов
-    if (postData.type === 'ai-video') {
-      try {
-        console.log('[API] 🎯 AI-video post detected, saving to file system for remix chain')
-        
-        // Создаем полный объект поста (как в GET блоке)
-        const fullPostForCache = {
-          ...post,
-          creator: {
-            ...post.creator,
-            name: post.creator.fullName || post.creator.nickname || 'Unknown',
-            username: post.creator.nickname || 'unknown',
-          },
-          likes: post.likesCount || 0,
-          comments: post.commentsCount || 0,
-          isSubscribed: false,
-          hasPurchased: false,
-          isCreatorPost: true,
-          requiredTier: post.minSubscriptionTier,
-          userTier: null,
-          hasAccess: true,
-          shouldBlur: false,
-          shouldDim: false,
-          upgradePrompt: null,
-          accessType: 'creator',
-          access: {
-            isLocked: post.isLocked,
-            tier: post.minSubscriptionTier,
-            price: post.price,
-            currency: post.currency || 'SOL',
-            isPurchased: false,
-            isSubscribed: false,
-            userTier: null,
-            shouldHideContent: false,
-            isCreatorPost: true,
-            hasAccess: true,
-            shouldBlur: false,
-            shouldDim: false,
-            upgradePrompt: null,
-            requiredTier: post.minSubscriptionTier,
-          },
-          media: {
-            type: post.type,
-            url: post.mediaUrl,
-            thumbnail: post.thumbnail,
-            error: post.error,
-            blurUrl: post.blurUrl,
-            requestId: post.requestId
-          },
-          shouldHideContent: false
-        }
-        
-        // Сохраняем в файловую систему (non-blocking)
-        const saved = await saveRemixToFile(post.id, fullPostForCache)
-        
-        if (saved) {
-          console.log('[API] ✅ AI-video saved to file system:', {
-            containerId: post.id,
-            filePath: `app/remixes/${post.id}.json`
-          })
-        } else {
-          console.warn('[API] ⚠️ Failed to save AI-video to file system')
-        }
-        
-      } catch (cacheError) {
-        // Не блокируем создание поста при ошибке сохранения
-        console.error('[API] ⚠️ File system save error (non-critical):', cacheError instanceof Error ? cacheError.message : String(cacheError))
-      }
     }
     
     return NextResponse.json({ 

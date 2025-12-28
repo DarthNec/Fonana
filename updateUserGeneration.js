@@ -41,11 +41,11 @@ async function updateUserGenerations() {
     const result = await prisma.user.updateMany({
       where: {
         availableGenerationCount: {
-          lt: 3
+          lt: 1
         }
       },
       data: {
-        availableGenerationCount: 3
+        availableGenerationCount: 1
       }
     })
     

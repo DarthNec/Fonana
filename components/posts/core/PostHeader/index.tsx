@@ -13,6 +13,7 @@ export interface PostHeaderProps {
   className?: string
   onAction?: (action: PostAction) => void
   overlay?: boolean // Для Instagram-style на темном фоне
+  onMenuOpenChange?: (isOpen: boolean) => void // Callback для передачи состояния меню
 }
 
 /**
@@ -47,7 +48,8 @@ export function PostHeader({
   variant = 'full',
   className,
   onAction,
-  overlay = false
+  overlay = false,
+  onMenuOpenChange
 }: PostHeaderProps) {
   const { creator, createdAt } = post
   const getAvatarSize = () => {
@@ -186,6 +188,7 @@ export function PostHeader({
         post={post}
         onAction={onAction}
         overlay={overlay}
+        onMenuOpenChange={onMenuOpenChange}
       />
     </div>
   )

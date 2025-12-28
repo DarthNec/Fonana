@@ -20,6 +20,7 @@ import Link from 'next/link'
 import toast from 'react-hot-toast'
 import { jwtManager } from '@/lib/utils/jwt'
 import { useRouter } from 'next/navigation'
+import { useInView } from 'react-intersection-observer'
 
 interface CreatorData {
   id: string
@@ -63,8 +64,6 @@ export default function CreatorPageClient({ creatorId }: CreatorPageClientProps)
   const [isFollowing, setIsFollowing] = useState(false)
   const [isFollowLoading, setIsFollowLoading] = useState(false)
   const backgroundInputRef = useRef<HTMLInputElement>(null)
-  
-  const { handleAction } = useOptimizedPosts({});
 
   // Posts модалки
   const [showSubscribeModal, setShowSubscribeModal] = useState(false)
@@ -112,11 +111,26 @@ export default function CreatorPageClient({ creatorId }: CreatorPageClientProps)
   }, [user, creator, isOwner])
 
   // Posts data с фильтрацией по создателю
-  const postsData = useOptimizedPosts({
+  const {
+    posts,
+    isLoading: postsLoading,
+    error: postsError,
+    hasMore,
+    isLoadingMore,
+    loadMore,
+    refresh,
+    handleAction
+  } = useOptimizedPosts({
     creatorId: creatorId,
     variant: 'creator',
     sortBy: 'latest',
     pageSize: activeTab === 'media' ? 50 : 20 // [media_only_tab_optimization_2025_017] Больше постов для медиа
+  })
+
+  // Infinite scroll hook
+  const { ref: loadMoreRef, inView } = useInView({
+    threshold: 0.1,
+    rootMargin: '100px'
   })
 
   // [media_only_tab_optimization_2025_017] Точные счетчики постов по типам
@@ -125,6 +139,35 @@ export default function CreatorPageClient({ creatorId }: CreatorPageClientProps)
     types: ['image', 'video', 'audio', 'text'],
     enabled: !!creatorId
   })
+
+  // Infinite scroll effect - подгрузка постов при достижении конца страницы
+  useEffect(() => {
+    console.log('[CreatorPageClient] Infinite scroll state:', {
+      inView,
+      hasMore,
+      isLoadingMore,
+      postsCount: posts.length,
+      filteredPostsCount: filteredPosts.length
+    })
+    
+    const scrollTop = window.pageYOffset || document.documentElement.scrollTop
+    const windowHeight = window.innerHeight
+    const documentHeight = document.documentElement.scrollHeight
+    
+    const distanceFromBottom = documentHeight - (scrollTop + windowHeight)
+    
+    console.log('[CreatorPageClient] Scroll metrics:', {
+      scrollTop,
+      windowHeight,
+      documentHeight,
+      distanceFromBottom
+    })
+    
+    if (inView && hasMore && !isLoadingMore && distanceFromBottom <= 250) {
+      console.log('[CreatorPageClient] 🔥 Triggering loadMore() - Loading more posts...')
+      loadMore()
+    }
+  }, [inView, hasMore, isLoadingMore, loadMore, posts, filteredPosts])
 
   /*
   // Фильтрация постов по активной табке
@@ -163,10 +206,10 @@ export default function CreatorPageClient({ creatorId }: CreatorPageClientProps)
   */
 
   useEffect(() => {
-    let posts = postsData.posts;
+    let postsFiltered = posts;
     if(localStorage.getItem('user_purchases') !== null) {
       const purchasesData = JSON.parse(localStorage.getItem('user_purchases') || '[]')
-      posts = posts.map(p => {
+      postsFiltered = postsFiltered.map((p: any) => {
         if(purchasesData.find((purchase: any) => purchase.postId === p.id)) {
           return {
             ...p,
@@ -179,12 +222,20 @@ export default function CreatorPageClient({ creatorId }: CreatorPageClientProps)
         }
         else return p;
       })
-      console.log(`[CreatorPageClient] Updated posts:`, posts);
-      setFilteredPosts(posts);
-    } else {
-      setFilteredPosts(posts);
-    }
-  }, [postsData.posts]);
+      console.log(`[CreatorPageClient] Updated posts:`, postsFiltered);
+    } 
+    postsFiltered = postsFiltered.filter((post: any) => {
+      if (post.media.type === 'ai-video') {
+        if (user?.id) {
+          if (user.id !== post.creator.id) return false;
+        } else return false;
+      }
+  
+      // можно добавить другие фильтры, если нужно
+      return true;
+    })
+    setFilteredPosts(postsFiltered);
+  }, [posts]);
 
   // [media_only_tab_optimization_2025_017] Используем точные счетчики вместо фильтрации загруженных постов
   const tabCounts = useMemo(() => {
@@ -196,15 +247,15 @@ export default function CreatorPageClient({ creatorId }: CreatorPageClientProps)
     }
     
     // Fallback на старую логику если API недоступен
-    if (postsData.posts) {
+    if (posts) {
       return {
-        all: postsData.posts.length,
-        media: postsData.posts.filter(p => ['image', 'video', 'audio'].includes(p.media?.type || 'text')).length
+        all: posts.length,
+        media: posts.filter(p => ['image', 'video', 'audio'].includes(p.media?.type || 'text')).length
       }
     }
     
     return { all: 0, media: 0 }
-  }, [postsCountsData.counts, postsCountsData.totalPosts, postsCountsData.mediaPosts, postsData.posts])
+  }, [postsCountsData.counts, postsCountsData.totalPosts, postsCountsData.mediaPosts, posts])
 
   useEffect(() => {
     fetchCreatorData()
@@ -358,7 +409,7 @@ export default function CreatorPageClient({ creatorId }: CreatorPageClientProps)
         break
         
       case 'edit':
-        const post = filteredPosts.find(p => p.id === action.postId);
+        const post = filteredPosts.find((p: any) => p.id === action.postId);
         console.log('Edit post:', post);
         if (post != undefined && post != null) {
           setSelectedPost(post);
@@ -396,12 +447,9 @@ export default function CreatorPageClient({ creatorId }: CreatorPageClientProps)
         break
       
       case 'delete':
-          const result = await handleAction(action);
-          console.log('Delete action result:', result);
-          if(result) {
-            setFilteredPosts(filteredPosts.filter(p => p.id !== action.postId));
-            console.log('Filtered posts:', filteredPosts);
-          }
+          handleAction(action);
+          setFilteredPosts(filteredPosts.filter((p: any) => p.id !== action.postId));
+          console.log('Filtered posts:', filteredPosts);
           console.log('Delete action:', action)
           break
       default:
@@ -833,16 +881,34 @@ export default function CreatorPageClient({ creatorId }: CreatorPageClientProps)
 
           {/* Posts Container */}
           <div className="min-h-[200px] px-0 md:px-6 pb-6">
-            {postsData.isLoading ? (
+            {postsLoading ? (
               <div className="flex justify-center items-center py-12">
                 <div className="w-8 h-8 border-4 border-purple-600 border-t-transparent rounded-full animate-spin"></div>
               </div>
             ) : filteredPosts.length > 0 ? (
-              <PostsContainer
-                posts={filteredPosts}
-                layout={activeTab === 'media' ? 'gallery' : 'list'}
-                onAction={handlePostAction}
-              />
+              <>
+                <PostsContainer
+                  posts={filteredPosts}
+                  layout={activeTab === 'media' ? 'gallery' : 'list'}
+                  onAction={handlePostAction}
+                />
+                
+                {/* Infinite scroll trigger */}
+                {hasMore && !isLoadingMore && (
+                  <div ref={loadMoreRef} className="h-20 flex items-center justify-center">
+                    <div className="text-sm text-gray-500 dark:text-slate-500">
+                      Scroll to load more
+                    </div>
+                  </div>
+                )}
+
+                {/* Loading indicator */}
+                {isLoadingMore && (
+                  <div className="py-8 text-center">
+                    <div className="w-8 h-8 border-2 border-purple-500/30 border-t-purple-500 rounded-full animate-spin mx-auto" />
+                  </div>
+                )}
+              </>
             ) : activeTab === 'media' ? (
               <div className="text-center py-12 text-gray-500 dark:text-gray-400">
                 <DocumentTextIcon className="w-16 h-16 mx-auto mb-4 opacity-50" />
@@ -911,7 +977,7 @@ export default function CreatorPageClient({ creatorId }: CreatorPageClientProps)
             setShowEditPostModal(false)
             setSelectedPost(null)
             // Перезагружаем посты
-            postsData.refresh?.()
+            refresh?.()
             toast.success('Post updated successfully!')
           }}
         />

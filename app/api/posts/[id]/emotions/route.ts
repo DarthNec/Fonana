@@ -206,6 +206,36 @@ export async function POST(
       }
     })
 
+    // Подсчитываем общее количество эмоций на этом посту
+    const totalEmotions = await (prisma as any).emotion.count({
+      where: {
+        postId: params.id
+      }
+    })
+
+    console.log('[Emotions API] Total emotions on post:', totalEmotions)
+
+    // Если это 5-я, 10-я, 15-я и т.д. эмоция - начисляем 1 генерацию владельцу поста
+    if (totalEmotions % 5 === 0) {
+      console.log('[Emotions API] 🎉 Milestone reached! Adding 1 generation to creator:', post.creatorId)
+      
+      try {
+        await prisma.user.update({
+          where: { id: post.creatorId },
+          data: {
+            availableGenerationCount: {
+              increment: 1
+            }
+          }
+        })
+        
+        console.log('[Emotions API] ✅ Generation added successfully')
+      } catch (genError) {
+        console.error('[Emotions API] ❌ Failed to add generation:', genError)
+        // Не прерываем выполнение, эмоция уже создана
+      }
+    }
+
     return NextResponse.json({
       success: true,
       action: 'created',
@@ -215,7 +245,9 @@ export async function POST(
         postId: params.id,
         emotionId: emotionId,
         createdAt: newEmotion.createdAt,
-        message: 'Emotion created'
+        message: 'Emotion created',
+        totalEmotions: totalEmotions,
+        generationAwarded: totalEmotions % 5 === 0
       }
     })
 

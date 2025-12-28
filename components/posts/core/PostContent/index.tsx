@@ -96,6 +96,7 @@ export function PostContent({
   const [isVideoPlaying, setIsVideoPlaying] = useState(false)
   const [isFooterTextExpanded, setIsFooterTextExpanded] = useState(false)
   const [isEmojiPickerOpen, setIsEmojiPickerOpen] = useState(false)
+  const [isMenuOpen, setIsMenuOpen] = useState(false) // Состояние для отслеживания открытия меню поста
   
   // Находим индекс текущего поста в массиве ремиксов (если есть)
   const initialRemixIndex = React.useMemo(() => {
@@ -269,6 +270,7 @@ export function PostContent({
           onAction={onAction}
           overlay={false}
           className="mb-3"
+          onMenuOpenChange={setIsMenuOpen}
         />
       )}
       
@@ -316,6 +318,7 @@ export function PostContent({
                       onAction={onAction}
                       overlay={true}
                       className="mb-0"
+                      onMenuOpenChange={setIsMenuOpen}
                     />
                   </div>
                 )}
@@ -331,6 +334,7 @@ export function PostContent({
                     onAction={onAction}
                     overlay={true}
                     className="mb-0" // Убираем отступ так как title теперь внизу
+                    onMenuOpenChange={setIsMenuOpen}
                   />
                 </div>
               )}
@@ -361,19 +365,21 @@ export function PostContent({
                   )}
                   
                   {/* Remix button for images */}
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      setShowRemixImageModal(true)
-                    }}
-                    className={cn(
-                      "absolute right-3 w-8 h-8 sm:w-10 sm:h-10 sm:right-4 flex items-center justify-center bg-purple-500/80 hover:bg-purple-600/80 text-white rounded-full transition-colors backdrop-blur-sm z-50",
-                      showHeader ? "top-16 sm:top-16" : "top-4" // Опускаем под header если он есть
-                    )}
-                    aria-label="Remix image"
-                  >
-                    <ArrowPathIcon className="w-4 h-4 sm:w-5 sm:h-5" />
-                  </button>
+                  {!isMenuOpen && (
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        setShowRemixImageModal(true)
+                      }}
+                      className={cn(
+                        "absolute right-3 w-8 h-8 sm:w-10 sm:h-10 sm:right-4 flex items-center justify-center bg-purple-500/80 hover:bg-purple-600/80 text-white rounded-full transition-colors backdrop-blur-sm z-50",
+                        showHeader ? "top-16 sm:top-16" : "top-4" // Опускаем под header если он есть
+                      )}
+                      aria-label="Remix image"
+                    >
+                      <ArrowPathIcon className="w-4 h-4 sm:w-5 sm:h-5" />
+                    </button>
+                  )}
                   
                   {/* Download button для изображений */}
                   <a
@@ -453,19 +459,21 @@ export function PostContent({
                   )}
                   
                   {/* Remix button for videos */}
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      setShowRemixModal(true)
-                    }}
-                    className={cn(
-                      "absolute right-3 w-8 h-8 sm:w-10 sm:h-10 sm:right-4 flex items-center justify-center bg-purple-500/80 hover:bg-purple-600/80 text-white rounded-full transition-colors backdrop-blur-sm z-30",
-                      showHeader ? "top-20 sm:top-13" : "top-4" // Опускаем под header если он есть
-                    )}
-                    aria-label="Remix video"
-                  >
-                    <ArrowPathIcon className="w-4 h-4 sm:w-5 sm:h-5" />
-                  </button>
+                  {!isMenuOpen && (
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        setShowRemixModal(true)
+                      }}
+                      className={cn(
+                        "absolute right-3 w-8 h-8 sm:w-10 sm:h-10 sm:right-4 flex items-center justify-center bg-purple-500/80 hover:bg-purple-600/80 text-white rounded-full transition-colors backdrop-blur-sm z-30",
+                        showHeader ? "top-20 sm:top-13" : "top-4" // Опускаем под header если он есть
+                      )}
+                      aria-label="Remix video"
+                    >
+                      <ArrowPathIcon className="w-4 h-4 sm:w-5 sm:h-5" />
+                    </button>
+                  )}
                   
                   {/* Download button - теперь на всех устройствах */}
                   <a

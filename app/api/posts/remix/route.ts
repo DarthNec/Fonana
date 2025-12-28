@@ -241,11 +241,104 @@ export async function POST(request: NextRequest) {
     })
 
     if (fullRemixPost) {
-      // 🔥 [REMIX_CACHE] Сохраняем ремикс в файловую систему для цепочек
+      // 🔥 [REMIX_OPTIMIZATION_2025] Сохраняем ремикс в файловую систему для цепочек
+      // При первом ремиксе также сохраняем оригинальный пост
       try {
         console.log('[API /posts/remix] 🎯 Saving remix to file system')
         
-        // Создаем полный объект поста (как в posts/route.ts)
+        // Определяем containerId для группировки ремиксов
+        const containerId = (originalPost as any).containerId || originalPostId
+        
+        // 🔥 [REMIX_OPTIMIZATION_2025] Проверяем, существует ли файл
+        const { getRemixFromFile } = await import('@/lib/remixFileSystem')
+        const existingRemixData = await getRemixFromFile(containerId)
+        
+        // Если файл не существует, это первый ремикс - нужно сохранить оригинальный пост
+        if (!existingRemixData) {
+          console.log('[API /posts/remix] 📝 First remix detected - saving original post to file system')
+          
+          // Получаем полную информацию об оригинальном посте
+          const fullOriginalPost = await prisma.post.findUnique({
+            where: { id: originalPostId },
+            include: {
+              creator: {
+                select: {
+                  id: true,
+                  nickname: true,
+                  fullName: true,
+                  avatar: true,
+                  isCreator: true
+                }
+              }
+            }
+          })
+          
+          if (fullOriginalPost) {
+            // Форматируем оригинальный пост для сохранения
+            const originalPostForCache = {
+              ...fullOriginalPost,
+              creator: {
+                ...fullOriginalPost.creator,
+                name: fullOriginalPost.creator.fullName || fullOriginalPost.creator.nickname || 'Unknown',
+                username: fullOriginalPost.creator.nickname || 'unknown',
+              },
+              likes: fullOriginalPost.likesCount || 0,
+              comments: fullOriginalPost.commentsCount || 0,
+              isSubscribed: false,
+              hasPurchased: false,
+              isCreatorPost: true,
+              requiredTier: fullOriginalPost.minSubscriptionTier,
+              userTier: null,
+              hasAccess: true,
+              shouldBlur: false,
+              shouldDim: false,
+              upgradePrompt: null,
+              accessType: 'creator',
+              access: {
+                isLocked: fullOriginalPost.isLocked,
+                tier: fullOriginalPost.minSubscriptionTier,
+                price: fullOriginalPost.price,
+                currency: fullOriginalPost.currency || 'SOL',
+                isPurchased: false,
+                isSubscribed: false,
+                userTier: null,
+                shouldHideContent: false,
+                isCreatorPost: true,
+                hasAccess: true,
+                shouldBlur: false,
+                shouldDim: false,
+                upgradePrompt: null,
+                requiredTier: fullOriginalPost.minSubscriptionTier,
+              },
+              media: {
+                type: fullOriginalPost.type,
+                url: fullOriginalPost.mediaUrl,
+                thumbnail: fullOriginalPost.thumbnail,
+                error: fullOriginalPost.error,
+                blurUrl: fullOriginalPost.blurUrl,
+                requestId: fullOriginalPost.requestId
+              },
+              shouldHideContent: false
+            }
+            
+            // Сохраняем оригинальный пост
+            const savedOriginal = await saveRemixToFile(containerId, originalPostForCache)
+            
+            if (savedOriginal) {
+              console.log('[API /posts/remix] ✅ Original post saved to file system:', {
+                containerId,
+                originalPostId,
+                filePath: `app/remixes/${containerId}.json`
+              })
+            } else {
+              console.warn('[API /posts/remix] ⚠️ Failed to save original post to file system')
+            }
+          }
+        } else {
+          console.log('[API /posts/remix] ℹ️ Remix file already exists, original post already saved')
+        }
+        
+        // Создаем полный объект поста-ремикса (как в posts/route.ts)
         const fullPostForCache = {
           ...fullRemixPost,
           creator: {
@@ -292,9 +385,7 @@ export async function POST(request: NextRequest) {
           shouldHideContent: false
         }
         
-        // Сохраняем в файловую систему (non-blocking)
-        // containerId = originalPostId (для группировки ремиксов)
-        const containerId = (originalPost as any).containerId || originalPostId
+        // Сохраняем ремикс в файловую систему (non-blocking)
         const saved = await saveRemixToFile(containerId, fullPostForCache)
         
         if (saved) {

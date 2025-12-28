@@ -93,6 +93,13 @@ async function downloadSoraVideo(requestId) {
     )
     
     const filePath = path.join(TEMP_DIR, `${requestId}_original.mp4`)
+    
+    // Проверяем, что директория существует
+    if (!fs.existsSync(TEMP_DIR)) {
+      console.log(`[SoraChecker] Creating temp directory: ${TEMP_DIR}`)
+      fs.mkdirSync(TEMP_DIR, { recursive: true })
+    }
+    
     fs.writeFileSync(filePath, response.data)
     
     console.log(`[SoraChecker] Video downloaded to ${filePath}`)
@@ -176,6 +183,12 @@ async function uploadToBunnyStorage(filePath, requestId) {
   try {
     console.log(`[SoraChecker] Uploading video ${requestId} to Bunny Storage...`)
     
+    // Проверяем существование файла перед загрузкой
+    if (!fs.existsSync(filePath)) {
+      console.error(`[SoraChecker] File not found: ${filePath}`)
+      return null
+    }
+    
     const fileName = `${requestId}.mp4`
     const bunnyPath = `${BUNNY_PATHS.sora}/${fileName}`
     const fileBuffer = fs.readFileSync(filePath)
@@ -215,6 +228,12 @@ async function uploadToBunnyStorage(filePath, requestId) {
 async function uploadPreviewToBunnyStorage(previewPath, requestId) {
   try {
     console.log(`[SoraChecker] Uploading preview for ${requestId} to Bunny Storage...`)
+    
+    // Проверяем существование файла перед загрузкой
+    if (!fs.existsSync(previewPath)) {
+      console.error(`[SoraChecker] Preview file not found: ${previewPath}`)
+      return null
+    }
     
     const fileName = `${requestId}_preview.webp`
     const bunnyPath = `posts/videos/preview/${fileName}`
@@ -313,22 +332,33 @@ function cleanupTempFiles(requestId) {
     const watermarkedPath = path.join(TEMP_DIR, `${requestId}_watermarked.mp4`)
     const previewPath = path.join(TEMP_DIR, `${requestId}_preview.png`)
     
+    let deletedCount = 0
+    
     if (fs.existsSync(originalPath)) {
       fs.unlinkSync(originalPath)
       console.log(`[SoraChecker] Deleted temp file: ${originalPath}`)
+      deletedCount++
     }
     
     if (fs.existsSync(watermarkedPath)) {
       fs.unlinkSync(watermarkedPath)
       console.log(`[SoraChecker] Deleted temp file: ${watermarkedPath}`)
+      deletedCount++
     }
     
     if (fs.existsSync(previewPath)) {
       fs.unlinkSync(previewPath)
       console.log(`[SoraChecker] Deleted temp file: ${previewPath}`)
+      deletedCount++
+    }
+    
+    if (deletedCount === 0) {
+      console.log(`[SoraChecker] No temp files found to clean up for ${requestId}`)
+    } else {
+      console.log(`[SoraChecker] Cleaned up ${deletedCount} temp file(s) for ${requestId}`)
     }
   } catch (error) {
-    console.error(`[SoraChecker] Error cleaning up temp files for ${requestId}:`, error)
+    console.error(`[SoraChecker] Error cleaning up temp files for ${requestId}:`, error.message || error)
   }
 }
 
@@ -366,9 +396,17 @@ async function processPost(post) {
       })
       console.log(`[SoraChecker] Post ${post.id} updated with error message`)
       
-      // Удаляем пост из файла ремикса
+      // Удаляем пост из файла ремикса (если файл существует)
+      // 🔥 [REMIX_OPTIMIZATION_2025] Файл может не существовать для постов без ремиксов
       const containerId = post.containerId || post.id
-      await deletePostFromRemixFile(containerId, post.id)
+      if (containerId) {
+        const deleted = await deletePostFromRemixFile(containerId, post.id)
+        if (deleted) {
+          console.log(`[SoraChecker] Post ${post.id} removed from remix file due to error`)
+        } else {
+          console.log(`[SoraChecker] Remix file doesn't exist or post not in file (expected for posts without remixes)`)
+        }
+      }
       
       // Удаляем видео из OpenAI
       await deleteSoraVideo(post.requestId)
@@ -425,8 +463,16 @@ async function processPost(post) {
     }
     
     // 9. Обновляем файл ремикса (меняем type с ai-video на video и обновляем mediaUrl)
+    // 🔥 [REMIX_OPTIMIZATION_2025] Файл может не существовать для постов без ремиксов
     const containerId = post.containerId || post.id
-    await updateRemixFile(containerId, post.id, 'completed', bunnyUrl)
+    if (containerId) {
+      const fileUpdated = await updateRemixFile(containerId, post.id, 'completed', bunnyUrl)
+      if (fileUpdated) {
+        console.log(`[SoraChecker] Remix file updated for post ${post.id}`)
+      } else {
+        console.log(`[SoraChecker] Remix file doesn't exist yet (expected for posts without remixes)`)
+      }
+    }
     
     // 9. Удаляем видео из OpenAI
     // await deleteSoraVideo(post.requestId)
@@ -474,6 +520,12 @@ async function updateRemixFile(containerId, postId, status, mediaUrl = null) {
   try {
     console.log(`[SoraChecker] Updating remix file for post ${postId} with status ${status}...`)
     
+    // Проверяем, что containerId задан
+    if (!containerId) {
+      console.warn(`[SoraChecker] containerId is not set for post ${postId}, skipping file update`)
+      return false
+    }
+    
     const updates = {}
     
     // Добавляем mediaUrl если передан
@@ -494,7 +546,7 @@ async function updateRemixFile(containerId, postId, status, mediaUrl = null) {
     if (result) {
       console.log(`[SoraChecker] ✅ Remix file updated successfully for post ${postId}`)
     } else {
-      console.log(`[SoraChecker] ⚠️ Failed to update remix file for post ${postId} (non-critical)`)
+      console.log(`[SoraChecker] ⚠️ Failed to update remix file for post ${postId} (file may not exist yet - non-critical)`)
     }
     
     return result
@@ -511,12 +563,18 @@ async function deletePostFromRemixFile(containerId, postId) {
   try {
     console.log(`[SoraChecker] Deleting post ${postId} from remix file...`)
     
+    // Проверяем, что containerId задан
+    if (!containerId) {
+      console.warn(`[SoraChecker] containerId is not set for post ${postId}, skipping file deletion`)
+      return false
+    }
+    
     const result = await deletePostFromRemix(containerId, postId)
     
     if (result) {
       console.log(`[SoraChecker] ✅ Post ${postId} deleted from remix file`)
     } else {
-      console.log(`[SoraChecker] ⚠️ Failed to delete post from remix file (non-critical)`)
+      console.log(`[SoraChecker] ⚠️ Failed to delete post from remix file (file may not exist - non-critical)`)
     }
     
     return result
