@@ -33,7 +33,7 @@ export default function CreatePostPage() {
 
   if (!user) {
     return (
-      <div className="min-h-screen bg-gray-50 dark:bg-slate-900 flex items-center justify-center pt-20">
+      <div className="min-h-screen bg-gray-50 dark:bg-slate-900 flex items-center justify-center pt-8 md:pt-4">
         <div className="text-center">
           <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">
             Authentication Required
@@ -47,7 +47,7 @@ export default function CreatePostPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-slate-900 pt-20">
+    <div className="min-h-screen bg-gray-50 dark:bg-slate-900 pt-8 md:pt-4">
       <div className="max-w-4xl mx-auto px-4 py-8">
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">

@@ -51,7 +51,7 @@ export function PostCard({
   className
 }: PostCardProps) {
   const [showComments, setShowComments] = useState(false)
-  const [commentCount, setCommentCount] = useState(post.engagement.comments)
+  const [commentCount, setCommentCount] = useState(post.engagement?.comments ?? 0)
 
   // Обработка действий с добавлением поддержки комментариев
   const handleAction = (action: PostAction) => {
@@ -96,20 +96,28 @@ export function PostCard({
   const getTierCardStyles = () => {
     const baseStyles = 'relative overflow-hidden transition-all duration-300'
     
-    // Определяем визуальный стиль на основе типа доступа
-    let visualStyle = null
+    // Для заблокированного контента НЕ применяем градиентный фон к карточке
+    // PostLocked имеет свой собственный фон
+    const isLockedContent = needsPayment(post) || needsSubscription(post) || needsTierUpgrade(post)
     
-    // Специальные стили для платных и продаваемых постов
-    if (post.access?.price && !post.commerce?.isSellable) {
-      visualStyle = SPECIAL_CONTENT_STYLES.paid
-    } else if (post.commerce?.isSellable) {
-      visualStyle = isSold ? SPECIAL_CONTENT_STYLES.sold : SPECIAL_CONTENT_STYLES.sellable
-    } else if (requiredTier) {
-      visualStyle = TIER_VISUAL_DETAILS[requiredTier]
+    let backgroundClasses = 'bg-transparent'
+    
+    // Только для разблокированного контента применяем градиентные стили
+    if (!isLockedContent) {
+      // Определяем визуальный стиль на основе типа доступа
+      let visualStyle = null
+      
+      // Специальные стили для платных и продаваемых постов
+      if (post.access?.price && !post.commerce?.isSellable) {
+        visualStyle = SPECIAL_CONTENT_STYLES.paid
+      } else if (post.commerce?.isSellable) {
+        visualStyle = isSold ? SPECIAL_CONTENT_STYLES.sold : SPECIAL_CONTENT_STYLES.sellable
+      } else if (requiredTier) {
+        visualStyle = TIER_VISUAL_DETAILS[requiredTier]
+      }
+      
+      backgroundClasses = visualStyle ? `bg-gradient-to-br ${visualStyle.gradient}` : 'bg-white dark:bg-slate-900'
     }
-    
-    // Применяем стили
-    const backgroundClasses = visualStyle ? `bg-gradient-to-br ${visualStyle.gradient}` : 'bg-white dark:bg-slate-900'
     
     switch (variant) {
       case 'full':

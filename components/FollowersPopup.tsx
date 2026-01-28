@@ -117,27 +117,27 @@ export function FollowersPopup({ userId, type, isOpen, onClose, className }: Fol
   const title = type === 'followers' ? 'Followers' : 'Following'
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 backdrop-blur-sm p-4 animate-fade-in">
       <div 
         ref={popupRef}
         className={cn(
-          'bg-white dark:bg-slate-800 rounded-2xl shadow-2xl',
-          'border border-gray-200 dark:border-slate-700',
+          'bg-white dark:bg-slate-900 rounded-3xl shadow-2xl',
+          'border border-gray-200 dark:border-slate-700/50',
           'w-full max-w-md max-h-[80vh] flex flex-col',
-          'animate-fade-in',
+          'animate-slideInUp',
           className
         )}
       >
         {/* Header */}
-        <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-slate-700">
-          <h3 className="text-xl font-semibold text-gray-900 dark:text-white">
+        <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-slate-700/50">
+          <h3 className="text-xl font-bold bg-gradient-to-r from-purple-600 to-pink-600 dark:from-purple-400 dark:to-pink-400 bg-clip-text text-transparent">
             {title}
           </h3>
           <button
             onClick={onClose}
-            className="p-2 hover:bg-gray-100 dark:hover:bg-slate-700 rounded-lg transition-colors"
+            className="p-2 hover:bg-gray-100 dark:hover:bg-slate-700/50 rounded-xl transition-colors"
           >
-            <XMarkIcon className="w-6 h-6 text-gray-500 dark:text-slate-400" />
+            <XMarkIcon className="w-6 h-6 text-gray-600 dark:text-slate-400" />
           </button>
         </div>
 
@@ -145,7 +145,7 @@ export function FollowersPopup({ userId, type, isOpen, onClose, className }: Fol
         <div className="flex-1 overflow-y-auto p-4">
           {loading ? (
             <div className="flex justify-center items-center py-12">
-              <div className="w-8 h-8 border-4 border-purple-600 border-t-transparent rounded-full animate-spin"></div>
+              <div className="w-8 h-8 border-2 border-purple-500/30 border-t-purple-500 rounded-full animate-spin"></div>
             </div>
           ) : error ? (
             <div className="text-center py-12">
@@ -154,7 +154,7 @@ export function FollowersPopup({ userId, type, isOpen, onClose, className }: Fol
           ) : data.length === 0 ? (
             <div className="text-center py-12">
               <HeartSolidIcon className="w-16 h-16 mx-auto mb-4 text-gray-300 dark:text-slate-600" />
-              <p className="text-gray-500 dark:text-slate-400">
+              <p className="text-gray-600 dark:text-slate-400">
                 {type === 'followers' ? 'No followers yet' : 'Not following anyone yet'}
               </p>
             </div>
@@ -166,8 +166,8 @@ export function FollowersPopup({ userId, type, isOpen, onClose, className }: Fol
                   onClick={() => handleUserClick(item.user.id)}
                   className={cn(
                     'flex items-center gap-3 p-3 rounded-xl',
-                    'hover:bg-gray-50 dark:hover:bg-slate-700',
-                    'cursor-pointer transition-colors'
+                    'bg-gray-50 dark:bg-slate-800/50 hover:bg-gray-100 dark:hover:bg-slate-700/50',
+                    'cursor-pointer transition-colors border border-gray-200 dark:border-slate-700/50'
                   )}
                 >
                   <Avatar
@@ -187,15 +187,15 @@ export function FollowersPopup({ userId, type, isOpen, onClose, className }: Fol
                         <CheckBadgeIcon className="w-5 h-5 text-blue-500 flex-shrink-0" />
                       )}
                     </div>
-                    <p className="text-sm text-gray-500 dark:text-slate-400 truncate">
+                    <p className="text-sm text-gray-600 dark:text-slate-400 truncate">
                       @{item.user.nickname || 'user'}
                     </p>
                     {item.user.bio && (
-                      <p className="text-xs text-gray-600 dark:text-slate-400 truncate mt-0.5">
+                      <p className="text-xs text-gray-600 dark:text-slate-500 truncate mt-0.5">
                         {item.user.bio}
                       </p>
                     )}
-                    <div className="flex items-center gap-3 mt-1 text-xs text-gray-500 dark:text-slate-400">
+                    <div className="flex items-center gap-3 mt-1 text-xs text-gray-500 dark:text-slate-500">
                       <span>{item.user.followersCount} followers</span>
                       <span>•</span>
                       <span>{item.user.followingCount} following</span>
@@ -209,8 +209,8 @@ export function FollowersPopup({ userId, type, isOpen, onClose, className }: Fol
 
         {/* Footer */}
         {!loading && !error && data.length > 0 && (
-          <div className="p-4 border-t border-gray-200 dark:border-slate-700">
-            <p className="text-sm text-gray-500 dark:text-slate-400 text-center">
+          <div className="p-4 border-t border-gray-200 dark:border-slate-700/50 bg-gray-50 dark:bg-slate-800/50">
+            <p className="text-sm text-gray-600 dark:text-slate-400 text-center">
               Total: {data.length} {type === 'followers' ? 'followers' : 'following'}
             </p>
           </div>

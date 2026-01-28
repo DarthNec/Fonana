@@ -1,6 +1,7 @@
 'use client'
 
 import React, { useState, useRef, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
 import { useUser } from '@/lib/store/appStore'
 import { useWallet } from '@/lib/hooks/useSafeWallet'
 import { useStableWallet } from '@/lib/hooks/useStableWallet' // 🔥 M7 FIX
@@ -41,6 +42,7 @@ interface CreatePostModalProps {
 }
 
 export default function CreatePostModal({ onPostCreated, onPostUpdated, onClose, mode = 'create', postId }: CreatePostModalProps) {
+  const router = useRouter()
   const { connected, publicKeyString } = useStableWallet() // 🔥 M7 FIX: STABLE DEPENDENCIES
   const user = useUser()
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -146,10 +148,10 @@ export default function CreatePostModal({ onPostCreated, onPostUpdated, onClose,
   const { rate: solToUsdRate, isLoading: isRateLoading } = useSolRate()
 
   const contentTypes = [
-    { id: 'text', label: 'Text', icon: DocumentTextIcon, color: 'text-blue-400' },
+    // { id: 'text', label: 'Text', icon: DocumentTextIcon, color: 'text-blue-400' }, // УБРАНО
     { id: 'image', label: 'Image', icon: PhotoIcon, color: 'text-green-400' },
     { id: 'video', label: 'Video', icon: VideoCameraIcon, color: 'text-purple-400' },
-    { id: 'audio', label: 'Audio', icon: MusicalNoteIcon, color: 'text-pink-400' },
+    // { id: 'audio', label: 'Audio', icon: MusicalNoteIcon, color: 'text-pink-400' }, // УБРАНО
   ]
 
   const accessTypes = [
@@ -776,10 +778,11 @@ export default function CreatePostModal({ onPostCreated, onPostUpdated, onClose,
       throw new Error('Wallet not connected')
     }
     
+    // 🔥 Для Sora-2: сохраняем промпт в title
     const postData = {
       userWallet: walletAddress,
       type: postType,
-      title: formData.title,
+      title: formData.soraPrompt || formData.title, // Промпт Sora-2 сохраняется в title
       content: formData.content,
       category: formData.category,
       tags: formData.tags,
@@ -816,7 +819,7 @@ export default function CreatePostModal({ onPostCreated, onPostUpdated, onClose,
     const result = await response.json()
     const newPost = result.post || result
     
-    toast.success('Post created successfully!')
+    toast.success('🎥 Sora-2 generation started! Redirecting to tracking page...')
     
     if (onClose) onClose()
     if (onPostCreated) {
@@ -828,6 +831,11 @@ export default function CreatePostModal({ onPostCreated, onPostUpdated, onClose,
     }
     
     setIsUploading(false)
+    
+    // Редирект на страницу отслеживания генераций
+    setTimeout(() => {
+      router.push('/sora-generation')
+    }, 500)
   }
 
   // Функция для оптимизации промпта через OpenAI
@@ -1155,9 +1163,14 @@ export default function CreatePostModal({ onPostCreated, onPostUpdated, onClose,
       })
 
       // Подготавливаем данные поста
+      // 🔥 Для Sora-2: сохраняем промпт в title
+      const finalTitle = (formData.contentSource === 'sora2' && formData.soraPrompt) 
+        ? formData.soraPrompt 
+        : formData.title
+      
       const postDataToSend = {
         userWallet: walletAddress,  // 🔧 ИСПРАВЛЕНИЕ: используем walletAddress с fallback логикой
-        title: formData.title,
+        title: finalTitle,
         content: formData.content, // Для Sora-2 content пустой
         type: postType, // Используем postType (может быть изменен для Sora-2)
         category: formData.category,
@@ -1216,12 +1229,13 @@ export default function CreatePostModal({ onPostCreated, onPostUpdated, onClose,
       console.log(`[CreatePostModal] Post ${mode === 'edit' ? 'updated' : 'created'}:`, post)
       
       // Обновляем счетчик генераций после успешного создания Sora-2 поста
-      if (mode === 'create' && formData.contentSource === 'sora2' && availableGenerations !== null) {
+      const isSora2Post = mode === 'create' && formData.contentSource === 'sora2'
+      if (isSora2Post && availableGenerations !== null) {
         setAvailableGenerations(availableGenerations - 1)
         console.log('[CreatePostModal] Updated generation count:', availableGenerations - 1)
       }
       
-      toast.success(`Post ${mode === 'edit' ? 'updated' : 'created'} successfully!`)
+      toast.success(isSora2Post ? '🎥 Sora-2 generation started!' : `Post ${mode === 'edit' ? 'updated' : 'created'} successfully!`)
       
       // Reset form только при создании
       if (mode === 'create') {
@@ -1256,6 +1270,16 @@ export default function CreatePostModal({ onPostCreated, onPostUpdated, onClose,
 
       // Close modal and update
       if (onClose) onClose()
+      
+      // Редирект на страницу Sora-Generation для Sora-2 постов
+      if (isSora2Post) {
+        console.log('[CreatePostModal] Redirecting to Sora-Generation page...')
+        setTimeout(() => {
+          router.push('/sora-generation')
+        }, 500)
+        return // Прерываем выполнение, чтобы не вызывать остальные колбэки
+      }
+      
       if (mode === 'edit' && onPostUpdated) {
         // Передаем обновленный пост в callback
         setTimeout(() => onPostUpdated(post), 500)
@@ -1383,7 +1407,9 @@ export default function CreatePostModal({ onPostCreated, onPostUpdated, onClose,
                 <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-3">
                   What do you want to create?
                 </label>
-                <div className="grid grid-cols-4 gap-2">
+                <div className="grid grid-cols-3 gap-2">
+                  {/* Text посты - УБРАНО */}
+                  {/*
                   <button
                     type="button"
                     onClick={() => setFormData(prev => ({ ...prev, type: 'text', contentSource: 'upload' }))}
@@ -1396,6 +1422,7 @@ export default function CreatePostModal({ onPostCreated, onPostUpdated, onClose,
                     <DocumentTextIcon className="w-5 h-5 mx-auto mb-1 text-blue-600 dark:text-blue-400" />
                     <div className="text-xs font-medium text-gray-900 dark:text-white">Text</div>
                   </button>
+                  */}
 
                   <button
                     type="button"
@@ -1425,7 +1452,7 @@ export default function CreatePostModal({ onPostCreated, onPostUpdated, onClose,
 
                   <button
                     type="button"
-                    onClick={() => setFormData(prev => ({ ...prev, contentSource: 'sora2', type: 'video' }))}
+                    onClick={() => setFormData(prev => ({ ...prev, contentSource: 'sora2', type: 'video', accessType: 'free', price: 0 }))}
                     disabled={availableGenerations === 0}
                     className={`p-3 rounded-xl border-2 transition-all relative ${
                       formData.contentSource === 'sora2'
@@ -1813,53 +1840,56 @@ export default function CreatePostModal({ onPostCreated, onPostUpdated, onClose,
               </div>
 
               {/* Access type - 🎯 UX IMPROVEMENT: Простой dropdown с tooltip */}
-              <div>
-                <label className="flex items-center gap-2 text-sm font-medium text-gray-700 dark:text-slate-300 mb-2">
-                  <span>Content access</span>
-                  {/* Tooltip с объяснением */}
-                  <div 
-                    className="relative"
-                    onMouseEnter={() => setShowAccessTooltip(true)}
-                    onMouseLeave={() => setShowAccessTooltip(false)}
-                  >
-                    <QuestionMarkCircleIcon className="w-4 h-4 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 cursor-help transition-colors" />
-                    {showAccessTooltip && (
-                      <div className="absolute z-50 bottom-full left-1/2 -translate-x-1/2 mb-2 w-64 px-3 py-2 text-xs text-white bg-gray-900 dark:bg-gray-800 rounded-lg shadow-lg border border-gray-700">
-                        <div className="relative">
-                          <p className="font-medium mb-1">Content Access Levels:</p>
-                          <ul className="space-y-0.5 text-gray-200">
-                            <li>• <strong>Free</strong> - Everyone can see</li>
-                            <li>• <strong>Subscribers</strong> - Basic tier+</li>
-                            <li>• <strong>Premium</strong> - Premium tier+</li>
-                            <li>• <strong>VIP</strong> - Only VIP subscribers</li>
-                            <li>• <strong>Paid</strong> - One-time purchase</li>
-                          </ul>
-                          <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-2 h-2 bg-gray-900 dark:bg-gray-800 border-r border-b border-gray-700 transform rotate-45"></div>
+              {/* 🔥 Скрыт для Sora-2 - AI генерации всегда бесплатны */}
+              {formData.contentSource !== 'sora2' && (
+                <div>
+                  <label className="flex items-center gap-2 text-sm font-medium text-gray-700 dark:text-slate-300 mb-2">
+                    <span>Content access</span>
+                    {/* Tooltip с объяснением */}
+                    <div 
+                      className="relative"
+                      onMouseEnter={() => setShowAccessTooltip(true)}
+                      onMouseLeave={() => setShowAccessTooltip(false)}
+                    >
+                      <QuestionMarkCircleIcon className="w-4 h-4 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 cursor-help transition-colors" />
+                      {showAccessTooltip && (
+                        <div className="absolute z-50 bottom-full left-1/2 -translate-x-1/2 mb-2 w-64 px-3 py-2 text-xs text-white bg-gray-900 dark:bg-gray-800 rounded-lg shadow-lg border border-gray-700">
+                          <div className="relative">
+                            <p className="font-medium mb-1">Content Access Levels:</p>
+                            <ul className="space-y-0.5 text-gray-200">
+                              <li>• <strong>Free</strong> - Everyone can see</li>
+                              <li>• <strong>Subscribers</strong> - Basic tier+</li>
+                              <li>• <strong>Premium</strong> - Premium tier+</li>
+                              <li>• <strong>VIP</strong> - Only VIP subscribers</li>
+                              <li>• <strong>Paid</strong> - One-time purchase</li>
+                            </ul>
+                            <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-2 h-2 bg-gray-900 dark:bg-gray-800 border-r border-b border-gray-700 transform rotate-45"></div>
+                          </div>
                         </div>
-                      </div>
-                    )}
-                  </div>
-                </label>
-                <select
-                  value={formData.accessType}
-                  onChange={(e) => setFormData(prev => ({ 
-                    ...prev, 
-                    accessType: e.target.value as any,
-                    // Сбрасываем цену если выбран не платный доступ
-                    price: e.target.value === 'paid' ? prev.price : 0
-                  }))}
-                  className="w-full px-4 py-2 bg-white dark:bg-slate-800/50 border border-gray-300 dark:border-slate-700 rounded-xl text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent font-sans"
-                >
-                  <option value="free" className="font-sans">🌍 Free - Available to all</option>
-                  <option value="subscribers" className="font-sans">👥 For subscribers - Basic and above</option>
-                  <option value="premium" className="font-sans">✨ Premium - Premium and VIP</option>
-                  <option value="vip" className="font-sans">⭐ VIP content - Only VIP</option>
-                  <option value="paid" className="font-sans">💰 Paid - One-time purchase</option>
-                </select>
-              </div>
+                      )}
+                    </div>
+                  </label>
+                  <select
+                    value={formData.accessType}
+                    onChange={(e) => setFormData(prev => ({ 
+                      ...prev, 
+                      accessType: e.target.value as any,
+                      // Сбрасываем цену если выбран не платный доступ
+                      price: e.target.value === 'paid' ? prev.price : 0
+                    }))}
+                    className="w-full px-4 py-2 bg-white dark:bg-slate-800/50 border border-gray-300 dark:border-slate-700 rounded-xl text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent font-sans"
+                  >
+                    <option value="free" className="font-sans">🌍 Free - Available to all</option>
+                    <option value="subscribers" className="font-sans">👥 For subscribers - Basic and above</option>
+                    <option value="premium" className="font-sans">✨ Premium - Premium and VIP</option>
+                    <option value="vip" className="font-sans">⭐ VIP content - Only VIP</option>
+                    <option value="paid" className="font-sans">💰 Paid - One-time purchase</option>
+                  </select>
+                </div>
+              )}
 
-              {/* Price settings */}
-              {formData.accessType === 'paid' && (
+              {/* Price settings - скрыт для Sora-2 */}
+              {formData.accessType === 'paid' && formData.contentSource !== 'sora2' && (
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-2">

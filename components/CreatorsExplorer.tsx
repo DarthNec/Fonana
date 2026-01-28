@@ -6,9 +6,7 @@ import { HeartIcon as HeartSolidIcon } from '@heroicons/react/24/solid'
 import Avatar from './Avatar'
 import Link from 'next/link'
 import { useAppStore } from '@/lib/store/appStore'
-import { formatDistanceToNow } from 'date-fns'
 import { toast } from 'react-hot-toast'
-import Loading from '@/components/Loading'
 import { useWallet } from '@/lib/hooks/useSafeWallet'
 import Image from 'next/image'
 import { CheckBadgeIcon, PlayIcon, UsersIcon, SparklesIcon, Squares2X2Icon } from '@heroicons/react/24/outline'
@@ -507,11 +505,10 @@ function CreatorsExplorerInner({ mode = 'normal' }: CreatorsExplorerProps) {
 
   if (loading) {
     return (
-      <section className="py-20 bg-gradient-to-b from-slate-900 to-slate-800">
-        <div className="container mx-auto px-4">
-          <div className="text-center">
-            <p className="text-slate-300">Loading creators...</p>
-          </div>
+      <section className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-16 h-16 border-4 border-purple-500/30 border-t-purple-500 rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-gray-600 dark:text-slate-400">Loading creators...</p>
         </div>
       </section>
     )

@@ -20,7 +20,7 @@ export default function VersionCheckPage() {
   }, [])
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-purple-900 via-pink-800 to-red-700 pt-20">
+    <div className="min-h-screen bg-gradient-to-br from-purple-900 via-pink-800 to-red-700 pt-8 md:pt-4">
       <div className="max-w-4xl mx-auto px-4 py-12">
         {/* Кнопка назад */}
         <div className="mb-8">

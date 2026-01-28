@@ -17,6 +17,16 @@ import { BellIcon as BellSolidIcon } from '@heroicons/react/24/solid'
 import Link from 'next/link'
 import Avatar from './Avatar'
 
+// Эмоции (такие же как в PostActions)
+const EMOTIONS = [
+  { id: 1, emoji: '😂', label: 'Смешно' },
+  { id: 2, emoji: '🤡', label: 'Клоун' },
+  { id: 3, emoji: '🔥', label: 'Огонь' },
+  { id: 4, emoji: '💩', label: 'Какашка' },
+  { id: 5, emoji: '❤️', label: 'Сердечко' },
+  { id: 6, emoji: '👍', label: 'Палец вверх' },
+]
+
 // Функция для форматирования времени
 function formatTimeAgo(date: Date): string {
   const seconds = Math.floor((new Date().getTime() - date.getTime()) / 1000)
@@ -56,6 +66,13 @@ interface EmotionNotification {
   }
   emotionId: string
   createdAt: string
+}
+
+// Получить эмодзи по emotionId
+function getEmotionEmoji(emotionId: string | number): string {
+  const id = typeof emotionId === 'string' ? parseInt(emotionId, 10) : emotionId
+  const emotion = EMOTIONS.find(e => e.id === id)
+  return emotion?.emoji || emotionId.toString()
 }
 
 export default function NotificationsDropdown() {
@@ -193,7 +210,7 @@ export default function NotificationsDropdown() {
                         <p className="text-sm text-gray-900 dark:text-white">
                           <span className="font-semibold">{emotion.user.name}</span>
                           {' '}поставил реакцию{' '}
-                          <span className="text-xl">{emotion.emotionId}</span>
+                          <span className="text-xl">{getEmotionEmoji(emotion.emotionId)}</span>
                           {' '}на ваш пост
                         </p>
                         <p className="text-xs text-gray-500 dark:text-slate-500 mt-1">

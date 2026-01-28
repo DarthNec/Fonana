@@ -1,7 +1,6 @@
 'use client'
 
 import { io, Socket } from 'socket.io-client'
-import { authService } from './AuthService'
 
 export type SocketIOEvent = 
   | { type: 'creator_updated'; creatorId: string; data: any }

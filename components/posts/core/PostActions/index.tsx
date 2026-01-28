@@ -37,8 +37,8 @@ export function PostActions({
   overlay = false,
   onEmojiPickerChange
 }: PostActionsProps) {
-  const [optimisticLikes, setOptimisticLikes] = useState(post.engagement.likes)
-  const [isLiked, setIsLiked] = useState(post.engagement.isLiked)
+  const [optimisticLikes, setOptimisticLikes] = useState(post.engagement?.likes ?? 0)
+  const [isLiked, setIsLiked] = useState(post.engagement?.isLiked ?? false)
   const [isProcessing, setIsProcessing] = useState(false)
   const [showEmotionPicker, setShowEmotionPicker] = useState(false)
   
@@ -101,10 +101,10 @@ export function PostActions({
 
   // Обновляем локальное состояние при изменении пропсов
   useEffect(() => {
-    setOptimisticLikes(post.engagement.likes)
-    setIsLiked(post.engagement.isLiked)
+    setOptimisticLikes(post.engagement?.likes ?? 0)
+    setIsLiked(post.engagement?.isLiked ?? false)
     console.log(`Post engagement`, post);
-  }, [post.engagement.likes, post.engagement.isLiked])
+  }, [post.engagement?.likes, post.engagement?.isLiked])
 
   // Закрытие popup при клике вне его
   useEffect(() => {
@@ -370,7 +370,7 @@ export function PostActions({
             </svg>
           </div>
           <span className={cn(textSize, 'font-medium', overlay ? 'text-white' : 'group-hover:text-blue-500 dark:group-hover:text-blue-400')}>
-            {commentCount ?? post.engagement.comments}
+            {commentCount ?? post.engagement?.comments ?? 0}
           </span>
         </button>
 
@@ -384,7 +384,7 @@ export function PostActions({
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
           </svg>
           <span className={cn(textSize, 'font-medium')}>
-            {post.engagement.views}
+            {post.engagement?.views ?? 0}
           </span>
         </div>
       </div>

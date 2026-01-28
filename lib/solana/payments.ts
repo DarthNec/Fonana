@@ -231,9 +231,12 @@ export function solToLamports(sol: number): number {
   return Math.floor(sol * LAMPORTS_PER_SOL)
 }
 
-// Format SOL amount for display
+// Format SOL amount for display (убираем лишние нули)
 export function formatSolAmount(amount: number): string {
-  return `${(Number(amount) || 0).toFixed(4)} SOL`
+  const num = Number(amount) || 0
+  // Форматируем до 4 знаков, затем убираем trailing zeros
+  const formatted = num.toFixed(4).replace(/\.?0+$/, '')
+  return `${formatted} SOL`
 }
 
 export async function createPostPurchaseTransaction(

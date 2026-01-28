@@ -27,7 +27,7 @@ import { useQuery } from '@tanstack/react-query'
 import { EnterpriseErrorBoundary } from '@/components/ui/EnterpriseErrorBoundary'
 import { EnterpriseError } from '@/components/ui/EnterpriseError'
 import { unreadMessagesService } from '@/lib/services/UnreadMessagesService'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import toast from 'react-hot-toast'
 import { useWallet } from '@/lib/hooks/useSafeWallet'
 import { useConnection } from '@solana/wallet-adapter-react'
@@ -99,6 +99,7 @@ function MessagesPageClientInner() {
   const user = useUser()
   const setUser = useAppStore(state => state.setUser)
   const router = useRouter()
+  const searchParams = useSearchParams()
   const { publicKey, sendTransaction } = useWallet()
   const publicKeyString = publicKey?.toBase58() ?? null
   const { connection } = useConnection()
@@ -684,6 +685,24 @@ function MessagesPageClientInner() {
     }
   }
 
+  // Автоматически выбираем чат из query параметра
+  useEffect(() => {
+    const conversationFromQuery = searchParams.get('conversation')
+    
+    if (conversationFromQuery && conversations.length > 0 && !selectedConversationId) {
+      // Проверяем, существует ли этот чат в списке
+      const conversationExists = conversations.some(c => c.id === conversationFromQuery)
+      
+      if (conversationExists) {
+        console.log('[Messages] Auto-selecting conversation from query:', conversationFromQuery)
+        setSelectedConversationId(conversationFromQuery)
+        
+        // Очищаем query параметр из URL
+        router.replace('/messages')
+      }
+    }
+  }, [conversations, searchParams, selectedConversationId, router])
+
   // Загружаем сообщения при выборе чата
   useEffect(() => {
     if (selectedConversationId && !isMobile) {
@@ -735,12 +754,8 @@ function MessagesPageClientInner() {
       // Закрываем модалку
       setShowCreatorsModal(false)
       
-      // На desktop открываем в правой панели, на мобилке переходим на страницу
-      if (isMobile) {
-        router.push(`/messages/${conversationId}`)
-      } else {
-        setSelectedConversationId(conversationId)
-      }
+      // Открываем чат в правой панели (или на мобилке)
+      setSelectedConversationId(conversationId)
     } catch (error) {
       console.error('[startConversation] Error:', error)
     }
@@ -826,13 +841,8 @@ function MessagesPageClientInner() {
 
   // Обработчик клика на чат
   const handleConversationClick = (conversationId: string) => {
-    if (isMobile) {
-      // На мобилке переходим на отдельную страницу
-      router.push(`/messages/${conversationId}`)
-    } else {
-      // На desktop открываем в правой панели
-      setSelectedConversationId(conversationId)
-    }
+    // Всегда открываем в правой панели (или на мобилке в основной области)
+    setSelectedConversationId(conversationId)
   }
 
   // Получаем данные выбранного участника
@@ -842,17 +852,11 @@ function MessagesPageClientInner() {
   const showRightPanel = !isMobile && conversations.length > 0 && !isLoading
 
   return (
-    <div className={`min-h-screen ${isMobile ? 'bg-white dark:bg-slate-900' : 'bg-gray-50 dark:bg-slate-900'} pt-4 sm:pt-20 pb-20`}>
-      <div className={`${showRightPanel ? 'max-w-7xl' : 'max-w-2xl'} mx-auto px-4`}>
-        <div className={`${showRightPanel ? 'grid grid-cols-3 gap-4' : ''}`}>
+    <div className={`min-h-screen bg-white dark:bg-slate-900 ${isMobile ? 'pb-20' : 'md:ml-[px]'}`}>
+      <div className={`${showRightPanel ? '' : 'max-w-2xl mx-auto px-4 pt-4'}`}>
+        <div className={`${showRightPanel ? 'flex h-screen' : ''}`}>
           {/* Левая панель - список чатов (на desktop всегда видна, на мобилке скрыта когда открыт чат) */}
-          <div className={`${showRightPanel ? 'col-span-1' : ''}`}>
-            {/* Заголовок Messages - НАД блоком чатов */}
-            {!isMobile && conversations.length > 0 && !isLoading && (
-              <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-3 h-8 flex items-center">
-                Messages
-              </h2>
-            )}
+          <div className={`${showRightPanel ? 'w-[360px] border-r border-gray-200 dark:border-slate-700 flex-shrink-0' : ''}`}>
             
         {isLoading ? (
           <div className="text-center py-12">
@@ -861,9 +865,27 @@ function MessagesPageClientInner() {
           </div>
         ) : (
             <>
+            {/* Header sidebar */}
+            {!isMobile && conversations.length > 0 && !isLoading && (
+              <div className="px-4 py-4 border-b border-gray-200 dark:border-slate-700">
+                <div className="flex items-center justify-between">
+                  <h2 className="text-xl font-bold text-gray-900 dark:text-white">
+                    Messages
+                  </h2>
+                  <button
+                    onClick={() => setShowSettingsModal(true)}
+                    className="p-1.5 hover:bg-gray-100 dark:hover:bg-slate-800 rounded-lg transition-colors"
+                    title="Settings"
+                  >
+                    <Cog6ToothIcon className="w-5 h-5 text-gray-600 dark:text-gray-400" />
+                  </button>
+                </div>
+              </div>
+            )}
+            
             {/* Блок со списком чатов */}
-            <div className={`${isMobile ? 'bg-transparent' : 'bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg'} overflow-y-auto ${isMobile ? 'h-auto' : 'h-[calc(100vh-12rem)]'}`}>
-              <div className={isMobile ? '' : 'p-4'}>
+            <div className={`${isMobile ? 'bg-transparent' : 'bg-white dark:bg-slate-900'} overflow-y-auto ${isMobile ? 'h-auto' : 'h-[calc(100vh-73px)]'}`}>
+              <div>
         {error ? (
           <div className="text-center py-12">
             <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-6">
@@ -897,13 +919,13 @@ function MessagesPageClientInner() {
           </div>
         ) : (
           <>
-          <div className="space-y-1">
+          <div className="space-y-0">
             {conversations.map((conversation) => (
               <div
                 key={conversation.id}
                 onClick={() => handleConversationClick(conversation.id)}
-                className={`block hover:bg-gray-100 dark:hover:bg-slate-700 border border-gray-200 dark:border-slate-700 rounded-lg p-4 transition-colors cursor-pointer ${
-                  selectedConversationId === conversation.id && !isMobile ? 'ring-2 ring-purple-500 bg-gray-50 dark:bg-slate-700' : 'bg-transparent'
+                className={`block hover:bg-gray-100 dark:hover:bg-slate-800/50 px-4 py-3 transition-colors cursor-pointer border-b border-gray-200 dark:border-slate-700/50 last:border-b-0 ${
+                  selectedConversationId === conversation.id && !isMobile ? 'bg-gray-100 dark:bg-slate-800/50' : 'bg-transparent'
                 }`}
               >
                 <div className="flex items-center space-x-3">
@@ -996,13 +1018,13 @@ function MessagesPageClientInner() {
           <button
             onClick={() => {
               setShowCreatorsModal(true)
-              loadCreators()
-            }}
-            className="w-full mt-4 flex items-center justify-center gap-2 px-6 py-3 bg-transparent hover:bg-gray-100 dark:hover:bg-slate-700 border-2 border-dashed border-gray-300 dark:border-slate-600 text-gray-600 dark:text-gray-400 font-medium rounded-lg transition-colors"
-          >
-            <PaperAirplaneIcon className="w-5 h-5" />
-            Start New Conversation
-          </button>
+            loadCreators()
+          }}
+          className="w-[95%] mt-6 mx-auto flex items-center justify-center gap-2 py-3 bg-transparent hover:bg-gray-100 dark:hover:bg-slate-700 border-2 border-dashed border-gray-300 dark:border-slate-600 text-gray-600 dark:text-gray-400 font-medium rounded-lg transition-colors"
+        >
+          <PaperAirplaneIcon className="w-5 h-5" />
+          Start New Conversation
+        </button>
           </>
         )}
               </div>
@@ -1013,29 +1035,18 @@ function MessagesPageClientInner() {
 
           {/* Правая панель - содержимое чата (только на desktop и если есть чаты) */}
           {showRightPanel && (
-            <div className={`${showRightPanel ? 'col-span-2' : ''}`}>
-              {/* Настройки - НАД блоком чата */}
-              <div className="flex items-center justify-end mb-3 h-8">
-                <button
-                  onClick={() => setShowSettingsModal(true)}
-                  className="p-2 hover:bg-gray-100 dark:hover:bg-slate-800 rounded-lg transition-colors"
-                  title="Settings"
-                >
-                  <Cog6ToothIcon className="w-6 h-6 text-gray-600 dark:text-gray-400" />
-                </button>
-              </div>
-              
+            <div className={`${showRightPanel ? 'flex-1 flex flex-col' : ''}`}>
               {/* Блок чата */}
-              <div className="bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg overflow-hidden">
+              <div className="bg-white dark:bg-slate-900 flex-1 flex flex-col overflow-hidden">
               {selectedConversationId ? (
                 selectedConversation ? (
-                  <div className="h-[calc(100vh-12rem)] flex flex-col">
+                  <div className="h-screen flex flex-col">
                     {/* Header участника */}
-                    <div className="flex-shrink-0 border-b border-gray-200 dark:border-slate-700 p-4">
+                    <div className="flex-shrink-0 border-b border-gray-200 dark:border-slate-700 px-6 py-3">
                       <div className="flex items-center justify-between">
                         <Link 
                           href={`/creator/${selectedConversation.participant.id}`}
-                          className="flex items-center gap-3 hover:bg-gray-50 dark:hover:bg-slate-700 p-2 -m-2 rounded-xl transition-colors"
+                          className="flex items-center gap-3"
                         >
                           <Avatar
                             src={selectedConversation.participant.avatar}
@@ -1044,23 +1055,20 @@ function MessagesPageClientInner() {
                             seed={selectedConversation.participant.nickname || selectedConversation.participant.id}
                           />
                           <div>
-                            <h3 className="font-semibold text-gray-900 dark:text-white">
+                            <h3 className="font-semibold text-gray-900 dark:text-white text-sm">
                               {selectedConversation.participant.fullName || selectedConversation.participant.nickname}
                             </h3>
-                            <p className="text-sm text-gray-600 dark:text-gray-400">
-                              @{selectedConversation.participant.nickname}
-                            </p>
-                </div>
-              </Link>
+                          </div>
+                        </Link>
                         <button
                           onClick={() => {
                             setSelectedConversationId(null)
                             setMessages([])
                           }}
-                          className="p-2 hover:bg-gray-100 dark:hover:bg-slate-700 rounded-lg transition-colors"
+                          className="p-1.5 hover:bg-gray-100 dark:hover:bg-slate-800 rounded-lg transition-colors"
                           title="Закрыть чат"
                         >
-                          <XMarkIcon className="w-5 h-5 text-gray-500 dark:text-gray-400" />
+                          <EllipsisVerticalIcon className="w-5 h-5 text-gray-500 dark:text-gray-400" />
                         </button>
                       </div>
                     </div>
@@ -1094,10 +1102,10 @@ function MessagesPageClientInner() {
                             {/* Tip Message */}
                             {message.metadata?.type === 'tip' && (
                               <div className="max-w-xs">
-                                <div className={`p-4 rounded-2xl ${
+                                <div className={`px-4 py-2.5 rounded-2xl ${
                                   message.isOwn 
-                                    ? 'bg-gradient-to-r from-yellow-500 to-orange-500 text-white shadow-lg' 
-                                    : 'bg-gradient-to-r from-yellow-100 to-orange-100 dark:from-yellow-900/20 dark:to-orange-900/20 text-yellow-800 dark:text-yellow-200'
+                                    ? 'bg-yellow-500 text-white' 
+                                    : 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-200'
                                 }`}>
                                   <div className="flex items-center gap-2 mb-2">
                                     <SparklesIcon className="w-5 h-5" />
@@ -1126,9 +1134,9 @@ function MessagesPageClientInner() {
                               <div className={`max-w-[70%] ${message.isOwn ? 'items-end' : 'items-start'}`}>
                                 <div className={`rounded-2xl ${
                                   message.isOwn 
-                                    ? 'bg-gradient-to-r from-purple-600 to-pink-600 text-white shadow-md'
-                                    : 'bg-gray-100 dark:bg-slate-700'
-                                } ${message.isPaid && !message.isPurchased && !message.isOwn ? 'p-1' : 'p-3'}`}>
+                                    ? 'bg-gray-700 dark:bg-gray-700 text-white'
+                                    : 'bg-gray-200 dark:bg-slate-700 text-gray-900 dark:text-white'
+                                } ${message.isPaid && !message.isPurchased && !message.isOwn ? 'p-1' : 'px-4 py-2.5'}`}>
                                   
                                   {/* PPV Content */}
                                   {message.isPaid && !message.isPurchased && !message.isOwn && (
@@ -1261,7 +1269,7 @@ function MessagesPageClientInner() {
                   </div>
 
                   {/* Input Area */}
-                  <div className="flex-shrink-0 border-t border-gray-200 dark:border-slate-700 p-4 max-h-[40vh] overflow-y-auto">
+                  <div className="flex-shrink-0 border-t border-gray-200 dark:border-slate-700 px-6 py-3 max-h-[40vh] overflow-y-auto">
                     {/* Media Preview */}
                     {selectedMedia && (
                       <div className="mb-3 relative inline-block">
@@ -1330,7 +1338,7 @@ function MessagesPageClientInner() {
                       </div>
                     )}
 
-                    <div className="flex items-end gap-2">
+                    <div className="flex items-center gap-2">
                       <textarea
                         value={messageText}
                         onChange={(e) => setMessageText(e.target.value)}
@@ -1341,15 +1349,15 @@ function MessagesPageClientInner() {
                           }
                         }}
                         placeholder="Type a message..."
-                        className="flex-1 px-4 py-2.5 bg-gray-100 dark:bg-slate-700 border border-gray-200 dark:border-slate-600 rounded-2xl resize-none focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent text-sm min-h-[44px]"
-                        rows={2}
+                        className="flex-1 px-4 py-2.5 bg-gray-100 dark:bg-slate-800 border-0 rounded-full resize-none focus:outline-none focus:ring-1 focus:ring-gray-300 dark:focus:ring-slate-600 text-sm max-h-[100px]"
+                        rows={1}
                       />
                       
                       <div className="flex items-center gap-1">
                         {/* Media Upload */}
                         <button
                           onClick={() => fileInputRef.current?.click()}
-                          className="p-2.5 text-gray-600 dark:text-slate-400 hover:text-gray-900 dark:hover:text-white rounded-xl hover:bg-gray-100 dark:hover:bg-slate-700 transition-all"
+                          className="p-2 text-gray-600 dark:text-slate-400 hover:text-gray-900 dark:hover:text-white rounded-full hover:bg-gray-100 dark:hover:bg-slate-700 transition-all"
                           title="Add photo or video"
                         >
                           <PhotoIcon className="w-5 h-5" />
@@ -1358,7 +1366,7 @@ function MessagesPageClientInner() {
                         {/* PPV Toggle */}
                         <button
                           onClick={() => setIsPaidMessage(!isPaidMessage)}
-                          className={`p-2.5 rounded-xl transition-all ${
+                          className={`p-2 rounded-full transition-all ${
                             isPaidMessage 
                               ? 'bg-gradient-to-r from-purple-100 to-pink-100 dark:from-purple-900/30 dark:to-pink-900/30 text-purple-600 dark:text-purple-400' 
                               : 'text-gray-600 dark:text-slate-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-slate-700'
@@ -1371,7 +1379,7 @@ function MessagesPageClientInner() {
                         {/* Tip */}
                         <button
                           onClick={() => setShowTipModal(true)}
-                          className="p-2.5 text-gray-600 dark:text-slate-400 hover:text-gray-900 dark:hover:text-white rounded-xl hover:bg-gray-100 dark:hover:bg-slate-700 transition-all"
+                          className="p-2 text-gray-600 dark:text-slate-400 hover:text-gray-900 dark:hover:text-white rounded-full hover:bg-gray-100 dark:hover:bg-slate-700 transition-all"
                           title="Send tip"
                         >
                           <GiftIcon className="w-5 h-5" />
@@ -1381,7 +1389,7 @@ function MessagesPageClientInner() {
                         <button
                           onClick={sendMessage}
                           disabled={(!messageText.trim() && !selectedMedia) || isSending || isUploadingMedia}
-                          className="p-2.5 rounded-xl bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 disabled:from-gray-400 disabled:to-gray-400 text-white transition-all disabled:cursor-not-allowed shadow-lg"
+                          className="p-2.5 rounded-full bg-purple-600 hover:bg-purple-700 disabled:bg-gray-400 text-white transition-all disabled:cursor-not-allowed"
                         >
                           {isSending || isUploadingMedia ? (
                             <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
@@ -1402,7 +1410,7 @@ function MessagesPageClientInner() {
                   </div>
                 </div>
                 ) : (
-                  <div className="h-[calc(100vh-12rem)] flex items-center justify-center">
+                  <div className="h-screen flex items-center justify-center">
                     <div className="text-center">
                       <div className="w-16 h-16 border-4 border-purple-500/30 border-t-purple-500 rounded-full animate-spin mx-auto mb-4"></div>
                       <p className="text-gray-600 dark:text-slate-400">Загрузка чата...</p>
@@ -1410,7 +1418,7 @@ function MessagesPageClientInner() {
                   </div>
                 )
               ) : (
-                <div className="h-[calc(100vh-12rem)] flex items-center justify-center">
+                <div className="h-screen flex items-center justify-center">
                   <div className="text-center">
                     <ChatBubbleLeftEllipsisIcon className="w-20 h-20 text-gray-300 dark:text-slate-600 mx-auto mb-4" />
                     <h3 className="text-xl font-semibold text-gray-700 dark:text-slate-300 mb-2">

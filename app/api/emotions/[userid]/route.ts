@@ -76,46 +76,83 @@ export async function GET(
 
     console.log('[Emotions Creator API] Found emotions:', emotions.length)
 
-    // Форматируем данные
-    const formattedEmotions = emotions.map((emotion: any) => ({
-      user: {
-        id: emotion.user.id,
-        name: emotion.user.fullName || emotion.user.nickname || 'Unknown',
-        username: emotion.user.nickname || 'unknown',
-        avatar: emotion.user.avatar,
-        wallet: emotion.user.wallet,
-        isVerified: emotion.user.isVerified
-      },
-      post: {
-        id: emotion.post.id,
-        title: emotion.post.title,
-        content: emotion.post.content,
-        type: emotion.post.type,
-        category: emotion.post.category,
-        thumbnail: emotion.post.thumbnail,
-        mediaUrl: emotion.post.mediaUrl,
-        blurUrl: emotion.post.blurUrl,
-        previewUrl: emotion.post.previewUrl,
-        isLocked: emotion.post.isLocked,
-        isPremium: emotion.post.isPremium,
-        price: emotion.post.price,
-        currency: emotion.post.currency,
-        likesCount: emotion.post.likesCount,
-        commentsCount: emotion.post.commentsCount,
-        viewsCount: emotion.post.viewsCount,
-        createdAt: emotion.post.createdAt,
-        updatedAt: emotion.post.updatedAt,
-        creator: {
-          id: emotion.post.creator.id,
-          name: emotion.post.creator.fullName || emotion.post.creator.nickname || 'Unknown',
-          username: emotion.post.creator.nickname || 'unknown',
-          avatar: emotion.post.creator.avatar,
-          isVerified: emotion.post.creator.isVerified
-        }
-      },
-      emotionId: emotion.emotionId,
-      createdAt: emotion.createdAt
-    }))
+    // Форматируем данные с проверкой на null
+    const formattedEmotions: any[] = []
+    
+    for (const emotion of emotions) {
+      // Проверяем наличие связанных данных
+      if (!emotion.user) {
+        console.error('[Emotions Creator API] Missing user for emotion:', {
+          emotionId: emotion.id,
+          emotionType: emotion.emotionId,
+          userId: emotion.userId,
+          postId: emotion.postId
+        })
+        continue // Пропускаем эту эмоцию
+      }
+      
+      if (!emotion.post) {
+        console.error('[Emotions Creator API] Missing post for emotion:', {
+          emotionId: emotion.id,
+          emotionType: emotion.emotionId,
+          userId: emotion.userId,
+          postId: emotion.postId
+        })
+        continue // Пропускаем эту эмоцию
+      }
+      
+      if (!emotion.post.creator) {
+        console.error('[Emotions Creator API] Missing post.creator for emotion:', {
+          emotionId: emotion.id,
+          emotionType: emotion.emotionId,
+          postId: emotion.postId,
+          postCreatorId: emotion.post.creatorId
+        })
+        continue // Пропускаем эту эмоцию
+      }
+      
+      formattedEmotions.push({
+        user: {
+          id: emotion.user.id,
+          name: emotion.user.fullName || emotion.user.nickname || 'Unknown',
+          username: emotion.user.nickname || 'unknown',
+          avatar: emotion.user.avatar,
+          wallet: emotion.user.wallet,
+          isVerified: emotion.user.isVerified
+        },
+        post: {
+          id: emotion.post.id,
+          title: emotion.post.title,
+          content: emotion.post.content,
+          type: emotion.post.type,
+          category: emotion.post.category,
+          thumbnail: emotion.post.thumbnail,
+          mediaUrl: emotion.post.mediaUrl,
+          blurUrl: emotion.post.blurUrl,
+          previewUrl: emotion.post.previewUrl,
+          isLocked: emotion.post.isLocked,
+          isPremium: emotion.post.isPremium,
+          price: emotion.post.price,
+          currency: emotion.post.currency,
+          likesCount: emotion.post.likesCount,
+          commentsCount: emotion.post.commentsCount,
+          viewsCount: emotion.post.viewsCount,
+          createdAt: emotion.post.createdAt,
+          updatedAt: emotion.post.updatedAt,
+          creator: {
+            id: emotion.post.creator.id,
+            name: emotion.post.creator.fullName || emotion.post.creator.nickname || 'Unknown',
+            username: emotion.post.creator.nickname || 'unknown',
+            avatar: emotion.post.creator.avatar,
+            isVerified: emotion.post.creator.isVerified
+          }
+        },
+        emotionId: emotion.emotionId,
+        createdAt: emotion.createdAt
+      })
+    }
+    
+    console.log('[Emotions Creator API] Formatted emotions:', formattedEmotions.length, 'of', emotions.length)
 
     return NextResponse.json({
       success: true,

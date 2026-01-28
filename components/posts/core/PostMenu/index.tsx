@@ -82,7 +82,9 @@ export function PostMenu({ post, onAction, className, overlay = false, onMenuOpe
     setIsOpen(!isOpen)
   }
   
-  const handleAction = (type: PostAction['type']) => {
+  const handleAction = (type: PostAction['type'], e?: React.MouseEvent) => {
+    console.log('[PostMenu] handleAction:', type)
+    e?.stopPropagation() // Останавливаем всплытие, чтобы не открывался пост
     setIsOpen(false)
     
     if (type === 'share') {
@@ -126,7 +128,7 @@ export function PostMenu({ post, onAction, className, overlay = false, onMenuOpe
             <>
               {/* Creator actions */}
               <button
-                onClick={() => handleAction('edit')}
+                onClick={(e) => handleAction('edit', e)}
                 className={cn(
                   'flex items-center gap-3 w-full px-4 py-2.5',
                   'text-gray-700 dark:text-slate-300',
@@ -139,7 +141,7 @@ export function PostMenu({ post, onAction, className, overlay = false, onMenuOpe
               </button>
 
               <button
-                onClick={() => handleAction('share')}
+                onClick={(e) => handleAction('share', e)}
                 className={cn(
                   'flex items-center gap-3 w-full px-4 py-2.5',
                   'text-gray-700 dark:text-slate-300',
@@ -152,7 +154,7 @@ export function PostMenu({ post, onAction, className, overlay = false, onMenuOpe
               </button>
               
               <button
-                onClick={() => handleAction('delete')}
+                onClick={(e) => handleAction('delete', e)}
                 className={cn(
                   'flex items-center gap-3 w-full px-4 py-2.5',
                   'text-red-600 dark:text-red-400',
@@ -170,7 +172,7 @@ export function PostMenu({ post, onAction, className, overlay = false, onMenuOpe
                   <div className="my-1 h-px bg-gray-200 dark:bg-slate-700" />
                   
                   <button
-                    onClick={() => handleAction('adminDelete')}
+                    onClick={(e) => handleAction('adminDelete', e)}
                     className={cn(
                       'flex items-center gap-3 w-full px-4 py-2.5',
                       'text-orange-600 dark:text-orange-400',
@@ -190,7 +192,7 @@ export function PostMenu({ post, onAction, className, overlay = false, onMenuOpe
               {isAdmin && (
                 <>
                   <button
-                    onClick={() => handleAction('adminDelete')}
+                    onClick={(e) => handleAction('adminDelete', e)}
                     className={cn(
                       'flex items-center gap-3 w-full px-4 py-2.5',
                       'text-red-600 dark:text-red-400',
@@ -208,7 +210,7 @@ export function PostMenu({ post, onAction, className, overlay = false, onMenuOpe
               
               {/* Viewer actions */}
               <button
-                onClick={() => handleAction('share')}
+                onClick={(e) => handleAction('share', e)}
                 className={cn(
                   'flex items-center gap-3 w-full px-4 py-2.5',
                   'text-gray-700 dark:text-slate-300',
@@ -221,7 +223,7 @@ export function PostMenu({ post, onAction, className, overlay = false, onMenuOpe
               </button>
               
               <button
-                onClick={() => handleAction('bookmark')}
+                onClick={(e) => handleAction('bookmark', e)}
                 className={cn(
                   'flex items-center gap-3 w-full px-4 py-2.5',
                   'text-gray-700 dark:text-slate-300',
@@ -236,7 +238,7 @@ export function PostMenu({ post, onAction, className, overlay = false, onMenuOpe
               <div className="my-1 h-px bg-gray-200 dark:bg-slate-700" />
               
               <button
-                onClick={() => handleAction('report')}
+                onClick={(e) => handleAction('report', e)}
                 className={cn(
                   'flex items-center gap-3 w-full px-4 py-2.5',
                   'text-red-600 dark:text-red-400',

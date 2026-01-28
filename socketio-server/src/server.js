@@ -3,7 +3,6 @@ const { createServer } = require('http');
 const { createServer: createHttpsServer } = require('https');
 const fs = require('fs');
 const path = require('path');
-const { publishToChannel, subscribeToChannel, isAvailable: isRedisAvailable } = require('./redis');
 
 // Хранилище активных соединений
 const connections = new Map();
@@ -240,29 +239,10 @@ function createSocketIOServer(port) {
     });
   });
   
-  // Инициализация Redis подписок (если доступен)
-  if (isRedisAvailable()) {
-    initRedisSubscriptions(io);
-  }
-  
   // Запускаем HTTP сервер
   httpServer.listen(port);
   
   return io;
-}
-
-// Инициализация Redis подписок
-function initRedisSubscriptions(io) {
-  subscribeToChannel('socketio:*', (event) => {
-    const channel = event.channel || event.type;
-    
-    // Отправляем событие всем клиентам в комнате
-    io.to(channel).emit(event.type, event);
-    
-    console.log(`📨 Relayed Redis event to room: ${channel}`);
-  });
-  
-  console.log('📡 Redis subscriptions initialized');
 }
 
 // Получение ключа канала
@@ -306,12 +286,7 @@ function broadcastToChannel(io, channel, event) {
   
   console.log(`📢 Broadcasting to channel ${channelKey}:`, event.type);
   
-  // Если Redis доступен, публикуем событие
-  if (isRedisAvailable()) {
-    publishToChannel(`socketio:${channelKey}`, event);
-  }
-  
-  // Отправляем локально
+  // Отправляем в комнату
   io.to(channelKey).emit(event.type, event);
 }
 

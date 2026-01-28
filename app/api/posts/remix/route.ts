@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { PrismaClient } from '@prisma/client'
+import { prisma } from '@/lib/prisma'
 import { saveRemixToFile } from '@/lib/remixFileSystem'
 
-const prisma = new PrismaClient()
+// 🔥 ИСПРАВЛЕНО: Используем синглтон prisma вместо new PrismaClient()
 
 // GET /api/posts/remix?postId={postId} - получить цепочку ремиксов
 export async function GET(request: NextRequest) {

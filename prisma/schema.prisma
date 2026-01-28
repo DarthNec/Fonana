@@ -63,6 +63,7 @@ model User {
   postPurchases        PostPurchase[]        @relation("UserPostPurchases")
   supportTickets       SupportTicket[]       @relation("UserSupportTickets")
   stories              Story[]
+  bookmarks            Bookmark[]            @relation("UserBookmarks")
 
   @@map("users")
 }
@@ -104,6 +105,7 @@ model Post {
   tags            PostTag[]
   creator         User             @relation(fields: [creatorId], references: [id], onDelete: Cascade)
   purchases       PostPurchase[]   @relation("PostPurchases")
+  bookmarks       Bookmark[]       @relation("PostBookmarks")
 
   @@index([requestId])
   @@map("posts")
@@ -183,6 +185,20 @@ model Emotion {
   @@index([commentId])
   @@index([storyId])
   @@map("emotions")
+}
+
+model Bookmark {
+  id        String   @id @default(cuid())
+  userId    String
+  postId    String
+  createdAt DateTime @default(now())
+  user      User     @relation("UserBookmarks", fields: [userId], references: [id], onDelete: Cascade)
+  post      Post     @relation("PostBookmarks", fields: [postId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, postId])
+  @@index([userId])
+  @@index([postId])
+  @@map("bookmarks")
 }
 
 model Subscription {
@@ -641,4 +657,16 @@ model Version {
   updatedAt DateTime @updatedAt
 
   @@map("versions")
+}
+
+model AiChatMessage {
+  id        String   @id @default(cuid())
+  userId    String
+  nickname  String   // Ник AI пользователя
+  avatar    String?  // Аватар AI пользователя
+  message   String   // Текст сообщения
+  createdAt DateTime @default(now())
+
+  @@index([createdAt])
+  @@map("ai_chat_messages")
 }

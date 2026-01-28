@@ -19,24 +19,13 @@ interface ImageCropModalProps {
   onCancel: () => void
 }
 
-interface AspectRatio {
-  name: string
-  value: number
-  icon: string
-  description: string
-}
-
-const aspectRatios: AspectRatio[] = [
-  { name: 'Vertical', value: 3/4, icon: '📱', description: 'Best for mobile & TikTok' },
-  { name: 'Square', value: 1, icon: '⬜', description: 'Perfect for Instagram' },
-  { name: 'Horizontal', value: 16/9, icon: '🖼️', description: 'Great for YouTube & web' }
-]
+// Фиксированный вертикальный формат 3:4
+const VERTICAL_ASPECT_RATIO = 3/4
 
 export default function ImageCropModal({ image, onCropComplete, onCancel }: ImageCropModalProps) {
   const [crop, setCrop] = useState<Point>({ x: 0, y: 0 })
   const [zoom, setZoom] = useState(1)
   const [croppedAreaPixels, setCroppedAreaPixels] = useState<Area | null>(null)
-  const [selectedRatio, setSelectedRatio] = useState<AspectRatio>(aspectRatios[0])
   const [isProcessing, setIsProcessing] = useState(false)
   const [imageError, setImageError] = useState(false)
 
@@ -214,7 +203,7 @@ export default function ImageCropModal({ image, onCropComplete, onCancel }: Imag
       
       setIsProcessing(true)
       const croppedImage = await getCroppedImg(image, croppedAreaPixels)
-      onCropComplete(croppedImage, selectedRatio.value)
+      onCropComplete(croppedImage, VERTICAL_ASPECT_RATIO)
     } catch (error) {
       console.error('Error cropping image:', error)
       toast.error('Ошибка при обработке изображения. Попробуйте другое изображение.')
@@ -236,10 +225,6 @@ export default function ImageCropModal({ image, onCropComplete, onCancel }: Imag
               <h3 className="text-xl sm:text-2xl font-bold bg-gradient-to-r from-purple-600 to-pink-600 dark:from-purple-400 dark:to-pink-400 bg-clip-text text-transparent">
                 Perfect Your Image
               </h3>
-              <p className="text-sm text-gray-600 dark:text-slate-400 mt-1 flex items-center gap-1">
-                <InformationCircleIcon className="w-4 h-4" />
-                Select aspect ratio and adjust crop area for best results
-              </p>
             </div>
             <button
               onClick={onCancel}
@@ -248,37 +233,6 @@ export default function ImageCropModal({ image, onCropComplete, onCancel }: Imag
               <XMarkIcon className="w-6 h-6" />
             </button>
           </div>
-        </div>
-
-        {/* Aspect ratio selector - modern design */}
-        <div className="p-4 border-b border-gray-200 dark:border-slate-700/50">
-          <div className="flex gap-2 sm:gap-3 pb-2">
-            {aspectRatios.map((ratio) => (
-              <button
-                key={ratio.name}
-                onClick={() => setSelectedRatio(ratio)}
-                className={`flex-1 px-3 sm:px-5 py-3 sm:py-4 rounded-2xl border-2 transition-all transform hover:scale-105 ${
-                  selectedRatio.value === ratio.value
-                    ? 'bg-gradient-to-r from-purple-600 to-pink-600 text-white shadow-lg shadow-purple-500/25 border-transparent'
-                    : 'bg-white dark:bg-slate-800/50 text-gray-700 dark:text-slate-300 border-gray-200 dark:border-slate-700 hover:border-purple-500/50'
-                }`}
-              >
-                <div className="flex flex-col items-center gap-1 sm:gap-2">
-                  <div className="text-2xl sm:text-3xl">{ratio.icon}</div>
-                  <div className="text-center">
-                    <div className="font-semibold text-sm sm:text-base">{ratio.name}</div>
-                    <div className="text-xs opacity-75">
-                      {ratio.value === 3/4 ? '3:4' : ratio.value === 1 ? '1:1' : '16:9'}
-                    </div>
-                  </div>
-                </div>
-              </button>
-            ))}
-          </div>
-          {/* Description for selected format */}
-          <p className="text-xs text-center text-gray-500 dark:text-slate-500 mt-3">
-            {selectedRatio.description}
-          </p>
         </div>
 
         {/* Cropper - with grid */}
@@ -295,7 +249,7 @@ export default function ImageCropModal({ image, onCropComplete, onCancel }: Imag
               image={image}
               crop={crop}
               zoom={zoom}
-              aspect={selectedRatio.value}
+              aspect={VERTICAL_ASPECT_RATIO}
               onCropChange={onCropChange}
               onCropComplete={onCropCompleteHandler}
               onZoomChange={setZoom}

@@ -215,7 +215,7 @@ useEffect(() => {
   } else if (!connected && isInitialized) {
     // Clear JWT ready state on disconnect
     setJwtReady(false)
-    localStorage.removeItem('fonana_jwt_token')
+    // localStorage.removeItem('fonana_jwt_token')
     jwtManager.logout()
   }
 }, [connected, publicKey, isInitialized])

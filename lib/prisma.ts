@@ -1,25 +1,48 @@
 import { PrismaClient } from '@prisma/client'
 
+/**
+ * 🔥 ЕДИНСТВЕННЫЙ СИНГЛТОН PRISMA CLIENT
+ * 
+ * ВСЕ файлы в проекте должны импортировать prisma ТОЛЬКО из этого файла!
+ * НЕ создавать new PrismaClient() напрямую в других файлах!
+ * 
+ * Это предотвращает:
+ * - Множественные подключения к БД
+ * - Connection pool exhaustion
+ * - Ошибки "Can't reach database server"
+ */
+
 declare global {
   // eslint-disable-next-line no-var
-  var prisma: PrismaClient | undefined
+  var __prisma: PrismaClient | undefined
 }
 
-export const prisma = globalThis.prisma || new PrismaClient({
-  datasources: {
-    db: {
-      url: process.env.DATABASE_URL
-    }
-  },
-  // 🔥 ОГРАНИЧИВАЕМ КОЛИЧЕСТВО ПОДКЛЮЧЕНИЙ
-  // Для большинства приложений достаточно 5-10 подключений
-  __internal: {
-    engine: {
-      connectionLimit: 5  // Максимум 5 подключений вместо 49
-    }
-  }
-})
+// Создаём клиент только если его ещё нет
+const prismaClientSingleton = () => {
+  return new PrismaClient({
+    datasources: {
+      db: {
+        url: process.env.DATABASE_URL
+      }
+    },
+    log: process.env.NODE_ENV === 'development' 
+      ? ['error', 'warn'] 
+      : ['error'],
+  })
+}
+
+// Используем глобальную переменную для предотвращения создания новых инстансов при hot reload
+export const prisma = globalThis.__prisma ?? prismaClientSingleton()
 
 if (process.env.NODE_ENV !== 'production') {
-  globalThis.prisma = prisma
-} 
+  globalThis.__prisma = prisma
+}
+
+// Graceful shutdown
+if (typeof process !== 'undefined') {
+  process.on('beforeExit', async () => {
+    await prisma.$disconnect()
+  })
+}
+
+export default prisma

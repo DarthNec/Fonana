@@ -37,6 +37,7 @@ export async function GET(request: NextRequest) {
     const page = searchParams.get('page') ? parseInt(searchParams.get('page')!) : 1
     const limit = searchParams.get('limit') ? parseInt(searchParams.get('limit')!) : 20
     const category = searchParams.get('category')
+    const postType = searchParams.get('type')
     const skip = (page - 1) * limit
 
     // Построение условий фильтрации
@@ -49,6 +50,12 @@ export async function GET(request: NextRequest) {
     if (creatorId) {
       where.creatorId = creatorId
       console.log('[API] Filtering posts by creatorId:', creatorId)
+    }
+
+    // Фильтрация по типу поста (для Sora генераций)
+    if (postType) {
+      where.type = postType
+      console.log('[API] Filtering posts by type:', postType)
     }
 
     // Получаем посты с информацией о создателе
@@ -221,6 +228,18 @@ export async function GET(request: NextRequest) {
 
       console.log(`[API] Post "${post.title}" - locked: ${post.isLocked}, requiredTier: ${requiredTier}, userTier: ${userSubscriptionPlan}, hasAccess: ${accessStatus.hasAccess}`)
 
+      // Определяем статус Sora-2 генерации
+      let requestStatus = null
+      if (post.requestId && post.type === 'ai-video') {
+        if (post.error) {
+          requestStatus = 'failed'
+        } else if (post.mediaUrl) {
+          requestStatus = 'completed'
+        } else {
+          requestStatus = 'processing'
+        }
+      }
+
       return {
         ...post,
         creator: {
@@ -233,6 +252,7 @@ export async function GET(request: NextRequest) {
         isSubscribed,
         hasPurchased,
         isCreatorPost,
+        requestStatus, // Добавляем статус генерации
         // [tier_access_system_2025_017] Информация о доступе для frontend
         requiredTier,
         userTier: userSubscriptionPlan,
@@ -264,6 +284,7 @@ export async function GET(request: NextRequest) {
           type: post.type,
           url: post.mediaUrl,
           thumbnail: post.thumbnail,
+          preview: post.previewUrl,
           error: post.error,
           blurUrl: post.blurUrl
         },

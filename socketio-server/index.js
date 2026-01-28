@@ -14,26 +14,12 @@ if (result.error) {
 }
 
 const { createSocketIOServer } = require('./src/server');
-const { initRedis } = require('./src/redis');
 
 const PORT = process.env.SOCKETIO_PORT || 3004;
 
 async function startServer() {
   try {
     console.log('🚀 Starting Socket.IO server...');
-    
-    // Инициализируем Redis (опционально)
-    try {
-      const redisConnected = initRedis();
-      if (redisConnected) {
-        console.log('✅ Redis initialized successfully');
-      } else {
-        console.log('⚠️  Running without Redis');
-      }
-    } catch (error) {
-      console.error('⚠️  Redis initialization failed:', error.message);
-      console.log('⚠️  Server will continue without Redis');
-    }
     
     // Создаем Socket.IO сервер
     const io = createSocketIOServer(PORT);

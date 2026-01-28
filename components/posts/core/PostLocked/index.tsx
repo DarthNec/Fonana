@@ -14,7 +14,7 @@ import {
 } from '@/components/posts/utils/postHelpers'
 import { useSolRate } from '@/lib/hooks/useSolRate'
 import { cn } from '@/lib/utils'
-import { TIER_INFO } from '@/lib/constants/tiers'
+import { TIER_INFO, DEFAULT_TIER_PRICES } from '@/lib/constants/tiers'
 import { safeToFixed, formatSolToUsd } from '@/lib/utils/format'
 
 export interface PostLockedProps {
@@ -56,8 +56,8 @@ export function PostLocked({
     
     switch (variant) {
       case 'minimal': return 'h-48'
-      case 'compact': return 'h-64'
-      default: return 'h-96'
+      case 'compact': return 'h-auto min-h-[240px]'
+      default: return 'h-auto min-h-[280px] max-h-[400px]'
     }
   }
 
@@ -65,7 +65,7 @@ export function PostLocked({
     switch (variant) {
       case 'minimal': return 'p-4'
       case 'compact': return 'p-6'
-      default: return 'p-8'
+      default: return 'p-6'
     }
   }
 
@@ -99,9 +99,19 @@ export function PostLocked({
   }
 
   // Рассчитываем цену с учетом скидки
-  const finalPrice = post.commerce?.flashSale && post.access.price
-    ? calculatePriceWithDiscount(post.access.price, post.commerce.flashSale)
-    : post.access.price
+  // Для подписочных постов используем цену Basic тира
+  let finalPrice: number | undefined
+  
+  if (needsSub || needsUpgrade) {
+    // Для подписочных постов всегда берем Basic тир
+    finalPrice = DEFAULT_TIER_PRICES.basic
+  } else if (post.commerce?.flashSale && post.access.price) {
+    // Для платных постов с флеш-распродажей
+    finalPrice = calculatePriceWithDiscount(post.access.price, post.commerce.flashSale)
+  } else {
+    // Для обычных платных постов
+    finalPrice = post.access.price
+  }
 
   // КРИТИЧЕСКИЙ ФИКС: логирование для отладки
   if (needsPrice && (finalPrice === undefined || finalPrice === null)) {
@@ -112,7 +122,9 @@ export function PostLocked({
       commerce: post.commerce,
       needsPay,
       isSellable,
-      needsPrice
+      needsPrice,
+      needsSub,
+      needsUpgrade
     })
   }
 
@@ -130,100 +142,113 @@ export function PostLocked({
           <img 
             src={post.media.thumbnail} 
             alt={post.content.title}
-            className="w-full h-full object-cover filter blur-xl opacity-50"
+            className="w-full h-full object-cover filter blur-2xl opacity-40"
           />
         ) : (
-          <div className={cn(
-            'w-full h-full bg-gradient-to-br',
-            getGradientStyle()
-          )} />
+          <div className="w-full h-full bg-gradient-to-br from-purple-600/30 via-pink-600/30 to-orange-500/30" />
         )}
-        <div className="absolute inset-0 bg-black/40 " /> 
+        <div className="absolute inset-0 bg-gradient-to-br from-black/60 via-black/50 to-black/60" /> 
       </div>
 
       {/* Lock content */}
       <div className={cn(
-        'relative h-full flex flex-col items-center justify-center text-center',
+        'relative h-full flex flex-col items-center justify-center text-center px-8',
         getContentPadding()
       )}>
-        {/* Lock icon */}
+        {/* Creator Avatar */}
         <div className="mb-4">
-          {tierInfo?.required ? (
-            <div className="text-4xl sm:text-5xl">{tierInfo.required.icon}</div>
-          ) : (
-            <svg className="w-12 h-12 sm:w-16 sm:h-16 text-white/80" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-            </svg>
-          )}
-        </div>
-
-        {/* Lock message */}
-        <h4 className="text-white font-semibold text-lg sm:text-xl mb-2">
-          {isSellable ? 'Эксклюзивный товар' :
-           needsPay ? 'Премиум контент' :
-           needsUpgrade ? `Доступно с ${tierInfo?.required.name} подпиской` :
-           needsSub ? 'Контент для подписчиков' :
-           'Контент недоступен'}
-        </h4>
-        
-        {/* Descriptive message */}
-        <p className="text-white/80 text-sm mb-4 max-w-sm">
-          {isSellable ? 'Уникальный товар доступен для покупки' :
-           needsPay ? 'Приобретите доступ к этому эксклюзивному контенту' :
-           needsUpgrade ? `Обновите подписку, чтобы получить доступ к ${tierInfo?.required.name} контенту` :
-           needsSub ? 'Подпишитесь на создателя для просмотра' :
-           'Этот контент имеет ограниченный доступ'}
-        </p>
-
-        {/* Price or tier info */}
-        {needsPrice && (finalPrice || finalPrice === 0) && (
-          <div className="mb-4">
-            <div className="text-2xl font-bold text-white">
-              {safeToFixed(finalPrice, 2)} {post.access.currency || 'SOL'}
-            </div>
-            {post.access.currency === 'SOL' && (
-              <div className="text-sm text-white/70">
-                {formatSolToUsd(finalPrice, solRate)}
-              </div>
-            )}
-            {post.commerce?.flashSale && (
-              <div className="mt-1 text-sm text-yellow-400">
-                Скидка {post.commerce.flashSale.discount}%!
+          <div className="relative w-20 h-20 sm:w-24 sm:h-24 rounded-full border-4 border-white overflow-hidden shadow-2xl">
+            {post.creator.avatar ? (
+              <img 
+                src={post.creator.avatar} 
+                alt={post.creator.name || post.creator.nickname}
+                className="w-full h-full object-cover"
+              />
+            ) : (
+              <div className="w-full h-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center text-white text-2xl font-bold">
+                {(post.creator.name || post.creator.nickname || 'U')[0].toUpperCase()}
               </div>
             )}
           </div>
-        )}
+        </div>
 
-        {/* Unlock button */}
-        {buttonText && (
-          <button
-            onClick={handleUnlock}
-            className={cn(
-              'px-6 py-3 rounded-xl font-medium transition-all',
-              'bg-white/20 backdrop-blur-sm text-white',
-              'hover:bg-white/30 hover:scale-105',
-              'border border-white/30',
-              'shadow-lg hover:shadow-xl',
-              'transform hover:-translate-y-0.5'
-            )}
-          >
-            <span className="flex items-center gap-2">
-              {needsPay && '🔓'}
-              {(needsSub || needsUpgrade) && '⭐'}
-              {post.commerce?.isSellable && '🛍️'}
-              {buttonText}
+        {/* Main title */}
+        <h2 className="text-white font-bold text-2xl sm:text-3xl mb-4">
+          {isSellable ? 'Эксклюзив!' :
+           needsPay ? 'Премиум!' :
+           'Subscribe!'}
+        </h2>
+
+        {/* Subscribe button with price */}
+        <button
+          onClick={handleUnlock}
+          className="mb-2 px-6 py-3 rounded-xl font-bold text-base text-white bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 transition-all shadow-2xl hover:shadow-purple-500/50 hover:scale-105 transform flex items-center gap-2"
+        >
+          <span>
+            {isSellable ? 'Купить' :
+             needsPay ? 'Разблокировать' :
+             'Subscribe to unlock'
+             }
+          </span>
+          {/* Иконка: замочек для всех типов постов */}
+          <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+            <path fillRule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clipRule="evenodd"/>
+          </svg>
+          {(needsPrice || needsSub || needsUpgrade) && (finalPrice || finalPrice === 0) && (
+            <span className="font-bold">
+              {parseFloat(safeToFixed(finalPrice, 3))} SOL
             </span>
-          </button>
+          )}
+        </button>
+        
+        {/* Price in USD under button */}
+        {(needsPrice || needsSub || needsUpgrade) && (finalPrice || finalPrice === 0) && solRate > 0 && (
+          <div className="mb-6 text-white/70 text-sm">
+            ${safeToFixed(finalPrice * solRate, 2)} USD
+          </div>
         )}
 
-        {/* Additional info for tier content */}
-        {tierInfo && variant === 'full' && (
-          <p className="mt-3 text-sm text-white/70 max-w-xs">
-            {needsUpgrade 
-              ? (tierInfo.current?.name !== undefined ?  `Обновите подписку с ${tierInfo.current?.name} до ${tierInfo.required.name}` : `Подпишитесь на уровень ${tierInfo.required.name} для доступа`)
-              : `Подпишитесь на уровень ${tierInfo.required.name} для доступа`
-            }
-          </p>
+        {/* Benefits list */}
+        <div className="space-y-2 text-left w-full max-w-sm">
+          <div className="flex items-center gap-2 text-white/90">
+            <svg className="w-4 h-4 text-green-400 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+              <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd"/>
+            </svg>
+            <span className="text-xs sm:text-sm">Разблокировать этот пост</span>
+          </div>
+          
+          <div className="flex items-center gap-2 text-white/90">
+            <svg className="w-4 h-4 text-green-400 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+              <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd"/>
+            </svg>
+            <span className="text-xs sm:text-sm">
+              {(needsSub || needsUpgrade) 
+                ? `Доступ к ленте @${post.creator.nickname || post.creator.name}`
+                : 'Отправка личных сообщений'
+              }
+            </span>
+          </div>
+          
+          <div className="flex items-center gap-2 text-white/90">
+            <svg className="w-4 h-4 text-green-400 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+              <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd"/>
+            </svg>
+            <span className="text-xs sm:text-sm">
+              {(needsSub || needsUpgrade) 
+                ? 'Отправка личных сообщений'
+                : 'Доступ к данному контенту навсегда'
+              }
+            </span>
+          </div>
+        </div>
+
+        {/* Flash sale indicator */}
+        {post.commerce?.flashSale && (
+          <div className="mt-4 px-4 py-2 bg-yellow-500/20 border border-yellow-500/50 rounded-lg">
+            <p className="text-yellow-300 text-sm font-semibold">
+              🔥 Скидка {post.commerce.flashSale.discount}%!
+            </p>
+          </div>
         )}
       </div>
     </div>

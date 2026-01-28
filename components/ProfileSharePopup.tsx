@@ -182,12 +182,21 @@ export function ProfileSharePopup({ creator, isOpen, onClose, className }: Profi
   const handleCopyLink = async () => {
     try {
       const profileUrl = `${window.location.origin}/creator/${creator.id}`
+      console.log('[ProfileSharePopup] Copying link:', profileUrl)
+      
       await navigator.clipboard.writeText(profileUrl)
+      
+      console.log('[ProfileSharePopup] Link copied successfully')
       setToastMessage('Ссылка скопирована!')
       setShowToast(true)
-      setTimeout(() => setShowToast(false), 3000)
+      
+      // Закрываем попап через 1 секунду после успешного копирования
+      setTimeout(() => {
+        setShowToast(false)
+        onClose()
+      }, 1000)
     } catch (error) {
-      console.error('Error copying link:', error)
+      console.error('[ProfileSharePopup] Error copying link:', error)
       setToastMessage('Ошибка при копировании')
       setShowToast(true)
       setTimeout(() => setShowToast(false), 3000)
@@ -198,12 +207,12 @@ export function ProfileSharePopup({ creator, isOpen, onClose, className }: Profi
 
   return (
     <>
-      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+      <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/85 backdrop-blur-sm">
         <div 
           ref={popupRef}
           className={cn(
-            'bg-white dark:bg-slate-800 rounded-2xl shadow-2xl',
-            'border border-gray-200 dark:border-slate-700',
+            'bg-white dark:bg-slate-900 rounded-3xl shadow-2xl',
+            'border border-gray-200 dark:border-slate-700/50',
             'p-6 w-full max-w-sm mx-4',
             'animate-fade-in',
             className
@@ -211,12 +220,9 @@ export function ProfileSharePopup({ creator, isOpen, onClose, className }: Profi
         >
           {/* Заголовок */}
           <div className="text-center mb-6">
-            <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+            <h3 className="text-xl sm:text-2xl font-bold bg-gradient-to-r from-purple-600 to-pink-600 dark:from-purple-400 dark:to-pink-400 bg-clip-text text-transparent">
               Поделиться профилем
             </h3>
-            <p className="text-sm text-gray-500 dark:text-slate-400 mt-1">
-              Выберите социальную сеть
-            </p>
           </div>
 
           {/* Сетка социальных сетей */}
@@ -254,7 +260,7 @@ export function ProfileSharePopup({ creator, isOpen, onClose, className }: Profi
           <div className="mt-4 pt-4 border-t border-gray-200 dark:border-slate-700">
             <button
               onClick={handleCopyLink}
-              className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-gray-100 dark:bg-slate-700 text-gray-700 dark:text-slate-300 rounded-xl hover:bg-gray-200 dark:hover:bg-slate-600 transition-colors"
+              className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white rounded-xl transition-all duration-300 transform hover:scale-105 font-medium"
             >
               <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
@@ -270,6 +276,7 @@ export function ProfileSharePopup({ creator, isOpen, onClose, className }: Profi
         <Toast
           message={toastMessage}
           type="success"
+          isVisible={showToast}
           onClose={() => setShowToast(false)}
         />
       )}

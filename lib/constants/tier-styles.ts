@@ -82,7 +82,7 @@ export const SPECIAL_CONTENT_STYLES = {
     name: 'Paid',
     color: 'orange',
     icon: '💰',
-    gradient: 'from-yellow-500/20 to-orange-500/20',
+    gradient: '', // from-yellow-500/20 to-orange-500/20
     border: 'border-yellow-500/30',
     text: 'text-yellow-700 dark:text-yellow-300'
   },

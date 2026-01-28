@@ -390,6 +390,8 @@ export default function DashboardPageClient() {
                 <span className="text-sm font-medium">Analytics</span>
               </button>
               
+              {/* AI Training - СКРЫТО */}
+              {/*
               <button 
                 onClick={() => {
                   router.push('/dashboard/ai-training')
@@ -400,6 +402,7 @@ export default function DashboardPageClient() {
                 <SparklesIcon className="w-6 h-6 mx-auto mb-2" />
                 <span className="text-sm font-medium">AI Training</span>
               </button>
+              */}
             </div>
           </div>
 
@@ -611,7 +614,8 @@ export default function DashboardPageClient() {
           </div>
         </div>
 
-        {/* AI Portrait Training Section */}
+        {/* AI Portrait Training Section - СКРЫТО */}
+        {/*
         <div className="bg-gradient-to-br from-purple-50 to-pink-50 dark:from-purple-900/20 dark:to-pink-900/20 border border-purple-200 dark:border-purple-800 rounded-xl p-6 mb-8">
           <div className="flex items-center justify-between mb-6">
             <div className="flex items-center">
@@ -675,6 +679,7 @@ export default function DashboardPageClient() {
             </div>
           </div>
         </div>
+        */}
         
       </div>
     </div>

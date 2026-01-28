@@ -209,98 +209,30 @@ export function AppProvider({ children }: AppProviderProps) {
     }
   }, [])
 
-  // 🔥 M7 PHASE 2: JWT токен creation с AbortController protection
+  // 🔥 УПРОЩЕНО: JWT теперь полностью управляется через jwtManager
+  // WalletStoreSync сохраняет wallet в localStorage при подключении
+  // jwtManager.getToken() сам решает, нужен ли новый токен
   useEffect(() => {
-    console.log(`[AppProvider][JWT DEBUG] JWT useEffect triggered (render #${renderCountRef.current}):`, { 
+    console.log(`[AppProvider][JWT] Wallet state changed:`, { 
       connected, 
       hasPublicKey: !!publicKey, 
-      publicKeyString: publicKey?.toBase58(),
-      isInitialized,
-      dependenciesChanged: {
-        connected,
-        publicKeyString: publicKey?.toBase58(),
-        isInitialized
-      }
-    })
-    console.log(`[AppProvider][JWT DEBUG] Conditions check:`, {
-      connected,
-      hasPublicKey: !!publicKey,
-      isInitialized,
-      allConditionsMet: connected && publicKey && isInitialized
+      isInitialized
     })
     
-    // Abort previous operation if running
-    if (abortControllerRef.current) {
-      console.log('[AppProvider] Aborting previous JWT operation')
-      abortControllerRef.current.abort()
-    }
-
-    // Create new AbortController for this operation  
-    abortControllerRef.current = new AbortController()
-    const signal = abortControllerRef.current.signal
-
-    console.log('🎯 [JWT CONDITION] Checking conditions:', {
-      connected,
-      hasPublicKey: !!publicKey,
-      isInitialized,
-      allConditionsMet: connected && publicKey && isInitialized,
-      renderCount: renderCountRef.current
-    })
-    
-    if (connected && publicKey && isInitialized) {
-      console.log('🎯 [JWT CONDITION] All conditions met, starting JWT authentication')
-      console.log('🎯 [JWT CONDITION] Wallet address:', publicKey.toBase58())
-      console.log('[AppProvider] Wallet connected, ensuring JWT token exists...')
-      console.log('[AppProvider] 🔥 CRITICAL: About to call ensureJWTTokenForWallet!')
-      
-      const performJWTWithAbort = async () => {
-        console.log('[AppProvider] performJWTWithAbort called')
-        try {
-          if (signal.aborted || !isMountedRef.current) {
-            console.log('[AppProvider] JWT operation cancelled due to abort/unmount')
-            return
-          }
-          console.log('[AppProvider] Calling ensureJWTTokenForWallet...')
-          await ensureJWTTokenForWallet(publicKey.toBase58())
-        } catch (error: any) {
-          if (error.name === 'AbortError') {
-            console.log('[AppProvider] JWT operation was aborted')
-          } else {
-            console.error('[AppProvider] JWT operation failed:', error)
-          }
-        }
-      }
-      
-      performJWTWithAbort()
-    } else {
-      console.log('🎯 [JWT CONDITION] Conditions not met:', {
-        connected,
-        hasPublicKey: !!publicKey,
-        isInitialized,
-        reason: !connected ? 'not connected' : !publicKey ? 'no publicKey' : 'not initialized',
-        renderCount: renderCountRef.current
-      })
-    }
-    
+    // При отключении кошелька - очищаем токен
     if (!connected && isInitialized) {
       console.log('[AppProvider] Wallet disconnected, clearing JWT token...')
-      // Clear JWT ready state on disconnect (только если компонент смонтирован)
       if (isMountedRef.current) {
-        console.log(`[AppProvider][ACTION DEBUG] setJwtReady(false) on disconnect called (render #${renderCountRef.current})`)
         setJwtReady(false)
       }
-      // Очищаем токен при отключении кошелька
-      localStorage.removeItem('fonana_jwt_token')
-      localStorage.removeItem('fonana_user_wallet')
       jwtManager.logout()
-      console.log('[AppProvider] JWT token cleared via manager')
+      console.log('[AppProvider] JWT token cleared via jwtManager')
     }
-
-    // 🔥 M7 PHASE 2: Enhanced cleanup
-    return () => {
-      if (abortControllerRef.current) {
-        abortControllerRef.current.abort()
-      }
+    
+    // При подключении - jwtManager сам получит токен при первом вызове getToken()
+    // Нет необходимости вызывать его здесь, WalletStoreSync это сделает
+    if (connected && publicKey && isInitialized) {
+      console.log('[AppProvider] Wallet connected, JWT will be handled by WalletStoreSync')
     }
   }, [connected, publicKey, isInitialized])
 
@@ -433,255 +365,6 @@ export function AppProvider({ children }: AppProviderProps) {
       }
     }
   }, [isInitialized])
-
-  /**
-   * Обеспечивает существование JWT токена для подключенного кошелька
-   * 🔥 M7 PHASE 2: Enhanced with AbortController support
-   * 🔥 OPTIMIZATION: Check existing valid token before creating new one
-   */
-  const ensureJWTTokenForWallet = async (walletAddress: string) => {
-    console.log('🎯 [JWT FUNCTION] ensureJWTTokenForWallet called with wallet:', walletAddress.substring(0, 8) + '...')
-    console.log('🎯 [JWT FUNCTION] Starting JWT authentication process...')
-    console.log('[AppProvider] 🔥 CRITICAL: ensureJWTTokenForWallet function started!')
-    
-    const signal = abortControllerRef.current?.signal
-    try {
-      // 🔥 PRODUCTION MODE FIX: Check if component is still mounted
-      if (!isMountedRef.current) {
-        console.log('[AppProvider] Component unmounted, aborting JWT creation')
-        return
-      }
-      
-      // 🔥 M7 PHASE 2: Check for abort before setState
-      if (signal?.aborted) {
-        console.log('[AppProvider] Operation aborted before setJwtReady(false)')
-        return
-      }
-      
-      // 🔥 OPTIMIZATION: Check if we already have a valid token for this wallet
-      const existingToken = localStorage.getItem('fonana_jwt_token')
-      if (existingToken) {
-        try {
-          const tokenData = JSON.parse(existingToken)
-          const isTokenValid = tokenData.token && 
-                              tokenData.expiresAt > Date.now() && 
-                              tokenData.wallet === walletAddress
-          
-          if (isTokenValid) {
-            console.log('[AppProvider] Found existing valid JWT token, using it instead of creating new one')
-            console.log('[AppProvider] Token expires at:', new Date(tokenData.expiresAt).toISOString())
-            
-            // Set JWT ready with existing token
-            if (!signal?.aborted && isMountedRef.current) {
-              console.log(`[AppProvider][ACTION DEBUG] setJwtReady(true) with existing token called (render #${renderCountRef.current})`)
-              setJwtReady(true)
-            }
-            
-            // Update user if needed
-            if (!user && isMountedRef.current) {
-              console.log(`[AppProvider][ACTION DEBUG] setUser(tokenData) with existing token called (render #${renderCountRef.current})`)
-              setUser({
-                id: tokenData.userId,
-                wallet: tokenData.wallet,
-                // Other fields will be loaded from API when needed
-              })
-            }
-            
-            return // Exit early, no need to create new token
-          } else {
-            console.log('[AppProvider] Existing token is invalid or expired, will create new one')
-          }
-        } catch (error) {
-          console.warn('[AppProvider] Error parsing existing token, will create new one:', error)
-        }
-      }
-      
-      // Set JWT as not ready at start (только если не прервано)
-      if (!signal?.aborted) {
-        console.log(`[AppProvider][ACTION DEBUG] setJwtReady(false) at start called (render #${renderCountRef.current})`)
-        setJwtReady(false)
-      }
-      
-      // 🔥 СОЗДАЕМ НОВЫЙ ТОКЕН ТОЛЬКО ЕСЛИ СТАРЫЙ НЕВАЛИДЕН
-      console.log('[AppProvider] Creating new JWT token for wallet:', walletAddress.substring(0, 8) + '...')
-      
-      // Очищаем старые токены
-      localStorage.removeItem('fonana_jwt_token')
-      
-      // Add timeout protection
-      const timeoutPromise = new Promise((_, reject) => 
-        setTimeout(() => reject(new Error('JWT creation timeout')), 10000)
-      )
-      
-      console.log('🎯 [FETCH REQUEST] Making fetch to /api/auth/token with wallet:', walletAddress.substring(0, 8) + '...')
-      
-      const tokenPromise = fetch(`/api/auth/token?wallet=${walletAddress}`, {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        signal // 🔥 M7 PHASE 2: AbortController integration
-      })
-      
-      console.log('🎯 [FETCH REQUEST] Fetch request sent, waiting for response...')
-      
-      const response = await Promise.race([tokenPromise, timeoutPromise])
-      
-      console.log('🎯 [FETCH RESPONSE] Response received:', {
-        status: (response as Response).status,
-        statusText: (response as Response).statusText,
-        ok: (response as Response).ok,
-        headers: Object.fromEntries((response as Response).headers.entries())
-      })
-      
-      if (!(response as Response).ok) {
-        console.error('[AppProvider] Failed to create JWT token:', (response as Response).status)
-        const errorText = await (response as Response).text()
-        console.error('[AppProvider] Error response:', errorText)
-        return
-      }
-      
-      const data = await (response as Response).json()
-      
-      console.log('🎯 [JWT RESPONSE] Raw response data:', {
-        hasData: !!data,
-        hasToken: !!data?.token,
-        hasUser: !!data?.user,
-        dataKeys: Object.keys(data || {})
-      })
-      
-      if (data.token && data.user) {
-        console.log('[AppProvider] JWT token created successfully, saving to localStorage')
-        console.log('🎯 [JWT SUCCESS] User data received:', {
-          hasToken: !!data.token,
-          tokenLength: data.token?.length,
-          hasUser: !!data.user,
-          userId: data.user?.id,
-          userWallet: data.user?.wallet,
-          userNickname: data.user?.nickname
-        })
-        
-        // 🔥 ДЕТАЛЬНОЕ ЛОГИРОВАНИЕ ПОЛЬЗОВАТЕЛЯ ПРИ ПОДКЛЮЧЕНИИ КОШЕЛЬКА
-        console.log('🎯 [WALLET CONNECTION] User data received from API:')
-        console.log('📊 User Object Structure:', {
-          id: data.user.id,
-          wallet: data.user.wallet,
-          nickname: data.user.nickname,
-          fullName: data.user.fullName,
-          avatar: data.user.avatar,
-          isCreator: data.user.isCreator,
-          isVerified: data.user.isVerified,
-          // Дополнительные поля если есть
-          bio: data.user.bio,
-          backgroundImage: data.user.backgroundImage,
-          followersCount: data.user.followersCount,
-          followingCount: data.user.followingCount,
-          postsCount: data.user.postsCount,
-          createdAt: data.user.createdAt,
-          updatedAt: data.user.updatedAt,
-          referrerId: data.user.referrerId,
-          referrer: data.user.referrer
-        })
-        console.log('🔍 Raw API Response:', JSON.stringify(data.user, null, 2))
-        console.log('🎯 [WALLET CONNECTION] End of user data logging')
-        
-        // Сохраняем токен в localStorage для jwtManager
-        const tokenData = {
-          token: data.token,
-          expiresAt: Date.now() + 30 * 24 * 60 * 60 * 1000, // 30 дней
-          userId: data.user.id,
-          wallet: data.user.wallet
-        }
-        
-        localStorage.setItem('fonana_jwt_token', JSON.stringify(tokenData))
-        localStorage.setItem('fonana_user_wallet', data.user.wallet)
-        
-        // Обновляем пользователя в store если еще нет
-        if (!user && isMountedRef.current) {
-          console.log(`[AppProvider][ACTION DEBUG] setUser(data.user) in JWT creation called (render #${renderCountRef.current})`)
-          setUser(data.user)
-        }
-        
-        // 🔥 PRODUCTION MODE FIX: Check if still mounted before setState
-        if (!isMountedRef.current) {
-          console.log('[AppProvider] Component unmounted during JWT creation, skipping setState')
-          return
-        }
-        
-        // CRITICAL: Set JWT ready AFTER token is saved
-        // Добавляем дополнительную проверку чтобы избежать бесконечного цикла
-        if (signal?.aborted) {
-          console.log('[AppProvider] Operation aborted before setJwtReady(true)')
-          return
-        }
-        
-        console.log(`[AppProvider][ACTION DEBUG] setJwtReady(true) after token creation called (render #${renderCountRef.current})`)
-        console.log('[AppProvider] 🔥 CRITICAL: Setting JWT ready to true!')
-        setJwtReady(true)
-        
-        // Обновляем jwtManager чтобы он сразу подхватил новый токен из storage
-        // jwtManager автоматически загрузит токен из localStorage при следующем обращении
-        
-        console.log('[AppProvider] JWT token ready for components')
-      } else {
-        console.error('[AppProvider] Invalid JWT response - missing token or user:', {
-          hasToken: !!data?.token,
-          hasUser: !!data?.user,
-          data: data
-        })
-      }
-      
-    } catch (error) {
-      console.error('[AppProvider] JWT creation failed:', error)
-      
-      // 🔥 PRODUCTION MODE FIX: Check if still mounted before setState
-      if (!isMountedRef.current) {
-        console.log('[AppProvider] Component unmounted during JWT error, skipping setState')
-        return
-      }
-      
-      // Добавляем дополнительную проверку чтобы избежать бесконечного цикла
-      if (signal?.aborted) {
-        console.log('[AppProvider] Operation aborted before setJwtReady(false)')
-        return
-      }
-      
-      console.log(`[AppProvider][ACTION DEBUG] setJwtReady(false) on error called (render #${renderCountRef.current})`)
-      setJwtReady(false)
-      
-      // Show user-friendly error after a delay to avoid flooding
-      setTimeout(() => {
-        toast.error('Authentication failed. Please try reconnecting your wallet.')
-      }, 1000)
-    }
-  }
-
-  /**
-   * Validate JWT token availability and correctness
-   */
-  const validateJwtToken = async () => {
-    try {
-      const token = await jwtManager.getToken()
-      if (!token) {
-        console.warn('[AppProvider] JWT validation failed - no token')
-        if (isMountedRef.current) {
-          console.log(`[AppProvider][ACTION DEBUG] setJwtReady(false) in validateJwtToken called (render #${renderCountRef.current})`)
-          setJwtReady(false)
-        }
-        return false
-      }
-      
-      console.log('[AppProvider] JWT token validation passed')
-      return true
-    } catch (error) {
-      console.error('[AppProvider] JWT validation error:', error)
-      if (isMountedRef.current) {
-        console.log(`[AppProvider][ACTION DEBUG] setJwtReady(false) in validateJwtToken catch called (render #${renderCountRef.current})`)
-        setJwtReady(false)
-      }
-      return false
-    }
-  }
 
   /**
    * Инициализация пользователя из кеша

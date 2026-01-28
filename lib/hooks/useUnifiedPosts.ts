@@ -367,8 +367,6 @@ export function useUnifiedPosts(options: UseUnifiedPostsOptions = {}): UseUnifie
 
   // Удалить пост
   const handleDelete = async (postId: string) => {
-    if (!confirm('Вы уверены, что хотите удалить этот пост?')) return
-
     try {
       const response = await fetch(`/api/posts/${postId}`, {
         method: 'DELETE',
@@ -389,11 +387,6 @@ export function useUnifiedPosts(options: UseUnifiedPostsOptions = {}): UseUnifie
   // Административное удаление поста
   const handleAdminDelete = async (postId: string) => {
     console.log('🛡️ [useUnifiedPosts] handleAdminDelete called for post:', postId)
-    
-    if (!confirm('⚠️ АДМИНИСТРАТИВНОЕ УДАЛЕНИЕ\n\nВы уверены, что хотите удалить этот пост как администратор?')) {
-      console.log('🛡️ [useUnifiedPosts] Admin delete cancelled by user')
-      return
-    }
 
     try {
       console.log('🛡️ [useUnifiedPosts] Sending admin delete request to API...')

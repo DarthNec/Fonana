@@ -51,12 +51,25 @@ export interface CommentsSectionProps {
   onClose?: () => void
   onCommentAdded?: () => void
   onCommentDeleted?: () => void
+  hideHeader?: boolean // Скрыть заголовок и кнопку закрытия
+  formAtBottom?: boolean // Форма внизу вместо вверху
+  hideFormAvatar?: boolean // Скрыть аватар в форме
 }
 
 /**
  * Десктопная версия компонента для отображения и добавления комментариев
  */
-export function CommentsSection({ postId, post, className, onClose, onCommentAdded, onCommentDeleted }: CommentsSectionProps) {
+export function CommentsSection({ 
+  postId, 
+  post, 
+  className, 
+  onClose, 
+  onCommentAdded, 
+  onCommentDeleted,
+  hideHeader = false,
+  formAtBottom = false,
+  hideFormAvatar = false
+}: CommentsSectionProps) {
   const user = useUser()
   const [comments, setComments] = useState<Comment[]>([])
   const [loading, setLoading] = useState(true)
@@ -371,41 +384,30 @@ export function CommentsSection({ postId, post, className, onClose, onCommentAdd
     return counts
   }
 
-  return (
-    <div className={cn(
-      'border-t border-gray-200 dark:border-slate-700/50 pt-4 pb-4 px-3 sm:px-6',
-      className
-    )}>
-      {/* Header */}
-      <div className="flex items-center justify-between mb-4">
-        <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
-          Комментарии ({comments.length})
-        </h3>
-        {onClose && (
-          <button
-            onClick={onClose}
-            className="text-gray-500 dark:text-slate-400 hover:text-gray-700 dark:hover:text-white transition-colors"
-          >
-            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-            </svg>
-          </button>
+  // Форма комментария
+  const commentForm = user && (
+    <form 
+      onSubmit={handleSubmit} 
+      className={cn(
+        formAtBottom 
+          ? 'border-t border-gray-200 dark:border-slate-700 pt-4 pb-4 bg-white dark:bg-slate-900 flex-shrink-0' 
+          : 'mb-4'
+      )}
+    >
+      <div className={cn(
+        hideFormAvatar ? '' : 'flex gap-3'
+      )}>
+        {!hideFormAvatar && (
+          <Avatar
+            src={user.avatar}
+            alt="Your avatar"
+            seed={user.nickname || user.id}
+            size={40}
+            className="flex-shrink-0"
+            rounded="full"
+          />
         )}
-      </div>
-
-      {/* Comment form */}
-      {user && (
-        <form onSubmit={handleSubmit} className="mb-4">
-          <div className="flex gap-3">
-            <Avatar
-              src={user.avatar}
-              alt="Your avatar"
-              seed={user.nickname || user.id}
-              size={40}
-              className="flex-shrink-0"
-              rounded="full"
-            />
-            <div className="flex-1">
+        <div className={cn(hideFormAvatar ? 'w-full' : 'flex-1')}>
               {/* Контейнер для textarea с кнопкой эмодзи */}
               <div className="relative">
                 <textarea
@@ -439,7 +441,12 @@ export function CommentsSection({ postId, post, className, onClose, onCommentAdd
                 {showEmojiPicker && (
                   <div 
                     ref={emojiPickerRef}
-                    className="absolute right-0 top-full mt-2 z-[9999]"
+                    className={cn(
+                      "absolute right-0 z-[9999]",
+                      // На мобильном - вверх, на desktop - вниз
+                      "max-md:bottom-full max-md:mb-2",
+                      "md:top-full md:mt-2"
+                    )}
                   >
                     <EmojiPicker
                       onEmojiClick={handleEmojiClick}
@@ -477,10 +484,41 @@ export function CommentsSection({ postId, post, className, onClose, onCommentAdd
             </div>
           </div>
         </form>
+  )
+  
+  return (
+    <div className={cn(
+      formAtBottom ? 'flex flex-col h-full' : 'border-t border-gray-200 dark:border-slate-700/50 pt-4 pb-4',
+      'px-3 sm:px-6',
+      className
+    )}>
+      {/* Header */}
+      {!hideHeader && (
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+            Комментарии ({comments.length})
+          </h3>
+          {onClose && (
+            <button
+              onClick={onClose}
+              className="text-gray-500 dark:text-slate-400 hover:text-gray-700 dark:hover:text-white transition-colors"
+            >
+              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          )}
+        </div>
       )}
 
+      {/* Comment form at top (if not formAtBottom) */}
+      {!formAtBottom && commentForm}
+
       {/* Comments list */}
-      <div className="space-y-4">
+      <div className={cn(
+        'space-y-4',
+        formAtBottom ? 'flex-1 overflow-y-auto pt-4' : ''
+      )}>
         {loading ? (
           <div className="flex items-center justify-center py-12">
             <div className="text-center">
@@ -643,6 +681,9 @@ export function CommentsSection({ postId, post, className, onClose, onCommentAdd
           ))
         )}
       </div>
+      
+      {/* Comment form at bottom (if formAtBottom) */}
+      {formAtBottom && commentForm}
     </div>
   )
 }

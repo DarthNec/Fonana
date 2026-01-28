@@ -1,13 +1,12 @@
-import { PrismaClient } from '@prisma/client'
+/**
+ * 🔥 ВАЖНО: Этот файл использует ЕДИНСТВЕННЫЙ синглтон prisma из lib/prisma.ts
+ * НЕ создавать new PrismaClient() здесь!
+ */
+import { prisma } from './prisma'
 import { notifyNewPostFromSubscription } from './notifications'
 
-const globalForPrisma = globalThis as unknown as {
-  prisma: PrismaClient | undefined
-}
-
-export const prisma = globalForPrisma.prisma ?? new PrismaClient()
-
-if (process.env.NODE_ENV !== 'production') globalForPrisma.prisma = prisma
+// Re-export prisma для обратной совместимости
+export { prisma }
 
 // Functions for working with users
 export async function createOrUpdateUser(wallet: string, data?: {

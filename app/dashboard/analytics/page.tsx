@@ -154,7 +154,7 @@ export default function AnalyticsPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 dark:bg-slate-900 pt-20">
+      <div className="min-h-screen bg-gray-50 dark:bg-slate-900 pt-8 md:pt-4">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           <div className="flex justify-center items-center h-64">
             <div className="w-8 h-8 border-4 border-purple-600 border-t-transparent rounded-full animate-spin"></div>
@@ -165,7 +165,7 @@ export default function AnalyticsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-slate-900 pt-20">
+    <div className="min-h-screen bg-gray-50 dark:bg-slate-900 pt-8 md:pt-4">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Header */}
         <div className="flex items-center justify-between mb-8">

@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { PrismaClient } from '@prisma/client'
+import { prisma } from '@/lib/prisma'
 import { uploadToBunnyStorage } from '@/lib/utils/bunny-upload'
 import sharp from 'sharp'
 
-const prisma = new PrismaClient()
+// 🔥 ИСПРАВЛЕНО: Используем синглтон prisma вместо new PrismaClient()
 
 export const maxDuration = 30
 

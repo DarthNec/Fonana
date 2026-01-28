@@ -1,6 +1,7 @@
 'use client'
 
 import React, { useState, useEffect } from 'react'
+import { createPortal } from 'react-dom'
 import { useUser } from '@/lib/store/appStore'
 import { useStableWallet } from '@/lib/hooks/useStableWallet'
 import { toast } from 'react-hot-toast'
@@ -333,12 +334,13 @@ export default function RemixImagePostModal({ post, onClose, onRemixCreated }: R
     { value: '12', label: '12s' }
   ]
 
-  return (
-    <>
-      {/* Main Modal */}
-      <div className="fixed inset-0 bg-black/85 backdrop-blur-sm z-[100] flex items-start justify-center p-0 sm:p-4 overflow-y-auto animate-fade-in">
-        <div className="modal-content bg-white dark:bg-slate-900 backdrop-blur-xl w-full h-full sm:h-auto sm:max-w-2xl rounded-none sm:rounded-3xl my-0 sm:my-8 border-y sm:border border-gray-200 dark:border-slate-700/50 shadow-2xl animate-slideInUp relative overflow-y-auto">
-          <form onSubmit={handleSubmit} className="p-3 sm:p-6 lg:p-8 space-y-4 sm:space-y-6">
+  // Рендерим через портал в body для корректного позиционирования
+  if (typeof document === 'undefined') return null
+  
+  return createPortal(
+    <div className="fixed inset-0 bg-black/85 backdrop-blur-sm z-[9999] flex items-center justify-center p-0 sm:p-4 overflow-y-auto animate-fade-in">
+      <div className="modal-content bg-white dark:bg-slate-900 backdrop-blur-xl w-full h-full sm:h-auto sm:max-w-2xl rounded-none sm:rounded-3xl my-0 sm:my-8 border-y sm:border border-gray-200 dark:border-slate-700/50 shadow-2xl animate-slideInUp relative overflow-y-auto">
+        <form onSubmit={handleSubmit} className="p-3 sm:p-6 lg:p-8 space-y-4 sm:space-y-6">
             {/* Header */}
             <div className="flex items-center justify-between mb-4 sm:mb-6">
               <div className="flex items-center gap-3">
@@ -527,8 +529,8 @@ export default function RemixImagePostModal({ post, onClose, onRemixCreated }: R
             </div>
           </form>
         </div>
-      </div>
-    </>
+      </div>,
+    document.body
   )
 }
 

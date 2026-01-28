@@ -20,6 +20,8 @@ export interface PostsContainerProps {
   showCreator?: boolean
   /** Callback для действий с постом */
   onAction?: (action: PostAction) => void
+  /** Callback для клика на пост (для fullscreen view) */
+  onPostClick?: (postIndex: number, post: UnifiedPost) => void
   /** Дополнительные CSS классы */
   className?: string
   /** Показывать ли skeleton при загрузке */
@@ -34,6 +36,8 @@ export interface PostsContainerProps {
   showNewPostsNotification?: boolean
   /** Автоматически обновлять ленту */
   autoUpdateFeed?: boolean
+  /** Количество колонок для gallery layout */
+  columns?: number
 }
 
 /**
@@ -46,8 +50,10 @@ export function PostsContainer({
   variant = 'feed',
   showCreator = true,
   onAction,
+  onPostClick,
   className,
   isLoading = false,
+  columns = 3,
   emptyMessage = 'No posts yet',
   emptyComponent,
   enableRealtime = true,
@@ -63,8 +69,9 @@ export function PostsContainer({
     let likesData = [];
     
     if(localStorage.getItem('fonana_user_wallet') !== null) {
-      if(JSON.parse(localStorage.getItem('user_likes')) !== null) {
-        likesData = JSON.parse(localStorage.getItem('user_likes') || '[]')
+      const userLikesStr = localStorage.getItem('user_likes')
+      if(userLikesStr && JSON.parse(userLikesStr) !== null) {
+        likesData = JSON.parse(userLikesStr)
       } 
       console.log(`[FeedPageClient] User likes:`, likesData);
     }
@@ -166,6 +173,8 @@ export function PostsContainer({
         variant={variant}
         showCreator={showCreator}
         onAction={onAction}
+        onPostClick={onPostClick}
+        columns={layout === 'gallery' ? columns : undefined}
       />
     </div>
   )

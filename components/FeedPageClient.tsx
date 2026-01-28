@@ -5,13 +5,15 @@ import { useUser, useUserLoading } from '@/lib/store/appStore'
 import { useOptimizedPosts } from '@/lib/hooks/useOptimizedPosts'
 import { useOptimizedRealtimePosts } from '@/lib/hooks/useOptimizedRealtimePosts'
 import { PostsContainer } from '@/components/posts/layouts/PostsContainer'
+import { FullscreenCarousel } from '@/components/feed/FullscreenCarousel'
 import { UnifiedPost, PostAction } from '@/types/posts'
 import CreatePostModal from '@/components/CreatePostModal'
 import CreateStoryModal from '@/components/CreateStoryModal'
 import StoryViewPopup from '@/components/StoryViewPopup'
-import SubscribeModal from '@/components/SubscribeModal'
+import NewSubscribeModal from '@/components/NewSubscribeModal'
 import PurchaseModal from '@/components/PurchaseModal'
 import SellablePostModal from '@/components/SellablePostModal'
+import { TipSendModal } from '@/components/TipSendModal'
 import FloatingActionButton from '@/components/ui/FloatingActionButton'
 import Avatar from '@/components/Avatar'
 import { hasAccessToTier } from '@/lib/utils/access'
@@ -119,6 +121,9 @@ export default function FeedPageClient() {
   const [showPurchaseModal, setShowPurchaseModal] = useState(false)
   const [showEditModal, setShowEditModal] = useState(false)
   const [showSellableModal, setShowSellableModal] = useState(false)
+  const [showTipModal, setShowTipModal] = useState(false)
+  const [tipCreatorId, setTipCreatorId] = useState<string | null>(null)
+  const [tipCreatorName, setTipCreatorName] = useState<string | null>(null)
   const [selectedPost, setSelectedPost] = useState<any>(null)
   const [selectedCreator, setSelectedCreator] = useState<any>(null)
   const [filteredAndSortedPosts, setFilteredAndSortedPosts] = useState<UnifiedPost[]>([])
@@ -136,7 +141,9 @@ export default function FeedPageClient() {
   console.log('[FeedPageClient] user:', user);
   
   // Функция для загрузки историй
+
   const loadStories = async () => {
+    return;
     try {
       setIsLoadingStories(true)
       console.log('[FeedPageClient] Loading stories...')
@@ -156,51 +163,13 @@ export default function FeedPageClient() {
     }
   }
   
+  /*
   // Загружаем истории при монтировании
   useEffect(() => {
     loadStories()
   }, [])
+  */  
 
-  // Группируем истории по пользователям
-  const groupedStories = useMemo(() => {
-    const grouped = new Map<string, { user: any, stories: any[], firstIndex: number }>()
-    
-    stories.forEach((story, index) => {
-      const userId = story.userId
-      if (!grouped.has(userId)) {
-        grouped.set(userId, {
-          user: story.user,
-          stories: [story],
-          firstIndex: index
-        })
-      } else {
-        grouped.get(userId)!.stories.push(story)
-      }
-    })
-    
-    return Array.from(grouped.values())
-  }, [stories])
-  
-  // Функция для проверки аутентификации перед созданием поста
-  const handleCreatePost = async () => {
-    console.log('[FeedPageClient] handleCreatePost');
-    if (!user) {
-      // 🔥 Открываем модальное окно подключения кошелька вместо ошибки
-      setVisible(true)
-      toast.success('Подключите кошелек для создания поста')
-      return
-    }
-
-    const token = await jwtManager.getToken()
-    if (!token) {
-      // 🔥 Открываем модальное окно подключения кошелька вместо ошибки
-      setVisible(true)
-      toast.success('Подключите кошелек для создания поста')
-      return
-    }
-
-    setShowCreateModal(true)
-  }
 
   // Оптимизированная загрузка постов с пагинацией
   const {
@@ -218,15 +187,12 @@ export default function FeedPageClient() {
     category: selectedCategory === 'All' ? undefined : selectedCategory,
     variant: 'feed',
     sortBy: sortBy,
-    pageSize: 20
+    pageSize: 150
   })
 
   // Real-time обновления
   const {
     posts: realtimePosts,
-    newPostsCount,
-    hasNewPosts,
-    loadPendingPosts
   } = useOptimizedRealtimePosts({
     posts,
     autoUpdateFeed: user?.id ? true : false, // NEW: Auto-update для logged-in users
@@ -303,6 +269,8 @@ export default function FeedPageClient() {
   }, [selectedCategory, sortBy, isInitialized, refresh])
 
   // Отслеживание скролла для кнопки Scroll to Top
+
+  /*
   useEffect(() => {
     const handleScroll = () => {
       const scrollTop = window.pageYOffset || document.documentElement.scrollTop
@@ -313,7 +281,7 @@ export default function FeedPageClient() {
     window.addEventListener('scroll', handleScroll, { passive: true })
     return () => window.removeEventListener('scroll', handleScroll)
   }, [])
-  
+  */
 
   useEffect(() => {
     console.log(`[FeedPageClient] useEffect filteredAndSortedPosts`, realtimePosts);
@@ -373,6 +341,21 @@ export default function FeedPageClient() {
           }
         }
       }
+      
+      if(user?.id)
+      {
+        let followingData = [];
+        if(localStorage.getItem('user_following') !== null) {
+          followingData = JSON.parse(localStorage.getItem('user_following') || '[]')
+        } else {
+          const followingResponse = await fetch(`/api/user/follow?userId=${user?.id}&type=following`)
+          if (followingResponse.ok) {
+            followingData = await followingResponse.json()
+            localStorage.setItem('user_following', JSON.stringify(followingData.data || null))
+          }
+        }
+      }
+      
   
       const processedPosts = realtimePosts.filter((post) => {
         // Пропускаем ai-video, если не подходит
@@ -390,6 +373,11 @@ export default function FeedPageClient() {
           const sub = subscriptions.subscriptions.find((sub: any) => sub.creatorId === post.creator.id);
           console.log("[SUBSCRIPTION] sub:", sub);
           if (sub?.isActive) {
+            if(post.access.tier && !post.access.price) {
+              post.access.shouldHideContent = false;
+              post.access.isLocked = false;
+            } 
+            /*
             if (sub.plan === "VIP") {
               post.access.shouldHideContent = false;
               post.access.isLocked = false;
@@ -406,6 +394,7 @@ export default function FeedPageClient() {
               post.access.shouldHideContent = false;
               post.access.isLocked = false;
             }
+            */
           }
         }
         if(likesData.length > 0) {
@@ -564,6 +553,11 @@ export default function FeedPageClient() {
         setSelectedPost(post)
         setShowEditModal(true)
         break
+      case 'tip':
+        setTipCreatorId(post.creator.id)
+        setTipCreatorName(post.creator.name || post.creator.nickname || null)
+        setShowTipModal(true)
+        break
       case 'bid':
         // КРИТИЧЕСКИЙ ФИКС: после нормализации цена ВСЕГДА в access.price
         const normalizedPrice = post.access?.price
@@ -618,6 +612,13 @@ export default function FeedPageClient() {
         // Обрабатываем через handleAction от useOptimizedPosts
         handleAction(action)
         break
+      case 'share':
+        // Копируем ссылку на пост
+        const postUrl = `${window.location.origin}/post/${action.postId}`
+        navigator.clipboard.writeText(postUrl)
+          .then(() => toast.success('Ссылка скопирована!'))
+          .catch(() => toast.error('Не удалось скопировать ссылку'))
+        break
       case 'adminDelete':
         // Административное удаление через handleAction от useOptimizedPosts
         console.log('[Feed] Admin delete action:', action)
@@ -629,281 +630,23 @@ export default function FeedPageClient() {
   console.log(`[FILTERED AND SORTED POSTS]`, filteredAndSortedPosts);
   console.log(`[HAS MORE]`, hasMore);
   console.log(`[IS LOADING MORE] `, isLoadingMore);
+  
   return (
-    <div className="min-h-screen bg-white dark:bg-slate-900 pt-12 sm:-mt-14">
-      <div className="max-w-2xl mx-auto px-0 sm:px-4 pb-20">
-        {/* Stories Section - показываем только после загрузки постов */}
-        {!isLoading && (
-        <div className="mb-4 px-4 sm:px-0 pt-4">
-          <div className="flex gap-3 overflow-x-auto pb-3 scrollbar-hide">
-            {/* Add Story Button */}
-            <button
-              onClick={() => {
-                if (!user) {
-                  setVisible(true)
-                  toast.success('Подключите кошелек для создания истории')
-                  return
-                }
-                setShowCreateStoryModal(true)
-              }}
-              className="flex-shrink-0 flex flex-col items-center gap-2 group"
-            >
-              <div className="w-16 h-16 rounded-full border-2 border-dashed border-purple-500 dark:border-purple-400 flex items-center justify-center bg-gradient-to-br from-purple-50 to-pink-50 dark:from-purple-900/20 dark:to-pink-900/20 hover:from-purple-100 hover:to-pink-100 dark:hover:from-purple-900/30 dark:hover:to-pink-900/30 transition-all group-hover:scale-105">
-                <PlusIcon className="w-8 h-8 text-purple-600 dark:text-purple-400" />
-              </div>
-              <span className="text-xs font-medium text-gray-700 dark:text-slate-300">
-                Add Story
-              </span>
-            </button>
-
-            {/* Real stories from users */}
-            {isLoadingStories ? (
-              // Loading skeleton
-              <div className="flex gap-3">
-                {[1, 2, 3].map((i) => (
-                  <div key={i} className="flex-shrink-0 flex flex-col items-center gap-2 animate-pulse">
-                    <div className="w-16 h-16 rounded-full bg-gray-300 dark:bg-slate-700" />
-                    <div className="w-12 h-3 bg-gray-300 dark:bg-slate-700 rounded" />
-                  </div>
-                ))}
-              </div>
-            ) : (
-              groupedStories.map((group) => (
-                <button
-                  key={group.user.id}
-                  onClick={() => {
-                    // Передаем только истории выбранного пользователя
-                    console.log('[FeedPageClient] Opening stories for user:', group.user.nickname || group.user.fullName)
-                    console.log('[FeedPageClient] User stories count:', group.stories.length)
-                    console.log('[FeedPageClient] User stories:', group.stories)
-                    setSelectedUserStories(group.stories)
-                    setSelectedStoryIndex(0) // Начинаем с первой истории пользователя
-                    setShowStoryViewer(true)
-                  }}
-                  className="flex-shrink-0 flex flex-col items-center gap-2 group relative"
-                >
-                  <div className="w-16 h-16 rounded-full bg-gradient-to-tr from-purple-500 via-pink-500 to-orange-500 p-[2px] group-hover:scale-105 transition-transform">
-                    <div className="w-full h-full rounded-full bg-white dark:bg-slate-900 p-[2px]">
-                      <Avatar
-                        src={group.user.avatar}
-                        alt={group.user.fullName || group.user.nickname}
-                        seed={group.user.nickname || group.user.id}
-                        size={56}
-                        rounded="full"
-                        className="w-full h-full"
-                      />
-                    </div>
-                  </div>
-                  
-                  <span className="text-xs font-medium text-gray-700 dark:text-slate-300 max-w-[64px] truncate">
-                    {group.user.fullName || group.user.nickname || 'User'}
-                  </span>
-                </button>
-              ))
-            )}
-          </div>
-        </div>
-        )}
-
-        {/* 🎯 NEW: Compact Filters Bar под Stories (non-sticky) - показываем только после загрузки постов */}
-        {!isLoading && (
-        <div className="mb-4 px-4 sm:px-0">
-          <div className="bg-white dark:bg-slate-900 border-b border-gray-200 dark:border-slate-700 py-3">
-            <div className="flex items-center gap-3">
-              
-              {/* Category Dropdown */}
-              <select
-                value={selectedCategory}
-                onChange={(e) => startTransition(() => setSelectedCategory(e.target.value))}
-                className="flex-1 px-3 py-2 bg-white dark:bg-slate-800 border border-gray-300 dark:border-slate-700 rounded-xl text-gray-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all cursor-pointer"
-              >
-                {categories.map((category) => {
-                  const icons: Record<string, string> = {
-                    'All': '📚', 'Art': '🎨', 'Music': '🎵', 'Gaming': '🎮',
-                    'Lifestyle': '🏠', 'Fitness': '💪', 'Tech': '💻', 'DeFi': '💰',
-                    'NFT': '🖼️', 'Trading': '📊', 'GameFi': '🎲', 'Blockchain': '🔗',
-                    'Intimate': '❤️', 'Education': '🎓', 'Comedy': '😂', 'Food': '🍰',
-                    'Party': '🎉', 'Landscape': '🏞️', 'Work': '💼', 'Adult': '🔞',
-                    'Couple': '👫', 'Solo': '🧍'
-                  }
-                  return (
-                    <option key={category} value={category}>
-                      {icons[category] || '📚'} {category}
-                    </option>
-                  )
-                })}
-              </select>
-
-              {/* Sort Dropdown */}
-              <select
-                value={sortBy}
-                onChange={(e) => startTransition(() => setSortBy(e.target.value as any))}
-                className="flex-1 px-3 py-2 bg-white dark:bg-slate-800 border border-gray-300 dark:border-slate-700 rounded-xl text-gray-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all cursor-pointer"
-              >
-                {sortOptions.map((option) => {
-                  const icons: Record<string, string> = {
-                    'latest': '🕒', 'popular': '🔥', 'trending': '📈', 'subscribed': '👥'
-                  }
-                  return (
-                    <option key={option.value} value={option.value}>
-                      {icons[option.value]} {option.label}
-                    </option>
-                  )
-                })}
-              </select>
-            </div>
-          </div>
-        </div>
-        )}
-
-        {/* Banner для новых постов */}
-        {hasNewPosts && (
-          <div className="mb-4 px-4 sm:px-0">
-            <button
-              onClick={loadPendingPosts}
-              className="w-full px-4 py-3 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-xl font-medium hover:from-purple-700 hover:to-pink-700 transition-all flex items-center justify-center gap-2"
-            >
-              <SparklesIcon className="w-5 h-5" />
-              {newPostsCount} new {newPostsCount === 1 ? 'post' : 'posts'} available
-            </button>
-          </div>
-        )}
-
-        {/* Categories - non-sticky horizontal scroll */}
-        {/* <div className="mb-4">
-          <div className="relative">
-            <div 
-              ref={categoryScrollRef}
-              className="flex gap-2 px-4 pb-3 pt-3 overflow-x-auto scrollbar-hide scroll-smooth"
-            >
-              {categories.map((category) => {
-                const IconComponent = categoryIcons[category]
-                return (
-                  <button
-                    key={category}
-                    onClick={() => startTransition(() => setSelectedCategory(category))}
-                    className={`
-                      px-4 py-2 rounded-full font-medium whitespace-nowrap transition-all
-                      ${selectedCategory === category
-                        ? 'bg-gradient-to-r from-purple-600 to-pink-600 text-white shadow-md'
-                        : 'bg-gray-100 dark:bg-slate-800 text-gray-700 dark:text-slate-300 hover:bg-gray-200 dark:hover:bg-slate-700'
-                      }
-                    `}
-                    title={category} // Добавляем tooltip с названием категории
-                  >
-                    {/* Показываем иконку на мобильных устройствах */}
-                    {/* <div className="md:hidden flex items-center justify-center">
-                      <div className="w-10">
-                        <IconComponent className="w-5 h-5" />
-                      </div>
-                    </div> */}
-                    {/* Показываем текст на десктопе */}
-                    {/* <span className="hidden md:inline">{category}</span>
-                  </button>
-                )
-              })}
-            </div>
-            
-            {/* Gradient для индикации скролла */}
-            {/* <div className="absolute right-0 top-0 bottom-0 w-8 bg-gradient-to-l from-white dark:from-slate-900 to-transparent pointer-events-none" />
-          </div>
-        </div> */}
-
-        {/* Sort options - компактная версия */}
-        {/* <div className="mb-6 px-4 sm:px-0">
-          <div className="flex gap-2 overflow-x-auto pb-2">
-            {sortOptions.map((option) => (
-              <button
-                key={option.value}
-                onClick={() => {
-                  const newSortBy = option.value as 'latest' | 'popular' | 'trending' | 'subscribed'
-                  console.log('[FeedPage] Sort filter clicked:', { from: sortBy, to: newSortBy })
-                  startTransition(() => setSortBy(newSortBy))
-                }}
-                className={`
-                  flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-all whitespace-nowrap
-                  ${sortBy === option.value
-                    ? 'bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300'
-                    : 'text-gray-600 dark:text-slate-400 hover:text-gray-900 dark:hover:text-white'
-                  }
-                `}
-              >
-                <option.icon className="w-4 h-4" />
-                {option.label}
-              </button>
-            ))}
-          </div>
-        </div> */}
-
-        {/* Posts Container */}
-        <div style={{ 
-          opacity: isPending ? 0.6 : 1,
-          transition: 'opacity 0.2s ease-in-out'
-        }}>
-          <PostsContainer
-            posts={filteredAndSortedPosts}
-            layout="list"
-            variant="feed"
-            showCreator={true}
-            onAction={handlePostAction}
-            isLoading={isLoading}
-          emptyComponent={
-            <div className="text-center py-20 px-4">
-              <SparklesIcon className="w-16 h-16 text-gray-400 dark:text-slate-600 mx-auto mb-4" />
-              <h3 className="text-xl font-bold text-gray-700 dark:text-slate-300 mb-2">No posts yet</h3>
-              <p className="text-gray-600 dark:text-slate-400 mb-6">Be the first to create content!</p>
-              <button
-                onClick={handleCreatePost}
-                className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-purple-600 to-pink-600 text-white font-bold rounded-xl hover:from-purple-700 hover:to-pink-700 transform hover:scale-105 transition-all duration-300"
-              >
-                <PlusIcon className="w-5 h-5" />
-                Create first post
-              </button>
-            </div>
-          }
-          />
-        </div>
-
-        {/* Infinite scroll trigger */}
-        {hasMore && !isLoadingMore && (
-          <div ref={loadMoreRef} className="h-20 flex items-center justify-center">
-            <div className="text-sm text-gray-500 dark:text-slate-500">
-              Scroll to load more
-            </div>
-          </div>
-        )}
-
-        {/* Loading indicator */}
-        {isLoadingMore && (
-          <div className="py-8 text-center">
-            <div className="w-8 h-8 border-2 border-purple-500/30 border-t-purple-500 rounded-full animate-spin mx-auto" />
-          </div>
-        )}
-      </div>
-
-      {/* Scroll to Top Button - показывается при скролле вниз */}
-      {showScrollTop && (
-        <button
-          onClick={() => {
-            window.scrollTo({ top: 0, behavior: 'smooth' })
-          }}
-          className="fixed bottom-24 right-6 z-50 p-4 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white rounded-full shadow-lg transition-all duration-300 hover:scale-110 md:bottom-32 md:right-8"
-          aria-label="Scroll to top"
-        >
-          <ArrowUpIcon className="w-6 h-6" />
-        </button>
-      )}
-
-      {/* Floating Action Button - скрыт на мобильных устройствах */}
-      <div className="hidden md:block">
-        <FloatingActionButton
-          onClick={handleCreatePost}
-          label="Create Post"
-          hideOnScroll={true}
-          offset={{ bottom: 32, right: 32 }}
-        />
-      </div>
-
+    <div className="h-screen overflow-hidden bg-white dark:bg-slate-900">
+      {/* FullscreenCarousel - показываем все посты */}
+      <FullscreenCarousel
+        posts={filteredAndSortedPosts}
+        initialIndex={0}
+        onPostChange={(post, index) => {
+          console.log('[Feed] Post changed:', post.id, 'index:', index)
+        }}
+        onAction={handlePostAction}
+        onLoadMore={hasMore && !isLoadingMore ? () => {
+          console.log('[Feed] Loading more posts...')
+          // Infinite scroll logic handled by useOptimizedPosts
+        } : undefined}
+      />
+      
       {/* Create Post Modal */}
       {showCreateModal && (
         <CreatePostModal
@@ -955,7 +698,7 @@ export default function FeedPageClient() {
 
       {/* Other Modals */}
       {showSubscribeModal && selectedCreator && (
-        <SubscribeModal
+        <NewSubscribeModal
           onClose={() => {
             setShowSubscribeModal(false)
             setSelectedCreator(null)
@@ -966,7 +709,6 @@ export default function FeedPageClient() {
             loadPosts();
           }}
           creator={selectedCreator}
-          post={selectedPost}
         />
       )}
 
@@ -1014,6 +756,20 @@ export default function FeedPageClient() {
           stories={selectedUserStories}
           initialStoryIndex={selectedStoryIndex}
           onClose={() => setShowStoryViewer(false)}
+        />
+      )}
+
+      {/* Tip Modal */}
+      {showTipModal && tipCreatorId && (
+        <TipSendModal
+          isOpen={showTipModal}
+          onClose={() => {
+            setShowTipModal(false)
+            setTipCreatorId(null)
+            setTipCreatorName(null)
+          }}
+          creatorId={tipCreatorId}
+          creatorName={tipCreatorName || undefined}
         />
       )}
     </div>

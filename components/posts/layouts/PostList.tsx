@@ -10,6 +10,7 @@ export interface PostListProps {
   variant: PostPageVariant
   showCreator?: boolean
   onAction?: (action: PostAction) => void
+  onPostClick?: (postIndex: number, post: UnifiedPost) => void
   className?: string
 }
 
@@ -22,6 +23,7 @@ export function PostList({
   variant, 
   showCreator = true, 
   onAction,
+  onPostClick,
   className 
 }: PostListProps) {
   // Унифицированные стили для всех вариантов
@@ -30,14 +32,19 @@ export function PostList({
   return (
     <div className={cn(className)}>
       <div className={containerStyles}>
-        {posts.map(post => (
-          <PostCard
+        {posts.map((post, index) => (
+          <div 
             key={post.id}
-            post={post}
-            variant="full"
-            showCreator={showCreator}
-            onAction={onAction}
-          />
+            className={onPostClick ? "cursor-pointer" : undefined}
+            onClick={() => onPostClick?.(index, post)}
+          >
+            <PostCard
+              post={post}
+              variant="full"
+              showCreator={showCreator}
+              onAction={onAction}
+            />
+          </div>
         ))}
       </div>
     </div>

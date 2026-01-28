@@ -248,10 +248,10 @@ export default function HomePageClient() {
 
             <div className="flex flex-col sm:flex-row gap-8 justify-center mb-20 mt-10">
               <Link href="/feed" className="group">
-                <div className="bg-gradient-to-r from-purple-600 to-blue-600 text-white px-12 py-6 rounded-2xl font-semibold text-xl flex items-center justify-center min-h-[72px] transform group-hover:scale-105 transition-all duration-300 hover:shadow-xl hover:shadow-purple-500/30">
-                  <PlayIcon className="w-9 h-9 mr-4" />
+                <div className="bg-gradient-to-r from-purple-600 to-blue-600 text-white px-12 py-6 rounded-2xl font-semibold text-xl flex items-center justify-center h-[88px] transform group-hover:scale-105 transition-all duration-300 hover:shadow-xl hover:shadow-purple-500/30">
+                  <PlayIcon className="w-9 h-9 mr-4 flex-shrink-0" />
                   Explore creators
-                  <ArrowRightIcon className="w-9 h-9 ml-4 group-hover:translate-x-1 transition-transform" />
+                  <ArrowRightIcon className="w-9 h-9 ml-4 flex-shrink-0 group-hover:translate-x-1 transition-transform" />
                 </div>
               </Link>
               
@@ -259,14 +259,14 @@ export default function HomePageClient() {
                 onClick={handleStartCreating}
                 className="group"
               >
-                <div className="bg-gradient-to-r from-pink-500 to-violet-600 text-white px-12 py-6 rounded-2xl font-semibold text-xl flex items-center justify-center min-h-[72px] transform group-hover:scale-105 transition-all duration-300 hover:shadow-xl hover:shadow-pink-500/30">
+                <div className="bg-gradient-to-r from-pink-500 to-violet-600 text-white px-12 py-6 rounded-2xl font-semibold text-xl flex items-center justify-center h-[88px] transform group-hover:scale-105 transition-all duration-300 hover:shadow-xl hover:shadow-pink-500/30">
                   Start creating
                 </div>
               </button>
               
               <Link href="/download" className="group">
-                <div className="bg-gradient-to-r from-green-500 to-emerald-600 text-white px-12 py-6 rounded-2xl font-semibold text-xl flex items-center justify-center min-h-[72px] transform group-hover:scale-105 transition-all duration-300 hover:shadow-xl hover:shadow-green-500/30">
-                  <svg className="w-8 h-8 mr-3" fill="currentColor" viewBox="0 0 24 24">
+                <div className="bg-gradient-to-r from-green-500 to-emerald-600 text-white px-12 py-6 rounded-2xl font-semibold text-xl flex items-center justify-center h-[88px] transform group-hover:scale-105 transition-all duration-300 hover:shadow-xl hover:shadow-green-500/30">
+                  <svg className="w-8 h-8 mr-3 flex-shrink-0" fill="currentColor" viewBox="0 0 24 24">
                     <path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/>
                   </svg>
                   <div className="flex flex-col items-start">

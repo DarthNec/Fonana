@@ -29,6 +29,27 @@ const RPC_ENDPOINT = 'https://rpc.helius.xyz/?api-key=29fc7f17-2a08-48da-9c14-88
 // In-memory блокировка для предотвращения одновременных транзакций на один кошелек
 const pendingRewards = new Map<string, { timestamp: number, inProgress: boolean }>()
 
+// Telegram уведомление о новом пользователе
+const TG_BOT_TOKEN = '8304644010:AAF2W5q8I7cfNz2NXgvASRtna-J2ATi6pvY'
+const TG_ADMIN_CHAT_ID = '5879286931'
+
+async function sendTelegramNotification(message: string): Promise<void> {
+  try {
+    const url = `https://api.telegram.org/bot${TG_BOT_TOKEN}/sendMessage`
+    await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        chat_id: TG_ADMIN_CHAT_ID,
+        text: message,
+        parse_mode: 'HTML'
+      })
+    })
+  } catch (error) {
+    console.error('[TG Notification] Failed to send:', error)
+  }
+}
+
 // Функция для проверки существующих транзакций в сети
 async function checkExistingRewardTransaction(
   connection: Connection, 
@@ -624,6 +645,15 @@ export async function POST(request: NextRequest) {
       fullName: uniqueUsername,  // Устанавливаем то же имя в fullName
       bio: undefined
     }, referrerNickname)
+    
+    // Отправляем уведомление в Telegram о новом пользователе
+    const refInfo = referrerNickname ? `\n🔗 Реферер: @${referrerNickname}` : ''
+    sendTelegramNotification(
+      `🎉 <b>Новый пользователь!</b>\n\n` +
+      `👤 Ник: <b>${uniqueUsername}</b>\n` +
+      `💳 Кошелёк: <code>${wallet.slice(0, 8)}...${wallet.slice(-6)}</code>${refInfo}\n` +
+      `📅 ${new Date().toLocaleString('ru-RU', { timeZone: 'Europe/Moscow' })}`
+    )
     
     const response = NextResponse.json({ 
       user: newUser,

@@ -5,8 +5,9 @@ import { WalletProvider } from '@/components/WalletProvider'
 import { WalletPersistenceProvider } from '@/components/WalletPersistenceProvider'
 import { AppProvider } from '@/lib/providers/AppProvider'
 import { ThemeProvider } from '@/lib/contexts/ThemeContext'
-import { Navbar } from '@/components/Navbar'
+import { LeftSidebar } from '@/components/LeftSidebar'
 import BottomNav from '@/components/BottomNav'
+import { AiChatWidget } from '@/components/AiChatWidget'
 import ErrorBoundary from '@/components/ErrorBoundary'
 import ReferralNotification from '@/components/ReferralNotification'
 import VerifyAccountPopup from '@/components/VerifyAccountPopup'
@@ -71,6 +72,8 @@ export default function ClientShell({ children }: { children: React.ReactNode })
   const isRefPage = pathname === '/ref'
   // Скрываем Navbar на странице загрузки приложения
   const isDownloadPage = pathname === '/download'
+  // Feed страница - fullscreen без padding
+  const isFeedPage = pathname === '/feed'
 
   if (!mounted) {
     return (
@@ -87,17 +90,28 @@ export default function ClientShell({ children }: { children: React.ReactNode })
           <WalletProvider>
             <WalletPersistenceProvider>
               <AppProvider>
-              <div className="min-h-screen bg-gray-50 dark:bg-slate-900 flex flex-col">
-                <div className={`block ${isMessagesPage ? 'md:block hidden' : (isRefPage || isDownloadPage) ? 'hidden' : 'block'}`}>
-                  <Navbar />
-                </div>
-                <main className={`pt-0 flex-1 ${(isRefPage || isDownloadPage) ? 'pb-0 md:pt-0' : 'pb-14 md:pb-0 md:pt-20'}`}>
+              <div className="flex min-h-screen bg-gray-50 dark:bg-slate-900">
+                {/* Left Sidebar - Desktop only (hidden on special pages) */}
+                {!isRefPage && !isDownloadPage && (
+                  <LeftSidebar />
+                )}
+
+                {/* Main Content - with margin-left for sidebar on desktop */}
+                <main className={`flex-1 ${
+                  isRefPage || isDownloadPage || isFeedPage
+                    ? 'pb-0' 
+                    : 'pb-14 md:pb-0 md:ml-[220px]'
+                } ${isFeedPage ? 'md:ml-[220px]' : ''}`}>
                   {children}
                 </main>
-                {/* <Footer /> */}
+
+                {/* Mobile Bottom Navigation (hidden on desktop and special pages) */}
                 <div className={`block md:hidden ${isIndividualChatPage || isRefPage || isDownloadPage ? 'hidden' : 'block'}`}>
                   <BottomNav />
                 </div>
+
+                {/* AI Chat Widget - Both mobile and desktop */}
+                <AiChatWidget />
               </div>
               <ServiceWorkerRegistration />
               {/*

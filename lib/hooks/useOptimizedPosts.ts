@@ -26,7 +26,6 @@ interface UseOptimizedPostsReturn {
   isLoadingMore: boolean
   loadMore: () => void
   loadPosts: () => void
-  testF: () => void
   refresh: (clearCache?: boolean) => void
   handleAction: (action: PostAction) => Promise<void>
   addNewPost: (post: UnifiedPost) => void
@@ -64,14 +63,18 @@ export function useOptimizedPosts(options: UseOptimizedPostsOptions = {}): UseOp
   
   console.log(`[useOptimizedPosts] isFeedLoading:`, isFeedLoading)
   
-  const testF = useCallback(async () => {
-    console.log('[useOptimizedPosts] testF called')
-    return 'test'
-  }, [])
 
   // Main effect for posts loading - FIXED AbortController pattern
   const loadPosts = useCallback(async () => {
     try {
+      /*
+      if(localStorage.getItem('fonana_posts_loading') !== null) {
+        console.log('[useOptimizedPosts] Posts already loading')
+        return
+      }
+      localStorage.setItem('fonana_posts_loading', 'true')
+      console.log('[useOptimizedPosts] Posts loading set', posts);
+      */
       setPosts([]);
       console.log('[useOptimizedPosts] Loading posts with options:', {
         sortBy: options.sortBy,
@@ -145,10 +148,7 @@ export function useOptimizedPosts(options: UseOptimizedPostsOptions = {}): UseOp
           }
           console.log(`[useOptimizedPosts] User likes:`, likesData);
         }
-      }
 
-
-      if(user?.id) {
         if(localStorage.getItem('user_emotions') !== null) {
           emotionsData = JSON.parse(localStorage.getItem('user_emotions') || '[]')
         } else {
@@ -165,6 +165,8 @@ export function useOptimizedPosts(options: UseOptimizedPostsOptions = {}): UseOp
       }
 
 
+
+
       console.log(`[useOptimizedPosts] Received ${rawPosts.length} posts from API`)
       console.log(`[useOptimizedPosts] Raw posts2:`, rawPosts);
       // Normalize posts
@@ -178,7 +180,10 @@ export function useOptimizedPosts(options: UseOptimizedPostsOptions = {}): UseOp
       console.log('[useOptimizedPosts] Loading posts finished')
       setIsLoading(false)
       setIsFeedLoading(false);
+      localStorage.removeItem('fonana_posts_loading')
+      console.log('[useOptimizedPosts] Posts loading removed', posts);
     } catch (err: any) {
+      localStorage.removeItem('fonana_posts_loading')
       // ✅ Proper AbortError handling
       if (err.name !== 'AbortError') {
         console.error('[useOptimizedPosts] Fetch error:', err)
@@ -622,11 +627,6 @@ export function useOptimizedPosts(options: UseOptimizedPostsOptions = {}): UseOp
   // Удалить пост
   const handleDelete = useCallback(async (postId: string) => {
     console.log('🎯 [useOptimizedPosts] handleDelete called for post:', postId)
-    
-    if (!confirm('Вы уверены, что хотите удалить этот пост?')) {
-      console.log('🎯 [useOptimizedPosts] Delete cancelled by user')
-      return
-    }
 
     try {
       console.log('🎯 [useOptimizedPosts] Sending delete request to API...')
@@ -929,7 +929,6 @@ export function useOptimizedPosts(options: UseOptimizedPostsOptions = {}): UseOp
     error,
     hasMore, // 🚀 PAGINATION: Используем реальное значение hasMore
     isLoadingMore,
-    testF,
     loadMore,
     loadPosts,
     refresh,

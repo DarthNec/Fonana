@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { PrismaClient } from '@prisma/client'
+import { prisma } from '@/lib/prisma'
 
-const prisma = new PrismaClient()
+// 🔥 ИСПРАВЛЕНО: Используем синглтон prisma вместо new PrismaClient()
 
 /**
  * GET /api/posts/video

@@ -1,30 +1,22 @@
-import { Suspense } from 'react'
-import dynamic from 'next/dynamic'
+'use client'
 
-// Dynamic import client component to prevent SSR issues
-const ClientShell = dynamic(() => import('@/components/ClientShell'), {
-  ssr: false,
-  loading: () => (
-    <div className="min-h-screen bg-gray-50 dark:bg-slate-900 flex items-center justify-center">
+import { useEffect } from 'react'
+import { useRouter } from 'next/navigation'
+
+export default function HomePage() {
+  const router = useRouter()
+  
+  useEffect(() => {
+    router.replace('/feed')
+  }, [router])
+  
+  // Loading state while redirecting
+  return (
+    <div className="flex items-center justify-center min-h-screen bg-white dark:bg-slate-900">
       <div className="text-center">
-        <div className="w-16 h-16 border-4 border-purple-500/30 border-t-purple-500 rounded-full animate-spin mx-auto mb-4"></div>
-        <p className="text-gray-600 dark:text-slate-400">Loading...</p>
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-500 mx-auto mb-4" />
+        <p className="text-gray-600 dark:text-gray-400">Redirecting to feed...</p>
       </div>
     </div>
   )
-})
-
-const HomePageClient = dynamic(() => import('@/components/HomePageClient'), {
-  ssr: false,
-  loading: () => <div className="p-4">Loading home page...</div>
-})
-
-export default function HomePage() {
-  return (
-    <Suspense fallback={<div>Loading...</div>}>
-      <ClientShell>
-        <HomePageClient />
-      </ClientShell>
-    </Suspense>
-  )
-} 
+}

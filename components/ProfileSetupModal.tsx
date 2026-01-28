@@ -300,7 +300,7 @@ export default function ProfileSetupModal({
                 <XMarkIcon className="w-5 h-5" />
               </button>
               */}
-              <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
+              <h2 className="text-xl sm:text-2xl font-bold bg-gradient-to-r from-purple-600 to-pink-600 dark:from-purple-400 dark:to-pink-400 bg-clip-text text-transparent mb-2">
                 {mode === 'edit' ? 'Edit Your Profile' : 'Welcome to Fonana! 🎉'}
               </h2>
               <p className="text-gray-600 dark:text-slate-400">

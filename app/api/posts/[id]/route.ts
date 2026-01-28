@@ -266,7 +266,6 @@ export async function DELETE(
     const { searchParams } = new URL(request.url)
     const userWallet = searchParams.get('userWallet')
     
-    console.log('🎯 [DELETE API] userWallet from query params:', userWallet)
 
     if (!userWallet) {
       console.error('🎯 [DELETE API] No userWallet provided')
@@ -275,7 +274,6 @@ export async function DELETE(
 
     // Получаем пользователя
     const user = await getUserByWallet(userWallet)
-    console.log('🎯 [DELETE API] User found:', { userId: user?.id, userWallet: user?.wallet })
     
     if (!user) {
       console.error('🎯 [DELETE API] User not found for wallet:', userWallet)
@@ -288,12 +286,14 @@ export async function DELETE(
       select: { id: true, creatorId: true, title: true },
     })
 
+    /*
     console.log('🎯 [DELETE API] Post found:', { 
       postId: post?.id, 
       postTitle: post?.title,
       postCreatorId: post?.creatorId,
       userIsCreator: post?.creatorId === user.id
     })
+    */
 
     if (!post) {
       console.error('🎯 [DELETE API] Post not found:', params.id)
@@ -308,7 +308,6 @@ export async function DELETE(
       return NextResponse.json({ error: 'Not authorized to delete this post' }, { status: 403 })
     }
 
-    console.log('🎯 [DELETE API] Deleting post from database...')
     
     // Удаляем пост (связанные данные удалятся каскадно)
     await prisma.post.delete({

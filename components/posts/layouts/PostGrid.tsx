@@ -10,6 +10,7 @@ export interface PostGridProps {
   variant: PostPageVariant
   showCreator?: boolean
   onAction?: (action: PostAction) => void
+  onPostClick?: (postIndex: number, post: UnifiedPost) => void
   className?: string
 }
 
@@ -22,6 +23,7 @@ export function PostGrid({
   variant, 
   showCreator = true, 
   onAction,
+  onPostClick,
   className 
 }: PostGridProps) {
   // Определяем количество колонок для разных вариантов
@@ -30,7 +32,7 @@ export function PostGrid({
     dashboard: 'sm:grid-cols-2 lg:grid-cols-3',
     feed: 'sm:grid-cols-2',
     profile: 'sm:grid-cols-2 lg:grid-cols-3',
-    creator: 'sm:grid-cols-2'
+    creator: 'sm:grid-cols-2 lg:grid-cols-3'
   }
 
   return (
@@ -39,8 +41,15 @@ export function PostGrid({
       gridColumns[variant] || 'sm:grid-cols-2 lg:grid-cols-3',
       className
     )}>
-      {posts.map(post => (
-        <div key={post.id} className="transition-all duration-300 hover:transform hover:scale-[1.02]">
+      {posts.map((post, index) => (
+        <div 
+          key={post.id} 
+          className={cn(
+            "transition-all duration-300 hover:transform hover:scale-[1.02]",
+            onPostClick && "cursor-pointer"
+          )}
+          onClick={() => onPostClick?.(index, post)}
+        >
           <PostCard
             post={post}
             variant="compact"

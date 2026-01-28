@@ -14,6 +14,7 @@ import {
   isPostSold 
 } from '@/components/posts/utils/postHelpers'
 import { cn } from '@/lib/utils'
+import { useUser } from '@/lib/store/appStore'
 import RemixPostModal from '@/components/RemixPostModal'
 import RemixImagePostModal from '@/components/RemixImagePostModal'
 import { RemixCarousel } from '../RemixCarousel'
@@ -162,14 +163,20 @@ export function PostContent({
     })
   }
 
+  // Получаем текущего пользователя
+  const user = useUser()
+  
+  // Проверяем, является ли текущий пользователь владельцем поста
+  const isOwner = user?.id === post.creator.id
+  
   // Проверяем, нужно ли скрывать контент
   // Автор всегда видит свой контент
-  const shouldHideContent = post.access.isCreatorPost ? false : (
+  const shouldHideContent = isOwner ? false : (
     post.access.shouldHideContent || 
     (post.access.isLocked && !post.access.isPurchased && !post.access.isSubscribed)
   )
   
-  const isLocked = post.access.isCreatorPost ? false : (
+  const isLocked = isOwner ? false : (
     needsPayment(post) || needsSubscription(post) || needsTierUpgrade(post)
   )
   const isSold = isPostSold(post.commerce)
@@ -198,8 +205,8 @@ export function PostContent({
       return 'h-full'
     }
     
-    // Для изображений: на mobile используем aspect ratio, на desktop - без ограничений (будет заполнять flex-1)
-    const mobileAspect = (() => {
+    // Определяем aspect ratio на основе типа медиа
+    const aspectClass = (() => {
       switch (currentPost.media.aspectRatio) {
         case 'vertical': return 'aspect-3/4'
         case 'square': return 'aspect-square'
@@ -208,7 +215,13 @@ export function PostContent({
       }
     })()
     
-    return `${mobileAspect} sm:aspect-auto`
+    // Для заблокированного контента сохраняем aspect ratio на всех размерах
+    // Для обычного контента на desktop убираем aspect ratio
+    if (shouldHideContent || isLocked) {
+      return aspectClass
+    }
+    
+    return `${aspectClass} sm:aspect-auto`
   }
 
   const handleClick = () => {
@@ -261,7 +274,7 @@ export function PostContent({
   }
   */
   return (
-    <div className={cn('space-y-3', 'sm:h-full sm:flex sm:flex-col', className)}>
+    <div className={cn('sm:h-full sm:flex bg-transparent', className)}>
       {/* Header для текстовых постов без медиа */}
       {showHeader && !currentPost.media.url && (
         <PostHeader 
@@ -275,6 +288,8 @@ export function PostContent({
       )}
       
       {/* Title - для текстовых постов показываем всегда, для медиа-постов только если нет showHeader */}
+      
+      {/*
       {(!showHeader || !currentPost.media.url) && (
         <h3 className={cn(
           'font-bold text-gray-900 dark:text-white',
@@ -284,16 +299,17 @@ export function PostContent({
           {currentPost.content.title}
         </h3>
       )}
+      */}
 
+      
       {/* Media Content */}
       {currentPost.media.url && (
-        <div className="relative sm:flex-1 sm:min-h-0">
+        <div>
           <div 
             className={cn(
               'relative overflow-hidden rounded-xl sm:rounded-2xl cursor-pointer',
-              'bg-gray-100 dark:bg-slate-800',
               getAspectRatioClass(),
-              'sm:h-full' // Desktop: занимает всю высоту родителя
+              'h-full max-h-[95vh]'
             )}
             onClick={handleClick}
           >
@@ -309,19 +325,7 @@ export function PostContent({
                   isOverlay={true}
                 />
                 
-                {/* Header поверх заблокированного контента */}
-                {showHeader && (
-                  <div className="absolute top-0 left-0 right-0 z-30 bg-gradient-to-b from-black/80 via-black/60 to-transparent pt-3 pb-16 px-3 sm:px-4">
-                    <PostHeader 
-                      post={post}
-                      variant={variant}
-                      onAction={onAction}
-                      overlay={true}
-                      className="mb-0"
-                      onMenuOpenChange={setIsMenuOpen}
-                    />
-                  </div>
-                )}
+                {/* Header поверх заблокированного контента - СКРЫТ для платных постов в Store */}
               </>
             ) : (
               <>
@@ -350,7 +354,7 @@ export function PostContent({
                     src={currentPost.media.url}
                     alt={currentPost.content.title}
                     className={cn(
-                      'w-full h-full object-cover sm:object-contain transition-opacity duration-300',
+                      'h-full max-h-[95vh] w-auto object-contain transition-opacity duration-300',
                       imageLoaded ? 'opacity-100' : 'opacity-0'
                     )}
                     onLoad={() => setImageLoaded(true)}
@@ -364,8 +368,8 @@ export function PostContent({
                     </div>
                   )}
                   
-                  {/* Remix button for images */}
-                  {!isMenuOpen && (
+                  {/* Remix button for images - только для AI контента с requestId, НЕ платного */}
+                  {!isMenuOpen && currentPost.media?.requestId && !post.access?.price && !post.commerce?.isSellable && (
                     <button
                       onClick={(e) => {
                         e.stopPropagation()
@@ -458,8 +462,8 @@ export function PostContent({
                     </button>
                   )}
                   
-                  {/* Remix button for videos */}
-                  {!isMenuOpen && (
+                  {/* Remix button for videos - только для AI контента с requestId, НЕ платного */}
+                  {!isMenuOpen && currentPost.media?.requestId && !post.access?.price && !post.commerce?.isSellable && (
                     <button
                       onClick={(e) => {
                         e.stopPropagation()
@@ -633,9 +637,9 @@ export function PostContent({
           )}
         </div>
       )}
-
-      {/* Category & Tags & Tier - скрываем когда используем footer или для текстовых постов */}
-      {!showFooter && variant === 'full' && currentPost.media.url && (currentPost.content.category || currentPost.content.tags.length > 0 || post?.access?.tier) && (
+      
+      {/* Category & Tags & Tier - ЗАКОММЕНТИРОВАНО */}
+      {/* {!showFooter && variant === 'full' && currentPost.media.url && (currentPost.content.category || currentPost.content.tags.length > 0 || post?.access?.tier) && (
         <div className="flex flex-wrap items-center gap-2">
           {currentPost.content.category && (
             <Link
@@ -643,14 +647,12 @@ export function PostContent({
               className="px-3 py-1 bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 rounded-full text-xs font-medium hover:bg-purple-200 dark:hover:bg-purple-900/50 transition-colors flex items-center gap-1"
               title={currentPost.content.category}
             >
-              {/* Показываем иконку на мобильных устройствах */}
               <div className="md:hidden flex items-center justify-center">
                 {(() => {
                   const IconComponent = categoryIcons[currentPost.content.category] || Squares2X2Icon
                   return <div className="w-5"> <IconComponent /> </div>
                 })()}
               </div>
-              {/* Показываем текст на десктопе */}
               <span className="hidden md:inline">{currentPost.content.category}</span>
             </Link>
           )}
@@ -662,20 +664,18 @@ export function PostContent({
               #{tag}
             </span>
           ))}
-          {/* Tier Badge */}
           {post?.access?.tier && (
             <TierBadge 
               tier={post.access.tier} 
               interactive={true}
               onClick={() => {
-                // TODO: Добавить фильтрацию по тиру
                 console.log(`Фильтровать по тиру: ${post.access.tier}`)
               }}
             />
           )}
         </div>
-      )}
-      
+      )} */}
+
       {/* Remix Modal for Videos */}
       {showRemixModal && (
         <RemixPostModal

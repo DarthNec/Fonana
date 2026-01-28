@@ -53,13 +53,13 @@ class JWTManager {
               this.scheduleRefresh()
             } else {
               console.log('[JWT] Fallback token expired, clearing...')
-              localStorage.removeItem('fonana_jwt_token')
+              // localStorage.removeItem('fonana_jwt_token')
               localStorage.removeItem('fonana_user_wallet')
             }
           } catch (error) {
             console.warn('[JWT] Invalid fallback token format:', error)
-            localStorage.removeItem('fonana_jwt_token')
-            localStorage.removeItem('fonana_user_wallet')
+            // localStorage.removeItem('fonana_jwt_token')
+            // localStorage.removeItem('fonana_user_wallet')
           }
         } else {
           console.log('[JWT] No token found anywhere')
@@ -101,7 +101,7 @@ class JWTManager {
     storageService.clearJWTToken()
     
     // Очищаем также localStorage fallback
-    localStorage.removeItem('fonana_jwt_token')
+    // localStorage.removeItem('fonana_jwt_token')
     localStorage.removeItem('fonana_user_wallet')
     
     if (this.refreshTimer) {
@@ -154,13 +154,13 @@ class JWTManager {
           return tokenData.token
         } else if (tokenData.wallet !== wallet) {
           console.log('[JWT] Token exists but for different wallet, clearing old token')
-          localStorage.removeItem('fonana_jwt_token')
+          // localStorage.removeItem('fonana_jwt_token')
         } else {
           console.log('[JWT] Token expired, requesting new one...')
         }
       } catch (error) {
         console.warn('[JWT] Invalid saved token format:', error)
-        localStorage.removeItem('fonana_jwt_token')
+        // localStorage.removeItem('fonana_jwt_token')
       }
     } else {
       console.log('[JWT] No saved token found, requesting new one...')
@@ -172,6 +172,24 @@ class JWTManager {
   
   async requestNewToken(wallet: string): Promise<string | null> {
     console.log('[JWT] requestNewToken called for wallet:', wallet.substring(0, 8) + '...')
+    
+    // 🔥 Проверяем существующий токен перед запросом на сервер
+    const savedToken = localStorage.getItem('fonana_jwt_token')
+    console.log('[JWT] Saved token:', savedToken)
+    if (savedToken) {
+      try {
+        const tokenData = JSON.parse(savedToken)
+        // Если токен валиден, не истёк и для текущего кошелька - возвращаем его
+        if (tokenData.token && 
+            tokenData.expiresAt > Date.now()) {
+          console.log('[JWT] Found valid existing token, skipping server request')
+          return tokenData.token
+        }
+      } catch (error) {
+        console.warn('[JWT] Error parsing saved token:', error)
+      }
+    }
+    
     try {
       console.log('[JWT] Making request to /api/auth/token...')
       const response = await fetch(`/api/auth/token?wallet=${wallet}`, {

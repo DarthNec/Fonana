@@ -19,7 +19,8 @@ import {
   ArrowPathIcon,
   LockClosedIcon,
   ShoppingCartIcon,
-  CheckIcon
+  CheckIcon,
+  BoltIcon
 } from '@heroicons/react/24/outline'
 import { CheckBadgeIcon } from '@heroicons/react/24/solid'
 import { useWallet } from '@/lib/hooks/useSafeWallet'
@@ -352,7 +353,7 @@ export default function PurchaseModal({ post, onClose, onSuccess }: PurchaseModa
     isValidSolanaAddress(finalCreator.referrer.solanaWallet || finalCreator.referrer.wallet)
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center">
+    <div className="fixed inset-0 z-[300] flex items-center justify-center">
       {/* Backdrop */}
       <div 
         className="absolute inset-0 bg-black/50 backdrop-blur-sm"
@@ -439,10 +440,10 @@ export default function PurchaseModal({ post, onClose, onSuccess }: PurchaseModa
           </div>
         </div>
 
-        {/* Payment distribution */}
-        <div className="space-y-2 mb-6">
-          {post.flashSale && (
-            <div className="bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-800 rounded-lg p-3 mb-3">
+        {/* Flash Sale info */}
+        {post.flashSale && (
+          <div className="mb-6">
+            <div className="bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-800 rounded-lg p-3">
               <div className="flex items-center gap-2 text-orange-700 dark:text-orange-300">
                 <BoltIcon className="w-5 h-5" />
                 <span className="font-medium">Flash Sale: {post.flashSale.discount}% OFF!</span>
@@ -451,38 +452,7 @@ export default function PurchaseModal({ post, onClose, onSuccess }: PurchaseModa
                 Осталось {post.flashSale.remainingRedemptions || '∞'} использований
               </p>
             </div>
-          )}
-          <div className="flex justify-between text-sm">
-            <span className="text-gray-600 dark:text-gray-400">Создатель получит:</span>
-            <span className="text-gray-900 dark:text-white font-medium">
-              {formatSolAmount(displayPrice * 0.9)}
-              <span className="text-xs text-gray-500 dark:text-gray-400 ml-1">
-                (≈ {formatSolToUsd(displayPrice * 0.9, solToUsdRate)})
-              </span>
-            </span>
-          </div>
-          <div className="flex justify-between text-sm">
-            <span className="text-gray-600 dark:text-gray-400">Комиссия платформы:</span>
-            <span className="text-gray-900 dark:text-white font-medium">
-              {formatSolAmount(displayPrice * (hasReferrerDisplay ? 0.05 : 0.1))}
-              <span className="text-xs text-gray-500 dark:text-gray-400 ml-1">
-                (≈ {formatSolToUsd(displayPrice * (hasReferrerDisplay ? 0.05 : 0.1), solToUsdRate)})
-              </span>
-            </span>
-          </div>
-          {hasReferrerDisplay && (
-            <div className="flex justify-between text-sm">
-              <span className="text-gray-600 dark:text-gray-400">Реферальная комиссия:</span>
-              <span className="text-gray-900 dark:text-white font-medium">
-                {formatSolAmount(displayPrice * 0.05)}
-                <span className="text-xs text-gray-500 dark:text-gray-400 ml-1">
-                  (≈ {formatSolToUsd(displayPrice * 0.05, solToUsdRate)})
-                </span>
-              </span>
-            </div>
-          )}
-          {post.flashSale && (
-            <div className="flex justify-between text-sm text-green-600 dark:text-green-400 font-medium pt-2 border-t border-gray-200 dark:border-gray-700">
+            <div className="flex justify-between text-sm text-green-600 dark:text-green-400 font-medium mt-3">
               <span>Вы экономите:</span>
               <span>
                 {formatSolAmount(post.price - displayPrice)}
@@ -491,8 +461,8 @@ export default function PurchaseModal({ post, onClose, onSuccess }: PurchaseModa
                 </span>
               </span>
             </div>
-          )}
-        </div>
+          </div>
+        )}
 
         {/* Benefits */}
         <div className="space-y-3 mb-6">

@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { PrismaClient } from '@prisma/client'
+import { prisma } from '@/lib/prisma'
 import { remixGroupCache, RemixGroupCache } from '@/lib/cache/remixGroupCache'
 
-const prisma = new PrismaClient()
+// 🔥 ИСПРАВЛЕНО: Используем синглтон prisma вместо new PrismaClient()
 
 // GET /api/posts/{id}/remixes
 export async function GET(
