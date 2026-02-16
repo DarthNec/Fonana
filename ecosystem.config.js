@@ -69,6 +69,7 @@ module.exports = {
       time: true,
       merge_logs: true
     },
+    /*
     {
       name: 'ai-chat-bot',
       script: './ai-chat-bot.js',
@@ -85,6 +86,43 @@ module.exports = {
       merge_logs: true,
       max_restarts: 10,
       restart_delay: 5000
+    },
+    */
+    {
+      name: 'ai-activity-bot',
+      script: './ai-activity-bot.js',
+      instances: 1,
+      exec_mode: 'fork',
+      cron_restart: '*/30 * * * *', // Каждые 30 минут
+      autorestart: false, // Не перезапускаем автоматически, только по крону
+      watch: false,
+      max_memory_restart: '200M',
+      env_file: './.env',
+      env: {
+        NODE_ENV: 'production'
+      },
+      error_file: '/var/www/Fonana/logs/ai-activity-bot-error.log',
+      out_file: '/var/www/Fonana/logs/ai-activity-bot-out.log',
+      time: true,
+      merge_logs: true
+    },
+    {
+      name: 'ai-sora-generation-activity',
+      script: './ai-sora-generation-activity.js',
+      instances: 1,
+      exec_mode: 'fork',
+      cron_restart: '0 */4 * * *', // Каждые 4 часа (в 00:00, 04:00, 08:00, 12:00, 16:00, 20:00)
+      autorestart: false, // Не перезапускаем автоматически, только по крону
+      watch: false,
+      max_memory_restart: '300M',
+      env_file: './.env',
+      env: {
+        NODE_ENV: 'production'
+      },
+      error_file: '/var/www/Fonana/logs/ai-sora-generation-error.log',
+      out_file: '/var/www/Fonana/logs/ai-sora-generation-out.log',
+      time: true,
+      merge_logs: true
     }
   ]
 } 

@@ -207,7 +207,7 @@ export default function NewSubscribeModal({ creator, onClose, onSuccess }: NewSu
               <LockClosedIcon className="w-8 h-8 text-white" />
             </div>
             <h2 className="text-xl font-bold text-gray-900 dark:text-white">
-              Подписка
+              Subscription
             </h2>
           </div>
         </div>
@@ -232,7 +232,7 @@ export default function NewSubscribeModal({ creator, onClose, onSuccess }: NewSu
               )}
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-sm text-gray-500 dark:text-slate-400">Подписаться на</p>
+              <p className="text-sm text-gray-500 dark:text-slate-400">Subscribe to</p>
               <p className="font-semibold text-gray-900 dark:text-white truncate">
                 @{creatorName}
               </p>
@@ -250,7 +250,7 @@ export default function NewSubscribeModal({ creator, onClose, onSuccess }: NewSu
               </span>
             </div>
             <p className="text-sm text-gray-500 dark:text-slate-400 mt-1">
-              {solRate > 0 && `≈ $${safeToFixed(BASIC_PRICE * solRate, 2)} USD`} / месяц
+              {solRate > 0 && `≈ $${safeToFixed(BASIC_PRICE * solRate, 2)} USD`} / month
             </p>
           </div>
 
@@ -260,19 +260,19 @@ export default function NewSubscribeModal({ creator, onClose, onSuccess }: NewSu
               <div className="w-5 h-5 rounded-full bg-green-500/20 flex items-center justify-center flex-shrink-0">
                 <CheckIcon className="w-3 h-3 text-green-500" />
               </div>
-              <span className="text-gray-700 dark:text-slate-300">Доступ к эксклюзивному контенту</span>
+              <span className="text-gray-700 dark:text-slate-300">Access to exclusive content</span>
             </div>
             <div className="flex items-center gap-3 text-sm">
               <div className="w-5 h-5 rounded-full bg-green-500/20 flex items-center justify-center flex-shrink-0">
                 <CheckIcon className="w-3 h-3 text-green-500" />
               </div>
-              <span className="text-gray-700 dark:text-slate-300">Личные сообщения с автором</span>
+              <span className="text-gray-700 dark:text-slate-300">Private messages with the author</span>
             </div>
             <div className="flex items-center gap-3 text-sm">
               <div className="w-5 h-5 rounded-full bg-green-500/20 flex items-center justify-center flex-shrink-0">
                 <CheckIcon className="w-3 h-3 text-green-500" />
               </div>
-              <span className="text-gray-700 dark:text-slate-300">Поддержка любимого автора</span>
+              <span className="text-gray-700 dark:text-slate-300">Support your favorite author</span>
             </div>
           </div>
 
@@ -285,11 +285,11 @@ export default function NewSubscribeModal({ creator, onClose, onSuccess }: NewSu
             {isProcessing ? (
               <>
                 <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                <span>Обработка...</span>
+                <span>Processing...</span>
               </>
             ) : (
               <>
-                <span>Подписаться за {BASIC_PRICE} SOL</span>
+                <span>Subscribe for {BASIC_PRICE} SOL</span>
               </>
             )}
           </button>
@@ -299,7 +299,7 @@ export default function NewSubscribeModal({ creator, onClose, onSuccess }: NewSu
             onClick={onClose}
             className="w-full mt-3 py-2 text-sm text-gray-500 dark:text-slate-400 hover:text-gray-700 dark:hover:text-slate-300 transition-colors"
           >
-            Отмена
+            Cancel
           </button>
         </div>
       </div>

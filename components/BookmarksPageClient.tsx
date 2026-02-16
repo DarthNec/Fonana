@@ -137,7 +137,27 @@ export default function BookmarksPageClient() {
       case 'like':
       case 'unlike':
       case 'comment':
+        // Эти действия обрабатываются в PostCard/PostActions
+        break
+        
       case 'share':
+        // Копируем ссылку на пост
+        const postUrl = `${window.location.origin}/post/${action.postId}`
+        try {
+          await navigator.clipboard.writeText(postUrl)
+          toast.success('Link copied to clipboard!', {
+            duration: 2000,
+            position: 'top-center',
+          })
+        } catch (err) {
+          console.error('Error copying link:', err)
+          toast.error('Failed to copy link', {
+            duration: 2000,
+            position: 'top-center',
+          })
+        }
+        break
+        
       case 'subscribe':
       case 'purchase':
       case 'edit':

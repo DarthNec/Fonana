@@ -38,7 +38,7 @@ export async function GET(request: NextRequest) {
         { status: 400 }
       )
     }
-    
+    /*
     // Валидация формата кошелька
     if (!/^[a-zA-Z0-9]+$/.test(userWallet)) {
       console.log('[API/user/generations] Invalid wallet format')
@@ -47,7 +47,7 @@ export async function GET(request: NextRequest) {
         { status: 400 }
       )
     }
-    
+    */
     console.log('[API/user/generations] Fetching user:', userWallet)
     
     // Ищем пользователя по wallet или solanaWallet

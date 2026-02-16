@@ -15,6 +15,7 @@ export interface PostGalleryProps {
   onPostClick?: (postIndex: number, post: UnifiedPost) => void
   className?: string
   columns?: number
+  showUsername?: boolean
 }
 
 /**
@@ -26,7 +27,8 @@ export function PostGallery({
   onAction,
   onPostClick,
   className,
-  columns = 3
+  columns = 3,
+  showUsername = false
 }: PostGalleryProps) {
   const [selectedIndex, setSelectedIndex] = useState<number | null>(null)
 
@@ -95,6 +97,7 @@ export function PostGallery({
               index={index}
               onClick={() => handleTileClick(index)}
               onAction={onAction}
+              showUsername={showUsername}
             />
           ))}
         </div>
@@ -120,9 +123,10 @@ interface MediaTileProps {
   index: number
   onClick: () => void
   onAction?: (action: PostAction) => void
+  showUsername?: boolean
 }
 
-function MediaTile({ post, index, onClick, onAction }: MediaTileProps) {
+function MediaTile({ post, index, onClick, onAction, showUsername = false }: MediaTileProps) {
   const [imageLoaded, setImageLoaded] = useState(false)
   const [imageError, setImageError] = useState(false)
   const [isMenuOpen, setIsMenuOpen] = useState(false)
@@ -168,7 +172,7 @@ function MediaTile({ post, index, onClick, onAction }: MediaTileProps) {
       })
     }
   }
-  
+  console.log('[PostGallery] Posts media: ', post);
   // Для видео используем preview, если оно есть
   const thumbnail = post.media?.type === 'video' 
     ? (post.media?.preview?.startsWith('https://fonanastorage.b-cdn.net/') ? post.media.preview : post.media?.thumbnail || post.media?.url || '/placeholder.webp')
@@ -176,10 +180,11 @@ function MediaTile({ post, index, onClick, onAction }: MediaTileProps) {
   
   return (
     <div 
-      className="relative aspect-square bg-gray-100 dark:bg-gray-800 rounded-lg overflow-hidden cursor-pointer group hover:scale-105 transition-transform duration-200"
+      className="relative aspect-[4/5] bg-gray-100 dark:bg-gray-800 rounded-lg overflow-hidden cursor-pointer group hover:scale-105 transition-transform duration-200 flex flex-col"
       onClick={onClick}
     >
-      {/* Media Content */}
+      {/* Media Content Container */}
+      <div className="flex-1 relative">
       {post.media?.type === 'image' && (
         <>
           {!imageLoaded && (
@@ -189,7 +194,7 @@ function MediaTile({ post, index, onClick, onAction }: MediaTileProps) {
             src={thumbnail}
             alt={post.content?.title || 'Media'}
             className={cn(
-              'w-full h-full object-cover transition-opacity duration-300',
+                'absolute inset-0 w-full h-full object-cover transition-opacity duration-300',
               imageLoaded ? 'opacity-100' : 'opacity-0',
               isLocked && 'blur-md'
             )}
@@ -205,7 +210,7 @@ function MediaTile({ post, index, onClick, onAction }: MediaTileProps) {
             src={thumbnail}
             alt={post.content?.title || 'Video'}
             className={cn(
-              'w-full h-full object-cover',
+              'absolute inset-0 w-full h-full object-cover',
               isLocked && 'blur-md'
             )}
           />
@@ -219,11 +224,12 @@ function MediaTile({ post, index, onClick, onAction }: MediaTileProps) {
 
       {post.media?.type === 'audio' && (
         <>
-          <div className="w-full h-full bg-gradient-to-br from-purple-400 to-pink-400 flex items-center justify-center">
+          <div className="absolute inset-0 w-full h-full bg-gradient-to-br from-purple-400 to-pink-400 flex items-center justify-center">
             <SpeakerXMarkIcon className="w-12 h-12 text-white" />
           </div>
         </>
       )}
+
 
       {/* Overlay */}
       <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors duration-200" />
@@ -332,6 +338,32 @@ function MediaTile({ post, index, onClick, onAction }: MediaTileProps) {
         </div>
       </div>
       */}
+      </div>
+      
+      {/* Username блок (только для Explore) - ВНУТРИ карточки */}
+      {showUsername && post.creator && (
+        <div className="h-10 flex items-center gap-2 px-2 bg-white dark:bg-slate-800 border-t border-gray-200 dark:border-slate-700">
+          {/* Avatar */}
+          <div className="w-6 h-6 rounded-full overflow-hidden flex-shrink-0">
+            {post.creator.avatar ? (
+              <img 
+                src={post.creator.avatar} 
+                alt={post.creator.username || post.creator.nickname || 'User'}
+                className="w-full h-full object-cover"
+              />
+            ) : (
+              <div className="w-full h-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center text-white text-xs font-bold">
+                {(post.creator.username || post.creator.nickname || 'U')[0].toUpperCase()}
+              </div>
+            )}
+          </div>
+          
+          {/* Username */}
+          <span className="text-xs text-gray-900 dark:text-white font-medium truncate">
+            @{post.creator.username || post.creator.nickname || 'unknown'}
+          </span>
+        </div>
+      )}
     </div>
   )
 } 

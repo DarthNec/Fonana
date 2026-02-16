@@ -83,7 +83,7 @@ export function AiChatWidget() {
       const wasDismissed = localStorage.getItem(CHAT_DISMISSED_KEY)
       const mobile = window.innerWidth < 768
       // Если пользователь ещё не закрывал чат И это НЕ мобильное - открываем автоматически
-      if (!wasDismissed && !mobile) {
+      if (!wasDismissed) {
         setIsOpen(true)
       }
       setIsInitialized(true)
@@ -240,6 +240,14 @@ export function AiChatWidget() {
             <ChevronLeftIcon className="w-5 h-5 text-white" />
           </button>
           
+          {/* Mobile: кнопка слева */}
+          <button
+            onClick={handleOpen}
+            style={{ marginLeft: '-20px' }}
+            className="md:hidden flex fixed top-1/2 -translate-y-1/2 left-0 z-[9999] w-5 h-16 rounded-r-xl shadow-lg transition-all duration-300 items-center justify-center bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 hover:w-6"
+          >
+            <ChevronRightIcon className="w-4 h-4 text-white" style={{ marginLeft: '20px' }} />
+          </button>
         </>
       )}
 

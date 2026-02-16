@@ -17,7 +17,8 @@ import {
   LockClosedIcon,
   CheckCircleIcon,
   SparklesIcon,
-  Cog6ToothIcon
+  Cog6ToothIcon,
+  MicrophoneIcon
 } from '@heroicons/react/24/outline'
 import { EyeIcon } from '@heroicons/react/24/solid'
 import { jwtManager } from '@/lib/utils/jwt'
@@ -137,12 +138,24 @@ function MessagesPageClientInner() {
   const [mediaPreview, setMediaPreview] = useState<string | null>(null)
   const [isUploadingMedia, setIsUploadingMedia] = useState(false)
   
+  // Voice recording states
+  const [isRecording, setIsRecording] = useState(false)
+  const [recordingDuration, setRecordingDuration] = useState(0)
+  const [audioBlob, setAudioBlob] = useState<Blob | null>(null)
+  const [audioPreviewUrl, setAudioPreviewUrl] = useState<string | null>(null)
+  
   // Settings modal
   const [showSettingsModal, setShowSettingsModal] = useState(false)
   
   const menuRef = useRef<HTMLDivElement>(null)
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
+  
+  // Refs for voice recording
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null)
+  const audioStreamRef = useRef<MediaStream | null>(null)
+  const audioChunksRef = useRef<Blob[]>([])
+  const recordingTimerRef = useRef<NodeJS.Timeout | null>(null)
 
   // Определяем, мобилка ли это
   useEffect(() => {
@@ -358,7 +371,14 @@ function MessagesPageClientInner() {
     try {
       const formData = new FormData()
       formData.append('file', file)
-      formData.append('type', file.type.startsWith('image/') ? 'image' : 'video')
+      
+      // Detect media type (image, video, or audio)
+      const type = file.type.startsWith('image/') ? 'image' 
+        : file.type.startsWith('video/') ? 'video'
+        : file.type.startsWith('audio/') ? 'audio'
+        : 'image' // fallback
+        
+      formData.append('type', type)
 
       const response = await fetch('/api/upload/message', {
         method: 'POST',
@@ -404,6 +424,304 @@ function MessagesPageClientInner() {
     }
     reader.readAsDataURL(file)
   }
+
+  // 🎤 VOICE RECORDING FUNCTIONS
+
+  /**
+   * Request microphone permission from user
+   */
+  const requestMicPermission = async (): Promise<MediaStream | null> => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ 
+        audio: {
+          echoCancellation: true,
+          noiseSuppression: true,
+          autoGainControl: true
+        }
+      })
+      return stream
+    } catch (error) {
+      console.error('[Voice Recording] Microphone access error:', error)
+      
+      if (error instanceof DOMException) {
+        if (error.name === 'NotAllowedError') {
+          toast.error('Microphone access denied. Please allow microphone access in your browser settings.')
+        } else if (error.name === 'NotFoundError') {
+          toast.error('No microphone found. Please connect a microphone.')
+        } else {
+          toast.error('Failed to access microphone')
+        }
+      } else {
+        toast.error('Failed to access microphone')
+      }
+      
+      return null
+    }
+  }
+
+  /**
+   * Start recording voice message
+   */
+  const startRecording = async () => {
+    try {
+      console.log('[Voice Recording] Starting recording...')
+      
+      // Request microphone access
+      const stream = await requestMicPermission()
+      if (!stream) return
+      
+      audioStreamRef.current = stream
+      
+      // Determine MIME type support (prefer WebM/Opus, fallback to MP4/AAC for Safari)
+      const mimeTypes = [
+        'audio/webm;codecs=opus',
+        'audio/webm',
+        'audio/mp4',
+        'audio/ogg;codecs=opus'
+      ]
+      
+      const supportedMimeType = mimeTypes.find(type => MediaRecorder.isTypeSupported(type))
+      
+      if (!supportedMimeType) {
+        toast.error('Your browser does not support audio recording')
+        stream.getTracks().forEach(track => track.stop())
+        return
+      }
+      
+      console.log('[Voice Recording] Using MIME type:', supportedMimeType)
+      
+      // Create MediaRecorder
+      const mediaRecorder = new MediaRecorder(stream, {
+        mimeType: supportedMimeType,
+        audioBitsPerSecond: 128000 // 128 kbps
+      })
+      
+      // Reset chunks
+      audioChunksRef.current = []
+      
+      // Collect audio data
+      mediaRecorder.ondataavailable = (event) => {
+        if (event.data.size > 0) {
+          audioChunksRef.current.push(event.data)
+        }
+      }
+      
+      // Handle recording stop
+      mediaRecorder.onstop = () => {
+        console.log('[Voice Recording] Recording stopped, creating blob...')
+        
+        const blob = new Blob(audioChunksRef.current, { type: supportedMimeType })
+        console.log('[Voice Recording] Blob created:', {
+          size: blob.size,
+          type: blob.type
+        })
+        
+        setAudioBlob(blob)
+        setAudioPreviewUrl(URL.createObjectURL(blob))
+        
+        // Stop all tracks
+        if (audioStreamRef.current) {
+          audioStreamRef.current.getTracks().forEach(track => track.stop())
+          audioStreamRef.current = null
+        }
+      }
+      
+      // Handle errors
+      mediaRecorder.onerror = (event: any) => {
+        console.error('[Voice Recording] MediaRecorder error:', event)
+        toast.error('Recording error occurred')
+        cancelRecording()
+      }
+      
+      // Start recording
+      mediaRecorder.start()
+      mediaRecorderRef.current = mediaRecorder
+      setIsRecording(true)
+      setRecordingDuration(0)
+      
+      console.log('[Voice Recording] Recording started')
+      
+      // Start timer
+      const startTime = Date.now()
+      const timer = setInterval(() => {
+        const elapsed = Math.floor((Date.now() - startTime) / 1000)
+        setRecordingDuration(elapsed)
+        
+        // Auto-stop after 5 minutes (300 seconds)
+        if (elapsed >= 300) {
+          console.log('[Voice Recording] Max duration reached, stopping...')
+          stopRecording()
+          toast('Maximum recording duration reached (5 minutes)', { icon: '⏱️' })
+        }
+      }, 1000)
+      
+      recordingTimerRef.current = timer
+      
+    } catch (error) {
+      console.error('[Voice Recording] Start recording error:', error)
+      toast.error('Failed to start recording')
+    }
+  }
+
+  /**
+   * Stop recording (saves the recording)
+   */
+  const stopRecording = () => {
+    console.log('[Voice Recording] Stopping recording...')
+    
+    if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') {
+      mediaRecorderRef.current.stop()
+    }
+    
+    if (recordingTimerRef.current) {
+      clearInterval(recordingTimerRef.current)
+      recordingTimerRef.current = null
+    }
+    
+    setIsRecording(false)
+    
+    console.log('[Voice Recording] Recording stopped')
+  }
+
+  /**
+   * Cancel recording (discards the recording)
+   */
+  const cancelRecording = () => {
+    console.log('[Voice Recording] Cancelling recording...')
+    
+    // Stop recorder if active
+    if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') {
+      mediaRecorderRef.current.stop()
+    }
+    
+    // Clear timer
+    if (recordingTimerRef.current) {
+      clearInterval(recordingTimerRef.current)
+      recordingTimerRef.current = null
+    }
+    
+    // Stop stream
+    if (audioStreamRef.current) {
+      audioStreamRef.current.getTracks().forEach(track => track.stop())
+      audioStreamRef.current = null
+    }
+    
+    // Clear state
+    setIsRecording(false)
+    setRecordingDuration(0)
+    setAudioBlob(null)
+    
+    if (audioPreviewUrl) {
+      URL.revokeObjectURL(audioPreviewUrl)
+      setAudioPreviewUrl(null)
+    }
+    
+    audioChunksRef.current = []
+    
+    console.log('[Voice Recording] Recording cancelled')
+  }
+
+  /**
+   * Send voice message
+   */
+  const sendVoiceMessage = async () => {
+    if (!audioBlob || !selectedConversationId || isSending) return
+    
+    console.log('[Voice Recording] Sending voice message...')
+    
+    setIsSending(true)
+    
+    try {
+      // Determine file extension based on MIME type
+      const extension = audioBlob.type.includes('webm') ? 'webm' 
+        : audioBlob.type.includes('mp4') ? 'm4a'
+        : audioBlob.type.includes('ogg') ? 'ogg'
+        : 'webm'
+        
+      const audioFile = new File(
+        [audioBlob], 
+        `voice-${Date.now()}.${extension}`, 
+        { type: audioBlob.type }
+      )
+      
+      console.log('[Voice Recording] Uploading audio file:', {
+        name: audioFile.name,
+        size: audioFile.size,
+        type: audioFile.type
+      })
+      
+      // Upload audio file
+      const mediaUrl = await uploadMedia(audioFile)
+      
+      if (!mediaUrl) {
+        throw new Error('Failed to upload audio file')
+      }
+      
+      console.log('[Voice Recording] Audio uploaded successfully:', mediaUrl)
+      
+      // Get JWT token
+      const token = await jwtManager.getToken()
+      if (!token) {
+        throw new Error('No authentication token')
+      }
+      
+      // Send message
+      const response = await fetch(`/api/conversations/${selectedConversationId}/messages`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          content: null, // Voice messages don't have text content
+          mediaUrl,
+          mediaType: 'audio',
+          isPaid: false,
+          price: null
+        })
+      })
+      
+      if (response.ok) {
+        const data = await response.json()
+        setMessages(prev => [...prev, data.message])
+        
+        // Scroll to bottom
+        setTimeout(() => {
+          messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+        }, 100)
+        
+        toast.success('Voice message sent!')
+        console.log('[Voice Recording] Voice message sent successfully')
+      } else {
+        const error = await response.json()
+        throw new Error(error.error || 'Failed to send message')
+      }
+      
+    } catch (error) {
+      console.error('[Voice Recording] Send voice message error:', error)
+      toast.error('Failed to send voice message')
+    } finally {
+      setIsSending(false)
+      
+      // Cleanup
+      cancelRecording()
+    }
+  }
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      if (audioPreviewUrl) {
+        URL.revokeObjectURL(audioPreviewUrl)
+      }
+      if (audioStreamRef.current) {
+        audioStreamRef.current.getTracks().forEach(track => track.stop())
+      }
+      if (recordingTimerRef.current) {
+        clearInterval(recordingTimerRef.current)
+      }
+    }
+  }, [audioPreviewUrl])
 
   // Функция отправки сообщения
   const sendMessage = async () => {
@@ -790,7 +1108,10 @@ function MessagesPageClientInner() {
     if (!message) return 'No messages yet'
     
     if (message.mediaType) {
-      return message.mediaType === 'image' ? '📷 Photo' : '🎥 Video'
+      return message.mediaType === 'image' ? '📷 Photo' 
+        : message.mediaType === 'video' ? '🎥 Video'
+        : message.mediaType === 'audio' ? '🎤 Voice message'
+        : 'Media'
     }
     
     if (message.isPaid) {
@@ -841,8 +1162,13 @@ function MessagesPageClientInner() {
 
   // Обработчик клика на чат
   const handleConversationClick = (conversationId: string) => {
-    // Всегда открываем в правой панели (или на мобилке в основной области)
-    setSelectedConversationId(conversationId)
+    if (isMobile) {
+      // На мобилке открываем отдельную страницу
+      router.push(`/messages/${conversationId}`)
+    } else {
+      // На desktop открываем в правой панели
+      setSelectedConversationId(conversationId)
+    }
   }
 
   // Получаем данные выбранного участника
@@ -852,9 +1178,9 @@ function MessagesPageClientInner() {
   const showRightPanel = !isMobile && conversations.length > 0 && !isLoading
 
   return (
-    <div className={`min-h-screen bg-white dark:bg-slate-900 ${isMobile ? 'pb-20' : 'md:ml-[px]'}`}>
-      <div className={`${showRightPanel ? '' : 'max-w-2xl mx-auto px-4 pt-4'}`}>
-        <div className={`${showRightPanel ? 'flex h-screen' : ''}`}>
+    <div className="w-screen md:w-full min-h-screen bg-white dark:bg-slate-900 overflow-x-hidden">
+      <div className={`${showRightPanel ? '' : 'max-w-2xl mx-auto px-4 pt-4'} w-full`}>
+        <div className={`${showRightPanel ? 'flex h-screen overflow-hidden' : ''}`}>
           {/* Левая панель - список чатов (на desktop всегда видна, на мобилке скрыта когда открыт чат) */}
           <div className={`${showRightPanel ? 'w-[360px] border-r border-gray-200 dark:border-slate-700 flex-shrink-0' : ''}`}>
             
@@ -1015,16 +1341,18 @@ function MessagesPageClientInner() {
           </div>
           
           {/* Кнопка добавления нового чата */}
-          <button
-            onClick={() => {
-              setShowCreatorsModal(true)
-            loadCreators()
-          }}
-          className="w-[95%] mt-6 mx-auto flex items-center justify-center gap-2 py-3 bg-transparent hover:bg-gray-100 dark:hover:bg-slate-700 border-2 border-dashed border-gray-300 dark:border-slate-600 text-gray-600 dark:text-gray-400 font-medium rounded-lg transition-colors"
-        >
-          <PaperAirplaneIcon className="w-5 h-5" />
-          Start New Conversation
-        </button>
+          <div className="w-full px-4">
+            <button
+              onClick={() => {
+                setShowCreatorsModal(true)
+                loadCreators()
+              }}
+              className="w-full mt-6 flex items-center justify-center gap-2 py-3 bg-transparent hover:bg-gray-100 dark:hover:bg-slate-700 border-2 border-dashed border-gray-300 dark:border-slate-600 text-gray-600 dark:text-gray-400 font-medium rounded-lg transition-colors"
+            >
+              <PaperAirplaneIcon className="w-5 h-5" />
+              Start New Conversation
+            </button>
+          </div>
           </>
         )}
               </div>
@@ -1035,15 +1363,15 @@ function MessagesPageClientInner() {
 
           {/* Правая панель - содержимое чата (только на desktop и если есть чаты) */}
           {showRightPanel && (
-            <div className={`${showRightPanel ? 'flex-1 flex flex-col' : ''}`}>
+            <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
               {/* Блок чата */}
-              <div className="bg-white dark:bg-slate-900 flex-1 flex flex-col overflow-hidden">
+              <div className="bg-white dark:bg-slate-900 flex-1 flex flex-col overflow-hidden w-full max-w-full">
               {selectedConversationId ? (
                 selectedConversation ? (
-                  <div className="h-screen flex flex-col">
+                  <div className="h-screen flex flex-col w-full max-w-full overflow-hidden">
                     {/* Header участника */}
-                    <div className="flex-shrink-0 border-b border-gray-200 dark:border-slate-700 px-6 py-3">
-                      <div className="flex items-center justify-between">
+                    <div className="flex-shrink-0 border-b border-gray-200 dark:border-slate-700 px-6 py-3 w-full">
+                      <div className="flex items-center justify-between w-full">
                         <Link 
                           href={`/creator/${selectedConversation.participant.id}`}
                           className="flex items-center gap-3"
@@ -1074,7 +1402,7 @@ function MessagesPageClientInner() {
                     </div>
                   
                   {/* Messages Area */}
-                  <div className="flex-1 overflow-y-auto p-4">
+                  <div className="flex-1 overflow-y-auto p-4 w-full max-w-full">
                     {isLoadingMessages ? (
                       <div className="flex items-center justify-center h-full">
                         <div className="text-center">
@@ -1222,13 +1550,30 @@ function MessagesPageClientInner() {
                                               alt="Message media"
                                               className="rounded-xl max-w-xs w-full h-auto object-cover"
                                             />
-                                          ) : (
+                                          ) : message.mediaType === 'video' ? (
                                             <video
                                               src={message.mediaUrl}
                                               controls
                                               className="rounded-xl max-w-xs w-full h-auto"
                                             />
-                                          )}
+                                          ) : message.mediaType === 'audio' ? (
+                                            <div className="bg-gray-100 dark:bg-slate-800 rounded-xl p-3 max-w-xs">
+                                              <div className="flex items-center gap-2 mb-2">
+                                                <div className="w-8 h-8 rounded-full bg-purple-100 dark:bg-purple-900/30 flex items-center justify-center flex-shrink-0">
+                                                  <MicrophoneIcon className="w-4 h-4 text-purple-600 dark:text-purple-400" />
+                                                </div>
+                                                <span className="text-xs text-gray-600 dark:text-gray-400 font-medium">
+                                                  Voice Message
+                                                </span>
+                                              </div>
+                                              <audio 
+                                                src={message.mediaUrl} 
+                                                controls 
+                                                className="w-full"
+                                                style={{ height: '32px' }}
+                                              />
+                                            </div>
+                                          ) : null}
                                         </div>
                                       )}
                                       
@@ -1269,7 +1614,7 @@ function MessagesPageClientInner() {
                   </div>
 
                   {/* Input Area */}
-                  <div className="flex-shrink-0 border-t border-gray-200 dark:border-slate-700 px-6 py-3 max-h-[40vh] overflow-y-auto">
+                  <div className="flex-shrink-0 border-t border-gray-200 dark:border-slate-700 px-6 py-3 max-h-[40vh] overflow-y-auto w-full max-w-full">
                     {/* Media Preview */}
                     {selectedMedia && (
                       <div className="mb-3 relative inline-block">
@@ -1338,7 +1683,7 @@ function MessagesPageClientInner() {
                       </div>
                     )}
 
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 w-full max-w-full">
                       <textarea
                         value={messageText}
                         onChange={(e) => setMessageText(e.target.value)}
@@ -1349,11 +1694,11 @@ function MessagesPageClientInner() {
                           }
                         }}
                         placeholder="Type a message..."
-                        className="flex-1 px-4 py-2.5 bg-gray-100 dark:bg-slate-800 border-0 rounded-full resize-none focus:outline-none focus:ring-1 focus:ring-gray-300 dark:focus:ring-slate-600 text-sm max-h-[100px]"
+                        className="flex-1 min-w-0 px-4 py-2.5 bg-gray-100 dark:bg-slate-800 border-0 rounded-full resize-none focus:outline-none focus:ring-1 focus:ring-gray-300 dark:focus:ring-slate-600 text-sm max-h-[100px]"
                         rows={1}
                       />
                       
-                      <div className="flex items-center gap-1">
+                      <div className="flex items-center gap-1 flex-shrink-0">
                         {/* Media Upload */}
                         <button
                           onClick={() => fileInputRef.current?.click()}
@@ -1361,6 +1706,20 @@ function MessagesPageClientInner() {
                           title="Add photo or video"
                         >
                           <PhotoIcon className="w-5 h-5" />
+                        </button>
+                        
+                        {/* Voice Message Button */}
+                        <button
+                          onClick={isRecording ? stopRecording : startRecording}
+                          disabled={isSending || isUploadingMedia}
+                          className={`p-2 rounded-full transition-all ${
+                            isRecording 
+                              ? 'bg-red-500 text-white animate-pulse' 
+                              : 'text-gray-600 dark:text-slate-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-slate-700'
+                          } disabled:opacity-50 disabled:cursor-not-allowed`}
+                          title={isRecording ? 'Stop recording' : 'Record voice message'}
+                        >
+                          <MicrophoneIcon className="w-5 h-5" />
                         </button>
                         
                         {/* PPV Toggle */}
@@ -1693,6 +2052,144 @@ function MessagesPageClientInner() {
                   <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-purple-300 dark:peer-focus:ring-purple-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-purple-600"></div>
                 </label>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Voice Recording Modal */}
+      {isRecording && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-gray-900 rounded-2xl p-8 max-w-md w-full shadow-2xl">
+            <div className="text-center">
+              {/* Animated recording indicator */}
+              <div className="w-28 h-28 mx-auto mb-6 relative">
+                {/* Outer pulse ring */}
+                <div className="absolute inset-0 bg-red-500 rounded-full animate-ping opacity-20"></div>
+                {/* Middle pulse ring */}
+                <div className="absolute inset-2 bg-red-500 rounded-full animate-ping opacity-30 animation-delay-150"></div>
+                {/* Inner solid circle */}
+                <div className="relative w-full h-full bg-gradient-to-br from-red-500 to-red-600 rounded-full flex items-center justify-center shadow-lg">
+                  <MicrophoneIcon className="w-14 h-14 text-white" />
+                </div>
+              </div>
+              
+              {/* Duration Display */}
+              <h3 className="text-3xl font-bold text-gray-900 dark:text-white mb-2 font-mono">
+                {Math.floor(recordingDuration / 60)}:{(recordingDuration % 60).toString().padStart(2, '0')}
+              </h3>
+              <p className="text-gray-600 dark:text-gray-400 mb-2">
+                Recording voice message...
+              </p>
+              <p className="text-xs text-gray-500 dark:text-gray-500 mb-8">
+                Maximum duration: 5 minutes
+              </p>
+              
+              {/* Progress bar */}
+              <div className="w-full bg-gray-200 dark:bg-gray-800 rounded-full h-1 mb-6">
+                <div 
+                  className="bg-red-500 h-1 rounded-full transition-all duration-1000"
+                  style={{ width: `${(recordingDuration / 300) * 100}%` }}
+                ></div>
+              </div>
+              
+              {/* Action Buttons */}
+              <div className="flex gap-3">
+                <button
+                  onClick={cancelRecording}
+                  className="flex-1 px-6 py-3 bg-gray-200 dark:bg-gray-800 text-gray-700 dark:text-gray-300 font-medium rounded-xl hover:bg-gray-300 dark:hover:bg-gray-700 transition-all transform hover:scale-105"
+                >
+                  <span className="flex items-center justify-center gap-2">
+                    <XMarkIcon className="w-5 h-5" />
+                    Cancel
+                  </span>
+                </button>
+                <button
+                  onClick={stopRecording}
+                  className="flex-1 px-6 py-3 bg-gradient-to-r from-red-500 to-red-600 text-white font-medium rounded-xl hover:from-red-600 hover:to-red-700 transition-all transform hover:scale-105 shadow-lg"
+                >
+                  <span className="flex items-center justify-center gap-2">
+                    <CheckCircleIcon className="w-5 h-5" />
+                    Stop
+                  </span>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Audio Preview Modal */}
+      {audioPreviewUrl && !isRecording && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-gray-900 rounded-2xl p-6 max-w-md w-full shadow-2xl">
+            {/* Header */}
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-xl font-bold text-gray-900 dark:text-white">
+                Voice Message Preview
+              </h2>
+              <button 
+                onClick={cancelRecording}
+                className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-xl transition-colors"
+              >
+                <XMarkIcon className="w-6 h-6 text-gray-500 dark:text-gray-400" />
+              </button>
+            </div>
+            
+            {/* Audio Player */}
+            <div className="bg-gray-50 dark:bg-gray-800 rounded-xl p-4 mb-6">
+              <div className="flex items-center gap-3 mb-3">
+                <div className="w-10 h-10 rounded-full bg-purple-100 dark:bg-purple-900/30 flex items-center justify-center">
+                  <MicrophoneIcon className="w-5 h-5 text-purple-600 dark:text-purple-400" />
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-gray-900 dark:text-white">
+                    Voice Message
+                  </p>
+                  <p className="text-xs text-gray-500 dark:text-gray-400">
+                    Duration: {Math.floor(recordingDuration / 60)}:{(recordingDuration % 60).toString().padStart(2, '0')}
+                  </p>
+                </div>
+              </div>
+              <audio 
+                src={audioPreviewUrl} 
+                controls 
+                className="w-full"
+              />
+            </div>
+            
+            {/* Info */}
+            <div className="bg-purple-50 dark:bg-purple-900/20 rounded-xl p-4 mb-6">
+              <p className="text-sm text-purple-700 dark:text-purple-300">
+                💡 Listen to your voice message before sending
+              </p>
+            </div>
+            
+            {/* Action Buttons */}
+            <div className="flex gap-3">
+              <button
+                onClick={cancelRecording}
+                className="flex-1 px-6 py-3 bg-gray-200 dark:bg-gray-800 text-gray-700 dark:text-gray-300 font-medium rounded-xl hover:bg-gray-300 dark:hover:bg-gray-700 transition-all"
+              >
+                Re-record
+              </button>
+              <button
+                onClick={sendVoiceMessage}
+                disabled={isSending}
+                className="flex-1 px-6 py-3 bg-gradient-to-r from-purple-600 to-pink-600 text-white font-medium rounded-xl hover:from-purple-700 hover:to-pink-700 transition-all transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 flex items-center justify-center gap-2"
+              >
+                {isSending ? (
+                  <>
+                    <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                    Sending...
+                  </>
+                ) : (
+                  <>
+                    <PaperAirplaneIcon className="w-5 h-5" />
+                    Send
+                  </>
+                )}
+              </button>
             </div>
           </div>
         </div>

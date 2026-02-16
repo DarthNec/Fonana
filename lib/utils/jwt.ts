@@ -54,7 +54,7 @@ class JWTManager {
             } else {
               console.log('[JWT] Fallback token expired, clearing...')
               // localStorage.removeItem('fonana_jwt_token')
-              localStorage.removeItem('fonana_user_wallet')
+              // localStorage.removeItem('fonana_user_wallet')
             }
           } catch (error) {
             console.warn('[JWT] Invalid fallback token format:', error)
@@ -102,7 +102,7 @@ class JWTManager {
     
     // Очищаем также localStorage fallback
     // localStorage.removeItem('fonana_jwt_token')
-    localStorage.removeItem('fonana_user_wallet')
+    // localStorage.removeItem('fonana_user_wallet')
     
     if (this.refreshTimer) {
       clearTimeout(this.refreshTimer)

@@ -18,6 +18,7 @@ import { useAppStore } from '@/lib/store/appStore'
 import { useSubscriptionStore } from '@/lib/store/subscriptionStore'
 import { debounce } from 'lodash-es'
 import { jwtManager } from '@/lib/utils/jwt'
+import { PublicKey } from '@solana/web3.js'
 
 export function WalletStoreSync() {
   const walletAdapter = useOriginalWallet()
@@ -69,7 +70,6 @@ export function WalletStoreSync() {
         } else {
           console.warn('🎯 [WALLET STORE SYNC] Failed to get JWT token via jwtManager')
         }
-        
         // 🔥 ПОЛУЧАЕМ ДАННЫЕ ПОЛЬЗОВАТЕЛЯ
         const currentUser = useAppStore.getState().user
         if (!currentUser || currentUser.wallet !== wallet) {
@@ -180,6 +180,69 @@ export function WalletStoreSync() {
   // 🔥 M7 PHASE 3 FIX: Stable publicKey string
   const publicKeyString = walletAdapter.publicKey?.toString() || null
   
+  // 🔥 НОВОЕ: Проверяем Telegram и Guest пользователей при загрузке
+  useEffect(() => {
+    console.log('🔵 [SAVED USER] Checking for saved user session...')
+    // Проверяем только один раз при монтировании
+    const checkSavedUser = async () => {
+      // Если кошелек подключен, ничего не делаем (обработается ниже)
+      if (walletAdapter.connected) {
+        console.log('🔵 [SAVED USER] Real wallet connected, skipping saved user check')
+        return
+      }
+      
+      // Проверяем наличие saved wallet от Telegram/Guest
+      const savedWallet = localStorage.getItem('fonana_user_wallet')
+      if (!savedWallet) {
+        console.log('🔵 [SAVED USER] No saved wallet found')
+        return
+      }
+      
+      // 🔥 НОВАЯ ЛОГИКА: Проверяем маркеры авторизации
+      const isTelegramAuth = localStorage.getItem('fonana_telegram_auth') === 'true'
+      const isGuestAuth = localStorage.getItem('fonana_guest_auth') === 'true'
+      
+      if (!isTelegramAuth && !isGuestAuth) {
+        console.log('🔵 [SAVED USER] Not a Telegram or Guest user')
+        return
+      }
+      
+      const userType = isTelegramAuth ? 'Telegram' : 'Guest'
+      console.log(`🔵 [${userType.toUpperCase()} USER] Found ${userType} user in localStorage, restoring session...`)
+      console.log(`🔵 [${userType.toUpperCase()} USER] Wallet:`, savedWallet.substring(0, 8) + '...')
+      
+      // Загружаем пользователя
+      await fetchAndSetUser(savedWallet)
+      
+      // 🔥 ЭМУЛИРУЕМ ПОДКЛЮЧЕННЫЙ КОШЕЛЕК для Telegram/Guest
+      console.log(`🔵 [${userType.toUpperCase()} USER] Emulating connected wallet state...`)
+      
+      // Для Telegram (TG_) и Guest (FK_) пользователей НЕ создаем PublicKey
+      // т.к. это НЕ валидный Solana адрес
+      const fakePublicKey = (savedWallet.startsWith('TG_') || savedWallet.startsWith('FK_')) 
+        ? null 
+        : new PublicKey(savedWallet)
+      
+      // Устанавливаем connected=true в walletStore
+      useWalletStore.getState().updateState({
+        connected: true,
+        publicKey: fakePublicKey, // null для Telegram/Guest, PublicKey для настоящих кошельков
+        connecting: false,
+        disconnecting: false,
+        wallet: null
+      })
+      
+      console.log(`🔵 [${userType.toUpperCase()} USER] Wallet state emulated, user should be visible in UI`, {
+        userType: userType,
+        isTelegramUser: savedWallet.startsWith('TG_'),
+        isGuestUser: savedWallet.startsWith('FK_'),
+        publicKeyIsNull: fakePublicKey === null
+      })
+    }
+    
+    checkSavedUser()
+  }, []) // Запускаем только при монтировании
+  
   useEffect(() => {
     // 🔥 ВРЕМЕННО ОТКЛЮЧЕНО: Проверка монтирования
     // if (isMountedRef.current) {
@@ -199,6 +262,24 @@ export function WalletStoreSync() {
         connecting: walletState.connecting,
         disconnecting: walletState.disconnecting
       })
+
+      // 🔥 НЕ ПЕРЕЗАПИСЫВАЕМ connected для Telegram/Guest пользователей
+      const isTelegramAuth = localStorage.getItem('fonana_telegram_auth') === 'true'
+      const isGuestAuth = localStorage.getItem('fonana_guest_auth') === 'true'
+      
+      if ((isTelegramAuth || isGuestAuth) && !walletAdapter.connected) {
+        // Для Telegram/Guest пользователей НЕ обновляем состояние если Phantom не подключен
+        const userType = isTelegramAuth ? 'Telegram' : 'Guest'
+        console.log(`🔵 [WALLET STORE SYNC] Skipping wallet state update: ${userType} session active, preserving connected=true`)
+        
+        // Но если Telegram/Guest пользователь подключил Phantom, разрешаем обновление
+        if (walletState.connected) {
+          console.log(`🔵 [WALLET STORE SYNC] ${userType} user connected Phantom, allowing update`)
+          debouncedUpdateState(walletState)
+        }
+        
+        return
+      }
 
       debouncedUpdateState(walletState)
       

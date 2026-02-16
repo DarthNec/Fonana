@@ -97,14 +97,26 @@ export const useWalletStore = create<WalletState>()(
         })
         if(!updates.connected) {
           console.log('[WalletStore] updateState called: disconnect');
-          localStorage.removeItem('fonana-app-store');
-          localStorage.removeItem('fonana_jwt_token');
-          localStorage.removeItem('fonana_user_wallet');
-          localStorage.removeItem('user_subscriptions');
-          localStorage.removeItem('user_likes');
-          localStorage.removeItem('user_emotions');
-          // const { clearUser, user } = useAppStore.getState();
-          // clearUser();
+          
+          // 🔥 НЕ УДАЛЯЕМ TELEGRAM WALLET при disconnect
+          const isTelegramAuth = localStorage.getItem('fonana_telegram_auth') === 'true'
+          
+          if (isTelegramAuth) {
+            console.log('🔵 [WALLET STORE] Telegram auth detected, preserving session')
+            // Для Telegram пользователей не удаляем данные
+            // Они остаются авторизованными
+          } else {
+            // Для обычных кошельков очищаем всё
+            console.log('🎯 [WALLET STORE] Real wallet disconnect, clearing all data')
+            localStorage.removeItem('fonana-app-store');
+            localStorage.removeItem('fonana_jwt_token');
+            localStorage.removeItem('fonana_user_wallet');
+            localStorage.removeItem('user_subscriptions');
+            localStorage.removeItem('user_likes');
+            localStorage.removeItem('user_emotions');
+            // const { clearUser, user } = useAppStore.getState();
+            // clearUser();
+          }
         }
 
         set(updates)

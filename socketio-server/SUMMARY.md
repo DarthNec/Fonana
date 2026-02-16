@@ -145,7 +145,7 @@ type SubscriptionChannel =
 - `post_liked` - Пост лайкнут
 - `post_unliked` - Лайк убран
 - `post_created` - Новый пост
-- `post_deleted` - Пост удален
+- `post_deleted` - Post deleted
 - `comment_added` - Новый комментарий
 - `comment_deleted` - Комментарий удален
 - `creator_updated` - Обновление создателя

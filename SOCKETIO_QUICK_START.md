@@ -177,7 +177,7 @@ SOCKETIO_PORT=3004
 
 ### Посты
 - `post_created` - Новый пост создан
-- `post_deleted` - Пост удален
+- `post_deleted` - Post deleted
 - `post_liked` - Пост получил лайк
 - `post_unliked` - Лайк убран
 

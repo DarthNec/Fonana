@@ -7,7 +7,7 @@ export default function HomePage() {
   const router = useRouter()
   
   useEffect(() => {
-    router.replace('/feed')
+    router.replace('/creators')
   }, [router])
   
   // Loading state while redirecting
@@ -15,7 +15,7 @@ export default function HomePage() {
     <div className="flex items-center justify-center min-h-screen bg-white dark:bg-slate-900">
       <div className="text-center">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-500 mx-auto mb-4" />
-        <p className="text-gray-600 dark:text-gray-400">Redirecting to feed...</p>
+        <p className="text-gray-600 dark:text-gray-400">Redirecting to explore...</p>
       </div>
     </div>
   )

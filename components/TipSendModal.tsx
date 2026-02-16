@@ -10,6 +10,7 @@ import { jwtManager } from '@/lib/utils/jwt'
 import { useSolRate } from '@/lib/hooks/useSolRate'
 import { safeToFixed } from '@/lib/utils/format'
 import toast from 'react-hot-toast'
+import { useSafeWalletModal } from '@/lib/hooks/useSafeWalletModal'
 
 interface TipSendModalProps {
   isOpen: boolean
@@ -26,6 +27,7 @@ export function TipSendModal({ isOpen, onClose, creatorId, creatorName }: TipSen
   const { publicKey, sendTransaction } = useWallet()
   const { connection } = useConnection()
   const { rate: solRate } = useSolRate()
+  const { setVisible } = useSafeWalletModal()
   const publicKeyString = publicKey?.toBase58() ?? null
 
   if (!isOpen) return null
@@ -41,6 +43,11 @@ export function TipSendModal({ isOpen, onClose, creatorId, creatorName }: TipSen
     if (tipAmountUSD > 5) {
       setTipAmountUSD(prev => prev - 5)
     }
+  }
+
+  const handleConnectWallet = () => {
+    setVisible(true)
+    toast.success('Connect wallet to send tips')
   }
 
   const handleSendTip = async () => {
@@ -139,7 +146,7 @@ export function TipSendModal({ isOpen, onClose, creatorId, creatorName }: TipSen
 
   return (
     <div 
-      className="fixed inset-0 bg-black/85 backdrop-blur-sm z-[100] flex items-center justify-center p-4 animate-fade-in"
+      className="fixed inset-0 bg-black/85 backdrop-blur-sm z-[250] flex items-center justify-center p-4 animate-fade-in"
       onClick={(e) => {
         // Закрываем при клике на overlay (не на модалку)
         if (e.target === e.currentTarget) onClose()
@@ -193,14 +200,21 @@ export function TipSendModal({ isOpen, onClose, creatorId, creatorName }: TipSen
 
           {/* Send Button */}
           <button
-            onClick={handleSendTip}
-            disabled={isSending || !publicKeyString || tipAmountSOL <= 0}
+            onClick={!publicKeyString ? handleConnectWallet : handleSendTip}
+            disabled={isSending || (!publicKeyString ? false : tipAmountSOL <= 0)}
             className="w-full py-4 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white font-bold text-lg rounded-2xl transition-all transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 flex items-center justify-center gap-3"
           >
             {isSending ? (
               <>
                 <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
                 Sending...
+              </>
+            ) : !publicKeyString ? (
+              <>
+                Connect Wallet
+                <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                </svg>
               </>
             ) : (
               <>

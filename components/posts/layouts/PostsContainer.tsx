@@ -38,6 +38,8 @@ export interface PostsContainerProps {
   autoUpdateFeed?: boolean
   /** Количество колонок для gallery layout */
   columns?: number
+  /** Показывать username под карточкой (для Explore) */
+  showUsername?: boolean
 }
 
 /**
@@ -54,6 +56,7 @@ export function PostsContainer({
   className,
   isLoading = false,
   columns = 3,
+  showUsername = false,
   emptyMessage = 'No posts yet',
   emptyComponent,
   enableRealtime = true,
@@ -175,6 +178,7 @@ export function PostsContainer({
         onAction={onAction}
         onPostClick={onPostClick}
         columns={layout === 'gallery' ? columns : undefined}
+        showUsername={showUsername}
       />
     </div>
   )

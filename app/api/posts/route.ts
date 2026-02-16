@@ -121,7 +121,7 @@ export async function GET(request: NextRequest) {
       }
     })
 
-    console.log('[API] 🎭 Loaded emotions for', emotionsMap.size, 'posts')
+    // console.log('[API] 🎭 Loaded emotions for', emotionsMap.size, 'posts')
 
     // 🔥 [REMIX_CACHE] Получаем ремиксы для видео-постов из файловой системы
     const postRemixesMap = new Map<string, any[]>() // postId -> ремиксы
@@ -133,7 +133,7 @@ export async function GET(request: NextRequest) {
           // Используем containerId если есть, иначе post.id
           const containerId = (post as any).containerId || post.id
           
-          console.log('[API] 🎯 Fetching remixes from file system for post:', post.id, 'containerId:', containerId)
+          // console.log('[API] 🎯 Fetching remixes from file system for post:', post.id, 'containerId:', containerId)
           
           // Получаем ремиксы из файловой системы
           const remixData = await getRemixFromFile(containerId)
@@ -147,7 +147,7 @@ export async function GET(request: NextRequest) {
               filePath: `app/remixes/${containerId}.json`
             })
           } else {
-            console.log('[API] No remixes found for post:', post.id)
+            // console.log('[API] No remixes found for post:', post.id)
           }
         } catch (error) {
           console.error('[API] ⚠️ Error fetching remixes from file system (non-critical):', error instanceof Error ? error.message : String(error))
@@ -226,7 +226,7 @@ export async function GET(request: NextRequest) {
       // Определяем требуемый тир для доступа
       const requiredTier = post.minSubscriptionTier || (post.isPremium ? 'vip' : null)
 
-      console.log(`[API] Post "${post.title}" - locked: ${post.isLocked}, requiredTier: ${requiredTier}, userTier: ${userSubscriptionPlan}, hasAccess: ${accessStatus.hasAccess}`)
+      // console.log(`[API] Post "${post.title}" - locked: ${post.isLocked}, requiredTier: ${requiredTier}, userTier: ${userSubscriptionPlan}, hasAccess: ${accessStatus.hasAccess}`)
 
       // Определяем статус Sora-2 генерации
       let requestStatus = null

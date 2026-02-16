@@ -9,7 +9,7 @@ export async function POST(request: NextRequest) {
 
     const data = await request.formData()
     const file = data.get('file') as unknown as File
-    const type = data.get('type') as string // 'image' или 'video'
+    const type = data.get('type') as string // 'image', 'video', или 'audio'
 
     if (!file) {
       return NextResponse.json({ error: 'No file received' }, { status: 400 })
@@ -25,18 +25,23 @@ export async function POST(request: NextRequest) {
     // Проверяем тип файла
     const isImage = file.type.startsWith('image/')
     const isVideo = file.type.startsWith('video/')
+    const isAudio = file.type.startsWith('audio/')
     
-    if (!isImage && !isVideo) {
+    if (!isImage && !isVideo && !isAudio) {
       return NextResponse.json({ 
-        error: 'Invalid file type. Only images and videos are allowed for messages' 
+        error: 'Invalid file type. Only images, videos, and audio are allowed for messages' 
       }, { status: 400 })
     }
 
-    // Проверяем размер файла (20MB max для изображений, 100MB max для видео)
-    const maxSize = isImage ? 20 * 1024 * 1024 : 100 * 1024 * 1024
+    // Проверяем размер файла (20MB max для изображений, 100MB max для видео, 10MB max для аудио)
+    const maxSize = isImage ? 20 * 1024 * 1024 
+      : isVideo ? 100 * 1024 * 1024 
+      : 10 * 1024 * 1024
     if (file.size > maxSize) {
+      const maxSizeMB = isImage ? '20MB' : isVideo ? '100MB' : '10MB'
+      const mediaType = isImage ? 'images' : isVideo ? 'videos' : 'audio'
       return NextResponse.json({ 
-        error: `File too large. Max size: ${maxSize / 1024 / 1024}MB for ${isImage ? 'images' : 'videos'}` 
+        error: `File too large. Max size: ${maxSizeMB} for ${mediaType}` 
       }, { status: 400 })
     }
 
@@ -62,6 +67,13 @@ export async function POST(request: NextRequest) {
         `${file.name.split('.')[0]}.webp`, 
         { type: 'image/webp' }
       )
+    } else if (isAudio) {
+      // Для аудио передаем как есть (уже сжато с Opus/AAC кодеком)
+      finalFile = file
+      
+      console.log(
+        `🎯 [MESSAGE AUDIO] Size: ${(buffer.length / 1024 / 1024).toFixed(2)} MB, Type: ${file.type}`
+      )
     } else {
       // Для видео просто передаем как есть (можно добавить сжатие в будущем)
       finalFile = file
@@ -85,7 +97,7 @@ export async function POST(request: NextRequest) {
       url: uploadResult.fileUrl,
       thumbUrl: uploadResult.thumbUrl,
       previewUrl: uploadResult.previewUrl,
-      type: isImage ? 'image' : 'video',
+      type: isImage ? 'image' : isVideo ? 'video' : 'audio',
       originalSize: buffer.length,
       finalSize: finalFile.size
     })

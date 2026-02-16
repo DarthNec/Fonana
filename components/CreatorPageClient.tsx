@@ -479,19 +479,23 @@ export default function CreatorPageClient({ creatorId }: CreatorPageClientProps)
         break
         
       case 'share':
-        // Handle share action
-        if (navigator.share && action.data?.post) {
-          try {
-            await navigator.share({
-              title: action.data.post.content?.title || 'Check out this post',
-              text: action.data.post.content?.text || '',
-              url: `${window.location.origin}/post/${action.data.post.id}`
-            })
-          } catch (err) {
-            // Fallback to clipboard copy
-            await navigator.clipboard.writeText(`${window.location.origin}/post/${action.data.post.id}`)
-            toast.success('Link copied to clipboard!')
-          }
+        // Handle share action - просто копируем ссылку
+        const postUrl = action.data?.post?.id 
+          ? `${window.location.origin}/post/${action.data.post.id}`
+          : `${window.location.origin}/post/${action.postId}`
+        
+        try {
+          await navigator.clipboard.writeText(postUrl)
+          toast.success('Link copied to clipboard!', {
+            duration: 2000,
+            position: 'top-center',
+          })
+        } catch (err) {
+          console.error('Error copying link:', err)
+          toast.error('Failed to copy link', {
+            duration: 2000,
+            position: 'top-center',
+          })
         }
         break
       
@@ -552,6 +556,37 @@ export default function CreatorPageClient({ creatorId }: CreatorPageClientProps)
             ? prev.followersCount - 1 
             : prev.followersCount + 1
         } : null)
+        
+        // 🔥 Обновляем localStorage user_following
+        if (localStorage.getItem('user_following') !== null) {
+          let followingData = JSON.parse(localStorage.getItem('user_following') || '[]')
+          
+          if (isFollowing) {
+            // UNFOLLOW - удаляем из массива
+            followingData = followingData.filter((f: any) => f.user.id !== creator.id)
+          } else {
+            // FOLLOW - добавляем в массив
+            const newFollowEntry = {
+              id: data.followId || `temp_${Date.now()}`, // ID записи follow (если API вернуло)
+              userId: creator.id,
+              createdAt: new Date().toISOString(),
+              user: {
+                id: creator.id,
+                nickname: creator.nickname || creator.fullName || 'user',
+                fullName: creator.fullName || creator.nickname || 'User',
+                avatar: creator.avatar || null,
+                bio: creator.bio || '',
+                followersCount: creator.followersCount,
+                followingCount: creator.followingCount,
+                isVerified: creator.isVerified || false
+              }
+            }
+            followingData.push(newFollowEntry)
+          }
+          
+          localStorage.setItem('user_following', JSON.stringify(followingData))
+          console.log('[CreatorPageClient] Updated user_following in localStorage:', followingData.length)
+        }
         
         toast.success(isFollowing ? 'Unfollowed successfully!' : 'Followed successfully!')
       } else {
@@ -699,7 +734,8 @@ export default function CreatorPageClient({ creatorId }: CreatorPageClientProps)
                 <button
                   onClick={handleFollowClick}
                   disabled={isFollowLoading}
-                  className={`absolute -bottom-1 -right-1 w-6 h-6 rounded-full flex items-center justify-center border-2 border-white shadow-lg transition-all ${
+                  style={{ minWidth: '28px', minHeight: '28px' }}
+                  className={`absolute -bottom-1 -right-1  rounded-full flex items-center justify-center border-2 border-white shadow-lg transition-all ${
                     isFollowing ? 'bg-green-500' : 'bg-gradient-to-r from-purple-600 to-pink-600'
                   }`}
                 >
@@ -1212,8 +1248,8 @@ export default function CreatorPageClient({ creatorId }: CreatorPageClientProps)
           </div>
         </div>
 
-        {/* Subscribe Block for Feed tab - если не подписан */}
-        {activeTab === 'all' && !isOwner && !isSubscribed ? (
+        {/* Subscribe Block for Feed tab - если не подписан И есть посты */}
+        {activeTab === 'all' && !isOwner && !isSubscribed && filteredPosts.length > 0 ? (
           <div className="max-w-2xl mx-auto mt-12">
             <div className="bg-gradient-to-br from-purple-900/20 via-pink-900/20 to-purple-900/20 border border-purple-500/30 rounded-2xl p-8 text-center">
               {/* Lock Icon */}
@@ -1305,18 +1341,6 @@ export default function CreatorPageClient({ creatorId }: CreatorPageClientProps)
         </div>
       </div>
 
-      {/* Fullscreen Post Viewer */}
-      {showFullscreenView && filteredPosts.length > 0 && (
-        <div className="fixed inset-0 z-[200] bg-white dark:bg-slate-900">
-          <FullscreenCarousel
-            posts={filteredPosts}
-            initialIndex={fullscreenInitialIndex}
-            onAction={handlePostAction}
-            showBackButton={true}
-            onBack={() => setShowFullscreenView(false)}
-          />
-        </div>
-      )}
 
       {showEditModal && creator && (
         <ProfileSetupModal
@@ -1401,14 +1425,29 @@ export default function CreatorPageClient({ creatorId }: CreatorPageClientProps)
         />
       )}
 
+      {/* Fullscreen Post Viewer */}
+      {showFullscreenView && filteredPosts.length > 0 && (
+        <div className="fixed inset-0 z-[200] bg-white dark:bg-slate-900">
+          <FullscreenCarousel
+            posts={filteredPosts}
+            initialIndex={fullscreenInitialIndex}
+            onAction={handlePostAction}
+            showBackButton={true}
+            onBack={() => setShowFullscreenView(false)}
+          />
+        </div>
+      )}
+
       {/* Tip Modal */}
       {showTipModal && creator && (
-        <TipSendModal
-          isOpen={showTipModal}
-          onClose={() => setShowTipModal(false)}
-          creatorId={creator.id}
-          creatorName={creator.fullName || creator.nickname}
-        />
+        <div className="fixed inset-0 z-[500]">
+          <TipSendModal
+            isOpen={showTipModal}
+            onClose={() => setShowTipModal(false)}
+            creatorId={creator.id}
+            creatorName={creator.fullName || creator.nickname}
+          />
+        </div>
       )}
     </div>
   )

@@ -665,7 +665,7 @@ export function useOptimizedPosts(options: UseOptimizedPostsOptions = {}): UseOp
       
       // Удаляем из локального состояния
       setPosts(prevPosts => prevPosts.filter(post => post.id !== postId))
-      toast.success('Пост удален')
+      toast.success('Post deleted')
 
     } catch (error) {
       console.error('Delete error:', error)
@@ -726,7 +726,7 @@ export function useOptimizedPosts(options: UseOptimizedPostsOptions = {}): UseOp
       
       // Удаляем из локального состояния
       setPosts(prevPosts => prevPosts.filter(post => post.id !== postId))
-      toast.success('Пост удален администратором')
+      toast.success('Post deleted администратором')
 
     } catch (error) {
       console.error('Admin delete error:', error)

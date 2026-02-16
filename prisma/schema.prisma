@@ -18,6 +18,7 @@ model User {
   website              String?
   twitter              String?
   telegram             String?
+  telegramId           String?               @unique // Telegram User ID for authentication
   location             String?
   createdAt            DateTime              @default(now())
   updatedAt            DateTime              @updatedAt
@@ -109,6 +110,44 @@ model Post {
 
   @@index([requestId])
   @@map("posts")
+}
+
+model DeletedPost {
+  id                  String    @id @default(cuid())
+  originalPostId      String    // ID оригинального поста из posts
+  creatorId           String
+  title               String
+  content             String
+  type                String
+  category            String?
+  thumbnail           String?
+  mediaUrl            String?
+  blurUrl             String?
+  previewUrl          String?
+  isLocked            Boolean
+  isPremium           Boolean
+  price               Float?
+  currency            String
+  imageAspectRatio    Decimal?
+  isSellable          Boolean
+  minSubscriptionTier String?
+  requestId           String?
+  error               String?
+  remixId             String?
+  containerId         String?
+  likesCount          Int
+  commentsCount       Int
+  viewsCount          Int
+  createdAt           DateTime  // Когда пост был создан
+  updatedAt           DateTime  // Когда пост был обновлён
+  deletedAt           DateTime  @default(now()) // Когда пост был удалён
+  deletedBy           String?   // ID пользователя, кто удалил (admin или сам креатор)
+  deletionReason      String?   // Причина удаления (optional)
+
+  @@index([originalPostId])
+  @@index([creatorId])
+  @@index([deletedAt])
+  @@map("deleted_posts")
 }
 
 model Tag {

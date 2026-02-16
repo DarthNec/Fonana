@@ -328,7 +328,7 @@ export default function TikTokVideoViewerComponent({ onClose }: TikTokVideoViewe
       if (response.ok) {
         setNewComment('')
         await fetchComments(currentVideo.id)
-        toast.success('Комментарий добавлен')
+        toast.success('Comment added')
         
         // Обновляем счетчик комментариев в видео
         setVideos(prev => prev.map(v => 
@@ -811,7 +811,7 @@ export default function TikTokVideoViewerComponent({ onClose }: TikTokVideoViewe
           {/* Header */}
           <div className="flex justify-between items-center p-4 border-b border-gray-200 dark:border-slate-700">
             <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
-              Комментарии ({comments.length})
+              Comments ({comments.length})
             </h3>
             <button
               onClick={() => {
@@ -892,7 +892,7 @@ export default function TikTokVideoViewerComponent({ onClose }: TikTokVideoViewe
                         setNewComment(e.target.value)
                       }
                     }}
-                    placeholder="Написать комментарий..."
+                    placeholder="Написать комментарий..111."
                     className="flex-1 px-3 py-2 bg-white dark:bg-slate-900 border border-gray-300 dark:border-slate-600 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-slate-400"
                     maxLength={300}
                   />

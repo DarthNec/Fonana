@@ -24,6 +24,7 @@ import {
 } from '@heroicons/react/24/outline'
 import ImageCropModal from './ImageCropModal'
 import { useSolRate } from '@/lib/hooks/useSolRate'
+import { formatSolToUsd } from '@/lib/utils/format'
 import { createFFmpeg, fetchFile } from '@ffmpeg/ffmpeg'
 
 const categories = [
@@ -84,6 +85,9 @@ export default function CreatePostModal({ onPostCreated, onPostUpdated, onClose,
   
   // 🎯 UX IMPROVEMENT: Preview Mode (кроме Sora-2)
   const [showPreview, setShowPreview] = useState(false)
+  
+  // 🎯 M7 FIX: String state for price input (prevents "01" bug)
+  const [priceInput, setPriceInput] = useState('0.00')
   
   // 🔥 M7 FIX: SINGLE DEBUG useEffect WITH STABLE DEPENDENCIES (removed triple duplicates)
   useEffect(() => {
@@ -317,6 +321,10 @@ export default function CreatePostModal({ onPostCreated, onPostUpdated, onClose,
         soraReferencePreview: ''
       })
       
+      // 🎯 M7 FIX: Initialize priceInput for edit mode
+      const priceValue = postData.price || 0
+      setPriceInput(priceValue.toFixed(2))
+      
       setHasInitialized(true)
     }
   }, [postData, mode, hasInitialized])
@@ -449,11 +457,12 @@ export default function CreatePostModal({ onPostCreated, onPostUpdated, onClose,
       console.log('[CreatePostModal] Processing image file:', file.name, 'size:', file.size)
       
       // Проверяем что это действительно изображение
+      
       if (!file.type.match(/^image\/(jpeg|jpg|png|gif|webp)$/i)) {
         toast.error('Unsupported image format. Please use JPEG, PNG, GIF, or WebP.')
         return
       }
-
+      
       const reader = new FileReader()
       reader.onload = (e) => {
         const result = e.target?.result as string
@@ -515,11 +524,11 @@ export default function CreatePostModal({ onPostCreated, onPostUpdated, onClose,
       let processedFile = file
       
       // Сжимаем видео, если размер больше 20МБ
+      /*
       if (contentType === 'video' && file.size > 20 * 1024 * 1024) {
         console.log('[CreatePostModal] Video size exceeds 20MB, starting compression...')
         processedFile = await compressVideo(file)
-      }
-      
+      }*/
       const preview = URL.createObjectURL(processedFile)
       setFormData(prev => ({
         ...prev,
@@ -1484,7 +1493,7 @@ export default function CreatePostModal({ onPostCreated, onPostUpdated, onClose,
               {formData.type !== 'text' && formData.contentSource === 'upload' ? (
                 <div className="space-y-4">
                   <label className="block text-sm font-medium text-gray-700 dark:text-slate-300">
-                    Upload media (optional)
+                    Upload media
                   </label>
                   <div
                     onDrop={handleDrop}
@@ -1520,9 +1529,9 @@ export default function CreatePostModal({ onPostCreated, onPostUpdated, onClose,
                             e.stopPropagation()
                             setFormData(prev => ({ ...prev, file: null, preview: '' }))
                           }}
-                          className="absolute top-2 right-2 p-1 bg-red-500 text-white rounded-full hover:bg-red-600"
+                          className="absolute top-2 right-2 p-2 bg-red-500 text-white rounded-full hover:bg-red-600 transition-all shadow-lg z-10"
                         >
-                          <XMarkIcon className="w-4 h-4" />
+                          <XMarkIcon className="w-5 h-5 ml-[3px] sm:ml-0" />
                         </button>
                       </div>
                     ) : (
@@ -1841,7 +1850,9 @@ export default function CreatePostModal({ onPostCreated, onPostUpdated, onClose,
 
               {/* Access type - 🎯 UX IMPROVEMENT: Простой dropdown с tooltip */}
               {/* 🔥 Скрыт для Sora-2 - AI генерации всегда бесплатны */}
-              {formData.contentSource !== 'sora2' && (
+              {/* 🔥 Скрыт для Telegram пользователей (wallet начинается с TG_) */}
+              {/* 🔥 Скрыт для гостевых пользователей (wallet начинается с FK_) */}
+              {formData.contentSource !== 'sora2' && !user.wallet?.startsWith('TG_') && !user.wallet?.startsWith('FK_') && (
                 <div>
                   <label className="flex items-center gap-2 text-sm font-medium text-gray-700 dark:text-slate-300 mb-2">
                     <span>Content access</span>
@@ -1888,28 +1899,53 @@ export default function CreatePostModal({ onPostCreated, onPostUpdated, onClose,
                 </div>
               )}
 
-              {/* Price settings - скрыт для Sora-2 */}
-              {formData.accessType === 'paid' && formData.contentSource !== 'sora2' && (
+              {/* Price settings - скрыт для Sora-2, Telegram и гостевых пользователей */}
+              {formData.accessType === 'paid' && formData.contentSource !== 'sora2' && !user.wallet?.startsWith('TG_') && !user.wallet?.startsWith('FK_') && (
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-2">
                       Price
                     </label>
                     <input
-                      type="number"
-                      step="0.01"
-                      min="0.01"
-                      max="1000"
-                      value={formData.price}
-                      onChange={(e) => setFormData(prev => ({ ...prev, price: parseFloat(e.target.value) || 0 }))}
+                      type="text"
+                      inputMode="decimal"
+                      value={priceInput}
+                      onFocus={(e) => {
+                        // 🎯 M7 FIX: Clear default "0.00" on focus (prevents "0.001" bug)
+                        if (priceInput === '0.00') {
+                          setPriceInput('')
+                          e.target.select() // Extra safety: select all (empty string)
+                        }
+                        // If real value (e.g., "5.50") → DON'T clear
+                      }}
+                      onChange={(e) => {
+                        const value = e.target.value
+                        // Allow only: digits, one decimal point, empty
+                        if (value === '' || /^\d*\.?\d*$/.test(value)) {
+                          setPriceInput(value)
+                          // Update formData with parsed number (for USD conversion)
+                          const numValue = parseFloat(value) || 0
+                          setFormData(prev => ({ ...prev, price: numValue }))
+                        }
+                      }}
+                      onBlur={() => {
+                        // Format on blur: "5" → "5.00", "0.1" → "0.10"
+                        const numValue = parseFloat(priceInput) || 0
+                        setPriceInput(numValue.toFixed(2))
+                        setFormData(prev => ({ ...prev, price: numValue }))
+                      }}
                       className="w-full px-4 py-2 bg-white dark:bg-slate-800/50 border border-gray-300 dark:border-slate-700 rounded-xl text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
                       placeholder="0.00"
                       required
                     />
-                    {formData.price > 0 && (
+                    {formData.price > 0 && formData.currency === 'SOL' && (
                       <div className="flex items-center gap-2 mt-2">
-                        <span className="text-xs text-purple-600 dark:text-purple-300">Курс SOL/USD: {isRateLoading ? '...' : `$${solToUsdRate.toFixed(2)}`}</span>
-                        <span className="text-xs text-gray-400">(курс обновляется автоматически)</span>
+                        <span className="text-xs text-purple-600 dark:text-purple-300">
+                          {isRateLoading ? '...' : `≈ ${formatSolToUsd(formData.price, solToUsdRate)}`}
+                        </span>
+                        <span className="text-xs text-gray-400">
+                          (приблизительная стоимость в USD)
+                        </span>
                       </div>
                     )}
                   </div>

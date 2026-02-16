@@ -9,6 +9,7 @@ import { FullscreenPostCard } from '@/components/posts/variants/FullscreenPostCa
 import { CircularNavigation } from './CircularNavigation'
 import { VerticalActions } from './VerticalActions'
 import { SlidingCommentsPanel } from './SlidingCommentsPanel'
+import { cn } from '@/lib/utils'
 
 interface FullscreenCarouselProps {
   posts: UnifiedPost[]
@@ -18,6 +19,7 @@ interface FullscreenCarouselProps {
   onLoadMore?: () => void
   onBack?: () => void // Кнопка назад (для профиля)
   showBackButton?: boolean // Показывать ли кнопку назад
+  isFullscreen?: boolean // Флаг для fullscreen режима (убирает отступ max-md:pb-20)
 }
 
 /**
@@ -34,7 +36,8 @@ export function FullscreenCarousel({
   onAction,
   onLoadMore,
   onBack,
-  showBackButton = false
+  showBackButton = false,
+  isFullscreen = true // По умолчанию true (для профиля/explore), false для FeedPageClient
 }: FullscreenCarouselProps) {
   const [currentIndex, setCurrentIndex] = useState(initialIndex)
   const [direction, setDirection] = useState<'up' | 'down' | null>(null)
@@ -247,8 +250,17 @@ export function FullscreenCarousel({
       video.pause()
     })
     
+    // ✅ FIX: Используем флаг для отмены автовоспроизведения при unmount
+    let isCancelled = false
+    
     // Находим видео в текущем активном посте и запускаем его
-    setTimeout(() => {
+    const timeoutId = setTimeout(() => {
+      // ✅ FIX: Проверяем, не был ли effect отменен
+      if (isCancelled) {
+        console.log('[VIDEO AUTOPLAY] Effect cancelled, skipping autoplay')
+        return
+      }
+      
       if (currentPost?.media?.type === 'video') {
         console.log('[VIDEO AUTOPLAY] Trying to play video for post:', currentPost.id)
         
@@ -260,9 +272,21 @@ export function FullscreenCarousel({
           const activeVideo = postContainer.querySelector('video') as HTMLVideoElement
           
           if (activeVideo) {
+            // ✅ FIX: Проверяем, что элемент всё ещё в DOM
+            if (!document.contains(activeVideo)) {
+              console.warn('[VIDEO AUTOPLAY] Video element removed from DOM, skipping autoplay')
+              return
+            }
+            
             console.log('[VIDEO AUTOPLAY] Found active video in post, playing...')
+            // ✅ FIX: Обрабатываем все возможные ошибки
             activeVideo.play().catch(error => {
-              console.error('[VIDEO AUTOPLAY] Autoplay prevented:', error)
+              // Игнорируем AbortError (элемент был удален)
+              if (error.name === 'AbortError') {
+                console.log('[VIDEO AUTOPLAY] Play aborted (element removed)')
+              } else {
+                console.error('[VIDEO AUTOPLAY] Autoplay prevented:', error.name, error.message)
+              }
             })
           } else {
             console.warn('[VIDEO AUTOPLAY] Video element not found in post container')
@@ -274,6 +298,12 @@ export function FullscreenCarousel({
         console.log('[VIDEO AUTOPLAY] Current post is not a video')
       }
     }, 600) // Задержка под длительность анимации (500ms) + запас
+    
+    // ✅ FIX: Cleanup - отменяем timeout и флаг при unmount/rerender
+    return () => {
+      isCancelled = true
+      clearTimeout(timeoutId)
+    }
   }, [currentIndex, currentPost])
   
   // Swipe navigation
@@ -370,6 +400,7 @@ export function FullscreenCarousel({
                   <FullscreenPostCard
                     post={displayPost}
                     onAction={handleAction}
+                    isFullscreen={isFullscreen}
                   />
                 </motion.div>
               </AnimatePresence>
@@ -393,10 +424,14 @@ export function FullscreenCarousel({
       </div>
       
       {/* Mobile: Vertical Actions внизу (над BottomNav) */}
-      <div className="md:hidden fixed bottom-20 right-4 z-50">
+      <div className={cn(
+        "md:hidden fixed right-4 z-50",
+        isFullscreen ? "bottom-4" : "bottom-20" // Fullscreen: bottom-4, FeedPage: bottom-20 (над navbar)
+      )}>
         <VerticalActions
           post={currentPost}
           onAction={handleAction}
+          isFullscreen={isFullscreen}
         />
       </div>
       

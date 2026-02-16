@@ -1,7 +1,7 @@
 'use client'
 
 import React, { useState, useEffect, useMemo } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { Squares2X2Icon, LockClosedIcon, CurrencyDollarIcon, GlobeAltIcon } from '@heroicons/react/24/outline'
 import { PostsContainer } from '@/components/posts/layouts/PostsContainer'
 import { FullscreenCarousel } from '@/components/feed/FullscreenCarousel'
@@ -11,11 +11,13 @@ import { useWallet } from '@/lib/hooks/useSafeWallet'
 import { useUser } from '@/lib/store/appStore'
 import NewSubscribeModal from '@/components/NewSubscribeModal'
 import PurchaseModal from '@/components/PurchaseModal'
+import { TipSendModal } from '@/components/TipSendModal'
 
 type ContentTab = 'public' | 'feed' | 'store'
 
 export default function ExplorePageClient() {
   const router = useRouter()
+  const searchParams = useSearchParams()
   const user = useUser()
   const { publicKey } = useWallet()
   const userWallet = publicKey?.toBase58() || null
@@ -24,16 +26,39 @@ export default function ExplorePageClient() {
   const [showFullscreen, setShowFullscreen] = useState(false)
   const [fullscreenIndex, setFullscreenIndex] = useState(0)
   const [activeTab, setActiveTab] = useState<ContentTab>('public')
+  const [isMobile, setIsMobile] = useState(false)
   
   // Модалки
   const [showSubscribeModal, setShowSubscribeModal] = useState(false)
   const [showPurchaseModal, setShowPurchaseModal] = useState(false)
+  const [showTipModal, setShowTipModal] = useState(false)
   const [selectedPost, setSelectedPost] = useState<any>(null)
   const [selectedCreator, setSelectedCreator] = useState<any>(null)
+  const [selectedTipCreator, setSelectedTipCreator] = useState<any>(null)
 
   useEffect(() => {
     loadPosts()
   }, [])
+
+  // Определяем мобилку
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth < 768)
+    }
+    checkMobile()
+    window.addEventListener('resize', checkMobile)
+    return () => window.removeEventListener('resize', checkMobile)
+  }, [])
+
+  // Проверяем filter из query параметров
+  useEffect(() => {
+    const filter = searchParams.get('filter')
+    if (filter === 'public') {
+      setActiveTab('public')
+    } else if (filter === 'premium') {
+      setActiveTab('store')
+    }
+  }, [searchParams])
 
   const loadPosts = async () => {
     setIsLoading(true)
@@ -62,7 +87,17 @@ export default function ExplorePageClient() {
 
         // Обрабатываем посты
         const processed = rawPosts.map((post: any) => {
-          const updatedPost = { ...post, access: { ...post.access } }
+          const updatedPost = { 
+            ...post, 
+            access: { ...post.access },
+            // 🔥 Создаём объект engagement для UnifiedPost
+            engagement: {
+              likes: post.likesCount || post.likes || 0,
+              comments: post.commentsCount || post.comments || 0,
+              views: post.viewsCount || post.views || 0,
+              isLiked: post.isLiked || false
+            }
+          }
           
           // Проверяем подписки
           if (subscriptions?.subscriptions?.length > 0) {
@@ -224,10 +259,39 @@ export default function ExplorePageClient() {
         setShowPurchaseModal(true)
         break
 
+      case 'tip':
+        // Находим пост для получения данных о креаторе
+        const tipPost = posts.find(p => p.id === action.postId)
+        if (tipPost && tipPost.creator) {
+          setSelectedTipCreator(tipPost.creator)
+          setShowTipModal(true)
+        }
+        break
+
       case 'like':
       case 'unlike':
       case 'comment':
+        // Эти действия обрабатываются в PostCard/PostActions
+        break
+        
       case 'share':
+        // Копируем ссылку на пост
+        const postUrl = `${window.location.origin}/post/${action.postId}`
+        try {
+          await navigator.clipboard.writeText(postUrl)
+          toast.success('Link copied to clipboard!', {
+            duration: 2000,
+            position: 'top-center',
+          })
+        } catch (err) {
+          console.error('Error copying link:', err)
+          toast.error('Failed to copy link', {
+            duration: 2000,
+            position: 'top-center',
+          })
+        }
+        break
+        
       case 'edit':
       case 'delete':
         // Эти действия обрабатываются в PostCard/PostActions
@@ -292,6 +356,21 @@ export default function ExplorePageClient() {
             post={selectedPost}
           />
         )}
+
+        {/* Tip Modal */}
+        {showTipModal && selectedTipCreator && (
+          <div className="fixed inset-0 z-[500]">
+            <TipSendModal
+              isOpen={showTipModal}
+              onClose={() => {
+                setShowTipModal(false)
+                setSelectedTipCreator(null)
+              }}
+              creatorId={selectedTipCreator.id}
+              creatorName={selectedTipCreator.name || selectedTipCreator.nickname}
+            />
+          </div>
+        )}
       </>
     )
   }
@@ -354,15 +433,16 @@ export default function ExplorePageClient() {
       </div>
 
       {/* Content */}
-      <div className="p-6">
+      <div className={`${isMobile ? 'p-3' : 'p-6'}`}>
         {filteredPosts.length > 0 ? (
           <PostsContainer
             posts={filteredPosts}
             layout="gallery"
             variant="creator"
-            columns={4}
+            columns={isMobile ? 2 : 4}
             onAction={handlePostAction}
             onPostClick={handlePostClick}
+            showUsername={true}
           />
         ) : (
           <div className="text-center py-20">
@@ -410,6 +490,21 @@ export default function ExplorePageClient() {
           }}
           post={selectedPost}
         />
+      )}
+
+      {/* Tip Modal */}
+      {showTipModal && selectedTipCreator && (
+        <div className="fixed inset-0 z-[500]">
+          <TipSendModal
+            isOpen={showTipModal}
+            onClose={() => {
+              setShowTipModal(false)
+              setSelectedTipCreator(null)
+            }}
+            creatorId={selectedTipCreator.id}
+            creatorName={selectedTipCreator.name || selectedTipCreator.nickname}
+          />
+        </div>
       )}
     </div>
   )

@@ -543,7 +543,7 @@ export function useOptimizedPosts(options: UseOptimizedPostsOptions = {}): UseOp
         postsCache.delete(cacheKey)
       }
       
-      toast.success('Пост удален')
+      toast.success('Post deleted')
 
     } catch (error) {
       console.error('Delete error:', error)

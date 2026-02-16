@@ -44,7 +44,8 @@ export async function uploadToBunnyStorage(
       // Для сообщений определяем тип медиа по MIME типу файла
       const isImage = file.type.startsWith('image/')
       const isVideo = file.type.startsWith('video/')
-      const mediaType = isImage ? 'images' : isVideo ? 'videos' : 'images' // fallback к images
+      const isAudio = file.type.startsWith('audio/')
+      const mediaType = isImage ? 'images' : isVideo ? 'videos' : isAudio ? 'audio' : 'images' // fallback к images
       bunnyPath = `${BUNNY_PATHS.messages[mediaType]}/${fileName}`
     } else if (type === 'blur') {
       // Для размытых изображений

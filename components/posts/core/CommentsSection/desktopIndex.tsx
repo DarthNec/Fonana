@@ -163,7 +163,7 @@ export function CommentsSection({
         setNewComment('')
         setIsAnonymous(false)
         await fetchComments()
-        toast.success('Комментарий добавлен')
+        toast.success('Comment added')
         console.log('post', post);
         onCommentAdded?.()
       } else {
@@ -418,7 +418,7 @@ export function CommentsSection({
                       setNewComment(e.target.value)
                     }
                   }}
-                  placeholder="Написать комментарий..."
+                  placeholder="Type your comment..."
                   className="w-full px-4 py-2 pr-12 bg-gray-100 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-slate-400"
                   rows={3}
                   maxLength={300}
@@ -465,7 +465,7 @@ export function CommentsSection({
                       onChange={(e) => setIsAnonymous(e.target.checked)}
                       className="rounded border-gray-300 dark:border-slate-600 text-purple-600 focus:ring-purple-500"
                     />
-                    Анонимно
+                    Anonymous
                   </label>
                   <span className={`text-xs ${newComment.length > 300 ? 'text-red-500' : 'text-gray-500 dark:text-slate-400'}`}>
                     {newComment.length}/300
@@ -477,7 +477,7 @@ export function CommentsSection({
                     disabled={!newComment.trim() || isSubmitting}
                     className="px-4 py-2 bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-lg font-medium hover:from-purple-600 hover:to-pink-600 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
                   >
-                    {isSubmitting ? 'Отправка...' : 'Отправить'}
+                    {isSubmitting ? 'Sending...' : 'Send'}
                   </button>
                 )}
               </div>
@@ -496,7 +496,7 @@ export function CommentsSection({
       {!hideHeader && (
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
-            Комментарии ({comments.length})
+            Comments ({comments.length})
           </h3>
           {onClose && (
             <button

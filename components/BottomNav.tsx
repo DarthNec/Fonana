@@ -2,6 +2,7 @@
 
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
+import { useEffect, useState } from 'react'
 import { 
   HomeIcon, 
   UserIcon,
@@ -13,7 +14,8 @@ import {
   ArrowRightOnRectangleIcon,
   XMarkIcon,
   PlusCircleIcon,
-  ShoppingBagIcon
+  ShoppingBagIcon,
+  TrashIcon
 } from '@heroicons/react/24/outline'
 import {
   HomeIcon as HomeSolidIcon,
@@ -23,12 +25,12 @@ import {
   PlusCircleIcon as PlusCircleSolidIcon
 } from '@heroicons/react/24/solid'
 import { useUser, useAppStore } from '@/lib/store/appStore'
-import { useState } from 'react'
 import { useSafeWalletModal } from '@/lib/hooks/useSafeWalletModal'
 import { toast } from 'react-hot-toast'
 import { useWallet } from '@/lib/hooks/useSafeWallet'
 import Avatar from '@/components/Avatar'
 import CreatePostModal from '@/components/CreatePostModal'
+import LogInMethodPopup from '@/components/LogInMethodPopup'
 
 export default function BottomNav() {
   const pathname = usePathname()
@@ -38,6 +40,8 @@ export default function BottomNav() {
   const { setVisible } = useSafeWalletModal()
   const [showProfilePanel, setShowProfilePanel] = useState(false)
   const [showCreateModal, setShowCreateModal] = useState(false)
+  const [showLoginPopup, setShowLoginPopup] = useState(false)
+  const [deletedPostsCount, setDeletedPostsCount] = useState(0)
   const user = useUser()
   const clearUser = useAppStore(state => state.clearUser)
 
@@ -61,8 +65,8 @@ export default function BottomNav() {
       activeIcon: PlusCircleSolidIcon,
       onClick: () => {
         if (!publicKeyString) {
-          setVisible(true)
-          toast.success('Connect wallet to create post')
+          // Показываем LogInMethodPopup вместо прямого Phantom
+          setShowLoginPopup(true)
           return
         }
         setShowCreateModal(true)
@@ -81,14 +85,22 @@ export default function BottomNav() {
       activeIcon: UserSolidIcon,
       onClick: () => {
         if (!publicKeyString) {
-          setVisible(true)
-          toast.success('Connect wallet to view profile')
+          // Показываем LogInMethodPopup вместо прямого Phantom
+          setShowLoginPopup(true)
           return
         }
         setShowProfilePanel(true)
       }
     }
   ]
+
+  // Загрузка deletedPostsCount из localStorage
+  useEffect(() => {
+    if (typeof window !== 'undefined' && user?.id) {
+      const count = parseInt(localStorage.getItem('deletedPostsCount') || '0')
+      setDeletedPostsCount(count)
+    }
+  }, [user?.id])
 
   const isActive = (href: string) => {
     if (href === '#') return false
@@ -103,8 +115,12 @@ export default function BottomNav() {
     try {
       await disconnect()
       clearUser()
+      // Очищаем все маркеры авторизации
       localStorage.removeItem('fonana_user_wallet')
       localStorage.removeItem('fonana_jwt_token')
+      localStorage.removeItem('fonana_telegram_auth') // Telegram маркер
+      localStorage.removeItem('fonana_guest_auth')    // Guest маркер
+      localStorage.removeItem('fonana_device_id')     // Device ID для гостей
       setShowProfilePanel(false)
       router.push('/feed')
       toast.success('Logged out successfully')
@@ -284,6 +300,25 @@ export default function BottomNav() {
             
             {/* Help & Logout */}
             <div className="py-4 px-4">
+              {/* Deleted Posts для креаторов */}
+              {user?.isCreator && deletedPostsCount > 0 && (
+                <button
+                  onClick={() => {
+                    setShowProfilePanel(false)
+                    router.push('/deleted-posts')
+                  }}
+                  className="w-full flex items-center gap-4 px-4 py-3 text-gray-700 dark:text-slate-300 hover:bg-gray-100 dark:hover:bg-slate-800 rounded-xl transition-colors mb-1"
+                >
+                  <TrashIcon className="w-5 h-5" />
+                  <span className="font-medium">Deleted Posts</span>
+                  {deletedPostsCount > 0 && (
+                    <span className="ml-auto px-2 py-0.5 text-xs font-semibold bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 rounded-full">
+                      {deletedPostsCount}
+                    </span>
+                  )}
+                </button>
+              )}
+              
               <button
                 onClick={() => {
                   setShowProfilePanel(false)
@@ -315,6 +350,23 @@ export default function BottomNav() {
             setShowCreateModal(false)
             toast.success('Post created!')
             router.push('/feed')
+          }}
+        />
+      )}
+
+      {/* Login Method Popup */}
+      {showLoginPopup && (
+        <LogInMethodPopup
+          isOpen={showLoginPopup}
+          onClose={() => setShowLoginPopup(false)}
+          onPhantomLogin={() => {
+            setShowLoginPopup(false)
+            setVisible(true)
+          }}
+          onLoginSuccess={() => {
+            setShowLoginPopup(false)
+            // После успешного логина панель профиля не открываем автоматически
+            // Пользователь сам может кликнуть на аватар снова
           }}
         />
       )}

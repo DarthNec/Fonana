@@ -11,6 +11,8 @@ import { AiChatWidget } from '@/components/AiChatWidget'
 import ErrorBoundary from '@/components/ErrorBoundary'
 import ReferralNotification from '@/components/ReferralNotification'
 import VerifyAccountPopup from '@/components/VerifyAccountPopup'
+import NewUserProfileSetup from '@/components/NewUserProfileSetup'
+import AutoLoginPrompt from '@/components/AutoLoginPrompt'
 import Footer from '@/components/Footer'
 import ServiceWorkerRegistration from '@/components/ServiceWorkerRegistration'
 import { useState, useEffect } from 'react'
@@ -111,9 +113,14 @@ export default function ClientShell({ children }: { children: React.ReactNode })
                 </div>
 
                 {/* AI Chat Widget - Both mobile and desktop */}
+                {/*
                 <AiChatWidget />
+                */}
               </div>
               <ServiceWorkerRegistration />
+              {/* ВРЕМЕННО ЗАКОММЕНТИРОВАНО: Попап заполнения профиля для новых пользователей */}
+              {/* <NewUserProfileSetup /> */}
+              <AutoLoginPrompt />
               {/*
               <VerifyAccountPopup />
               */}

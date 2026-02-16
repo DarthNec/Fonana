@@ -376,10 +376,10 @@ export default function PurchaseModal({ post, onClose, onSuccess }: PurchaseModa
             <LockClosedIcon className="w-8 h-8 text-purple-600 dark:text-purple-400" />
           </div>
           <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
-            Купить доступ к посту
+            Buy access to the post
           </h2>
           <p className="text-gray-600 dark:text-gray-400">
-            Получите полный доступ к эксклюзивному контенту
+            Get full access to the exclusive content
           </p>
         </div>
 
@@ -470,10 +470,10 @@ export default function PurchaseModal({ post, onClose, onSuccess }: PurchaseModa
             <CheckIcon className="w-5 h-5 text-green-500 mt-0.5" />
             <div>
               <p className="text-sm font-medium text-gray-900 dark:text-white">
-                Пожизненный доступ
+                Lifetime access
               </p>
               <p className="text-xs text-gray-600 dark:text-gray-400">
-                Контент останется доступным навсегда
+                Content will remain accessible forever
               </p>
             </div>
           </div>
@@ -481,10 +481,10 @@ export default function PurchaseModal({ post, onClose, onSuccess }: PurchaseModa
             <CheckIcon className="w-5 h-5 text-green-500 mt-0.5" />
             <div>
               <p className="text-sm font-medium text-gray-900 dark:text-white">
-                Мгновенный доступ
+                Instant access
               </p>
               <p className="text-xs text-gray-600 dark:text-gray-400">
-                Сразу после подтверждения оплаты
+                After payment confirmation
               </p>
             </div>
           </div>
@@ -492,10 +492,10 @@ export default function PurchaseModal({ post, onClose, onSuccess }: PurchaseModa
             <CheckIcon className="w-5 h-5 text-green-500 mt-0.5" />
             <div>
               <p className="text-sm font-medium text-gray-900 dark:text-white">
-                Безопасная оплата
+                Secure payment
               </p>
               <p className="text-xs text-gray-600 dark:text-gray-400">
-                Через блокчейн Solana
+                Through Solana blockchain
               </p>
             </div>
           </div>
@@ -516,13 +516,13 @@ export default function PurchaseModal({ post, onClose, onSuccess }: PurchaseModa
               {isProcessing ? (
                 <>
                   <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white" />
-                  <span>Обработка...</span>
+                  <span>Processing...</span>
                 </>
               ) : (
                 <>
                   <ShoppingCartIcon className="w-5 h-5" />
                   <span>
-                    Купить за {formatSolAmount(displayPrice)}
+                    Buy for {formatSolAmount(displayPrice)}
                     {post.flashSale && (
                       <span className="ml-2 text-sm line-through opacity-75">
                         {formatSolAmount(post.price)}
@@ -538,7 +538,7 @@ export default function PurchaseModal({ post, onClose, onSuccess }: PurchaseModa
             onClick={onClose}
             className="w-full border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 py-3 px-4 rounded-lg font-medium hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
           >
-            Отмена
+            Cancel
           </button>
         </div>
       </div>

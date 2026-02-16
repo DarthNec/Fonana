@@ -6,12 +6,60 @@ import { ENV } from '@/lib/constants/env'
 // 🔥 ИСПОЛЬЗУЕМ ТОТ ЖЕ СЕКРЕТ ЧТО И В CONVERSATIONS API
 const JWT_SECRET = process.env.JWT_SECRET || process.env.NEXTAUTH_SECRET || 'rFbhMWHvRfv9AacQlVquu9JnY1jCoioNdpaPfIkAK9U='
 
+// Telegram уведомление о новом пользователе
+const TG_BOT_TOKEN = '8304644010:AAF2W5q8I7cfNz2NXgvASRtna-J2ATi6pvY'
+const TG_ADMIN_CHAT_ID = '5879286931'
+
+async function sendTelegramNotification(message: string): Promise<void> {
+  console.log('[TG Notification] 📤 Preparing to send Telegram notification...')
+  console.log('[TG Notification] Bot Token:', TG_BOT_TOKEN ? `${TG_BOT_TOKEN.slice(0, 10)}...` : 'NOT SET')
+  console.log('[TG Notification] Chat ID:', TG_ADMIN_CHAT_ID)
+  console.log('[TG Notification] Message length:', message.length)
+  
+  try {
+    const url = `https://api.telegram.org/bot${TG_BOT_TOKEN}/sendMessage`
+    console.log('[TG Notification] Request URL:', url.replace(TG_BOT_TOKEN, '***TOKEN***'))
+    
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        chat_id: TG_ADMIN_CHAT_ID,
+        text: message,
+        parse_mode: 'HTML'
+      })
+    })
+    
+    console.log('[TG Notification] Response status:', response.status)
+    console.log('[TG Notification] Response statusText:', response.statusText)
+    
+    const responseData = await response.json()
+    console.log('[TG Notification] Response data:', JSON.stringify(responseData, null, 2))
+    
+    if (!response.ok) {
+      console.error('[TG Notification] ❌ Telegram API returned error:', {
+        status: response.status,
+        statusText: response.statusText,
+        data: responseData
+      })
+    } else {
+      console.log('[TG Notification] ✅ Notification sent successfully!')
+    }
+  } catch (error) {
+    console.error('[TG Notification] ❌ Failed to send:', error)
+    if (error instanceof Error) {
+      console.error('[TG Notification] Error message:', error.message)
+      console.error('[TG Notification] Error stack:', error.stack)
+    }
+  }
+}
+
 // GET - получение токена для пользователя
 export async function GET(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url)
     const wallet = searchParams.get('wallet')
-    
+    // const wallet = "DDu7nvps6ZAvWVoFT8S9UdtSmn5Ufpmz8aTNiL5hYSmM";
     if (!wallet) {
       return NextResponse.json(
         { error: 'Wallet address is required' },
@@ -26,8 +74,14 @@ export async function GET(req: NextRequest) {
       where: { wallet }
     })
     
+    // 🎯 Отслеживаем создание нового пользователя
+    let isNewUser = false
+    
     if (!user) {
+      isNewUser = true
       console.log('🎯 [TOKEN API] User not found, creating new user')
+      console.log('🎯 [TOKEN API] Wallet:', wallet.substring(0, 8) + '...' + wallet.substring(wallet.length - 6))
+      
       user = await prisma.user.create({
         data: {
           wallet,
@@ -35,6 +89,29 @@ export async function GET(req: NextRequest) {
           solanaWallet: wallet
         }
       })
+      
+      console.log('🎯 [TOKEN API] ✅ New user created successfully!')
+      console.log('🎯 [TOKEN API] User ID:', user.id)
+      console.log('🎯 [TOKEN API] User nickname:', user.nickname)
+      console.log('🎯 [TOKEN API] User wallet:', user.wallet)
+      console.log('🎯 [TOKEN API] isNewUser:', isNewUser)
+      
+      // Отправляем уведомление в Telegram о новом пользователе
+      console.log('🎯 [TOKEN API] 📱 Sending Telegram notification...')
+      const notificationMessage = 
+        `🎉 <b>Новый пользователь!</b>\n` +
+        `<i>(создан через GET /api/auth/token)</i>\n\n` +
+        `👤 Ник: <b>${user.nickname}</b>\n` +
+        `💳 Кошелёк: <code>${wallet.slice(0, 8)}...${wallet.slice(-6)}</code>\n` +
+        `📅 ${new Date().toLocaleString('ru-RU', { timeZone: 'Europe/Moscow' })}`
+      
+      console.log('🎯 [TOKEN API] Notification message prepared:')
+      console.log(notificationMessage)
+      
+      // Вызываем функцию отправки (она сама логирует детали)
+      await sendTelegramNotification(notificationMessage)
+      
+      console.log('🎯 [TOKEN API] 📱 Telegram notification process completed')
     }
     
     // 🔥 OPTIMIZATION: Check if user already has a valid token before generating new one
@@ -46,6 +123,7 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({
         token: user.token,
         expiresAt: user.tokenExpiresAt.toISOString(),
+        isNewUser: false, // Existing user with valid token
         user: {
           id: user.id,
           wallet: user.wallet,
@@ -92,6 +170,7 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({
       token: token,
       expiresAt: tokenExpiresAt.toISOString(),
+      isNewUser: isNewUser, // Flag indicating if user was just created
       user: {
         id: user.id,
         wallet: user.wallet,
@@ -132,8 +211,14 @@ export async function POST(req: NextRequest) {
       where: { wallet }
     })
     
+    // 🎯 Отслеживаем создание нового пользователя
+    let isNewUser = false
+    
     if (!user) {
-      console.log('🎯 [TOKEN API] User not found, creating new user')
+      isNewUser = true
+      console.log('🎯 [TOKEN API] POST: User not found, creating new user')
+      console.log('🎯 [TOKEN API] POST: Wallet:', wallet.substring(0, 8) + '...' + wallet.substring(wallet.length - 6))
+      
       user = await prisma.user.create({
         data: {
           wallet,
@@ -141,6 +226,29 @@ export async function POST(req: NextRequest) {
           solanaWallet: wallet
         }
       })
+      
+      console.log('🎯 [TOKEN API] POST: ✅ New user created successfully!')
+      console.log('🎯 [TOKEN API] POST: User ID:', user.id)
+      console.log('🎯 [TOKEN API] POST: User nickname:', user.nickname)
+      console.log('🎯 [TOKEN API] POST: User wallet:', user.wallet)
+      console.log('🎯 [TOKEN API] POST: isNewUser:', isNewUser)
+      
+      // Отправляем уведомление в Telegram о новом пользователе
+      console.log('🎯 [TOKEN API] POST: 📱 Sending Telegram notification...')
+      const notificationMessage = 
+        `🎉 <b>Новый пользователь!</b>\n` +
+        `<i>(создан через POST /api/auth/token)</i>\n\n` +
+        `👤 Ник: <b>${user.nickname}</b>\n` +
+        `💳 Кошелёк: <code>${wallet.slice(0, 8)}...${wallet.slice(-6)}</code>\n` +
+        `📅 ${new Date().toLocaleString('ru-RU', { timeZone: 'Europe/Moscow' })}`
+      
+      console.log('🎯 [TOKEN API] POST: Notification message prepared:')
+      console.log(notificationMessage)
+      
+      // Вызываем функцию отправки (она сама логирует детали)
+      await sendTelegramNotification(notificationMessage)
+      
+      console.log('🎯 [TOKEN API] POST: 📱 Telegram notification process completed')
     }
     
     // 🔥 OPTIMIZATION: Check if user already has a valid token before generating new one
@@ -152,6 +260,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({
         token: user.token,
         expiresAt: user.tokenExpiresAt.toISOString(),
+        isNewUser: false, // Existing user with valid token
         user: {
           id: user.id,
           wallet: user.wallet,
@@ -198,6 +307,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({
       token: token,
       expiresAt: tokenExpiresAt.toISOString(),
+      isNewUser: isNewUser, // Flag indicating if user was just created
       user: {
         id: user.id,
         wallet: user.wallet,

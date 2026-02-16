@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { getUserByWallet } from '@/lib/db'
 import { mapAccessTypeToTier } from '@/lib/utils/access'
+import { movePostToDeleted } from '@/lib/utils/deletedPosts'
 
 export const dynamic = 'force-dynamic'
 
@@ -266,6 +267,16 @@ export async function DELETE(
     const { searchParams } = new URL(request.url)
     const userWallet = searchParams.get('userWallet')
     
+    // Получаем причину удаления из body (опционально)
+    let deletionReason = 'Deleted by creator'
+    try {
+      const body = await request.json()
+      if (body.reason) {
+        deletionReason = body.reason
+      }
+    } catch (e) {
+      // Body не обязателен, используем дефолтную причину
+    }
 
     if (!userWallet) {
       console.error('🎯 [DELETE API] No userWallet provided')
@@ -309,13 +320,20 @@ export async function DELETE(
     }
 
     
-    // Удаляем пост (связанные данные удалятся каскадно)
-    await prisma.post.delete({
-      where: { id: params.id },
+    // Перемещаем пост в deleted_posts перед удалением
+    console.log('🎯 [DELETE API] Moving post to deleted_posts...', { reason: deletionReason })
+    const deletedPost = await movePostToDeleted({
+      postId: params.id,
+      deletedBy: user.id,
+      deletionReason
     })
 
-    console.log('🎯 [DELETE API] Post deleted successfully')
-    return NextResponse.json({ success: true, message: 'Post deleted successfully' })
+    console.log('🎯 [DELETE API] Post moved to deleted_posts successfully:', deletedPost.id)
+    return NextResponse.json({ 
+      success: true, 
+      message: 'Post deleted successfully',
+      deletedPostId: deletedPost.id // Возвращаем ID на случай если нужно восстановить
+    })
   } catch (error) {
     console.error('Error deleting post:', error)
     return NextResponse.json({ error: 'Failed to delete post' }, { status: 500 })

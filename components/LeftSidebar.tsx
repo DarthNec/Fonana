@@ -7,6 +7,8 @@ import { useRouter } from 'next/navigation'
 import { NavItem } from './ui/NavItem'
 import Avatar from './Avatar'
 import { MobileWalletConnect } from './MobileWalletConnect'
+import LogInMethodPopup from './LogInMethodPopup'
+import ConnectWalletPopup from './ConnectWalletPopup'
 import { 
   HomeIcon, 
   UsersIcon, 
@@ -21,7 +23,9 @@ import {
   ChartBarIcon,
   SparklesIcon,
   XMarkIcon,
-  ShoppingBagIcon
+  ShoppingBagIcon,
+  WalletIcon,
+  TrashIcon
 } from '@heroicons/react/24/outline'
 import { 
   HomeIcon as HomeSolidIcon,
@@ -46,12 +50,20 @@ interface LeftSidebarProps {
 export function LeftSidebar({ isOpen = true, onClose, isMobile = false }: LeftSidebarProps) {
   const [unreadMessages, setUnreadMessages] = useState(0)
   const [showCreateModal, setShowCreateModal] = useState(false)
+  const [showLoginPopup, setShowLoginPopup] = useState(false)
+  const [showConnectWalletPopup, setShowConnectWalletPopup] = useState(false)
   const [activeGenerations, setActiveGenerations] = useState(0)
   const { connected, disconnect, publicKey } = useWallet()
+  const [deletedPostsCount, setDeletedPostsCount] = useState(0);
   const publicKeyString = publicKey?.toBase58() ?? null
   const { setVisible } = useSafeWalletModal()
   const user = useUser()
   const router = useRouter()
+  
+  // Проверяем, является ли пользователь Telegram или гостевым пользователем
+  const isTelegramUser = user?.wallet?.startsWith('TG_')
+  const isGuestUser = user?.wallet?.startsWith('FK_')
+  const needsWalletConnection = isTelegramUser || isGuestUser
 
   // Unread messages subscription
   useEffect(() => {
@@ -62,11 +74,11 @@ export function LeftSidebar({ isOpen = true, onClose, isMobile = false }: LeftSi
     })
 
     // Initial load
-    unreadMessagesService.refresh(user.id)
+    unreadMessagesService.refresh()
 
     // Refresh on window focus
     const handleFocus = () => {
-      unreadMessagesService.refresh(user.id)
+      unreadMessagesService.refresh()
     }
     window.addEventListener('focus', handleFocus)
 
@@ -74,6 +86,24 @@ export function LeftSidebar({ isOpen = true, onClose, isMobile = false }: LeftSi
       unsubscribe()
       window.removeEventListener('focus', handleFocus)
     }
+  }, [user?.id])
+
+
+  useEffect(() => {
+    if (!user?.id) return
+    const fetchDeletedPostsCount = async () => {
+      if(localStorage.getItem('deletedPostsCount') !== null) {
+        setDeletedPostsCount(parseInt(localStorage.getItem('deletedPostsCount') || '0'))
+        console.log('Deleted posts count:', localStorage.getItem('deletedPostsCount'))
+        return
+      }
+      const response = await fetch(`/api/posts/restore?userId=${user.id}`)
+      const data = await response.json()
+      setDeletedPostsCount(data.count)
+      localStorage.setItem('deletedPostsCount', data.count.toString())
+      console.log('Deleted posts count:', data.count)
+    }
+    fetchDeletedPostsCount()
   }, [user?.id])
 
   // Check for active Sora generations
@@ -272,6 +302,19 @@ export function LeftSidebar({ isOpen = true, onClose, isMobile = false }: LeftSi
                 <div onClick={handleNavItemClick}>
                   <NavItem href="/dashboard" icon={ChartBarIcon} label="Dashboard" />
                 </div>
+                
+                {/* Deleted Posts - показываем только если есть удалённые посты */}
+                {deletedPostsCount > 0 && (
+                  <div onClick={handleNavItemClick}>
+                    <NavItem 
+                      href="/deleted-posts" 
+                      icon={TrashIcon} 
+                      label="Deleted Posts" 
+                      badge={deletedPostsCount}
+                    />
+                  </div>
+                )}
+                
                 {/* Закомментировано - не нужно пока
                 <div onClick={handleNavItemClick}>
                   <NavItem href="/dashboard/ai-training" icon={SparklesIcon} label="AI Training" />
@@ -284,7 +327,21 @@ export function LeftSidebar({ isOpen = true, onClose, isMobile = false }: LeftSi
 
           {/* ACTIONS */}
           {connected && user && (
-            <nav className="px-3 py-4">
+            <nav className="px-3 py-4 space-y-2">
+              {/* Connect Wallet для Telegram и гостевых пользователей */}
+              {needsWalletConnection && (
+                <NavItem 
+                  icon={WalletIcon} 
+                  label="Connect Wallet" 
+                  onClick={() => {
+                    setShowConnectWalletPopup(true)
+                    if (isMobile && onClose) onClose()
+                  }}
+                  className="text-purple-600 dark:text-purple-400 hover:bg-purple-50 dark:hover:bg-purple-900/20"
+                />
+              )}
+              
+              {/* Logout */}
               <NavItem 
                 icon={ArrowRightOnRectangleIcon} 
                 label="Logout" 
@@ -338,12 +395,12 @@ export function LeftSidebar({ isOpen = true, onClose, isMobile = false }: LeftSi
             <div className="p-4 border-t border-gray-200 dark:border-slate-700">
               <button
                 onClick={() => {
-                  setVisible(true)
+                  setShowLoginPopup(true)
                   if (isMobile && onClose) onClose()
                 }}
                 className="w-full py-2.5 px-4 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-lg font-medium hover:from-purple-700 hover:to-pink-700 transition-all duration-200 hover:scale-[1.02] shadow-md"
               >
-                Connect Wallet
+                Log In
               </button>
             </div>
           )}
@@ -355,7 +412,7 @@ export function LeftSidebar({ isOpen = true, onClose, isMobile = false }: LeftSi
         <CreatePostModal 
           onClose={() => setShowCreateModal(false)}
           onPostCreated={() => {
-            toast.success('Пост успешно создан!')
+            // toast.success('Пост успешно создан!')
             setShowCreateModal(false)
             
             // Refresh posts
@@ -364,6 +421,23 @@ export function LeftSidebar({ isOpen = true, onClose, isMobile = false }: LeftSi
             })
             window.dispatchEvent(event)
           }}
+        />
+      )}
+
+      {/* Login Method Popup */}
+      <LogInMethodPopup
+        isOpen={showLoginPopup}
+        onClose={() => setShowLoginPopup(false)}
+        onPhantomLogin={() => setVisible(true)}
+      />
+
+      {/* Connect Wallet Popup for Telegram and Guest Users */}
+      {needsWalletConnection && user?.wallet && (
+        <ConnectWalletPopup
+          isOpen={showConnectWalletPopup}
+          onClose={() => setShowConnectWalletPopup(false)}
+          currentWallet={user.wallet}
+          userType={isGuestUser ? 'guest' : 'telegram'}
         />
       )}
     </>

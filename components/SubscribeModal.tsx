@@ -397,6 +397,7 @@ export default function SubscribeModal({ creator, preferredTier, onClose, onSucc
       return
     }
 
+
     const selectedSubscription = subscriptionTiers.find(tier => tier.id === selectedTier)
     if (!selectedSubscription || selectedSubscription.price === 0) {
       // For free subscription use old logic
@@ -573,7 +574,7 @@ export default function SubscribeModal({ creator, preferredTier, onClose, onSucc
         throw new Error(data.error || 'Error processing payment')
       }
       
-      toast.success(`Successfully subscribed to ${creator.name}!`)
+      // toast.success(`Successfully subscribed to ${creator.name}!`)
       
       // Обновляем состояние подписки
       await refreshSubscriptionStatus(creator.id.toString())

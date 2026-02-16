@@ -143,7 +143,7 @@ export function MobileCommentsSection({ postId, post, className, onClose, onComm
         setNewComment('')
         setIsAnonymous(false)
         await fetchComments()
-        toast.success('Комментарий добавлен')
+        toast.success('Comment added')
         onCommentAdded?.()
       } else {
         throw new Error('Failed to add comment')
@@ -348,7 +348,7 @@ export function MobileCommentsSection({ postId, post, className, onClose, onComm
         {/* Header с кнопкой закрытия */}
         <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-slate-700/50">
           <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
-            Комментарии ({comments.length})
+            Comments ({comments.length})
           </h3>
           <button
             onClick={onClose}
@@ -366,12 +366,12 @@ export function MobileCommentsSection({ postId, post, className, onClose, onComm
             <div className="flex items-center justify-center h-full">
               <div className="text-center">
                 <div className="w-12 h-12 border-4 border-purple-500/30 border-t-purple-500 rounded-full animate-spin mx-auto mb-3"></div>
-                <p className="text-gray-600 dark:text-slate-400 text-sm">Загружаем комментарии...</p>
+                <p className="text-gray-600 dark:text-slate-400 text-sm">Loading comments...</p>
               </div>
             </div>
           ) : comments.length === 0 ? (
             <p className="text-center text-gray-500 dark:text-slate-400 py-8">
-              Пока нет комментариев. Будьте первым!
+              No comments yet. Be the first!
             </p>
           ) : (
             comments.map((comment) => (

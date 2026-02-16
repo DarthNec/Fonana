@@ -153,7 +153,7 @@ async function notifyPostAuthor(post, authorId) {
   }
 }
 
-// Пост удален
+// Post deleted
 async function notifyPostDeleted(postId, creatorId) {
   try {
     const event = {

@@ -567,7 +567,7 @@ export default function HomePageClient() {
         <CreatePostModal 
           onClose={() => setShowCreateModal(false)}
           onPostCreated={() => {
-            toast.success('Пост успешно создан!')
+            // toast.success('Пост успешно создан!')
             setShowCreateModal(false)
             
             // Испускаем событие

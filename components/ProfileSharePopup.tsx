@@ -2,7 +2,7 @@
 
 import React, { useState, useRef, useEffect } from 'react'
 import { cn } from '@/lib/utils'
-import { Toast } from '@/components/ui/Toast'
+import { toast } from 'react-hot-toast'
 
 // Иконки социальных сетей
 const FacebookIcon = () => (
@@ -92,8 +92,6 @@ const socialNetworks: SocialNetwork[] = [
 export function ProfileSharePopup({ creator, isOpen, onClose, className }: ProfileSharePopupProps) {
   const popupRef = useRef<HTMLDivElement>(null)
   const [isSharing, setIsSharing] = useState<string | null>(null)
-  const [toastMessage, setToastMessage] = useState('')
-  const [showToast, setShowToast] = useState(false)
 
   // Закрытие попапа при клике вне
   useEffect(() => {
@@ -162,18 +160,19 @@ export function ProfileSharePopup({ creator, isOpen, onClose, className }: Profi
       if (network.id === 'instagram') {
         // Для Instagram показываем URL для копирования
         await navigator.clipboard.writeText(shareUrl)
-        setToastMessage('Ссылка скопирована! Вставьте её в Instagram')
-        setShowToast(true)
-        setTimeout(() => setShowToast(false), 3000)
+        toast.success('Ссылка скопирована! Вставьте её в Instagram', {
+          duration: 3000,
+          icon: '📋'
+        })
       } else {
         // Открываем в новом окне
         window.open(shareUrl, '_blank', 'width=600,height=400')
       }
     } catch (error) {
       console.error('Error sharing:', error)
-      setToastMessage('Ошибка при шаринге')
-      setShowToast(true)
-      setTimeout(() => setShowToast(false), 3000)
+      toast.error('Ошибка при шаринге', {
+        duration: 3000
+      })
     } finally {
       setIsSharing(null)
     }
@@ -187,19 +186,19 @@ export function ProfileSharePopup({ creator, isOpen, onClose, className }: Profi
       await navigator.clipboard.writeText(profileUrl)
       
       console.log('[ProfileSharePopup] Link copied successfully')
-      setToastMessage('Ссылка скопирована!')
-      setShowToast(true)
+      toast.success('Link copied', {
+        duration: 1000,
+      })
       
       // Закрываем попап через 1 секунду после успешного копирования
       setTimeout(() => {
-        setShowToast(false)
         onClose()
       }, 1000)
     } catch (error) {
       console.error('[ProfileSharePopup] Error copying link:', error)
-      setToastMessage('Ошибка при копировании')
-      setShowToast(true)
-      setTimeout(() => setShowToast(false), 3000)
+      toast.error('Ошибка при копировании', {
+        duration: 2000
+      })
     }
   }
 
@@ -221,7 +220,7 @@ export function ProfileSharePopup({ creator, isOpen, onClose, className }: Profi
           {/* Заголовок */}
           <div className="text-center mb-6">
             <h3 className="text-xl sm:text-2xl font-bold bg-gradient-to-r from-purple-600 to-pink-600 dark:from-purple-400 dark:to-pink-400 bg-clip-text text-transparent">
-              Поделиться профилем
+              Share Profile
             </h3>
           </div>
 
@@ -265,21 +264,11 @@ export function ProfileSharePopup({ creator, isOpen, onClose, className }: Profi
               <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
               </svg>
-              Скопировать ссылку
+              Copy Link
             </button>
           </div>
         </div>
       </div>
-
-      {/* Toast уведомления */}
-      {showToast && (
-        <Toast
-          message={toastMessage}
-          type="success"
-          isVisible={showToast}
-          onClose={() => setShowToast(false)}
-        />
-      )}
     </>
   )
 }

@@ -19,13 +19,14 @@ interface PostContentProps {
   post: UnifiedPost
   onAction?: (action: PostAction) => void
   className?: string
+  isFullscreen?: boolean // Флаг для fullscreen режима
 }
 
 /**
  * Новый формат PostContent для FullscreenPostCard
  * Контент слева, кнопки справа вплотную
  */
-export function PostContent({ post, onAction, className }: PostContentProps) {
+export function PostContent({ post, onAction, className, isFullscreen = false }: PostContentProps) {
   const [imageLoaded, setImageLoaded] = useState(false)
   const [imageError, setImageError] = useState(false)
   const [isVideoPlaying, setIsVideoPlaying] = useState(false)
@@ -175,18 +176,6 @@ export function PostContent({ post, onAction, className }: PostContentProps) {
                 </svg>
               </button>
             )}
-            
-            {/* Download button for images */}
-            <a
-              href={`/api/download?url=${encodeURIComponent(post.media.url)}`}
-              onClick={(e) => e.stopPropagation()}
-              className="absolute bottom-3 right-3 w-8 h-8 sm:w-10 sm:h-10 sm:bottom-4 sm:right-4 flex items-center justify-center bg-black/50 hover:bg-black/70 text-white rounded-full transition-colors backdrop-blur-sm z-30"
-              aria-label="Download image"
-            >
-              <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-              </svg>
-            </a>
           </>
         )}
 
@@ -241,23 +230,14 @@ export function PostContent({ post, onAction, className }: PostContentProps) {
                 </svg>
               </button>
             )}
-            
-            {/* Download button for videos */}
-            <a
-              href={`/api/download?url=${encodeURIComponent(post.media.url || '')}`}
-              onClick={(e) => e.stopPropagation()}
-              className="absolute bottom-3 right-3 w-8 h-8 sm:w-10 sm:h-10 sm:bottom-4 sm:right-4 flex items-center justify-center bg-black/50 hover:bg-black/70 text-white rounded-full transition-colors backdrop-blur-sm z-30"
-              aria-label="Download video"
-            >
-              <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-              </svg>
-            </a>
           </div>
         )}
 
             {/* Username overlay внизу - только для незаблокированного контента */}
-            <div className="absolute bottom-0 left-0 right-0 p-4 max-md:pb-20 bg-gradient-to-t from-black/80 via-black/50 to-transparent md:rounded-b-3xl">
+            <div className={cn(
+              "absolute bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-black/80 via-black/50 to-transparent md:rounded-b-3xl",
+              !isFullscreen && "max-md:pb-20" // Отступ только для не-fullscreen режима (главная страница)
+            )}>
               <p className="text-white font-bold text-lg">
                 @{post.creator.nickname || post.creator.name || 'User'}
               </p>
@@ -271,6 +251,7 @@ export function PostContent({ post, onAction, className }: PostContentProps) {
         <VerticalActions
           post={post}
           onAction={onAction}
+          isFullscreen={isFullscreen}
         />
       </div>
 

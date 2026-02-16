@@ -616,8 +616,8 @@ export default function FeedPageClient() {
         // Копируем ссылку на пост
         const postUrl = `${window.location.origin}/post/${action.postId}`
         navigator.clipboard.writeText(postUrl)
-          .then(() => toast.success('Ссылка скопирована!'))
-          .catch(() => toast.error('Не удалось скопировать ссылку'))
+          .then(() => toast.success('Link copied'))
+          .catch(() => toast.error('Failed to copy link'))
         break
       case 'adminDelete':
         // Административное удаление через handleAction от useOptimizedPosts
@@ -645,6 +645,7 @@ export default function FeedPageClient() {
           console.log('[Feed] Loading more posts...')
           // Infinite scroll logic handled by useOptimizedPosts
         } : undefined}
+        isFullscreen={false} // Для главной страницы нужен отступ max-md:pb-20
       />
       
       {/* Create Post Modal */}
@@ -671,10 +672,7 @@ export default function FeedPageClient() {
             }
             
             // Показываем уведомление об успешном создании
-            toast.success('Пост успешно создан! Обновляем ленту...', {
-              duration: 3000,
-              icon: '🎉'
-            })
+           
           }}
         />
       )}

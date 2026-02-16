@@ -23,6 +23,7 @@ export default function Avatar({
   const [imageError, setImageError] = useState(false)
   const [generatorError, setGeneratorError] = useState(false)
   
+  /*
   // Сбрасываем ошибки при изменении src
   useEffect(() => {
     // console.log(`[Avatar] Src changed: ${src}`)
@@ -30,9 +31,11 @@ export default function Avatar({
     setGeneratorError(false)
     console.log('[Avatar] Src changed: ', src);
   }, [src])
-  
+  */
+ 
   // Нормализуем src для Next.js Image
   const normalizeSrc = (src: string | null | undefined): string | null => {
+    console.log('[Avatar] Normalizing src: ', src);
     if (!src || src.length === 0 || src === 'undefined' || src === 'null') {
       return null;
     }

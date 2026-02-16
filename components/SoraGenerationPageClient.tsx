@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react'
 import { useUser } from '@/lib/store/appStore'
 import { useRouter } from 'next/navigation'
-import { SparklesIcon, ClockIcon, CheckCircleIcon, XCircleIcon } from '@heroicons/react/24/outline'
+import { SparklesIcon, ClockIcon, CheckCircleIcon, XCircleIcon, TrashIcon } from '@heroicons/react/24/outline'
 import toast from 'react-hot-toast'
 
 interface SoraPost {
@@ -58,6 +58,32 @@ export default function SoraGenerationPageClient() {
       console.error('Error loading Sora posts:', error)
       toast.error('Failed to load generations')
       setIsLoading(false)
+    }
+  }
+
+  // Удалить пост
+  const handleDelete = async (postId: string, e: React.MouseEvent) => {
+    e.stopPropagation() // Предотвращаем переход на страницу поста
+    
+    if (!user?.wallet) {
+      toast.error('Кошелек не подключен')
+      return
+    }
+    
+    try {
+      const response = await fetch(`/api/posts/${postId}?userWallet=${user.wallet}`, {
+        method: 'DELETE',
+      })
+
+      if (!response.ok) throw new Error('Failed to delete post')
+
+      // Удаляем из локального состояния
+      setPosts(prevPosts => prevPosts.filter(post => post.id !== postId))
+      toast.success('Post deleted')
+
+    } catch (error) {
+      console.error('Delete error:', error)
+      toast.error('Ошибка при удалении поста')
     }
   }
 
@@ -156,27 +182,63 @@ export default function SoraGenerationPageClient() {
             <div
               key={post.id}
               className={`relative rounded-2xl border-2 p-6 transition-all hover:scale-105 cursor-pointer ${getStatusColor(post.requestStatus)}`}
-              onClick={() => router.push(`/post/${post.id}`)}
+              onClick={() => console.log('post clicked')}
             >
               {/* Status Badge */}
+              {/*
               <div className="absolute top-4 right-4 flex items-center gap-2 px-3 py-1.5 bg-white/90 dark:bg-slate-800/90 backdrop-blur-sm rounded-full">
                 {getStatusIcon(post.requestStatus)}
                 <span className="text-xs font-semibold text-gray-900 dark:text-white">
                   {getStatusText(post.requestStatus)}
                 </span>
               </div>
+              */}
 
               {/* Content */}
-              <div className="mt-8">
+              <div className="mt-2">
                 {/* Thumbnail or Placeholder */}
-                <div className="w-full aspect-video bg-gradient-to-br from-purple-500 to-pink-500 rounded-xl mb-4 flex items-center justify-center overflow-hidden">
-                  {post.media?.thumbnail || post.media?.url ? (
+                <div className="w-full aspect-video bg-white/5 dark:bg-white/5 backdrop-blur-sm rounded-xl mb-4 flex flex-col items-center justify-center overflow-hidden">
+                  {post.requestStatus === 'processing' ? (
+                    // Loading state для processing
+                    <div className="flex flex-col items-center gap-4 p-6">
+                      <div className="relative">
+                        <div className="w-16 h-16 border-4 border-white/30 border-t-white rounded-full animate-spin"></div>
+                        <SparklesIcon className="w-6 h-6 text-white absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2" />
+                      </div>
+                      <p className="text-white font-semibold text-center text-sm px-4">
+                        Генерируем Sora 2 видео...
+                      </p>
+                    </div>
+                  ) : post.requestStatus === 'failed' ? (
+                    // Rejected state
+                    <div className="flex flex-col items-center gap-4 p-6">
+                      <XCircleIcon className="w-16 h-16 text-red-400" />
+                      <div className="text-center px-4">
+                        <p className="text-white font-bold text-base mb-1">
+                          Генерация отклонена
+                        </p>
+                        <p className="text-white/80 text-sm mb-4">
+                          Sora не смогла обработать ваш запрос
+                        </p>
+                        {/* Delete button */}
+                        <button
+                          onClick={(e) => handleDelete(post.id, e)}
+                          className="px-4 py-2 bg-red-500/20 hover:bg-red-500/30 text-red-300 hover:text-red-200 rounded-lg font-semibold text-sm flex items-center gap-2 mx-auto transition-all border border-red-500/30 hover:border-red-500/50"
+                        >
+                          <TrashIcon className="w-4 h-4" />
+                          Удалить
+                        </button>
+                      </div>
+                    </div>
+                  ) : post.media?.thumbnail || post.media?.url ? (
+                    // Completed with media
                     <img
                       src={post.media.thumbnail || post.media.url}
                       alt={post.title}
                       className="w-full h-full object-cover"
                     />
                   ) : (
+                    // Default placeholder
                     <SparklesIcon className="w-16 h-16 text-white/50" />
                   )}
                 </div>

@@ -385,6 +385,29 @@ async function processPost(post) {
         message: videoStatus.error.message
       })
       
+      // 🔥 ВОЗВРАЩАЕМ ГЕНЕРАЦИЮ ПОЛЬЗОВАТЕЛЮ
+      // Если генерация отклонена, инкрементим availableGenerationCount на 1
+      console.log(`[SoraChecker] Returning video generation to user ${post.creatorId}...`)
+      try {
+        const user = await prisma.user.findUnique({
+          where: { id: post.creatorId },
+          select: { availableGenerationCount: true, nickname: true }
+        })
+        
+        if (user) {
+          const newGenerationsCount = (user.availableGenerationCount || 0) + 1
+          await prisma.user.update({
+            where: { id: post.creatorId },
+            data: { availableGenerationCount: newGenerationsCount }
+          })
+          console.log(`[SoraChecker] ✅ Video generation returned to user ${user.nickname || post.creatorId}: ${user.availableGenerationCount || 0} → ${newGenerationsCount}`)
+        } else {
+          console.warn(`[SoraChecker] User ${post.creatorId} not found, cannot return generation`)
+        }
+      } catch (refundError) {
+        console.error(`[SoraChecker] Error returning generation to user ${post.creatorId}:`, refundError)
+      }
+      
       // Обновляем пост с сообщением об ошибке
       console.log(`[SoraChecker] Updating post ${post.id} with error message...`)
       await prisma.post.update({

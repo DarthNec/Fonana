@@ -10,7 +10,8 @@ import {
   EllipsisHorizontalIcon,
   CheckIcon,
   ShareIcon,
-  TrashIcon
+  TrashIcon,
+  ArrowDownTrayIcon
 } from '@heroicons/react/24/outline'
 import { HeartIcon as HeartSolidIcon, BookmarkIcon as BookmarkSolidIcon } from '@heroicons/react/24/solid'
 import { UnifiedPost, PostAction } from '@/types/posts'
@@ -35,13 +36,14 @@ interface VerticalActionsProps {
   post: UnifiedPost
   onAction?: (action: PostAction) => void
   className?: string
+  isFullscreen?: boolean // Флаг для fullscreen режима (убирает отступ снизу)
 }
 
 /**
  * Вертикальный стек действий справа (как на Hidden.com)
  * С системой эмоций/реакций вместо простых лайков
  */
-export function VerticalActions({ post, onAction, className }: VerticalActionsProps) {
+export function VerticalActions({ post, onAction, className, isFullscreen = true }: VerticalActionsProps) {
   const [showEmotionPicker, setShowEmotionPicker] = useState(false)
   const [showMenu, setShowMenu] = useState(false)
   const [isProcessing, setIsProcessing] = useState(false)
@@ -171,22 +173,50 @@ export function VerticalActions({ post, onAction, className }: VerticalActionsPr
       
       if (response.ok) {
         const data = await response.json()
-        setIsFollowing(data.isFollowing)
-        toast.success(data.isFollowing ? 'Подписка оформлена' : 'Подписка отменена')
+        const newIsFollowing = data.isFollowing
+        setIsFollowing(newIsFollowing)
         
-        localStorage.removeItem('user_following')
-        const followingResponse = await fetch(`/api/user/follow?userId=${user?.id}&type=following`)
-        if (followingResponse.ok) {
-          const followingData = await followingResponse.json()
-          localStorage.setItem('user_following', JSON.stringify(followingData.data || null))
+        // 🔥 Обновляем localStorage user_following
+        if (localStorage.getItem('user_following') !== null) {
+          let followingData = JSON.parse(localStorage.getItem('user_following') || '[]')
+          
+          if (!newIsFollowing) {
+            // UNFOLLOW - удаляем из массива
+            followingData = followingData.filter((f: any) => f.user.id !== post.creator.id)
+          } else {
+            // FOLLOW - добавляем в массив
+            const newFollowEntry = {
+              id: data.followId || `temp_${Date.now()}`,
+              userId: post.creator.id,
+              createdAt: new Date().toISOString(),
+              user: {
+                id: post.creator.id,
+                nickname: post.creator.nickname || post.creator.username || post.creator.name || 'user',
+                fullName: post.creator.name || post.creator.username || 'User',
+                avatar: post.creator.avatar || null,
+                bio: '',
+                followersCount: 0,
+                followingCount: 0,
+                isVerified: post.creator.isVerified || false
+              }
+            }
+            followingData.push(newFollowEntry)
+          }
+          
+          localStorage.setItem('user_following', JSON.stringify(followingData))
+          console.log('[VerticalActions] Updated user_following in localStorage:', followingData.length)
         }
+        
+        toast.success(newIsFollowing ? 'Подписка оформлена' : 'Подписка отменена')
 
         // Опционально вызываем onAction для обновления родительского компонента
+        /*
         onAction?.({ 
           type: 'subscribe', 
           postId: post.id, 
-          data: { creatorId: post.creator.id, isFollowing: data.isFollowing } 
+          data: { creatorId: post.creator.id, isFollowing: newIsFollowing } 
         })
+          */
       } else {
         const errorData = await response.json()
         toast.error(errorData.error || 'Ошибка подписки')
@@ -355,7 +385,10 @@ export function VerticalActions({ post, onAction, className }: VerticalActionsPr
   
   return (
     <>
-      <div className={cn('flex flex-col gap-4', className)}>
+      <div className={cn(
+        'flex flex-col gap-4',
+        className
+      )}>
          {/* Avatar с розовым плюсом */}
          <div className="relative group flex flex-col items-center">
            {/* Аватар - клик переходит на профиль */}
@@ -555,8 +588,25 @@ export function VerticalActions({ post, onAction, className }: VerticalActionsPr
           </div>
         </button>
         
-        {/* Menu */}
+        {/* Menu с Download кнопкой */}
         <div className="relative" ref={menuRef}>
+          {/* Download - слева от Menu на мобильном, НЕ показывается на десктопе */}
+          {post.media?.url && 
+           !post.access?.isLocked && 
+           !post.access?.price && 
+           !post.commerce?.isSellable && 
+           (post.media.type === 'video' || post.media.type === 'image' || post.media.type === 'ai-video') && (
+            <a
+              href={`/api/download?url=${encodeURIComponent(post.media.url)}`}
+              onClick={(e) => e.stopPropagation()}
+              className="md:hidden absolute -left-14 top-0 flex flex-col items-center gap-1 group"
+            >
+              <div className="w-12 h-12 rounded-full flex items-center justify-center bg-white dark:bg-slate-800 border-2 border-gray-200 dark:border-slate-700 group-hover:border-green-400 dark:group-hover:border-green-500 group-hover:scale-110 group-hover:shadow-lg transition-all duration-200">
+                <ArrowDownTrayIcon className="w-6 h-6 text-gray-700 dark:text-slate-300 group-hover:text-green-600 dark:group-hover:text-green-400" />
+              </div>
+            </a>
+          )}
+          
           <button
             onClick={() => setShowMenu(!showMenu)}
             className="flex flex-col items-center gap-1 group"
@@ -585,7 +635,7 @@ export function VerticalActions({ post, onAction, className }: VerticalActionsPr
                 className="w-full flex items-center gap-3 px-4 py-3 text-left text-gray-700 dark:text-slate-300 hover:bg-gray-100 dark:hover:bg-slate-700 transition-colors"
               >
                 <ShareIcon className="w-5 h-5" />
-                <span>Поделиться</span>
+                <span>Share</span>
               </button>
               
               {/* Delete - только для автора */}
@@ -598,12 +648,29 @@ export function VerticalActions({ post, onAction, className }: VerticalActionsPr
                   className="w-full flex items-center gap-3 px-4 py-3 text-left text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
                 >
                   <TrashIcon className="w-5 h-5" />
-                  <span>Удалить пост</span>
+                  <span>Delete post</span>
                 </button>
               )}
             </div>
           )}
         </div>
+        
+        {/* Download button - только на десктопе, ПОД кнопкой с 3 точками */}
+        {post.media?.url && 
+         !post.access?.isLocked && 
+         !post.access?.price && 
+         !post.commerce?.isSellable && 
+         (post.media.type === 'video' || post.media.type === 'image' || post.media.type === 'ai-video') && (
+          <a
+            href={`/api/download?url=${encodeURIComponent(post.media.url)}`}
+            onClick={(e) => e.stopPropagation()}
+            className="hidden md:flex flex-col items-center gap-1 group"
+          >
+            <div className="w-12 h-12 rounded-full flex items-center justify-center bg-white dark:bg-slate-800 border-2 border-gray-200 dark:border-slate-700 group-hover:border-green-400 dark:group-hover:border-green-500 group-hover:scale-110 group-hover:shadow-lg transition-all duration-200">
+              <ArrowDownTrayIcon className="w-6 h-6 text-gray-700 dark:text-slate-300 group-hover:text-green-600 dark:group-hover:text-green-400" />
+            </div>
+          </a>
+        )}
       </div>
     </>
   )

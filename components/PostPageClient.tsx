@@ -9,6 +9,7 @@ import { FullscreenPostCard } from '@/components/posts/variants/FullscreenPostCa
 import { VerticalActions } from '@/components/feed/VerticalActions'
 import { SlidingCommentsPanel } from '@/components/feed/SlidingCommentsPanel'
 import { ArrowLeftIcon, DocumentTextIcon, ExclamationTriangleIcon } from '@heroicons/react/24/outline'
+import { toast } from 'react-hot-toast'
 
 interface PostPageClientProps {
   postId: string
@@ -54,6 +55,25 @@ export default function PostPageClient({ postId }: PostPageClientProps) {
       return
     }
     
+    // Share - копирование ссылки
+    if (action.type === 'share') {
+      const postUrl = `${window.location.origin}/post/${postId}`
+      try {
+        await navigator.clipboard.writeText(postUrl)
+        toast.success('Link copied to clipboard!', {
+          duration: 2000,
+          position: 'top-center',
+        })
+      } catch (err) {
+        console.error('Error sharing:', err)
+        toast.error('Failed to copy link', {
+          duration: 2000,
+          position: 'top-center',
+        })
+      }
+      return
+    }
+    
     try {
       await handleAction(action)
       
@@ -87,7 +107,7 @@ export default function PostPageClient({ postId }: PostPageClientProps) {
     } catch (error) {
       console.error('Ошибка при обработке действия:', error)
     }
-  }, [handleAction, post])
+  }, [handleAction, post, postId])
 
   // Кнопка назад
   const handleBack = () => {
@@ -173,6 +193,7 @@ export default function PostPageClient({ postId }: PostPageClientProps) {
         <FullscreenPostCard
           post={post}
           onAction={handlePostAction}
+          isFullscreen={false}
         />
       </div>
       

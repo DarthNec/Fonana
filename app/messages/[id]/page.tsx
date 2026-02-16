@@ -20,7 +20,10 @@ import {
   EllipsisVerticalIcon,
   PencilIcon,
   TrashIcon,
-  CheckIcon
+  CheckIcon,
+  PlusIcon,
+  MicrophoneIcon,
+  StopCircleIcon
 } from '@heroicons/react/24/outline'
 import { HeartIcon, EyeIcon } from '@heroicons/react/24/solid'
 import Link from 'next/link'
@@ -122,8 +125,23 @@ export default function ConversationPage() {
   const [tipAmount, setTipAmount] = useState('')
   const [isSendingTip, setIsSendingTip] = useState(false)
   const [showQuickTips, setShowQuickTips] = useState(false)
+  const [showActionsMenu, setShowActionsMenu] = useState(false) // 🆕 NEW: Actions Menu state
+  
+  // 🎤 Voice recording states
+  const [isRecording, setIsRecording] = useState(false)
+  const [recordingDuration, setRecordingDuration] = useState(0)
+  const [audioBlob, setAudioBlob] = useState<Blob | null>(null)
+  const [audioPreviewUrl, setAudioPreviewUrl] = useState<string | null>(null)
+  
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
+  
+  // 🎤 Refs for voice recording
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null)
+  const audioStreamRef = useRef<MediaStream | null>(null)
+  const audioChunksRef = useRef<Blob[]>([])
+  const recordingTimerRef = useRef<NodeJS.Timeout | null>(null)
+  const audioRef = useRef<HTMLAudioElement>(null)
   const [hasMore, setHasMore] = useState(false)
   const [lastMessageCount, setLastMessageCount] = useState(0)
   const [openMessageMenu, setOpenMessageMenu] = useState<string | null>(null)
@@ -466,7 +484,7 @@ export default function ConversationPage() {
     try {
       const formData = new FormData()
       formData.append('file', file)
-      formData.append('type', file.type.startsWith('image/') ? 'image' : 'video')
+      formData.append('type', file.type.startsWith('image/') ? 'image' : file.type.startsWith('video/') ? 'video' : 'audio')
 
       const response = await fetch('/api/upload/message', {
         method: 'POST',
@@ -488,6 +506,199 @@ export default function ConversationPage() {
       setIsUploadingMedia(false)
     }
   }
+
+  // 🎤 VOICE RECORDING FUNCTIONS
+  const startRecording = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ 
+        audio: {
+          echoCancellation: true,
+          noiseSuppression: true,
+          autoGainControl: true
+        }
+      })
+      
+      audioStreamRef.current = stream
+      
+      const mimeTypes = [
+        'audio/webm;codecs=opus',
+        'audio/webm',
+        'audio/mp4',
+        'audio/ogg;codecs=opus'
+      ]
+      
+      const supportedMimeType = mimeTypes.find(type => MediaRecorder.isTypeSupported(type))
+      
+      if (!supportedMimeType) {
+        toast.error('Your browser does not support audio recording')
+        stream.getTracks().forEach(track => track.stop())
+        return
+      }
+      
+      const mediaRecorder = new MediaRecorder(stream, {
+        mimeType: supportedMimeType,
+        audioBitsPerSecond: 128000
+      })
+      
+      audioChunksRef.current = []
+      
+      mediaRecorder.ondataavailable = (event) => {
+        if (event.data.size > 0) {
+          audioChunksRef.current.push(event.data)
+        }
+      }
+      
+      mediaRecorder.onstop = () => {
+        const blob = new Blob(audioChunksRef.current, { type: supportedMimeType })
+        setAudioBlob(blob)
+        setAudioPreviewUrl(URL.createObjectURL(blob))
+        
+        if (audioStreamRef.current) {
+          audioStreamRef.current.getTracks().forEach(track => track.stop())
+          audioStreamRef.current = null
+        }
+      }
+      
+      mediaRecorder.onerror = () => {
+        toast.error('Recording error occurred')
+        cancelRecording()
+      }
+      
+      mediaRecorder.start()
+      mediaRecorderRef.current = mediaRecorder
+      setIsRecording(true)
+      setRecordingDuration(0)
+      
+      const startTime = Date.now()
+      const timer = setInterval(() => {
+        const elapsed = Math.floor((Date.now() - startTime) / 1000)
+        setRecordingDuration(elapsed)
+        
+        if (elapsed >= 300) {
+          stopRecording()
+          toast('Maximum recording duration reached (5 minutes)', { icon: '⏱️' })
+        }
+      }, 1000)
+      
+      recordingTimerRef.current = timer
+      
+    } catch (error) {
+      console.error('Error starting recording:', error)
+      toast.error('Failed to start recording. Please check microphone permissions.')
+    }
+  }
+
+  const stopRecording = () => {
+    if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') {
+      mediaRecorderRef.current.stop()
+    }
+    
+    if (recordingTimerRef.current) {
+      clearInterval(recordingTimerRef.current)
+      recordingTimerRef.current = null
+    }
+    
+    setIsRecording(false)
+  }
+
+  const cancelRecording = () => {
+    if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') {
+      mediaRecorderRef.current.stop()
+    }
+    
+    if (recordingTimerRef.current) {
+      clearInterval(recordingTimerRef.current)
+      recordingTimerRef.current = null
+    }
+    
+    if (audioStreamRef.current) {
+      audioStreamRef.current.getTracks().forEach(track => track.stop())
+      audioStreamRef.current = null
+    }
+    
+    setIsRecording(false)
+    setRecordingDuration(0)
+    setAudioBlob(null)
+    
+    if (audioPreviewUrl) {
+      URL.revokeObjectURL(audioPreviewUrl)
+      setAudioPreviewUrl(null)
+    }
+  }
+
+  const sendAudioMessage = async () => {
+    if (!audioPreviewUrl || !audioBlob) return
+
+    setIsSending(true)
+    
+    try {
+      const token = await jwtManager.getToken()
+      if (!token) {
+        throw new Error('No authentication token')
+      }
+
+      const audioFile = new File([audioBlob], `voice-message-${Date.now()}.webm`, { type: 'audio/webm' })
+      const mediaUrl = await uploadMedia(audioFile)
+      
+      if (!mediaUrl) {
+        throw new Error('Failed to upload audio')
+      }
+
+      const response = await fetch(`/api/conversations/${conversationId}/messages`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          content: null,
+          mediaUrl,
+          mediaType: 'audio',
+          isPaid: false,
+          price: null
+        })
+      })
+
+      if (response.ok) {
+        const data = await response.json()
+        setMessages(prev => [...prev, data.message])
+        setTimeout(() => {
+          messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+        }, 100)
+        toast.success('Voice message sent!')
+        
+        // Clear audio state
+        setAudioBlob(null)
+        if (audioPreviewUrl) {
+          URL.revokeObjectURL(audioPreviewUrl)
+        }
+        setAudioPreviewUrl(null)
+      } else {
+        const error = await response.json()
+        throw new Error(error.error || 'Failed to send voice message')
+      }
+    } catch (error) {
+      console.error('Error sending voice message:', error)
+      toast.error('Failed to send voice message')
+    } finally {
+      setIsSending(false)
+    }
+  }
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      if (audioPreviewUrl) {
+        URL.revokeObjectURL(audioPreviewUrl)
+      }
+      if (audioStreamRef.current) {
+        audioStreamRef.current.getTracks().forEach(track => track.stop())
+      }
+      if (recordingTimerRef.current) {
+        clearInterval(recordingTimerRef.current)
+      }
+    }
+  }, [audioPreviewUrl])
 
   const sendMessage = async () => {
     if ((!messageText.trim() && !selectedMedia) || isSending) return
@@ -1355,13 +1566,19 @@ export default function ConversationPage() {
                                   alt="Message media"
                                   className="rounded-xl max-w-xs max-h-64 w-full h-auto object-cover"
                                 />
-                              ) : (
+                              ) : message.mediaType === 'video' ? (
                                 <video
                                   src={message.mediaUrl}
                                   controls
                                   className="rounded-xl max-w-xs max-h-64 w-full h-auto"
                                 />
-                              )}
+                              ) : message.mediaType === 'audio' ? (
+                                <audio
+                                  src={message.mediaUrl}
+                                  controls
+                                  className="w-full max-w-xs"
+                                />
+                              ) : null}
                             </div>
                           )}
                           
@@ -1490,6 +1707,64 @@ export default function ConversationPage() {
         </div>
       </div>
         
+      {/* 🆕 NEW: Actions Menu Bottom Sheet */}
+      {showActionsMenu && (
+        <>
+          {/* Backdrop для закрытия при клике вне панели */}
+          <div 
+            className="fixed inset-0 bg-black/20 z-40"
+            onClick={() => setShowActionsMenu(false)}
+          />
+          
+          {/* Панель с действиями */}
+          <div className="fixed bottom-[72px] left-0 right-0 bg-white dark:bg-slate-800 border-t border-gray-200 dark:border-slate-700 shadow-2xl z-50 animate-slideInUp">
+            <div className="max-w-2xl mx-auto p-4">
+              <div className="grid grid-cols-3 gap-3">
+                {/* Media Upload */}
+                <button
+                  onClick={() => {
+                    fileInputRef.current?.click()
+                    setShowActionsMenu(false)
+                  }}
+                  className="flex flex-col items-center gap-2 p-4 bg-gray-100 dark:bg-slate-700 hover:bg-gray-200 dark:hover:bg-slate-600 rounded-2xl transition-all"
+                >
+                  <PhotoIcon className="w-6 h-6 text-gray-700 dark:text-gray-300" />
+                  <span className="text-xs font-medium text-gray-700 dark:text-gray-300">Media</span>
+                </button>
+                
+                {/* PPV Message */}
+                <button
+                  onClick={() => {
+                    setIsPaidMessage(!isPaidMessage)
+                    setShowActionsMenu(false)
+                  }}
+                  className={`flex flex-col items-center gap-2 p-4 rounded-2xl transition-all ${
+                    isPaidMessage
+                      ? 'bg-gradient-to-br from-purple-100 to-pink-100 dark:from-purple-900/30 dark:to-pink-900/30'
+                      : 'bg-gray-100 dark:bg-slate-700 hover:bg-gray-200 dark:hover:bg-slate-600'
+                  }`}
+                >
+                  <CurrencyDollarIcon className={`w-6 h-6 ${isPaidMessage ? 'text-purple-600 dark:text-purple-400' : 'text-gray-700 dark:text-gray-300'}`} />
+                  <span className={`text-xs font-medium ${isPaidMessage ? 'text-purple-600 dark:text-purple-400' : 'text-gray-700 dark:text-gray-300'}`}>PPV</span>
+                </button>
+                
+                {/* Send Tip */}
+                <button
+                  onClick={() => {
+                    setShowTipModal(true)
+                    setShowActionsMenu(false)
+                  }}
+                  className="flex flex-col items-center gap-2 p-4 bg-gray-100 dark:bg-slate-700 hover:bg-gray-200 dark:hover:bg-slate-600 rounded-2xl transition-all"
+                >
+                  <GiftIcon className="w-6 h-6 text-gray-700 dark:text-gray-300" />
+                  <span className="text-xs font-medium text-gray-700 dark:text-gray-300">Tip</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        </>
+      )}
+
       {/* Input Area */}
       <div className="fixed bottom-0 inset-x-0 w-full sm:static p-3 sm:p-4 border-t border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-900 z-50">
         <div className="max-w-2xl mx-auto">
@@ -1560,6 +1835,19 @@ export default function ConversationPage() {
           )}
 
           <div className="flex items-end gap-2">
+            {/* 🆕 NEW: Actions Menu Toggle Button */}
+            <button
+              onClick={() => setShowActionsMenu(!showActionsMenu)}
+              className={`p-2.5 rounded-xl transition-all ${
+                showActionsMenu 
+                  ? 'bg-gradient-to-r from-purple-600 to-pink-600 text-white shadow-lg' 
+                  : 'bg-gray-100 dark:bg-slate-800 text-gray-600 dark:text-slate-400 hover:bg-gray-200 dark:hover:bg-slate-700'
+              }`}
+              title="Actions"
+            >
+              <PlusIcon className={`w-5 h-5 transition-transform duration-300 ${showActionsMenu ? 'rotate-45' : ''}`} />
+            </button>
+
             <div className="flex-1">
               {/* Индикатор режима редактирования */}
               {editingMessage && (
@@ -1584,6 +1872,7 @@ export default function ConversationPage() {
                   }
                 }}
                 placeholder={editingMessage ? "Edit your message..." : "Type a message..."}
+                style={{ marginBottom: '-5px'}}
                 className={`w-full px-4 py-2.5 bg-gray-100 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-2xl resize-none focus:outline-none focus:ring-2 focus:border-transparent text-sm sm:text-base ${
                   editingMessage 
                     ? 'focus:ring-purple-500 border-purple-300 dark:border-purple-600' 
@@ -1593,59 +1882,43 @@ export default function ConversationPage() {
               />
             </div>
 
-            <div className="flex items-center gap-1">
-              {/* Media Upload */}
-              <button
-                onClick={() => fileInputRef.current?.click()}
-                className="p-2.5 text-gray-600 dark:text-slate-400 hover:text-gray-900 dark:hover:text-white rounded-xl hover:bg-gray-100 dark:hover:bg-slate-800 transition-all"
-                title="Add photo or video"
-              >
-                <PhotoIcon className="w-5 h-5" />
-              </button>
-              
-              {/* PPV Toggle */}
-              <button
-                onClick={() => setIsPaidMessage(!isPaidMessage)}
-                className={`p-2.5 rounded-xl transition-all ${
-                  isPaidMessage 
-                    ? 'bg-gradient-to-r from-purple-100 to-pink-100 dark:from-purple-900/30 dark:to-pink-900/30 text-purple-600 dark:text-purple-400' 
-                    : 'text-gray-600 dark:text-slate-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-slate-800'
-                }`}
-                title="Send paid message"
-              >
-                <CurrencyDollarIcon className="w-5 h-5" />
-              </button>
-              
-              
-              {/* Custom Tip */}
-              <button
-                onClick={() => setShowTipModal(true)}
-                className="p-2.5 text-gray-600 dark:text-slate-400 hover:text-gray-900 dark:hover:text-white rounded-xl hover:bg-gray-100 dark:hover:bg-slate-800 transition-all"
-                title="Send custom tip"
-              >
-                <GiftIcon className="w-5 h-5" />
-              </button>
+            {/* 🎤 Voice Recording Button */}
+            <button
+              onClick={isRecording ? stopRecording : startRecording}
+              disabled={isSending || isUploadingMedia}
+              className={`p-2.5 rounded-xl transition-all ${
+                isRecording 
+                  ? 'bg-red-500 hover:bg-red-600 text-white animate-pulse' 
+                  : 'bg-gray-100 dark:bg-slate-800 text-gray-600 dark:text-slate-400 hover:bg-gray-200 dark:hover:bg-slate-700'
+              }`}
+              title={isRecording ? "Stop recording" : "Record voice message"}
+            >
+              {isRecording ? (
+                <StopCircleIcon className="w-5 h-5" />
+              ) : (
+                <MicrophoneIcon className="w-5 h-5" />
+              )}
+            </button>
 
-              {/* Send Button */}
-              <button
-                onClick={sendMessage}
-                disabled={(!messageText.trim() && !selectedMedia) || isSending || isUploadingMedia}
-                className={`p-2.5 rounded-xl transition-all disabled:cursor-not-allowed transform hover:scale-105 disabled:hover:scale-100 shadow-lg ${
-                  editingMessage 
-                    ? 'bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 disabled:from-gray-400 disabled:to-gray-400 text-white'
-                    : 'bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 disabled:from-gray-400 disabled:to-gray-400 text-white'
-                }`}
-                title={editingMessage ? "Save changes" : "Send message"}
-              >
-                {isSending || isUploadingMedia ? (
-                  <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
-                ) : editingMessage ? (
-                  <CheckIcon className="w-5 h-5" />
-                ) : (
-                  <PaperAirplaneIcon className="w-5 h-5" />
-                )}
-              </button>
-            </div>
+            {/* Send Button */}
+            <button
+              onClick={sendMessage}
+              disabled={(!messageText.trim() && !selectedMedia) || isSending || isUploadingMedia}
+              className={`p-2.5 rounded-xl transition-all disabled:cursor-not-allowed transform hover:scale-105 disabled:hover:scale-100 shadow-lg ${
+                editingMessage 
+                  ? 'bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 disabled:from-gray-400 disabled:to-gray-400 text-white'
+                  : 'bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 disabled:from-gray-400 disabled:to-gray-400 text-white'
+              }`}
+              title={editingMessage ? "Save changes" : "Send message"}
+            >
+              {isSending || isUploadingMedia ? (
+                <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+              ) : editingMessage ? (
+                <CheckIcon className="w-5 h-5" />
+              ) : (
+                <PaperAirplaneIcon className="w-5 h-5" />
+              )}
+            </button>
           </div>
 
           <input
@@ -1657,6 +1930,76 @@ export default function ConversationPage() {
           />
         </div>
       </div>
+
+      {/* 🎤 Recording Modal */}
+      {isRecording && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-gray-900 rounded-2xl max-w-sm w-full shadow-2xl p-6 text-center">
+            <div className="flex items-center justify-center mb-4">
+              <div className="relative w-16 h-16 flex items-center justify-center">
+                <div className="absolute inset-0 rounded-full bg-red-500 opacity-20 animate-ping"></div>
+                <MicrophoneIcon className="w-8 h-8 text-red-500 relative z-10" />
+              </div>
+            </div>
+            <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-2">Recording Voice Message</h2>
+            <p className="text-gray-600 dark:text-gray-400 text-sm mb-4">
+              {Math.floor(recordingDuration / 60).toString().padStart(2, '0')}:{(recordingDuration % 60).toString().padStart(2, '0')}
+            </p>
+            <div className="flex gap-3">
+              <button
+                onClick={cancelRecording}
+                className="flex-1 px-4 py-2 bg-gray-200 dark:bg-gray-800 text-gray-700 dark:text-gray-300 font-medium rounded-lg hover:bg-gray-300 dark:hover:bg-gray-700 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={stopRecording}
+                className="flex-1 px-4 py-2 bg-red-600 hover:bg-red-700 text-white font-medium rounded-lg transition-colors flex items-center justify-center gap-2"
+              >
+                <StopCircleIcon className="w-5 h-5" />
+                Stop
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 🎤 Audio Preview Modal */}
+      {!isRecording && audioPreviewUrl && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-gray-900 rounded-2xl max-w-sm w-full shadow-2xl p-6">
+            <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-4 text-center">Review Voice Message</h2>
+            <div className="flex items-center justify-center mb-4">
+              <audio ref={audioRef} src={audioPreviewUrl} controls className="w-full"></audio>
+            </div>
+            <div className="flex gap-3">
+              <button
+                onClick={cancelRecording}
+                className="flex-1 px-4 py-2 bg-gray-200 dark:bg-gray-800 text-gray-700 dark:text-gray-300 font-medium rounded-lg hover:bg-gray-300 dark:hover:bg-gray-700 transition-colors"
+              >
+                Retake
+              </button>
+              <button
+                onClick={sendAudioMessage}
+                disabled={isSending}
+                className="flex-1 px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white font-medium rounded-lg transition-colors flex items-center justify-center gap-2"
+              >
+                {isSending ? (
+                  <>
+                    <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                    Sending...
+                  </>
+                ) : (
+                  <>
+                    <PaperAirplaneIcon className="w-5 h-5" />
+                    Send
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Tip Modal */}
       {showTipModal && (
