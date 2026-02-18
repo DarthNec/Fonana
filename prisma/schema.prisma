@@ -7,6 +7,15 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+model AvatarCounter {
+  id           Int      @id @default(autoincrement())
+  counter      Int      @default(148)
+  totalAvatars Int      @default(250) @map("total_avatars")
+  updatedAt    DateTime @default(now()) @updatedAt @map("updated_at")
+
+  @@map("avatar_counter")
+}
+
 model User {
   id                   String                @id @default(cuid())
   wallet               String                @unique

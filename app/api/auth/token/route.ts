@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import jwt from 'jsonwebtoken'
 import { prisma } from '@/lib/prisma'
+import { getNextAvatar } from '@/lib/utils/avatarAssigner'
 import { ENV } from '@/lib/constants/env'
 
 // 🔥 ИСПОЛЬЗУЕМ ТОТ ЖЕ СЕКРЕТ ЧТО И В CONVERSATIONS API
@@ -82,11 +83,16 @@ export async function GET(req: NextRequest) {
       console.log('🎯 [TOKEN API] User not found, creating new user')
       console.log('🎯 [TOKEN API] Wallet:', wallet.substring(0, 8) + '...' + wallet.substring(wallet.length - 6))
       
+      // Получаем следующий доступный CDN аватар
+      const avatarUrl = await getNextAvatar()
+      console.log('🎯 [TOKEN API] 🎨 Assigned avatar:', avatarUrl)
+      
       user = await prisma.user.create({
         data: {
           wallet,
           nickname: `user_${wallet.slice(0, 8).toLowerCase()}`,
-          solanaWallet: wallet
+          solanaWallet: wallet,
+          avatar: avatarUrl  // Устанавливаем CDN аватар
         }
       })
       

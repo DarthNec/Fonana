@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
+import { getNextAvatar } from '@/lib/utils/avatarAssigner'
 import crypto from 'crypto'
 import jwt from 'jsonwebtoken'
 import bs58 from 'bs58'
@@ -180,13 +181,17 @@ export async function POST(request: NextRequest) {
     
     console.log('🔓 [GUEST AUTH] Generated fake wallet with FK_ prefix:', fakeWallet)
     
+    // Получаем следующий доступный CDN аватар
+    const avatarUrl = await getNextAvatar()
+    console.log('🔓 [GUEST AUTH] 🎨 Assigned avatar:', avatarUrl)
+    
     // 6. Создаем пользователя в БД
     const user = await prisma.user.create({
       data: {
         telegramId: deviceId, // Используем telegramId для хранения deviceId
         nickname: nickname,
         fullName: `Guest ${nickname}`,
-        avatar: null,
+        avatar: avatarUrl,  // Устанавливаем CDN аватар
         wallet: fakeWallet, // FK_... адрес (НЕ валидный Solana адрес)
         solanaWallet: null,
         isCreator: true, // Даем возможность создавать контент

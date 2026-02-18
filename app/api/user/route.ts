@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createOrUpdateUser, getUserByWallet, updateUserProfile, deleteUser } from '@/lib/db'
 import { prisma } from '@/lib/prisma'
+import { getNextAvatar } from '@/lib/utils/avatarAssigner'
 import { generateRandomNickname, generateRandomBio, generateFullNameFromNickname } from '@/lib/usernames'
 import { referralLogger, apiLogger } from '@/lib/utils/logger'
 import { 
@@ -547,6 +548,10 @@ export async function GET(request: NextRequest) {
         console.log('🎯 [API USER] Wallet:', wallet)
         console.log('🎯 [API USER] Username:', uniqueUsername)
         
+        // Получаем следующий доступный CDN аватар
+        const avatarUrl = await getNextAvatar()
+        console.log('🎯 [API USER] 🎨 Assigned avatar:', avatarUrl)
+        
         user = await prisma.user.create({
           data: {
             wallet: wallet!,
@@ -554,7 +559,8 @@ export async function GET(request: NextRequest) {
             referalCount: 0,
             fullName: uniqueUsername,
             name: uniqueUsername,
-            solanaWallet: wallet!
+            solanaWallet: wallet!,
+            avatar: avatarUrl  // Устанавливаем CDN аватар
           },
           include: {
             _count: {
@@ -706,10 +712,15 @@ export async function POST(request: NextRequest) {
     console.log('[POST /api/user] Username:', uniqueUsername)
     console.log('[POST /api/user] Referrer:', referrerNickname || 'None')
     
+    // Получаем следующий доступный CDN аватар
+    const avatarUrl = await getNextAvatar()
+    console.log('[POST /api/user] 🎨 Assigned avatar:', avatarUrl)
+    
     const newUser = await createOrUpdateUser(wallet, {
       nickname: uniqueUsername,  // Используем уникальное имя из файла
       fullName: uniqueUsername,  // Устанавливаем то же имя в fullName
-      bio: undefined
+      bio: undefined,
+      avatar: avatarUrl  // Устанавливаем CDN аватар
     }, referrerNickname)
     
     console.log('[POST /api/user] ✅ User created successfully!')
