@@ -1,41 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { getNextAvatar } from '@/lib/utils/avatarAssigner'
+import { trackUserCreation, notifyNewUser } from '@/lib/utils/userTracking'
 import crypto from 'crypto'
 import jwt from 'jsonwebtoken'
 import bs58 from 'bs58'
 
 const JWT_SECRET = process.env.JWT_SECRET || process.env.NEXTAUTH_SECRET || 'fallback-secret'
-
-// Telegram уведомление о новом пользователе
-const TG_BOT_TOKEN = '8304644010:AAF2W5q8I7cfNz2NXgvASRtna-J2ATi6pvY'
-const TG_ADMIN_CHAT_ID = '5879286931'
-
-async function sendTelegramNotification(message: string): Promise<void> {
-  console.log('[TG Notification] 📤 Preparing to send Telegram notification...')
-  
-  try {
-    const url = `https://api.telegram.org/bot${TG_BOT_TOKEN}/sendMessage`
-    
-    const response = await fetch(url, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        chat_id: TG_ADMIN_CHAT_ID,
-        text: message,
-        parse_mode: 'HTML'
-      })
-    })
-    
-    if (!response.ok) {
-      console.error('[TG Notification] ❌ Telegram API returned error')
-    } else {
-      console.log('[TG Notification] ✅ Notification sent successfully!')
-    }
-  } catch (error) {
-    console.error('[TG Notification] ❌ Failed to send:', error)
-  }
-}
 
 /**
  * Генерация уникального идентификатора для гостя
@@ -95,11 +66,14 @@ export async function POST(request: NextRequest) {
   try {
     console.log('🔓 [GUEST AUTH] Starting guest authentication...')
     
-    // 1. Получаем deviceId из запроса (если есть)
+    // 1. Получаем deviceId и UTM метки из запроса (если есть)
     const body = await request.json().catch(() => ({}))
     const existingDeviceId = body.deviceId
+    const source = body.source || 'None'
+    const campaign = body.campaign || 'None'
     
     console.log('🔓 [GUEST AUTH] Received deviceId from request:', existingDeviceId || 'none')
+    console.log('🔓 [GUEST AUTH] UTM - Source:', source, 'Campaign:', campaign)
     
     // 2. Если deviceId предоставлен - ищем существующего пользователя
     if (existingDeviceId) {
@@ -158,15 +132,15 @@ export async function POST(request: NextRequest) {
       }
     }
     
-    // 3. Генерируем новый deviceId если не был предоставлен
+    // 4. Генерируем новый deviceId если не был предоставлен
     const deviceId = existingDeviceId || `device_${generateGuestId()}`
     console.log('🔓 [GUEST AUTH] Using deviceId:', deviceId)
     
-    // 4. Генерируем уникальный nickname
+    // 5. Генерируем уникальный nickname
     const nickname = await generateUniqueNickname()
     console.log('🔓 [GUEST AUTH] Generated nickname:', nickname)
     
-    // 5. Генерируем fake wallet с префиксом FK_
+    // 6. Генерируем fake wallet с префиксом FK_
     // Это НЕ настоящий кошелек, а идентификатор гостевого пользователя
     const guestIdHash = crypto
       .createHash('sha256')
@@ -185,7 +159,7 @@ export async function POST(request: NextRequest) {
     const avatarUrl = await getNextAvatar()
     console.log('🔓 [GUEST AUTH] 🎨 Assigned avatar:', avatarUrl)
     
-    // 6. Создаем пользователя в БД
+    // 7. Создаем пользователя в БД
     const user = await prisma.user.create({
       data: {
         telegramId: deviceId, // Используем telegramId для хранения deviceId
@@ -206,20 +180,34 @@ export async function POST(request: NextRequest) {
       deviceId: deviceId
     })
     
-    // 7. Отправляем уведомление в Telegram
-    console.log('🔓 [GUEST AUTH] 📱 Sending Telegram notification...')
-    const notificationMessage = 
-      `👤 <b>Новый гостевой пользователь!</b>\n` +
-      `<i>(создан через POST /api/auth/guest)</i>\n\n` +
-      `👤 Ник: <b>${user.nickname}</b>\n` +
-      `🆔 Device ID: <code>${deviceId}</code>\n` +
-      `💳 Fake Wallet: <code>${fakeWallet}</code>\n` +
-      `📅 ${new Date().toLocaleString('ru-RU', { timeZone: 'Europe/Moscow' })}`
+    // 8. Отслеживание пользователя (Metrics, Telegram)
+    try {
+      const trackingData = await trackUserCreation({
+        userId: user.id,
+        nickname: user.nickname || 'Unknown',
+        deviceId: deviceId,
+        wallet: fakeWallet,
+        request: request,
+        source: source,
+        campaign: campaign,
+        userType: 'guest'
+      })
+      
+      // 9. Отправляем Telegram уведомление
+      await notifyNewUser({
+        userType: 'guest',
+        nickname: user.nickname || 'Unknown',
+        wallet: fakeWallet,
+        deviceId: deviceId,
+        source: trackingData.source,
+        adsFrom: trackingData.adsFrom
+      })
+    } catch (error) {
+      console.error('🔓 [GUEST AUTH] ⚠️ Tracking/Notification failed, continuing:', error)
+      // Не блокируем создание пользователя
+    }
     
-    await sendTelegramNotification(notificationMessage)
-    console.log('🔓 [GUEST AUTH] 📱 Telegram notification sent')
-    
-    // 8. Генерируем JWT токен
+    // 10. Генерируем JWT токен
     const token = jwt.sign(
       {
         userId: user.id,
@@ -232,7 +220,7 @@ export async function POST(request: NextRequest) {
       { expiresIn: '30d' }
     )
     
-    // 9. Сохраняем токен в БД
+    // 11. Сохраняем токен в БД
     const tokenExpiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000) // 30 дней
     await prisma.user.update({
       where: { id: user.id },

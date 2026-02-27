@@ -15,14 +15,19 @@ import {
   XMarkIcon,
   PlusCircleIcon,
   ShoppingBagIcon,
-  TrashIcon
+  TrashIcon,
+  WalletIcon,
+  DevicePhoneMobileIcon,
+  Cog6ToothIcon,
+  SparklesIcon
 } from '@heroicons/react/24/outline'
 import {
   HomeIcon as HomeSolidIcon,
   UserIcon as UserSolidIcon,
   BookmarkIcon as BookmarkSolidIcon,
   MagnifyingGlassIcon as MagnifyingGlassSolidIcon,
-  PlusCircleIcon as PlusCircleSolidIcon
+  PlusCircleIcon as PlusCircleSolidIcon,
+  ChatBubbleLeftEllipsisIcon as ChatSolidIcon
 } from '@heroicons/react/24/solid'
 import { useUser, useAppStore } from '@/lib/store/appStore'
 import { useSafeWalletModal } from '@/lib/hooks/useSafeWalletModal'
@@ -31,19 +36,28 @@ import { useWallet } from '@/lib/hooks/useSafeWallet'
 import Avatar from '@/components/Avatar'
 import CreatePostModal from '@/components/CreatePostModal'
 import LogInMethodPopup from '@/components/LogInMethodPopup'
+import ConnectWalletPopup from '@/components/ConnectWalletPopup'
+import ProfileSetupModal from '@/components/ProfileSetupModal'
 
 export default function BottomNav() {
   const pathname = usePathname()
   const router = useRouter()
-  const { publicKey, disconnect } = useWallet()
+  const { publicKey, disconnect, connected } = useWallet()
   const publicKeyString = publicKey?.toBase58() ?? null
   const { setVisible } = useSafeWalletModal()
   const [showProfilePanel, setShowProfilePanel] = useState(false)
   const [showCreateModal, setShowCreateModal] = useState(false)
   const [showLoginPopup, setShowLoginPopup] = useState(false)
+  const [showConnectWalletPopup, setShowConnectWalletPopup] = useState(false)
+  const [showProfileSetupModal, setShowProfileSetupModal] = useState(false)
   const [deletedPostsCount, setDeletedPostsCount] = useState(0)
   const user = useUser()
   const clearUser = useAppStore(state => state.clearUser)
+
+  // Проверяем, является ли пользователь Telegram или гостевым пользователем
+  const isTelegramUser = user?.wallet?.startsWith('TG_')
+  const isGuestUser = user?.wallet?.startsWith('FK_')
+  const needsWalletConnection = isTelegramUser || isGuestUser
 
   const navItems = [
     {
@@ -64,7 +78,7 @@ export default function BottomNav() {
       icon: PlusCircleIcon,
       activeIcon: PlusCircleSolidIcon,
       onClick: () => {
-        if (!publicKeyString) {
+        if (!connected || !user) {
           // Показываем LogInMethodPopup вместо прямого Phantom
           setShowLoginPopup(true)
           return
@@ -73,10 +87,19 @@ export default function BottomNav() {
       }
     },
     {
-      name: 'Library',
-      href: '/bookmarks',
-      icon: BookmarkIcon,
-      activeIcon: BookmarkSolidIcon
+      name: 'Messages',
+      href: '/messages',
+      icon: ChatBubbleLeftEllipsisIcon,
+      activeIcon: ChatSolidIcon,
+      onClick: () => {
+        if (!connected || !user) {
+          toast.error('Please log in to access messages', {
+            duration: 3000
+          })
+          return
+        }
+        router.push('/messages')
+      }
     },
     {
       name: 'Profile',
@@ -84,7 +107,7 @@ export default function BottomNav() {
       icon: UserIcon,
       activeIcon: UserSolidIcon,
       onClick: () => {
-        if (!publicKeyString) {
+        if (!connected || !user) {
           // Показываем LogInMethodPopup вместо прямого Phantom
           setShowLoginPopup(true)
           return
@@ -121,6 +144,7 @@ export default function BottomNav() {
       localStorage.removeItem('fonana_telegram_auth') // Telegram маркер
       localStorage.removeItem('fonana_guest_auth')    // Guest маркер
       localStorage.removeItem('fonana_device_id')     // Device ID для гостей
+      localStorage.removeItem('fonana_phantom_mobile_auth') // Mobile Phantom маркер
       setShowProfilePanel(false)
       router.push('/feed')
       toast.success('Logged out successfully')
@@ -140,7 +164,7 @@ export default function BottomNav() {
             
             // Profile кнопка - показываем аватар если подключен
             if (item.name === 'Profile') {
-              if (user && publicKeyString) {
+              if (connected && user) {
                 return (
                   <button
                     key={item.name}
@@ -192,7 +216,22 @@ export default function BottomNav() {
               )
             }
             
-            // Обычные Link кнопки
+            // Обычные кнопки - проверяем есть ли onClick
+            if (item.onClick) {
+              return (
+                <button
+                  key={item.name}
+                  onClick={item.onClick}
+                  className={`flex flex-col items-center justify-center gap-0.5 relative w-full h-full ${
+                    isItemActive ? 'text-purple-600 dark:text-purple-400' : 'text-gray-600 dark:text-slate-400'
+                  }`}
+                >
+                  <Icon className="w-6 h-6" />
+                </button>
+              )
+            }
+            
+            // Обычные Link кнопки (без onClick)
             return (
               <Link
                 key={item.name}
@@ -220,15 +259,19 @@ export default function BottomNav() {
           {/* Panel */}
           <div className="md:hidden fixed top-0 right-0 bottom-0 w-[280px] bg-white dark:bg-slate-900 z-[70] shadow-2xl animate-slideInFromRight">
             {/* Close button */}
+
+            {/*
             <button
               onClick={() => setShowProfilePanel(false)}
               className="absolute top-4 right-4 p-2 hover:bg-gray-100 dark:hover:bg-slate-800 rounded-full transition-colors"
             >
               <XMarkIcon className="w-6 h-6 text-gray-600 dark:text-slate-400" />
-            </button>
+            </button>   
+            */}
+
             
             {/* User Info */}
-            <div className="pt-12 px-6 pb-6 border-b border-gray-200 dark:border-slate-700">
+            <div className="pt-6 px-6 pb-6 border-b border-gray-200 dark:border-slate-700">
               <div className="flex flex-col items-center">
                 <Avatar
                   src={user?.avatar}
@@ -260,27 +303,33 @@ export default function BottomNav() {
                 <span className="font-medium">My Profile</span>
               </button>
               
-              <button
-                onClick={() => {
-                  setShowProfilePanel(false)
-                  router.push('/messages')
-                }}
-                className="w-full flex items-center gap-4 px-4 py-3 text-gray-700 dark:text-slate-300 hover:bg-gray-100 dark:hover:bg-slate-800 rounded-xl transition-colors"
-              >
-                <ChatBubbleLeftEllipsisIcon className="w-5 h-5" />
-                <span className="font-medium">Messages</span>
-              </button>
+              {/* Bookmarks - только для пользователей с реальным кошельком */}
+              {!needsWalletConnection && (
+                <button
+                  onClick={() => {
+                    setShowProfilePanel(false)
+                    router.push('/bookmarks')
+                  }}
+                  className="w-full flex items-center gap-4 px-4 py-3 text-gray-700 dark:text-slate-300 hover:bg-gray-100 dark:hover:bg-slate-800 rounded-xl transition-colors"
+                >
+                  <BookmarkIcon className="w-5 h-5" />
+                  <span className="font-medium">Bookmarks</span>
+                </button>
+              )}
               
-              <button
-                onClick={() => {
-                  setShowProfilePanel(false)
-                  router.push('/purchases')
-                }}
-                className="w-full flex items-center gap-4 px-4 py-3 text-gray-700 dark:text-slate-300 hover:bg-gray-100 dark:hover:bg-slate-800 rounded-xl transition-colors"
-              >
-                <ShoppingBagIcon className="w-5 h-5" />
-                <span className="font-medium">Purchases</span>
-              </button>
+              {/* Purchases - только для пользователей с реальным кошельком */}
+              {!needsWalletConnection && (
+                <button
+                  onClick={() => {
+                    setShowProfilePanel(false)
+                    router.push('/purchases')
+                  }}
+                  className="w-full flex items-center gap-4 px-4 py-3 text-gray-700 dark:text-slate-300 hover:bg-gray-100 dark:hover:bg-slate-800 rounded-xl transition-colors"
+                >
+                  <ShoppingBagIcon className="w-5 h-5" />
+                  <span className="font-medium">Purchases</span>
+                </button>
+              )}
               
               <button
                 onClick={() => {
@@ -291,6 +340,29 @@ export default function BottomNav() {
               >
                 <BellIcon className="w-5 h-5" />
                 <span className="font-medium">Notifications</span>
+              </button>
+              
+              <button
+                onClick={() => {
+                  setShowProfilePanel(false)
+                  setShowProfileSetupModal(true)
+                }}
+                className="w-full flex items-center gap-4 px-4 py-3 text-gray-700 dark:text-slate-300 hover:bg-gray-100 dark:hover:bg-slate-800 rounded-xl transition-colors"
+              >
+                <Cog6ToothIcon className="w-5 h-5" />
+                <span className="font-medium">Settings</span>
+              </button>
+              
+              {/* Lottery - для всех пользователей (авторизованных и гостевых) */}
+              <button
+                onClick={() => {
+                  setShowProfilePanel(false)
+                  router.push('/lottery')
+                }}
+                className="w-full flex items-center gap-4 px-4 py-3 text-gray-700 dark:text-slate-300 hover:bg-gray-100 dark:hover:bg-slate-800 rounded-xl transition-colors"
+              >
+                <SparklesIcon className="w-5 h-5" />
+                <span className="font-medium">Lottery</span>
               </button>
               
             </div>
@@ -319,6 +391,18 @@ export default function BottomNav() {
                 </button>
               )}
               
+              {/* Mobile App */}
+              <button
+                onClick={() => {
+                  setShowProfilePanel(false)
+                  router.push('/download')
+                }}
+                className="w-full flex items-center gap-4 px-4 py-3 text-gray-700 dark:text-slate-300 hover:bg-gray-100 dark:hover:bg-slate-800 rounded-xl transition-colors"
+              >
+                <DevicePhoneMobileIcon className="w-5 h-5" />
+                <span className="font-medium">Mobile App</span>
+              </button>
+              
               <button
                 onClick={() => {
                   setShowProfilePanel(false)
@@ -329,6 +413,20 @@ export default function BottomNav() {
                 <QuestionMarkCircleIcon className="w-5 h-5" />
                 <span className="font-medium">Help and Support</span>
               </button>
+              
+              {/* Connect Wallet для Telegram и гостевых пользователей */}
+              {needsWalletConnection && (
+                <button
+                  onClick={() => {
+                    setShowProfilePanel(false)
+                    setShowConnectWalletPopup(true)
+                  }}
+                  className="w-full flex items-center gap-4 px-4 py-3 text-purple-600 dark:text-purple-400 hover:bg-purple-50 dark:hover:bg-purple-900/20 rounded-xl transition-colors font-medium"
+                >
+                  <WalletIcon className="w-5 h-5" />
+                  <span className="font-medium">Connect Wallet</span>
+                </button>
+              )}
               
               <button
                 onClick={handleLogout}
@@ -348,7 +446,7 @@ export default function BottomNav() {
           onClose={() => setShowCreateModal(false)}
           onPostCreated={() => {
             setShowCreateModal(false)
-            toast.success('Post created!')
+            // toast.success('Post created!')
             router.push('/feed')
           }}
         />
@@ -368,6 +466,29 @@ export default function BottomNav() {
             // После успешного логина панель профиля не открываем автоматически
             // Пользователь сам может кликнуть на аватар снова
           }}
+        />
+      )}
+
+      {/* Connect Wallet Popup for Telegram and Guest Users */}
+      {needsWalletConnection && user?.wallet && (
+        <ConnectWalletPopup
+          isOpen={showConnectWalletPopup}
+          onClose={() => setShowConnectWalletPopup(false)}
+          currentWallet={user.wallet}
+          userType={isGuestUser ? 'guest' : 'telegram'}
+        />
+      )}
+
+      {/* Profile Setup Modal */}
+      {showProfileSetupModal && (
+        <ProfileSetupModal
+          isOpen={showProfileSetupModal}
+          onClose={() => setShowProfileSetupModal(false)}
+          onComplete={(profileData) => {
+            setShowProfileSetupModal(false)
+            toast.success('Profile updated successfully!')
+          }}
+          mode="edit"
         />
       )}
     </>

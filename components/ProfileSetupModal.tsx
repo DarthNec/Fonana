@@ -433,11 +433,16 @@ export default function ProfileSetupModal({
                   <textarea
                     value={formData.bio}
                     onChange={(e) => setFormData(prev => ({ ...prev, bio: e.target.value }))}
+                    maxLength={500}
                     rows={4}
                     className="w-full px-4 py-3 bg-white dark:bg-slate-700/50 border border-gray-300 dark:border-slate-600/50 rounded-2xl text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-purple-400 focus:border-transparent transition-all duration-300 resize-none"
                     placeholder="Share something about yourself..."
                   />
-                  <p className="text-sm text-gray-500 dark:text-slate-400 mt-1">
+                  <p className={`text-sm mt-1 transition-colors ${
+                    formData.bio.length >= 500 
+                      ? 'text-red-600 dark:text-red-400 font-medium' 
+                      : 'text-gray-500 dark:text-slate-400'
+                  }`}>
                     {formData.bio.length}/500
                   </p>
                 </div>

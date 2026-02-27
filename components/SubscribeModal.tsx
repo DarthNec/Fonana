@@ -644,13 +644,19 @@ export default function SubscribeModal({ creator, preferredTier, onClose, onSucc
       if (!userResponse.ok || !userData.user) {
         console.log('User not found, creating new user...')
         
+        // Получаем UTM метки из localStorage
+        const source = localStorage.getItem('fonana_source') || 'None'
+        const campaign = localStorage.getItem('fonana_campaign') || 'None'
+        
         const createUserResponse = await fetch('/api/user', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({
-            wallet: publicKeyString // 🔥 M7 FIX
+            wallet: publicKeyString, // 🔥 M7 FIX
+            source,
+            campaign
           })
         })
         

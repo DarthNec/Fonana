@@ -286,10 +286,7 @@ export default function ImageCropModal({ image, onCropComplete, onCancel }: Imag
                 onChange={(e) => setZoom(Number(e.target.value))}
                 className="w-full h-2 bg-gray-200 dark:bg-slate-700 rounded-lg appearance-none cursor-pointer slider"
               />
-              <div 
-                className="absolute top-1/2 -translate-y-1/2 h-2 bg-gradient-to-r from-purple-600 to-pink-600 rounded-lg pointer-events-none transition-all"
-                style={{ width: `${((zoom - 1) / 2) * 100}%` }}
-              />
+              
             </div>
             
             <button

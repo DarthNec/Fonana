@@ -6,7 +6,6 @@ import { PlayIcon, SpeakerXMarkIcon, EyeIcon, EllipsisVerticalIcon, ShareIcon, T
 import { cn } from '@/lib/utils'
 import MediaViewerModal from './MediaViewerModal'
 import { useUser } from '@/lib/store/appStore'
-import { SharePopup } from '../core/SharePopup'
 
 export interface PostGalleryProps {
   posts: UnifiedPost[]
@@ -130,7 +129,6 @@ function MediaTile({ post, index, onClick, onAction, showUsername = false }: Med
   const [imageLoaded, setImageLoaded] = useState(false)
   const [imageError, setImageError] = useState(false)
   const [isMenuOpen, setIsMenuOpen] = useState(false)
-  const [isSharePopupOpen, setIsSharePopupOpen] = useState(false)
   const menuRef = useRef<HTMLDivElement>(null)
   const user = useUser()
 
@@ -163,16 +161,11 @@ function MediaTile({ post, index, onClick, onAction, showUsername = false }: Med
     e?.stopPropagation() // Останавливаем всплытие, чтобы не открывался пост
     setIsMenuOpen(false)
     
-    if (type === 'share') {
-      setIsSharePopupOpen(true)
-    } else {
-      onAction?.({
-        type,
-        postId: post.id
-      })
-    }
+    onAction?.({
+      type,
+      postId: post.id
+    })
   }
-  console.log('[PostGallery] Posts media: ', post);
   // Для видео используем preview, если оно есть
   const thumbnail = post.media?.type === 'video' 
     ? (post.media?.preview?.startsWith('https://fonanastorage.b-cdn.net/') ? post.media.preview : post.media?.thumbnail || post.media?.url || '/placeholder.webp')
@@ -321,13 +314,6 @@ function MediaTile({ post, index, onClick, onAction, showUsername = false }: Med
           )}
         </div>
       )}
-
-      {/* Share Popup */}
-      <SharePopup
-        post={post}
-        isOpen={isSharePopupOpen}
-        onClose={() => setIsSharePopupOpen(false)}
-      />
 
       {/* Views Counter - СКРЫТ */}
       {/*

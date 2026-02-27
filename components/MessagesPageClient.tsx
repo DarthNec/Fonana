@@ -73,6 +73,7 @@ interface Message {
   isPurchased: boolean
   isEdited?: boolean
   isDeleted?: boolean
+  isAIanswer?: boolean // Индикатор автоответа (AI отвечает на языке пользователя)
   purchases?: Array<{ id: string; userId: string }>
   sender: {
     id: string
@@ -94,6 +95,24 @@ interface Message {
   isFailed?: boolean
   tempId?: string
   isNew?: boolean
+}
+
+/**
+ * 🔥 FIX: Deduplicates messages by ID to prevent duplicate rendering
+ * Used in polling to handle race conditions with manual state updates
+ * @param messages - Array of messages to deduplicate
+ * @returns Deduplicated array with unique message IDs
+ */
+const deduplicateMessages = (messages: Message[]): Message[] => {
+  const seen = new Set<string>()
+  return messages.filter(msg => {
+    if (seen.has(msg.id)) {
+      console.warn('[Messages] Duplicate message detected:', msg.id)
+      return false
+    }
+    seen.add(msg.id)
+    return true
+  })
 }
 
 function MessagesPageClientInner() {
@@ -156,6 +175,12 @@ function MessagesPageClientInner() {
   const audioStreamRef = useRef<MediaStream | null>(null)
   const audioChunksRef = useRef<Blob[]>([])
   const recordingTimerRef = useRef<NodeJS.Timeout | null>(null)
+  
+  // 🔥 FIX: Ref to track polling interval for cleanup and reset
+  const pollingIntervalRef = useRef<NodeJS.Timeout | null>(null)
+  
+  // 🔥 FIX: Ref to track if recording is being cancelled (prevents blob creation in onstop)
+  const isCancellingRef = useRef(false)
 
   // Определяем, мобилка ли это
   useEffect(() => {
@@ -347,12 +372,21 @@ function MessagesPageClientInner() {
 
       if (response.ok) {
         const data = await response.json()
-        setMessages(data.messages || [])
         
-        // После первой успешной загрузки сбрасываем флаг
-        if (isFirstLoad) {
-          setIsFirstLoad(false)
-        }
+        // 🔥 FIX: DEDUPLICATION - Prevent duplicate messages from appearing
+        const deduplicated = deduplicateMessages(data.messages || [])
+        
+        console.log('[Messages] Loaded messages:', {
+          total: data.messages?.length || 0,
+          afterDedup: deduplicated.length,
+          removed: (data.messages?.length || 0) - deduplicated.length,
+          isPolling
+        })
+        
+        setMessages(deduplicated)
+        
+        // 🔥 FIX: isFirstLoad теперь сбрасывается в useEffect ПОСЛЕ автоскролла
+        // Это гарантирует однократное срабатывание скролла
       } else {
         console.error('Failed to load messages')
       }
@@ -508,8 +542,24 @@ function MessagesPageClientInner() {
       
       // Handle recording stop
       mediaRecorder.onstop = () => {
-        console.log('[Voice Recording] Recording stopped, creating blob...')
+        console.log('[Voice Recording] Recording stopped')
         
+        // 🔥 FIX: Check if recording is being cancelled - skip blob creation
+        if (isCancellingRef.current) {
+          console.log('[Voice Recording] Cancelled - skipping blob creation')
+          isCancellingRef.current = false
+          
+          // Still need to stop audio stream
+          if (audioStreamRef.current) {
+            audioStreamRef.current.getTracks().forEach(track => track.stop())
+            audioStreamRef.current = null
+          }
+          
+          return // ← Exit early, don't create blob
+        }
+        
+        // Normal stop flow - create blob for preview
+        console.log('[Voice Recording] Creating blob...')
         const blob = new Blob(audioChunksRef.current, { type: supportedMimeType })
         console.log('[Voice Recording] Blob created:', {
           size: blob.size,
@@ -589,7 +639,11 @@ function MessagesPageClientInner() {
   const cancelRecording = () => {
     console.log('[Voice Recording] Cancelling recording...')
     
-    // Stop recorder if active
+    // 🔥 FIX: Set flag BEFORE stopping MediaRecorder
+    // This prevents onstop handler from creating blob
+    isCancellingRef.current = true
+    
+    // Stop recorder if active (onstop handler will check flag)
     if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') {
       mediaRecorderRef.current.stop()
     }
@@ -600,11 +654,8 @@ function MessagesPageClientInner() {
       recordingTimerRef.current = null
     }
     
-    // Stop stream
-    if (audioStreamRef.current) {
-      audioStreamRef.current.getTracks().forEach(track => track.stop())
-      audioStreamRef.current = null
-    }
+    // Note: audioStream cleanup moved to onstop handler
+    // This ensures proper cleanup whether cancelled or stopped normally
     
     // Clear state
     setIsRecording(false)
@@ -778,7 +829,28 @@ function MessagesPageClientInner() {
 
       if (response.ok) {
         const data = await response.json()
-        setMessages(prev => [...prev, data.message])
+        
+        // 🔥 FIX: DUPLICATE CHECK - Only add if not already in state
+        setMessages(prev => {
+          const alreadyExists = prev.some(m => m.id === data.message.id)
+          
+          if (alreadyExists) {
+            console.warn('[Messages] Message already in state, skipping add:', data.message.id)
+            return prev
+          }
+          
+          console.log('[Messages] Adding new message to state:', data.message.id)
+          return [...prev, data.message]
+        })
+        
+        // 🔥 FIX: POLLING RESET - Reset interval to reduce race condition window
+        if (pollingIntervalRef.current) {
+          console.log('[Messages] Resetting polling interval after send')
+          clearInterval(pollingIntervalRef.current)
+          pollingIntervalRef.current = setInterval(() => {
+            loadMessages(selectedConversationId, true)
+          }, 5000)
+        }
         
         setTimeout(() => {
           messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
@@ -1028,17 +1100,47 @@ function MessagesPageClientInner() {
       setIsFirstLoad(true)
       loadMessages(selectedConversationId, false)
       
+      // 🔥 FIX: POLLING SETUP - Store interval ID in ref for reset capability
       // Polling для новых сообщений (каждые 5 секунд, БЕЗ loading индикатора)
       const interval = setInterval(() => {
         loadMessages(selectedConversationId, true)
       }, 5000)
       
+      pollingIntervalRef.current = interval // ← Store in ref
+      
       return () => {
-        clearInterval(interval)
+        if (pollingIntervalRef.current) {
+          clearInterval(pollingIntervalRef.current)
+          pollingIntervalRef.current = null
+        }
         setIsFirstLoad(true) // Сбрасываем при размонтировании
+      }
+    } else {
+      // Clear polling if conversation is deselected or on mobile
+      if (pollingIntervalRef.current) {
+        clearInterval(pollingIntervalRef.current)
+        pollingIntervalRef.current = null
       }
     }
   }, [selectedConversationId, isMobile])
+
+  // 🔥 FIX: Auto-scroll to bottom on first message load (ONCE only)
+  useEffect(() => {
+    // Условия для однократного автоскролла:
+    // 1. Есть сообщения
+    // 2. Первая загрузка
+    // 3. Загрузка завершена
+    if (messages.length > 0 && isFirstLoad && !isLoadingMessages) {
+      console.log('[Messages] Auto-scrolling to bottom on first load')
+      
+      setTimeout(() => {
+        messagesEndRef.current?.scrollIntoView({ behavior: 'auto' })
+        
+        // Сбрасываем флаг ПОСЛЕ скролла, чтобы useEffect больше не срабатывал
+        setIsFirstLoad(false)
+      }, 100)
+    }
+  }, [messages.length, isFirstLoad, isLoadingMessages])
 
   // Функция начала чата с криэйтором
   const startConversationWithCreator = async (creatorId: string) => {
@@ -1128,10 +1230,10 @@ function MessagesPageClientInner() {
         <div className="text-center">
           <ChatBubbleLeftEllipsisIcon className="w-16 h-16 text-gray-400 mx-auto mb-4 animate-pulse" />
           <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">
-            Прогружаем ваши чаты...
+            Loading your messages...
           </h2>
           <p className="text-gray-600 dark:text-gray-400">
-            Подождите, загружаем ваши сообщения
+            Please wait, loading your messages...
           </p>
         </div>
       </div>
@@ -1146,10 +1248,10 @@ function MessagesPageClientInner() {
         <div className="text-center">
           <ChatBubbleLeftEllipsisIcon className="w-16 h-16 text-gray-400 mx-auto mb-4 animate-pulse" />
           <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">
-            Проверяем авторизацию
+            Checking authentication...
           </h2>
           <p className="text-gray-600 dark:text-gray-400">
-            Настраиваем безопасное соединение...
+            Setting up secure connection...
           </p>
           {/* 🔥 DEBUG: Добавляем отладочную информацию */}
           <div className="mt-4 text-xs text-gray-500">
@@ -1185,9 +1287,11 @@ function MessagesPageClientInner() {
           <div className={`${showRightPanel ? 'w-[360px] border-r border-gray-200 dark:border-slate-700 flex-shrink-0' : ''}`}>
             
         {isLoading ? (
-          <div className="text-center py-12">
-            <ChatBubbleLeftEllipsisIcon className="w-16 h-16 text-gray-400 mx-auto mb-4 animate-pulse" />
-            <p className="text-gray-600 dark:text-gray-400">Loading conversations...</p>
+          <div className="flex items-center justify-center min-h-screen">
+            <div className="text-center">
+              <div className="w-16 h-16 border-4 border-purple-500/30 border-t-purple-500 rounded-full animate-spin mx-auto mb-4"></div>
+              <p className="text-gray-600 dark:text-slate-400">Loading conversations...</p>
+            </div>
           </div>
         ) : (
             <>
@@ -1448,11 +1552,18 @@ function MessagesPageClientInner() {
                                     )}
                                   </p>
                                 </div>
-                                <div className="text-xs text-gray-500 dark:text-slate-500 mt-1 px-2">
-                                  {new Date(message.createdAt).toLocaleTimeString('en-US', {
-                                    hour: '2-digit',
-                                    minute: '2-digit'
-                                  })}
+                                <div className="flex items-center gap-2 mt-1 px-2">
+                                  {message.isAIanswer && (
+                                    <span className="text-xs text-purple-500 dark:text-purple-400 font-medium flex items-center gap-1">
+                                      auto translate
+                                    </span>
+                                  )}
+                                  <span className="text-xs text-gray-500 dark:text-slate-500">
+                                    {new Date(message.createdAt).toLocaleTimeString('en-US', {
+                                      hour: '2-digit',
+                                      minute: '2-digit'
+                                    })}
+                                  </span>
                                 </div>
                               </div>
                             )}
@@ -1598,12 +1709,19 @@ function MessagesPageClientInner() {
                                     </>
                                   )}
                                 </div>
-                                <span className="text-xs text-gray-500 dark:text-slate-500 mt-1 px-2">
-                                  {new Date(message.createdAt).toLocaleTimeString('en-US', {
-                                    hour: '2-digit',
-                                    minute: '2-digit'
-                                  })}
-                                </span>
+                                <div className="flex items-center gap-2 mt-1 px-2">
+                                  {message.isAIanswer && (
+                                    <span className="text-xs text-purple-500 dark:text-purple-400 font-medium flex items-center gap-1">
+                                      auto translate
+                                    </span>
+                                  )}
+                                  <span className="text-xs text-gray-500 dark:text-slate-500">
+                                    {new Date(message.createdAt).toLocaleTimeString('en-US', {
+                                      hour: '2-digit',
+                                      minute: '2-digit'
+                                    })}
+                                  </span>
+                                </div>
                               </div>
                             )}
                           </div>
@@ -1724,7 +1842,13 @@ function MessagesPageClientInner() {
                         
                         {/* PPV Toggle */}
                         <button
-                          onClick={() => setIsPaidMessage(!isPaidMessage)}
+                          onClick={() => {
+                            if (!publicKeyString) {
+                              toast.error('Connect wallet to send paid messages')
+                              return
+                            }
+                            setIsPaidMessage(!isPaidMessage)
+                          }}
                           className={`p-2 rounded-full transition-all ${
                             isPaidMessage 
                               ? 'bg-gradient-to-r from-purple-100 to-pink-100 dark:from-purple-900/30 dark:to-pink-900/30 text-purple-600 dark:text-purple-400' 
@@ -1737,7 +1861,13 @@ function MessagesPageClientInner() {
                         
                         {/* Tip */}
                         <button
-                          onClick={() => setShowTipModal(true)}
+                          onClick={() => {
+                            if (!publicKeyString) {
+                              toast.error('Connect wallet to send tips')
+                              return
+                            }
+                            setShowTipModal(true)
+                          }}
                           className="p-2 text-gray-600 dark:text-slate-400 hover:text-gray-900 dark:hover:text-white rounded-full hover:bg-gray-100 dark:hover:bg-slate-700 transition-all"
                           title="Send tip"
                         >
@@ -1772,7 +1902,7 @@ function MessagesPageClientInner() {
                   <div className="h-screen flex items-center justify-center">
                     <div className="text-center">
                       <div className="w-16 h-16 border-4 border-purple-500/30 border-t-purple-500 rounded-full animate-spin mx-auto mb-4"></div>
-                      <p className="text-gray-600 dark:text-slate-400">Загрузка чата...</p>
+                      <p className="text-gray-600 dark:text-slate-400">Loading chat...</p>
                     </div>
                   </div>
                 )
@@ -1781,10 +1911,10 @@ function MessagesPageClientInner() {
                   <div className="text-center">
                     <ChatBubbleLeftEllipsisIcon className="w-20 h-20 text-gray-300 dark:text-slate-600 mx-auto mb-4" />
                     <h3 className="text-xl font-semibold text-gray-700 dark:text-slate-300 mb-2">
-                      Выберите чат
+                      Select a chat
                     </h3>
                     <p className="text-gray-500 dark:text-slate-400">
-                      Выберите диалог из списка слева или начните новый
+                      Select a dialog from the list on the left or start a new one
                     </p>
                   </div>
                 </div>
@@ -1823,7 +1953,7 @@ function MessagesPageClientInner() {
               className="flex items-center gap-3 px-6 py-3 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors rounded-lg font-medium"
             >
               <TrashIcon className="w-5 h-5" />
-              Удалить диалог
+              Delete dialog
             </button>
           </div>
         </div>

@@ -52,11 +52,21 @@ export default function LogInMethodPopup({
         console.log('🔓 [GUEST LOGIN] No deviceId found, will create new user')
       }
       
-      // 2. Отправляем запрос на backend для создания/поиска гостевого пользователя
+      // 2. Получаем UTM метки из localStorage
+      const source = localStorage.getItem('fonana_source') || 'None'
+      const campaign = localStorage.getItem('fonana_campaign') || 'None'
+      
+      console.log('🔓 [GUEST LOGIN] UTM - Source:', source, 'Campaign:', campaign)
+      
+      // 3. Отправляем запрос на backend для создания/поиска гостевого пользователя
       const response = await fetch('/api/auth/guest', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ deviceId }) // Отправляем deviceId если есть
+        body: JSON.stringify({ 
+          deviceId,
+          source,
+          campaign
+        })
       })
 
       const data = await response.json()
@@ -71,19 +81,19 @@ export default function LogInMethodPopup({
         deviceId: data.deviceId
       })
 
-      // 3. СОХРАНЯЕМ deviceId в localStorage для последующих входов
+      // 4. СОХРАНЯЕМ deviceId в localStorage для последующих входов
       if (data.deviceId) {
         localStorage.setItem('fonana_device_id', data.deviceId)
         console.log('🔓 [GUEST LOGIN] Device ID saved to localStorage:', data.deviceId)
       }
 
-      // 4. СОХРАНЯЕМ FAKE WALLET В LOCALSTORAGE
+      // 5. СОХРАНЯЕМ FAKE WALLET В LOCALSTORAGE
       const fakeWallet = data.user.wallet
       localStorage.setItem('fonana_user_wallet', fakeWallet)
       localStorage.setItem('fonana_guest_auth', 'true') // Маркер гостевой авторизации
       console.log('🔓 [GUEST LOGIN] Wallet saved to localStorage:', fakeWallet)
 
-      // 5. ПОЛУЧАЕМ JWT TOKEN через jwtManager
+      // 6. ПОЛУЧАЕМ JWT TOKEN через jwtManager
       console.log('🔓 [GUEST LOGIN] Getting JWT token via jwtManager...')
       const token = await jwtManager.getToken()
       if (token) {
@@ -93,7 +103,7 @@ export default function LogInMethodPopup({
         throw new Error('Failed to get JWT token')
       }
 
-      // 6. ПОЛУЧАЕМ ПОЛНЫЕ ДАННЫЕ ПОЛЬЗОВАТЕЛЯ
+      // 7. ПОЛУЧАЕМ ПОЛНЫЕ ДАННЫЕ ПОЛЬЗОВАТЕЛЯ
       console.log('🔓 [GUEST LOGIN] Fetching full user data...')
       const userResponse = await fetch(`/api/auth/token?wallet=${fakeWallet}`)
       
@@ -113,7 +123,7 @@ export default function LogInMethodPopup({
         wallet: userData.user.wallet,
       })
 
-      // 7. СОХРАНЯЕМ ПОЛЬЗОВАТЕЛЯ В STORE
+      // 8. СОХРАНЯЕМ ПОЛЬЗОВАТЕЛЯ В STORE
       setUser(userData.user)
       
       // Помечаем как нового пользователя для onboarding ТОЛЬКО если это реально новый пользователь
@@ -346,13 +356,14 @@ export default function LogInMethodPopup({
           onClick={(e) => e.stopPropagation()}
         >
           {/* Close button */}
+          {/*
           <button
             onClick={onClose}
             className="absolute top-4 right-4 p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-slate-700 transition-colors"
           >
             <XMarkIcon className="w-5 h-5 text-gray-500 dark:text-gray-400" />
           </button>
-
+          */}
           {/* Header */}
           <div className="text-center mb-6">
             <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">

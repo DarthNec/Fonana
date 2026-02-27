@@ -155,7 +155,7 @@ export function VerticalActions({ post, onAction, className, isFullscreen = true
     try {
       const token = await jwtManager.getToken()
       if (!token) {
-        toast.error('Требуется авторизация')
+        toast.error('Authorization required')
         setIsFollowLoading(false)
         return
       }
@@ -173,18 +173,22 @@ export function VerticalActions({ post, onAction, className, isFullscreen = true
       
       if (response.ok) {
         const data = await response.json()
-        const newIsFollowing = data.isFollowing
-        setIsFollowing(newIsFollowing)
         
         // 🔥 Обновляем localStorage user_following
         if (localStorage.getItem('user_following') !== null) {
           let followingData = JSON.parse(localStorage.getItem('user_following') || '[]')
           
-          if (!newIsFollowing) {
-            // UNFOLLOW - удаляем из массива
+          // ✅ Проверяем по localStorage: есть ли пользователь в массиве
+          const existsInLocalStorage = followingData.some((f: any) => f.user.id === post.creator.id)
+          
+          if (existsInLocalStorage) {
+            // Пользователь УЖЕ есть в массиве → UNFOLLOW (удаляем)
             followingData = followingData.filter((f: any) => f.user.id !== post.creator.id)
+            console.log('[VerticalActions] UNFOLLOW: removed from localStorage')
+            setIsFollowing(false)
+            toast.success('Unfollowed user')
           } else {
-            // FOLLOW - добавляем в массив
+            // Пользователя НЕТ в массиве → FOLLOW (добавляем)
             const newFollowEntry = {
               id: data.followId || `temp_${Date.now()}`,
               userId: post.creator.id,
@@ -201,13 +205,14 @@ export function VerticalActions({ post, onAction, className, isFullscreen = true
               }
             }
             followingData.push(newFollowEntry)
+            console.log('[VerticalActions] FOLLOW: added to localStorage')
+            setIsFollowing(true)
+            toast.success('Followed user')
           }
           
           localStorage.setItem('user_following', JSON.stringify(followingData))
           console.log('[VerticalActions] Updated user_following in localStorage:', followingData.length)
         }
-        
-        toast.success(newIsFollowing ? 'Подписка оформлена' : 'Подписка отменена')
 
         // Опционально вызываем onAction для обновления родительского компонента
         /*
@@ -219,7 +224,7 @@ export function VerticalActions({ post, onAction, className, isFullscreen = true
           */
       } else {
         const errorData = await response.json()
-        toast.error(errorData.error || 'Ошибка подписки')
+        toast.error(errorData.error || 'Subscription error')
       }
     } catch (error) {
       console.error('[VerticalActions] Follow error:', error)
@@ -232,7 +237,7 @@ export function VerticalActions({ post, onAction, className, isFullscreen = true
   // Обработка добавления/удаления закладки
   const handleBookmarkClick = async () => {
     if (!userWallet) {
-      toast.error('Подключите кошелек для сохранения постов')
+      toast.error('Connect your wallet to save posts')
       return
     }
     
@@ -313,6 +318,11 @@ export function VerticalActions({ post, onAction, className, isFullscreen = true
   
   const handleEmotionSelect = (emotionId: number) => {
     if (!onAction || isProcessing) return
+
+    if(!user?.id) {
+      toast.error('You need to be logged in to add emotions')
+      return
+    }
 
     setIsProcessing(true)
     

@@ -60,7 +60,7 @@ export function SlidingCommentsPanel({ isOpen, onClose, post }: SlidingCommentsP
         className={cn(
           'fixed bottom-0 left-0 md:left-[220px]',
           'w-full md:w-[400px] lg:w-[450px]',
-          'h-screen',
+          'h-[85vh] md:h-screen',
           'bg-white dark:bg-slate-900',
           'shadow-2xl',
           'z-50 max-md:z-[55]',
@@ -74,7 +74,7 @@ export function SlidingCommentsPanel({ isOpen, onClose, post }: SlidingCommentsP
         {/* Header панели */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 dark:border-slate-700 flex-shrink-0">
           <h2 className="text-xl font-bold text-gray-900 dark:text-white">
-            Комментарии
+            Comments
             {post.engagement.comments > 0 && (
               <span className="ml-2 text-sm font-normal text-gray-500 dark:text-slate-400">
                 ({post.engagement.comments})

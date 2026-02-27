@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createOrUpdateUser, getUserByWallet, updateUserProfile, deleteUser } from '@/lib/db'
 import { prisma } from '@/lib/prisma'
 import { getNextAvatar } from '@/lib/utils/avatarAssigner'
+import { trackUserCreation, notifyNewUser } from '@/lib/utils/userTracking'
 import { generateRandomNickname, generateRandomBio, generateFullNameFromNickname } from '@/lib/usernames'
 import { referralLogger, apiLogger } from '@/lib/utils/logger'
 import { 
@@ -29,54 +30,6 @@ const RPC_ENDPOINT = 'https://rpc.helius.xyz/?api-key=29fc7f17-2a08-48da-9c14-88
 
 // In-memory блокировка для предотвращения одновременных транзакций на один кошелек
 const pendingRewards = new Map<string, { timestamp: number, inProgress: boolean }>()
-
-// Telegram уведомление о новом пользователе
-const TG_BOT_TOKEN = '8304644010:AAF2W5q8I7cfNz2NXgvASRtna-J2ATi6pvY'
-const TG_ADMIN_CHAT_ID = '5879286931'
-
-async function sendTelegramNotification(message: string): Promise<void> {
-  console.log('[TG Notification] 📤 Preparing to send Telegram notification...')
-  console.log('[TG Notification] Bot Token:', TG_BOT_TOKEN ? `${TG_BOT_TOKEN.slice(0, 10)}...` : 'NOT SET')
-  console.log('[TG Notification] Chat ID:', TG_ADMIN_CHAT_ID)
-  console.log('[TG Notification] Message length:', message.length)
-  
-  try {
-    const url = `https://api.telegram.org/bot${TG_BOT_TOKEN}/sendMessage`
-    console.log('[TG Notification] Request URL:', url.replace(TG_BOT_TOKEN, '***TOKEN***'))
-    
-    const response = await fetch(url, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        chat_id: TG_ADMIN_CHAT_ID,
-        text: message,
-        parse_mode: 'HTML'
-      })
-    })
-    
-    console.log('[TG Notification] Response status:', response.status)
-    console.log('[TG Notification] Response statusText:', response.statusText)
-    
-    const responseData = await response.json()
-    console.log('[TG Notification] Response data:', JSON.stringify(responseData, null, 2))
-    
-    if (!response.ok) {
-      console.error('[TG Notification] ❌ Telegram API returned error:', {
-        status: response.status,
-        statusText: response.statusText,
-        data: responseData
-      })
-    } else {
-      console.log('[TG Notification] ✅ Notification sent successfully!')
-    }
-  } catch (error) {
-    console.error('[TG Notification] ❌ Failed to send:', error)
-    if (error instanceof Error) {
-      console.error('[TG Notification] Error message:', error.message)
-      console.error('[TG Notification] Error stack:', error.stack)
-    }
-  }
-}
 
 // Функция для проверки существующих транзакций в сети
 async function checkExistingRewardTransaction(
@@ -580,22 +533,31 @@ export async function GET(request: NextRequest) {
           userNickname: user.nickname
         })
         
-        // Отправляем уведомление в Telegram о новом пользователе
-        console.log('🎯 [API USER] 📱 Sending Telegram notification from GET...')
-        const notificationMessage = 
-          `🎉 <b>Новый пользователь!</b>\n` +
-          `<i>(создан через GET)</i>\n\n` +
-          `👤 Ник: <b>${uniqueUsername}</b>\n` +
-          `💳 Кошелёк: <code>${wallet!.slice(0, 8)}...${wallet!.slice(-6)}</code>\n` +
-          `📅 ${new Date().toLocaleString('ru-RU', { timeZone: 'Europe/Moscow' })}`
-        
-        console.log('🎯 [API USER] Notification message prepared:')
-        console.log(notificationMessage)
-        
-        // Вызываем функцию отправки (она сама логирует детали)
-        await sendTelegramNotification(notificationMessage)
-        
-        console.log('🎯 [API USER] 📱 Telegram notification process completed')
+        // Отслеживание пользователя (Metrics, Telegram)
+        try {
+          const trackingData = await trackUserCreation({
+            userId: user.id,
+            nickname: user.nickname || uniqueUsername,
+            deviceId: null,
+            wallet: wallet!,
+            request: request,
+            source: 'None', // GET method не передаёт source/campaign
+            campaign: 'None',
+            userType: 'wallet'
+          })
+          
+          // Отправляем Telegram уведомление
+          await notifyNewUser({
+            userType: 'wallet',
+            nickname: user.nickname || uniqueUsername,
+            wallet: wallet!,
+            source: trackingData.source,
+            adsFrom: trackingData.adsFrom
+          })
+          console.log('🎯 [API USER] ✅ User tracking completed (GET)')
+        } catch (trackError) {
+          console.error('🎯 [API USER] ⚠️ Tracking failed, continuing:', trackError)
+        }
         
       } catch (error) {
         console.error('🎯 [API USER] ❌ Failed to create user:', error)
@@ -647,7 +609,7 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
-    const { wallet, referrerFromClient } = body
+    const { wallet, referrerFromClient, source, campaign } = body
 
     if (!wallet) {
       return NextResponse.json({ error: 'Wallet address required' }, { status: 400 })
@@ -727,22 +689,31 @@ export async function POST(request: NextRequest) {
     console.log('[POST /api/user] User ID:', newUser.id)
     console.log('[POST /api/user] User nickname:', newUser.nickname)
     
-    // Отправляем уведомление в Telegram о новом пользователе
-    console.log('[POST /api/user] 📱 Sending Telegram notification...')
-    const refInfo = referrerNickname ? `\n🔗 Реферер: @${referrerNickname}` : ''
-    const notificationMessage = 
-      `🎉 <b>Новый пользователь!</b>\n\n` +
-      `👤 Ник: <b>${uniqueUsername}</b>\n` +
-      `💳 Кошелёк: <code>${wallet.slice(0, 8)}...${wallet.slice(-6)}</code>${refInfo}\n` +
-      `📅 ${new Date().toLocaleString('ru-RU', { timeZone: 'Europe/Moscow' })}`
-    
-    console.log('[POST /api/user] Notification message prepared:')
-    console.log(notificationMessage)
-    
-    // Вызываем функцию отправки (она сама логирует детали)
-    await sendTelegramNotification(notificationMessage)
-    
-    console.log('[POST /api/user] 📱 Telegram notification process completed')
+    // Отслеживание пользователя (Metrics, Telegram)
+    try {
+      const trackingData = await trackUserCreation({
+        userId: newUser.id,
+        nickname: newUser.nickname || uniqueUsername,
+        deviceId: null,
+        wallet: wallet,
+        request: request,
+        source: source,
+        campaign: campaign,
+        userType: 'wallet'
+      })
+      
+      // Отправляем Telegram уведомление
+      await notifyNewUser({
+        userType: 'wallet',
+        nickname: newUser.nickname || uniqueUsername,
+        wallet: wallet,
+        source: trackingData.source,
+        adsFrom: trackingData.adsFrom
+      })
+      console.log('[POST /api/user] ✅ User tracking completed')
+    } catch (error) {
+      console.error('[POST /api/user] ⚠️ Tracking failed, continuing:', error)
+    }
     
     const response = NextResponse.json({ 
       user: newUser,

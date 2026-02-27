@@ -479,7 +479,7 @@ export default function AITrainingPage() {
               className="px-6 py-3 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white rounded-lg font-medium transition-all inline-flex items-center gap-2"
             >
               <SparklesIcon className="w-5 h-5" />
-              Создать генерацию
+              Create generation
             </button>
           </div>
         </div>
@@ -491,17 +491,17 @@ export default function AITrainingPage() {
           <div className="flex items-center justify-center py-20">
             <div className="text-center">
               <div className="w-12 h-12 border-4 border-purple-500/30 border-t-purple-500 rounded-full animate-spin mx-auto mb-4" />
-              <p className="text-gray-600 dark:text-gray-400">Загрузка генераций...</p>
+              <p className="text-gray-600 dark:text-gray-400">Loading generations...</p>
             </div>
           </div>
         ) : generations.length === 0 ? (
           <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-12 text-center">
             <SparklesIcon className="w-16 h-16 text-gray-400 dark:text-gray-600 mx-auto mb-4" />
             <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">
-              Ещё нет ни одной генерации
+              No generations yet
             </h3>
             <p className="text-gray-600 dark:text-gray-400 mb-6">
-              Создайте свою первую AI генерацию, чтобы увидеть её здесь
+              Create your first AI generation to see it here
             </p>
           </div>
         ) : (
@@ -582,7 +582,7 @@ export default function AITrainingPage() {
           <div className="bg-white dark:bg-gray-800 rounded-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
             <div className="sticky top-0 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 p-6 flex items-center justify-between">
               <h2 className="text-xl font-bold text-gray-900 dark:text-white">
-                Создать AI генерацию
+                Create AI generation
               </h2>
               <button
                 onClick={() => setShowCreateModal(false)}
@@ -596,7 +596,7 @@ export default function AITrainingPage() {
               {/* Type Selection */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
-                  Тип генерации
+                  Generation type
                 </label>
                 <div className="grid grid-cols-2 gap-3">
                   <button
@@ -608,7 +608,7 @@ export default function AITrainingPage() {
                     }`}
                   >
                     <VideoCameraIcon className="w-6 h-6 mx-auto mb-2 text-purple-600" />
-                    <div className="font-medium text-sm text-gray-900 dark:text-white">Видео</div>
+                    <div className="font-medium text-sm text-gray-900 dark:text-white">Video</div>
                   </button>
                   <button
                     onClick={() => setGenerationType('image')}
@@ -616,8 +616,8 @@ export default function AITrainingPage() {
                     className="p-4 rounded-lg border-2 border-gray-200 dark:border-gray-600 opacity-50 cursor-not-allowed"
                   >
                     <PhotoIcon className="w-6 h-6 mx-auto mb-2 text-gray-400" />
-                    <div className="font-medium text-sm text-gray-400">Изображение</div>
-                    <div className="text-xs text-gray-400">(скоро)</div>
+                    <div className="font-medium text-sm text-gray-400">Image</div>
+                    <div className="text-xs text-gray-400">(coming soon)</div>
                   </button>
                 </div>
               </div>
@@ -625,7 +625,7 @@ export default function AITrainingPage() {
               {/* Model (Sora-2 selected by default) */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  Модель
+                  Model
                 </label>
                 <div className="px-4 py-3 bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-800 rounded-lg">
                   <div className="flex items-center justify-between">
@@ -638,7 +638,7 @@ export default function AITrainingPage() {
               {/* Prompt */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  Промпт
+                  Prompt
                 </label>
                 <textarea
                   value={prompt}
@@ -651,7 +651,7 @@ export default function AITrainingPage() {
               {/* Duration */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  Длительность
+                  Duration
                 </label>
                 <div className="grid grid-cols-3 gap-2">
                   {['4', '8', '12'].map((sec) => (
@@ -673,7 +673,7 @@ export default function AITrainingPage() {
               {/* Size/Resolution */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  Разрешение
+                  Resolution
                 </label>
                 <div className="grid grid-cols-2 gap-2">
                   {[
@@ -705,7 +705,7 @@ export default function AITrainingPage() {
               {/* Reference Image */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  Референсное изображение (опционально)
+                  Reference image (optional)
                 </label>
                 <div
                   onClick={() => fileInputRef.current?.click()}
@@ -715,7 +715,7 @@ export default function AITrainingPage() {
                     <div className="space-y-3">
                       <img src={imagePreview} alt="Preview" className="max-h-40 mx-auto rounded-lg" />
                       <p className="text-sm text-gray-600 dark:text-gray-400">
-                        Изображение будет изменено до размера {size}
+                        The image will be resized to {size}
                       </p>
                       <button
                         onClick={(e) => {
@@ -725,14 +725,14 @@ export default function AITrainingPage() {
                         }}
                         className="text-sm text-red-600 hover:text-red-700"
                       >
-                        Удалить
+                        Delete
                       </button>
                     </div>
                   ) : (
                     <>
                       <PhotoIcon className="w-10 h-10 text-gray-400 mx-auto mb-2" />
                       <p className="text-sm text-gray-600 dark:text-gray-400">
-                        Нажмите для выбора изображения
+                        Click to select an image
                       </p>
                     </>
                   )}
@@ -755,12 +755,12 @@ export default function AITrainingPage() {
                 {isGenerating ? (
                   <>
                     <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                    Генерация...
+                    Generating...
                   </>
                 ) : (
                   <>
                     <PlayIcon className="w-5 h-5" />
-                    Сгенерировать видео
+                    Generate video
                   </>
                 )}
               </button>

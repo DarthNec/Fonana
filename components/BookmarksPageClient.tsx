@@ -196,7 +196,7 @@ export default function BookmarksPageClient() {
       <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-slate-900 pb-20 md:pb-0">
         <div className="flex flex-col items-center gap-4">
           <div className="w-10 h-10 md:w-12 md:h-12 border-4 border-purple-500/30 border-t-purple-500 rounded-full animate-spin"></div>
-          <p className="text-sm text-gray-600 dark:text-gray-400">Загружаем закладки...</p>
+          <p className="text-sm text-gray-600 dark:text-gray-400">Loading bookmarks...</p>
         </div>
       </div>
     )
@@ -211,10 +211,10 @@ export default function BookmarksPageClient() {
             <BookmarkIcon className="w-8 h-8 text-purple-600 dark:text-purple-400" />
           </div>
           <h2 className="text-lg md:text-xl font-bold text-gray-900 dark:text-white mb-2">
-            Подключите кошелёк
+            Connect your wallet
           </h2>
           <p className="text-sm text-gray-600 dark:text-gray-400 mb-6">
-            Для просмотра закладок необходимо подключить Solana кошелёк
+            To view bookmarks, you need to connect your Solana wallet
           </p>
           <button
             onClick={() => {
@@ -227,7 +227,7 @@ export default function BookmarksPageClient() {
             }}
             className="w-full px-6 py-3 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-xl font-semibold hover:from-purple-700 hover:to-pink-700 transition-all"
           >
-            Подключить
+            Connect
           </button>
         </div>
       </div>
@@ -282,16 +282,16 @@ export default function BookmarksPageClient() {
               <BookmarkIcon className="w-8 h-8 md:w-10 md:h-10 text-gray-400 dark:text-slate-500" />
             </div>
             <h3 className="text-base md:text-lg font-semibold text-gray-900 dark:text-white mb-2">
-              Нет закладок
+              No bookmarks
             </h3>
             <p className="text-sm text-gray-500 dark:text-slate-400 max-w-sm mx-auto mb-6 px-4">
-              Сохраняйте понравившиеся посты, чтобы просмотреть их позже
+              Save your favorite posts to view them later
             </p>
             <button
               onClick={() => router.push('/feed')}
               className="px-6 py-3 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-xl font-semibold hover:from-purple-700 hover:to-pink-700 transition-all"
             >
-              Открыть ленту
+              Open feed
             </button>
           </div>
         )}

@@ -1,10 +1,12 @@
 import ClientShell from '@/components/ClientShell'
-import DashboardReferralsClient from '@/components/DashboardReferralsClient'
 
 export default function DashboardReferralsPage() {
   return (
     <ClientShell>
-      <DashboardReferralsClient />
+      {/* <DashboardReferralsClient /> */}
+      <div>
+        <h1>Dashboard Referrals</h1>
+      </div>
     </ClientShell>
   )
 } 

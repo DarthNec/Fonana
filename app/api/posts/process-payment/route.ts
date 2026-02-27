@@ -1,11 +1,13 @@
-import { NextResponse } from 'next/server'
+import { NextResponse, NextRequest } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { PaymentDistribution } from '@/lib/solana/payments'
 import { validatePaymentDistribution, waitForTransactionConfirmation } from '@/lib/solana/validation'
 import { paymentLogger } from '@/lib/utils/logger'
 import { generateRandomNickname, generateRandomBio, generateFullNameFromNickname } from '@/lib/usernames'
+import { getNextAvatar } from '@/lib/utils/avatarAssigner'
+import { trackUserCreation, notifyNewUser } from '@/lib/utils/userTracking'
 
-export async function POST(request: Request) {
+export async function POST(request: NextRequest) {
   const startTime = Date.now()
   
   try {
@@ -118,6 +120,7 @@ export async function POST(request: Request) {
       // Генерируем остальные данные
       const fullName = generateFullNameFromNickname(nickname)
       const bio = generateRandomBio()
+      const avatarUrl = await getNextAvatar()
       
       user = await prisma.user.create({
         data: {
@@ -127,9 +130,37 @@ export async function POST(request: Request) {
           nickname,
           fullName,
           bio,
+          avatar: avatarUrl,
           isCreator: true
         }
       })
+      
+      paymentLogger.info('New user created via payment', { userId: user.id, nickname })
+      
+      // Отслеживание пользователя (Metrics, Telegram)
+      try {
+        const trackingData = await trackUserCreation({
+          userId: user.id,
+          nickname: nickname,
+          deviceId: null,
+          wallet: userId,
+          request: request,
+          source: 'None', // Payment flow не передаёт source/campaign пока
+          campaign: 'None',
+          userType: 'payment'
+        })
+        
+        // Отправляем Telegram уведомление
+        await notifyNewUser({
+          userType: 'payment',
+          nickname: nickname,
+          wallet: userId,
+          source: trackingData.source,
+          adsFrom: trackingData.adsFrom
+        })
+      } catch (error) {
+        paymentLogger.error('User tracking failed, continuing', { error })
+      }
     }
 
     // Проверяем, не была ли уже куплена эта покупка

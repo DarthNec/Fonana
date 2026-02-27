@@ -811,7 +811,8 @@ ${chatHistory}
               conversationId,
               senderId: recipientId,
               content: autoReplyContent,
-              isPaid: false
+              isPaid: false,
+              isAIanswer: true // 🤖 Помечаем как AI-ответ
             }
           })
           

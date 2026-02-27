@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from 'react'
 import { toast } from 'react-hot-toast'
+import { isMobileDevice, createPhantomConnectDeepLink } from '@/lib/utils/phantomMobile'
+import { detectWalletEnvironment } from '@/lib/auth/solana'
 
 /**
  * SSR-safe replacement for useWalletModal from @solana/wallet-adapter-react-ui
@@ -30,69 +32,119 @@ export function useSafeWalletModal(): WalletModalState {
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
-    // 🔹 Проверяем наличие Phantom или другого Solana кошелька
+    
+    // 🔹 ДЕТЕКТ ОКРУЖЕНИЯ: Проверяем, где открыт сайт
+    const env = detectWalletEnvironment()
+    console.log('[useSafeWalletModal] Environment detected:', {
+      isInWalletBrowser: env.isInWalletBrowser,
+      isMobile: env.isMobile,
+      hasPhantomProvider: env.hasPhantomProvider
+    })
+    
+    // ✅ ПРИОРИТЕТ 1: Проверяем наличие Phantom или другого Solana кошелька
+    // Это работает И на desktop, И в Phantom in-app browser!
     const hasWallet =
       (window as any).solana?.isPhantom ||
       (window as any).solflare ||
       (window as any).backpack;
-    console.log('[useSafeWalletModal] hasWallet', hasWallet);
-    if (!hasWallet) {
-      console.warn('[useSafeWalletModal] No wallet found in browser.');
+    
+    console.log('[useSafeWalletModal] hasWallet check:', {
+      hasWallet,
+      isInWalletBrowser: env.isInWalletBrowser,
+      isMobile: env.isMobile
+    })
+    
+    if (hasWallet) {
+      // ✅ ЕСТЬ КОШЕЛЁК → Используем wallet adapter
+      // (работает на desktop И в Phantom in-app browser!)
+      console.log('[useSafeWalletModal] Wallet found, using wallet adapter')
       
-      // Устанавливаем специальный handler, который откроет страницу установки при попытке подключения
-      const noWalletHandler: WalletModalState = {
+      // 🔹 Динамически подключаем wallet-adapter UI
+      import('@solana/wallet-adapter-react-ui')
+        .then((module) => {
+          try {
+            const modalHandler: WalletModalState = {
+              visible: false,
+              setVisible: (visible: boolean) => {
+                const walletButton = document.querySelector(
+                  '.wallet-adapter-button-trigger'
+                ) as HTMLButtonElement;
+    
+                if (walletButton && visible) {
+                  walletButton.click();
+                } else if (!walletButton && visible) {
+                  console.error('Wallet button not found.');
+                }
+              },
+            };
+    
+            setModalState(modalHandler);
+            setIsLoaded(true);
+          } catch (error) {
+            console.error('[useSafeWalletModal] Error loading wallet modal:', error);
+          }
+        })
+        .catch((err) => {
+          console.error('[useSafeWalletModal] Failed to import wallet module:', err);
+        });
+      
+      return
+    }
+    
+    // ⚠️ ПРИОРИТЕТ 2: НЕТ КОШЕЛЬКА → Проверяем мобильный для deep link
+    if (env.isMobile) {
+      console.log('[useSafeWalletModal] Mobile device without wallet, using deep link')
+      
+      const mobileHandler: WalletModalState = {
         visible: false,
         setVisible: (visible: boolean) => {
           if (visible) {
-            // При попытке открыть модал подключения - показываем уведомление и открываем страницу установки
+            console.log('[useSafeWalletModal] Opening Phantom via deep link...')
             
-            toast.error('Кошелёк не найден. Установите Phantom для подключения.', {
-              duration: 5000,
-              position: 'top-right',
-            });
+            // Создаем правильный deep link для подключения
+            const deepLink = createPhantomConnectDeepLink({
+              appUrl: window.location.origin,
+              redirectLink: window.location.href,
+              cluster: 'mainnet-beta'
+            })
             
-            // Открываем страницу установки (из клика по кнопке - popup не блокируется)
-            window.open('https://phantom.app/download', '_blank', 'noopener,noreferrer');
+            toast.loading('Opening Phantom Wallet...', { duration: 3000 })
+            
+            // Небольшая задержка перед переходом
+            setTimeout(() => {
+              window.location.href = deepLink
+            }, 100)
           }
-        },
-      };
-      
-      setModalState(noWalletHandler);
-      return;
-    }
-  
-    // 🔹 Динамически подключаем wallet-adapter UI
-    import('@solana/wallet-adapter-react-ui')
-      .then((module) => {
-        try {
-          const modalHandler: WalletModalState = {
-            visible: false,
-            setVisible: (visible: boolean) => {
-              const walletButton = document.querySelector(
-                '.wallet-adapter-button-trigger'
-              ) as HTMLButtonElement;
-  
-              if (walletButton && visible) {
-                walletButton.click();
-              } else if (!walletButton && visible) {
-                console.error('Wallet button not found.');
-              }
-            },
-          };
-  
-          setModalState(modalHandler);
-          setIsLoaded(true);
-        } catch (error) {
-          console.error('[useSafeWalletModal] Error loading wallet modal:', error);
         }
-      })
-      .catch((err) => {
-        console.error('[useSafeWalletModal] Failed to import wallet module:', err);
-      });
+      }
+      
+      setModalState(mobileHandler)
+      return
+    }
+    
+    // 🚫 ПРИОРИТЕТ 3: Desktop БЕЗ кошелька → Показываем install page
+    console.warn('[useSafeWalletModal] No wallet found on desktop browser.')
+    
+    const noWalletHandler: WalletModalState = {
+      visible: false,
+      setVisible: (visible: boolean) => {
+        if (visible) {
+          toast.error('Wallet not found. Install Phantom to connect.', {
+            duration: 5000,
+            position: 'top-right',
+          });
+          
+          // Открываем страницу установки
+          window.open('https://phantom.app/download', '_blank', 'noopener,noreferrer');
+        }
+      },
+    };
+    
+    setModalState(noWalletHandler);
   }, []);
 
   return modalState
 }
 
 // For backwards compatibility
-export default useSafeWalletModal 
+export default useSafeWalletModal

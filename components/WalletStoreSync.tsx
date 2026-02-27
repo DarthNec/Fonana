@@ -201,13 +201,14 @@ export function WalletStoreSync() {
       // 🔥 НОВАЯ ЛОГИКА: Проверяем маркеры авторизации
       const isTelegramAuth = localStorage.getItem('fonana_telegram_auth') === 'true'
       const isGuestAuth = localStorage.getItem('fonana_guest_auth') === 'true'
+      const isMobilePhantom = localStorage.getItem('fonana_phantom_mobile_auth') === 'true'
       
-      if (!isTelegramAuth && !isGuestAuth) {
-        console.log('🔵 [SAVED USER] Not a Telegram or Guest user')
+      if (!isTelegramAuth && !isGuestAuth && !isMobilePhantom) {
+        console.log('🔵 [SAVED USER] Not an authenticated user type')
         return
       }
       
-      const userType = isTelegramAuth ? 'Telegram' : 'Guest'
+      const userType = isTelegramAuth ? 'Telegram' : (isGuestAuth ? 'Guest' : 'Mobile Phantom')
       console.log(`🔵 [${userType.toUpperCase()} USER] Found ${userType} user in localStorage, restoring session...`)
       console.log(`🔵 [${userType.toUpperCase()} USER] Wallet:`, savedWallet.substring(0, 8) + '...')
       

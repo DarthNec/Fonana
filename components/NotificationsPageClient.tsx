@@ -175,10 +175,10 @@ export default function NotificationsPageClient() {
               </div>
               <div>
                 <h1 className="text-lg md:text-xl font-bold text-gray-900 dark:text-white">
-                  Уведомления
+                  Notifications
                 </h1>
                 <p className="text-xs md:text-sm text-gray-500 dark:text-slate-400">
-                  {counts.all} {counts.all === 1 ? 'уведомление' : 'уведомлений'}
+                  {counts.all} {counts.all === 1 ? 'notification' : 'notifications'}
                 </p>
               </div>
             </div>
@@ -217,7 +217,7 @@ export default function NotificationsPageClient() {
         {isLoading ? (
           <div className="flex flex-col items-center justify-center py-16 md:py-20">
             <div className="w-10 h-10 md:w-12 md:h-12 border-4 border-purple-500/30 border-t-purple-500 rounded-full animate-spin mb-4"></div>
-            <p className="text-sm text-gray-600 dark:text-gray-400">Загружаем уведомления...</p>
+            <p className="text-sm text-gray-600 dark:text-gray-400">Loading notifications...</p>
           </div>
         ) : filteredNotifications.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-16 md:py-20">
@@ -225,10 +225,10 @@ export default function NotificationsPageClient() {
               <BellIcon className="w-8 h-8 md:w-10 md:h-10 text-gray-400 dark:text-slate-500" />
             </div>
             <h3 className="text-base md:text-lg font-semibold text-gray-900 dark:text-white mb-2">
-              Нет уведомлений
+              No notifications
             </h3>
             <p className="text-sm text-gray-500 dark:text-slate-400 text-center max-w-sm px-4">
-              Здесь будут отображаться все ваши уведомления
+              Here you will see all your notifications
             </p>
           </div>
         ) : (

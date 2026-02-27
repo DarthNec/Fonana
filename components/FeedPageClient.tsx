@@ -508,8 +508,23 @@ export default function FeedPageClient() {
   */
   // Обработка действий с постами
   const handlePostAction = useCallback((action: PostAction) => {
+    console.log('[FeedPage] handlePostAction called:', {
+      actionType: action.type,
+      postId: action.postId,
+      filteredPostsLength: filteredAndSortedPosts.length
+    })
+    
     const post = filteredAndSortedPosts.find(p => p.id === action.postId)
-    if (!post) return
+    
+    if (!post) {
+      console.error('[FeedPage] Post not found in filteredAndSortedPosts:', {
+        postId: action.postId,
+        availableIds: filteredAndSortedPosts.slice(0, 5).map(p => p.id)
+      })
+      return
+    }
+    
+    console.log('[FeedPage] Post found:', post.id, 'action:', action.type)
 
     switch (action.type) {
       case 'subscribe':
@@ -520,6 +535,11 @@ export default function FeedPageClient() {
         setShowSubscribeModal(true)
         break
       case 'purchase':
+
+        if(!user?.id) {
+          toast.error('You need to be logged in to purchase posts')
+          return
+        }
         // Для обычных платных постов формируем правильную структуру для PurchaseModal
         const purchasePost = {
           id: post.id,
@@ -606,6 +626,11 @@ export default function FeedPageClient() {
       case 'add-emotion':
       case 'remove-emotion':
         // Обрабатываем через handleAction от useOptimizedPosts
+        if(!user?.id) {
+          toast.error('You need to be logged in to add emotions')
+          return
+        }
+
         handleAction(action)
         break
       case 'delete':

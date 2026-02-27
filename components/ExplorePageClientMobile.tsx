@@ -149,7 +149,26 @@ export default function ExplorePageClientMobile() {
       const creatorsResponse = await fetch('/api/creators?limit=20')
       if (creatorsResponse.ok) {
         const creatorsData = await creatorsResponse.json()
-        setCreators(creatorsData.creators || [])
+        const creatorsArray = creatorsData.creators || []
+        
+        // Сортируем: сначала с аватарами, потом без
+        const sortedCreators = creatorsArray.sort((a: Creator, b: Creator) => {
+          const hasAvatarA = a.avatar && 
+                            a.avatar.trim() !== '' && 
+                            !a.avatar.includes('dicebear.com')
+          const hasAvatarB = b.avatar && 
+                            b.avatar.trim() !== '' && 
+                            !b.avatar.includes('dicebear.com')
+          
+          // Если у A есть аватар, а у B нет → A идёт первым (-1)
+          if (hasAvatarA && !hasAvatarB) return -1
+          // Если у B есть аватар, а у A нет → B идёт первым (1)
+          if (!hasAvatarA && hasAvatarB) return 1
+          // Если оба с аватарами или оба без → сохраняем исходный порядок
+          return 0
+        })
+        
+        setCreators(sortedCreators)
       }
     } catch (error) {
       console.error('Error loading data:', error)

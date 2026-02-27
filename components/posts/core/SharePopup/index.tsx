@@ -166,7 +166,7 @@ export function SharePopup({ post, isOpen, onClose, className }: SharePopupProps
       if (network.id === 'instagram') {
         // Для Instagram показываем URL для копирования
         await navigator.clipboard.writeText(shareUrl)
-        setToastMessage('Ссылка скопирована! Вставьте её в Instagram')
+        setToastMessage('Link copied to clipboard! Paste it in Instagram')
         setShowToast(true)
       } else {
         // Открываем окно шаринга
@@ -180,8 +180,8 @@ export function SharePopup({ post, isOpen, onClose, className }: SharePopupProps
       }, 1000)
       
     } catch (error) {
-      console.error('Ошибка при шаринге:', error)
-      setToastMessage('Произошла ошибка при шаринге')
+      console.error('Error sharing:', error)
+      setToastMessage('Error sharing')
       setShowToast(true)
       setIsSharing(null)
     }
@@ -191,7 +191,7 @@ export function SharePopup({ post, isOpen, onClose, className }: SharePopupProps
     try {
       const postUrl = `${window.location.origin}/post/${post.id}`
       await navigator.clipboard.writeText(postUrl)
-      setToastMessage('Ссылка на пост скопирована')
+      setToastMessage('Link copied to clipboard!')
       setShowToast(true)
       
       // Закрываем попап через небольшую задержку
@@ -199,8 +199,8 @@ export function SharePopup({ post, isOpen, onClose, className }: SharePopupProps
         onClose()
       }, 1500)
     } catch (error) {
-      console.error('Ошибка при копировании ссылки:', error)
-      setToastMessage('Ошибка при копировании ссылки')
+      console.error('Error copying link:', error)
+      setToastMessage('Error copying link')
       setShowToast(true)
     }
   }
@@ -222,10 +222,10 @@ export function SharePopup({ post, isOpen, onClose, className }: SharePopupProps
         {/* Заголовок */}
         <div className="text-center mb-6">
           <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
-            Поделиться постом
+            Share post
           </h3>
           <p className="text-sm text-gray-500 dark:text-slate-400 mt-1">
-            Выберите социальную сеть
+            Select social network
           </p>
         </div>
 
@@ -256,7 +256,7 @@ export function SharePopup({ post, isOpen, onClose, className }: SharePopupProps
                   <IconComponent />
                 )}
                 <span className="text-xs font-medium mt-2">
-                  {isLoading ? 'Отправка...' : network.name}
+                  {isLoading ? 'Sending...' : network.name}
                 </span>
               </button>
             )
@@ -280,7 +280,7 @@ export function SharePopup({ post, isOpen, onClose, className }: SharePopupProps
             <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
             </svg>
-            Копировать ссылку
+            Copy link
           </button>
           
           <button
@@ -292,7 +292,7 @@ export function SharePopup({ post, isOpen, onClose, className }: SharePopupProps
               'transition-colors font-medium'
             )}
           >
-            Отмена
+            Cancel
           </button>
         </div>
       </div>
@@ -302,7 +302,7 @@ export function SharePopup({ post, isOpen, onClose, className }: SharePopupProps
         message={toastMessage}
         isVisible={showToast}
         onClose={() => setShowToast(false)}
-        type={toastMessage.includes('ошибка') ? 'error' : 'success'}
+        type={toastMessage.includes('error') ? 'error' : 'success'}
       />
     </div>
   )

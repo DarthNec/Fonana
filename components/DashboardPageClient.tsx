@@ -330,10 +330,12 @@ export default function DashboardPageClient() {
               <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
                 Revenue Sources
               </h3>
+              {/*
               <button className="text-sm text-purple-600 dark:text-purple-400 hover:text-purple-700 dark:hover:text-purple-300 flex items-center">
                 <ArrowDownTrayIcon className="w-4 h-4 mr-1" />
                 Export
               </button>
+              */}
             </div>
             
             <div className="space-y-4">
@@ -408,77 +410,86 @@ export default function DashboardPageClient() {
 
           {/* Subscribers & Community Management - Embedded */}
           {user?.isCreator && (
-            <div className="bg-white dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-slate-700 p-6">
-              <div className="flex items-center justify-between mb-6">
+            <div className="bg-white dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-slate-700 p-6 lg:col-span-2">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-6 gap-2">
                 <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
                   Community & Subscribers
                 </h3>
                 <span className="text-sm text-gray-500 dark:text-gray-400">Manage your audience</span>
               </div>
 
-              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {/* Recent Subscribers */}
-                <div className="bg-gradient-to-br from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20 rounded-xl p-4 border border-green-200 dark:border-green-800">
-                  <div className="flex items-center mb-3">
-                    <UsersIcon className="w-5 h-5 text-green-600 dark:text-green-400 mr-2" />
-                    <h4 className="font-semibold text-green-900 dark:text-green-100">Recent Subscribers</h4>
+                <div className="bg-gradient-to-br from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20 rounded-xl p-5 border border-green-200 dark:border-green-800">
+                  <div className="flex items-center gap-2 mb-4">
+                    <UsersIcon className="w-5 h-5 text-green-600 dark:text-green-400" />
+                    <h4 className="font-semibold text-green-900 dark:text-green-100 text-base">Recent Subscribers</h4>
                   </div>
-                  <div className="space-y-2">
-                    <div className="flex items-center justify-between text-sm">
-                      <span className="text-green-700 dark:text-green-300">@user123</span>
-                      <span className="px-2 py-1 bg-green-200 dark:bg-green-800 text-green-800 dark:text-green-200 rounded-full text-xs">Basic</span>
+                  <div className="space-y-2.5">
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm font-medium text-green-700 dark:text-green-300">@user123</span>
+                      <span className="px-2.5 py-0.5 bg-green-200 dark:bg-green-800 text-green-800 dark:text-green-200 rounded-full text-xs font-medium">Basic</span>
                     </div>
-                    <div className="flex items-center justify-between text-sm">
-                      <span className="text-green-700 dark:text-green-300">@creator456</span>
-                      <span className="px-2 py-1 bg-blue-200 dark:bg-blue-800 text-blue-800 dark:text-blue-200 rounded-full text-xs">Premium</span>
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm font-medium text-green-700 dark:text-green-300">@creator456</span>
+                      <span className="px-2.5 py-0.5 bg-blue-200 dark:bg-blue-800 text-blue-800 dark:text-blue-200 rounded-full text-xs font-medium">Premium</span>
                     </div>
-                    <div className="flex items-center justify-between text-sm">
-                      <span className="text-green-700 dark:text-green-300">@fan789</span>
-                      <span className="px-2 py-1 bg-purple-200 dark:bg-purple-800 text-purple-800 dark:text-purple-200 rounded-full text-xs">VIP</span>
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm font-medium text-green-700 dark:text-green-300">@fan789</span>
+                      <span className="px-2.5 py-0.5 bg-purple-200 dark:bg-purple-800 text-purple-800 dark:text-purple-200 rounded-full text-xs font-medium">VIP</span>
                     </div>
                   </div>
                 </div>
 
                 {/* Tier Performance */}
-                <div className="bg-gradient-to-br from-blue-50 to-cyan-50 dark:from-blue-900/20 dark:to-cyan-900/20 rounded-xl p-4 border border-blue-200 dark:border-blue-800">
-                  <div className="flex items-center mb-3">
-                    <CurrencyDollarIcon className="w-5 h-5 text-blue-600 dark:text-blue-400 mr-2" />
-                    <h4 className="font-semibold text-blue-900 dark:text-blue-100">Tier Performance</h4>
+                <div className="bg-gradient-to-br from-blue-50 to-cyan-50 dark:from-blue-900/20 dark:to-cyan-900/20 rounded-xl p-5 border border-blue-200 dark:border-blue-800">
+                  <div className="flex items-center gap-2 mb-4">
+                    <CurrencyDollarIcon className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+                    <h4 className="font-semibold text-blue-900 dark:text-blue-100 text-base">Tier Performance</h4>
                   </div>
-                  <div className="space-y-2">
-                    <div className="flex items-center justify-between text-sm">
-                      <span className="text-blue-700 dark:text-blue-300">Basic (0.05 SOL)</span>
-                      <span className="text-blue-600 dark:text-blue-400 font-medium">15 subs</span>
+                  <div className="space-y-2.5">
+                    <div className="flex items-center justify-between">
+                      <div className="flex flex-col">
+                        <span className="text-sm font-medium text-blue-700 dark:text-blue-300">Basic</span>
+                        <span className="text-xs text-blue-600/70 dark:text-blue-400/70">(0.05 SOL)</span>
+                      </div>
+                      <span className="text-sm text-blue-600 dark:text-blue-400 font-semibold">15 subs</span>
                     </div>
-                    <div className="flex items-center justify-between text-sm">
-                      <span className="text-blue-700 dark:text-blue-300">Premium (0.15 SOL)</span>
-                      <span className="text-blue-600 dark:text-blue-400 font-medium">8 subs</span>
+                    <div className="flex items-center justify-between">
+                      <div className="flex flex-col">
+                        <span className="text-sm font-medium text-blue-700 dark:text-blue-300">Premium</span>
+                        <span className="text-xs text-blue-600/70 dark:text-blue-400/70">(0.15 SOL)</span>
+                      </div>
+                      <span className="text-sm text-blue-600 dark:text-blue-400 font-semibold">8 subs</span>
                     </div>
-                    <div className="flex items-center justify-between text-sm">
-                      <span className="text-blue-700 dark:text-blue-300">VIP (0.35 SOL)</span>
-                      <span className="text-blue-600 dark:text-blue-400 font-medium">3 subs</span>
+                    <div className="flex items-center justify-between">
+                      <div className="flex flex-col">
+                        <span className="text-sm font-medium text-blue-700 dark:text-blue-300">VIP</span>
+                        <span className="text-xs text-blue-600/70 dark:text-blue-400/70">(0.35 SOL)</span>
+                      </div>
+                      <span className="text-sm text-blue-600 dark:text-blue-400 font-semibold">3 subs</span>
                     </div>
                   </div>
                 </div>
 
                 {/* Community Stats */}
-                <div className="bg-gradient-to-br from-purple-50 to-pink-50 dark:from-purple-900/20 dark:to-pink-900/20 rounded-xl p-4 border border-purple-200 dark:border-purple-800">
-                  <div className="flex items-center mb-3">
-                    <TrophyIcon className="w-5 h-5 text-purple-600 dark:text-purple-400 mr-2" />
-                    <h4 className="font-semibold text-purple-900 dark:text-purple-100">Community Stats</h4>
+                <div className="bg-gradient-to-br from-purple-50 to-pink-50 dark:from-purple-900/20 dark:to-pink-900/20 rounded-xl p-5 border border-purple-200 dark:border-purple-800">
+                  <div className="flex items-center gap-2 mb-4">
+                    <TrophyIcon className="w-5 h-5 text-purple-600 dark:text-purple-400" />
+                    <h4 className="font-semibold text-purple-900 dark:text-purple-100 text-base">Community Stats</h4>
                   </div>
-                  <div className="space-y-2">
-                    <div className="flex items-center justify-between text-sm">
-                      <span className="text-purple-700 dark:text-purple-300">Total Subscribers</span>
-                      <span className="text-purple-600 dark:text-purple-400 font-medium">26</span>
+                  <div className="space-y-2.5">
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm font-medium text-purple-700 dark:text-purple-300">Total Subscribers</span>
+                      <span className="text-base text-purple-600 dark:text-purple-400 font-bold">26</span>
                     </div>
-                    <div className="flex items-center justify-between text-sm">
-                      <span className="text-purple-700 dark:text-purple-300">Monthly Revenue</span>
-                      <span className="text-purple-600 dark:text-purple-400 font-medium">3.85 SOL</span>
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm font-medium text-purple-700 dark:text-purple-300">Monthly Revenue</span>
+                      <span className="text-base text-purple-600 dark:text-purple-400 font-bold">3.85 SOL</span>
                     </div>
-                    <div className="flex items-center justify-between text-sm">
-                      <span className="text-purple-700 dark:text-purple-300">Growth Rate</span>
-                      <span className="text-purple-600 dark:text-purple-400 font-medium">+12%</span>
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm font-medium text-purple-700 dark:text-purple-300">Growth Rate</span>
+                      <span className="text-base text-purple-600 dark:text-purple-400 font-bold">+12%</span>
                     </div>
                   </div>
                 </div>

@@ -98,12 +98,14 @@ export const useWalletStore = create<WalletState>()(
         if(!updates.connected) {
           console.log('[WalletStore] updateState called: disconnect');
           
-          // 🔥 НЕ УДАЛЯЕМ TELEGRAM WALLET при disconnect
+          // 🔥 НЕ УДАЛЯЕМ TELEGRAM И GUEST WALLET при disconnect
           const isTelegramAuth = localStorage.getItem('fonana_telegram_auth') === 'true'
+          const isGuestAuth = localStorage.getItem('fonana_guest_auth') === 'true'
           
-          if (isTelegramAuth) {
-            console.log('🔵 [WALLET STORE] Telegram auth detected, preserving session')
-            // Для Telegram пользователей не удаляем данные
+          if (isTelegramAuth || isGuestAuth) {
+            const userType = isTelegramAuth ? 'Telegram' : 'Guest'
+            console.log(`🔵 [WALLET STORE] ${userType} auth detected, preserving session`)
+            // Для Telegram/Guest пользователей не удаляем данные
             // Они остаются авторизованными
           } else {
             // Для обычных кошельков очищаем всё

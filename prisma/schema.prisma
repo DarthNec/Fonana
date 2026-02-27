@@ -16,6 +16,23 @@ model AvatarCounter {
   @@map("avatar_counter")
 }
 
+model Metrics {
+  id         String   @id @default(cuid())
+  userId     String?  // ID созданного пользователя (nullable если создание упало)
+  nickname   String   // Никнейм пользователя
+  deviceId   String   // Device ID
+  wallet     String   // Fake wallet (FK_...)
+  source     String?  // Источник регистрации (facebook_ad, twitter_bio, etc)
+  ads_from   String?  // Рекламная кампания (campaign parameter)
+  userAgent  String?  // User Agent браузера
+  createdAt  DateTime @default(now())
+
+  @@index([userId])
+  @@index([deviceId])
+  @@index([createdAt])
+  @@map("metrics")
+}
+
 model User {
   id                   String                @id @default(cuid())
   wallet               String                @unique
@@ -47,6 +64,7 @@ model User {
   isGetRegistrationReward Boolean            @default(false)
   dogWaterTokens       Float                 @default(0)
   availableGenerationCount Int               @default(3)
+  availableWheelSpins  Int                   @default(1)
   isAutoAnswerInChat   Boolean               @default(true)
   accounts             Account[]
   auctionBids          AuctionBid[]
@@ -522,6 +540,7 @@ model Message {
   isRead         Boolean           @default(false)
   isEdited       Boolean           @default(false)
   isDeleted      Boolean           @default(false)
+  isAIanswer     Boolean           @default(false)
   createdAt      DateTime          @default(now())
   metadata       Json?
   purchases      MessagePurchase[]

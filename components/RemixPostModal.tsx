@@ -337,7 +337,7 @@ export default function RemixPostModal({ post, onClose, onRemixCreated }: RemixP
                           {showGenerationTooltip && (
                             <div className="absolute z-50 bottom-full right-0 mb-2 w-64 px-3 py-2 text-xs text-white bg-gray-900 dark:bg-gray-800 rounded-lg shadow-lg border border-gray-700">
                               <div className="relative">
-                                Количество Sora-2 генераций, которые вы можете использовать в сутки, автоматически обновляется раз в 24 часа
+                                The number of Sora-2 generations you can use per day, automatically updated every 24 hours
                                 <div className="absolute -bottom-1 right-4 w-2 h-2 bg-gray-900 dark:bg-gray-800 border-r border-b border-gray-700 transform rotate-45"></div>
                               </div>
                             </div>

@@ -84,9 +84,7 @@ export default function PurchaseModal({ post, onClose, onSuccess }: PurchaseModa
   const { rate: solToUsdRate, isLoading: isRateLoading } = useSolRate()
   
   // ✅ КРИТИЧЕСКАЯ ПРОВЕРКА: предотвращаем React Error #185
-  if (!user) {
-    return null
-  }
+  
   
   // Вычисляем цену для отображения с учетом Flash Sale
   const displayPrice = post.flashSale 

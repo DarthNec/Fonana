@@ -21,6 +21,7 @@
     "@ffmpeg/ffmpeg": "^0.11.6",
     "@headlessui/react": "^1.7.18",
     "@heroicons/react": "^2.1.1",
+    "@mertercelik/react-prize-wheel": "^1.0.2",
     "@metaplex-foundation/mpl-token-metadata": "^3.4.0",
     "@msgpack/msgpack": "^3.1.2",
     "@prisma/client": "^5.22.0",

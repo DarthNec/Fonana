@@ -39,9 +39,16 @@ export default function NewSubscribeModal({ creator, onClose, onSuccess }: NewSu
   const creatorName = creator.nickname || creator.name || 'Creator'
 
   const handleSubscribe = async () => {
+    console.log('[NewSubscribeModal] handleSubscribe', { connected, publicKeyString })
     if (!connected || !publicKeyString) {
       setVisible(true)
-      toast.success('Подключите кошелёк для оформления подписки')
+      toast.success('Connect your wallet to subscribe')
+      return
+    }
+
+
+    if(publicKeyString.startsWith('TG_') || publicKeyString.startsWith('FK_')) {
+      toast.error('You need to be logged in to subscribe')
       return
     }
 

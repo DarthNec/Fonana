@@ -82,6 +82,16 @@ export function FullscreenCarousel({
     if (isScrollingRef.current) return
     
     if (currentIndex > 0) {
+      // ✅ FIX: Стопаем видео текущего поста (который станет следующим)
+      const currentPost = posts[currentIndex]
+      if (currentPost?.media?.type === 'video') {
+        const currentContainer = document.querySelector(`[data-post-id="${currentPost.id}"]`)
+        const currentVideo = currentContainer?.querySelector('video') as HTMLVideoElement
+        if (currentVideo && !currentVideo.paused) {
+          currentVideo.pause()
+        }
+      }
+      
       startCooldown()
       setDirection('up')
       const newIndex = currentIndex - 1
@@ -89,7 +99,7 @@ export function FullscreenCarousel({
       setCurrentRemixIndex(0)
       scrollToPost(newIndex)
     }
-  }, [currentIndex, scrollToPost, startCooldown])
+  }, [currentIndex, posts, scrollToPost, startCooldown])
   
   // Переход к следующему посту
   const goToNext = useCallback(() => {
@@ -97,6 +107,16 @@ export function FullscreenCarousel({
     if (isScrollingRef.current) return
     
     if (currentIndex < posts.length - 1) {
+      // ✅ FIX: Стопаем видео текущего поста (который станет предыдущим)
+      const currentPost = posts[currentIndex]
+      if (currentPost?.media?.type === 'video') {
+        const currentContainer = document.querySelector(`[data-post-id="${currentPost.id}"]`)
+        const currentVideo = currentContainer?.querySelector('video') as HTMLVideoElement
+        if (currentVideo && !currentVideo.paused) {
+          currentVideo.pause()
+        }
+      }
+      
       startCooldown()
       setDirection('down')
       const newIndex = currentIndex + 1
@@ -106,7 +126,7 @@ export function FullscreenCarousel({
     } else if (onLoadMore && currentIndex === posts.length - 1) {
       onLoadMore()
     }
-  }, [currentIndex, posts.length, onLoadMore, scrollToPost, startCooldown])
+  }, [currentIndex, posts, onLoadMore, scrollToPost, startCooldown])
   
   // Навигация по ремиксам
   const goToPreviousRemix = useCallback(() => {
@@ -136,8 +156,10 @@ export function FullscreenCarousel({
     onAction?.(action)
   }, [onAction])
   
-  // Keyboard navigation
+  // ✅ FIX: Keyboard navigation с AbortController для proper cleanup
   useEffect(() => {
+    const controller = new AbortController()
+    
     const handleKeyDown = (e: KeyboardEvent) => {
       // Игнорируем если фокус на input/textarea
       if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) {
@@ -147,20 +169,20 @@ export function FullscreenCarousel({
       switch (e.key) {
         case 'ArrowUp':
           e.preventDefault()
-          goToPrevious()
+          goToPreviousRef.current()
           break
         case 'ArrowDown':
           e.preventDefault()
-          goToNext()
+          goToNextRef.current()
           break
         case 'ArrowLeft':
-          if (hasRemixes) {
+          if (currentPost?.postRemixes && currentPost.postRemixes.length > 1) {
             e.preventDefault()
             goToPreviousRemix()
           }
           break
         case 'ArrowRight':
-          if (hasRemixes) {
+          if (currentPost?.postRemixes && currentPost.postRemixes.length > 1) {
             e.preventDefault()
             goToNextRemix()
           }
@@ -168,9 +190,14 @@ export function FullscreenCarousel({
       }
     }
     
-    window.addEventListener('keydown', handleKeyDown)
-    return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [goToPrevious, goToNext, goToPreviousRemix, goToNextRemix, hasRemixes])
+    window.addEventListener('keydown', handleKeyDown, {
+      signal: controller.signal // ✅ Auto-cleanup with AbortController
+    })
+    
+    return () => {
+      controller.abort() // ✅ Removes listener automatically
+    }
+  }, [goToPreviousRemix, goToNextRemix, currentPost]) // Minimal dependencies
   
   // Wheel navigation (cooldown уже в goToNext/goToPrevious)
   // Используем ref для функций, чтобы избежать пересоздания обработчика
@@ -186,9 +213,15 @@ export function FullscreenCarousel({
   // Состояние для отслеживания готовности контейнера
   const [containerReady, setContainerReady] = useState(false)
   
+  // ✅ FIX: Wheel navigation с proper cleanup и AbortController
   useEffect(() => {
     // Ждём пока контейнер появится
     if (!containerReady) return
+    
+    const container = containerRef.current
+    if (!container) return
+    
+    const controller = new AbortController()
     
     const handleWheel = (e: WheelEvent) => {
       // Игнорируем маленькие движения колеса (threshold)
@@ -206,25 +239,31 @@ export function FullscreenCarousel({
       }
     }
     
-    // Добавляем на container
-    const container = containerRef.current
-    if (container) {
-      container.addEventListener('wheel', handleWheel, { passive: false })
-    }
+    // ✅ Используем AbortController для auto-cleanup
+    container.addEventListener('wheel', handleWheel, {
+      passive: false,
+      signal: controller.signal
+    })
     
     return () => {
-      if (container) {
-        container.removeEventListener('wheel', handleWheel)
-      }
+      controller.abort() // ✅ Removes listener automatically
     }
   }, [containerReady]) // Запускаем когда контейнер готов
   
-  // Очищаем таймаут только при размонтировании компонента
+  // ✅ FIX: Comprehensive cleanup при размонтировании компонента
   useEffect(() => {
     return () => {
+      // Очищаем таймаут
       if (scrollTimeoutRef.current) {
         clearTimeout(scrollTimeoutRef.current)
+        scrollTimeoutRef.current = null
       }
+      
+      // Сбрасываем scrolling flag для предотвращения блокировок
+      isScrollingRef.current = false
+      
+      // ✅ CRITICAL: Сбрасываем containerReady для предотвращения накопления listeners
+      setContainerReady(false)
     }
   }, [])
   
@@ -236,19 +275,10 @@ export function FullscreenCarousel({
   }, [currentIndex, currentPost, onPostChange])
   
   // Автовоспроизведение видео при смене поста
+  
   useEffect(() => {
     console.log('[VIDEO AUTOPLAY] Current index changed to:', currentIndex)
     console.log('[VIDEO AUTOPLAY] Current post:', currentPost?.id, 'media type:', currentPost?.media?.type)
-    
-    // Находим все видео на странице
-    const allVideos = document.querySelectorAll('video')
-    console.log('[VIDEO AUTOPLAY] Found videos:', allVideos.length)
-    
-    // Ставим все видео на паузу
-    allVideos.forEach((video, idx) => {
-      console.log(`[VIDEO AUTOPLAY] Pausing video ${idx}`)
-      video.pause()
-    })
     
     // ✅ FIX: Используем флаг для отмены автовоспроизведения при unmount
     let isCancelled = false
@@ -306,13 +336,20 @@ export function FullscreenCarousel({
     }
   }, [currentIndex, currentPost])
   
+ 
   // Swipe navigation
   const handlers = useSwipeable({
     onSwipedUp: () => {
+      // ✅ FIX: Не переключаем посты если открыты комментарии
+      if (showComments) return
+      
       console.log('[SWIPE] Swiped UP - going to next post')
       goToNext()
     },
     onSwipedDown: () => {
+      // ✅ FIX: Не переключаем посты если открыты комментарии
+      if (showComments) return
+      
       console.log('[SWIPE] Swiped DOWN - going to previous post')
       goToPrevious()
     },

@@ -17,7 +17,11 @@ import {
   PlusIcon,
   EyeIcon,
   XCircleIcon,
-  ArrowLeftIcon
+  ArrowLeftIcon,
+  QuestionMarkCircleIcon,
+  UserIcon,
+  ShoppingBagIcon,
+  SparklesIcon
 } from '@heroicons/react/24/outline'
 
 interface SupportTicket {
@@ -49,7 +53,6 @@ export default function SupportPage() {
   const [tickets, setTickets] = useState<SupportTicket[]>([])
   const [selectedTicket, setSelectedTicket] = useState<SupportTicket | null>(null)
   const [isLoading, setIsLoading] = useState(true)
-  const [showForm, setShowForm] = useState(false)
   
   // Форма создания тикета
   const [subject, setSubject] = useState('')
@@ -78,16 +81,16 @@ export default function SupportPage() {
         <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-xl p-4 sm:p-8 max-w-md w-full text-center">
           <ExclamationTriangleIcon className="w-12 h-12 sm:w-16 sm:h-16 text-orange-500 mx-auto mb-4" />
           <h2 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white mb-2">
-            Доступ ограничен
+            Access limited
           </h2>
           <p className="text-sm sm:text-base text-gray-600 dark:text-slate-300 mb-6">
-            Для создания обращения в поддержку необходимо быть авторизованным пользователем с подключенным кошельком.
+            To create a support ticket, you must be a registered user with a connected wallet.
           </p>
           <button
             onClick={() => router.push('/')}
             className="w-full bg-gradient-to-r from-purple-600 to-pink-600 text-white font-semibold py-2 sm:py-3 px-4 sm:px-6 rounded-lg sm:rounded-xl hover:from-purple-700 hover:to-pink-700 transition-all duration-300 text-sm sm:text-base"
           >
-            Вернуться на главную
+            Return to home
           </button>
         </div>
       </div>
@@ -98,7 +101,7 @@ export default function SupportPage() {
     try {
       const userWallet = user?.wallet || user?.solanaWallet || publicKeyString
       if (!userWallet) {
-        toast.error('Кошелек не найден')
+        toast.error('Wallet not found')
         return
       }
 
@@ -106,18 +109,12 @@ export default function SupportPage() {
       if (response.ok) {
         const data = await response.json()
         setTickets(data)
-        // Если тикетов нет, показываем форму
-        if (data.length === 0) {
-          setShowForm(true)
-        }
       } else {
-        toast.error('Ошибка при загрузке тикетов')
-        setShowForm(true)
+        toast.error('Error loading tickets')
       }
     } catch (error) {
       console.error('Error fetching tickets:', error)
-      toast.error('Ошибка при загрузке тикетов')
-      setShowForm(true)
+      toast.error('Error loading tickets')
     } finally {
       setIsLoading(false)
     }
@@ -128,7 +125,7 @@ export default function SupportPage() {
     const validFiles = files.filter(file => file.type.startsWith('image/'))
     
     if (validFiles.length + images.length > 5) {
-      toast.error('Максимум 5 изображений')
+      toast.error('Maximum 5 images')
       return
     }
 
@@ -154,7 +151,7 @@ export default function SupportPage() {
     e.preventDefault()
     
     if (!subject.trim() || !description.trim()) {
-      toast.error('Пожалуйста, заполните все обязательные поля')
+      toast.error('Please fill in all required fields')
       return
     }
 
@@ -199,21 +196,20 @@ export default function SupportPage() {
       })
 
       if (response.ok) {
-        toast.success('Обращение успешно отправлено!')
+        toast.success('Support ticket successfully sent!')
         // Очищаем форму и обновляем список тикетов
         setSubject('')
         setDescription('')
         setImages([])
         setPreviewUrls([])
-        setShowForm(false)
         fetchTickets()
       } else {
         const error = await response.text()
-        toast.error(`Ошибка: ${error}`)
+        toast.error(`Error: ${error}`)
       }
     } catch (error) {
       console.error('Error submitting support ticket:', error)
-      toast.error('Произошла ошибка при отправке обращения')
+      toast.error('An error occurred while sending the support ticket')
     } finally {
       setIsSubmitting(false)
     }
@@ -241,10 +237,10 @@ export default function SupportPage() {
 
   const getStatusText = (status: string) => {
     switch (status) {
-      case 'OPEN': return 'Открыт'
-      case 'IN_PROGRESS': return 'В работе'
-      case 'RESOLVED': return 'Решен'
-      case 'CLOSED': return 'Закрыт'
+      case 'OPEN': return 'Open'
+      case 'IN_PROGRESS': return 'In progress'
+      case 'RESOLVED': return 'Resolved'
+      case 'CLOSED': return 'Closed'
       default: return status
     }
   }
@@ -258,91 +254,50 @@ export default function SupportPage() {
       <div className="min-h-screen bg-gradient-to-br from-purple-50 to-pink-50 dark:from-slate-900 dark:to-slate-800 flex items-center justify-center">
         <div className="text-center">
           <div className="w-12 h-12 sm:w-16 sm:h-16 border-4 border-purple-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-          <p className="text-gray-900 dark:text-white text-base sm:text-lg">Загрузка...</p>
+          <p className="text-gray-900 dark:text-white text-base sm:text-lg">Loading...</p>
         </div>
       </div>
     )
   }
 
-  // Если показываем форму создания тикета
-  if (showForm) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-purple-50 to-pink-50 dark:from-slate-900 dark:to-slate-800 py-6 sm:py-12 px-4">
-        <div className="max-w-2xl mx-auto">
-          <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-xl p-4 sm:p-8">
-            {/* Мобильная шапка */}
-            <div className="block sm:hidden mb-6">
-              <div className="flex items-center justify-between mb-4">
-                <button
-                  onClick={() => router.push('/')}
-                  className="flex items-center gap-2 px-3 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors text-sm"
-                >
-                  <ArrowLeftIcon className="w-4 h-4" />
-                  Назад
-                </button>
-                
-                {tickets.length > 0 && (
-                  <button
-                    onClick={() => setShowForm(false)}
-                    className="px-3 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors text-sm"
-                  >
-                    Тикеты
-                  </button>
-                )}
-              </div>
-              
-              <div className="text-center">
-                <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
-                  Обращение в поддержку
-                </h1>
-                <p className="text-sm text-gray-600 dark:text-slate-300">
-                  Опишите вашу проблему, и мы постараемся помочь как можно скорее
-                </p>
-              </div>
-            </div>
+  // Основной render - всегда показываем список + форму
+  return (
+    <div className="min-h-screen bg-gray-50 dark:bg-slate-900 pb-20 md:pb-0">
+      <div className="max-w-6xl mx-auto px-4 py-6 md:py-8">
+        {/* Шапка */}
+        <div className="mb-6 md:mb-8">
+          <div className="flex items-center gap-3 mb-2">
+            <TicketIcon className="w-7 h-7 md:w-8 md:h-8 text-purple-600" />
+            <h1 className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white">
+              Support Center
+            </h1>
+          </div>
+          <p className="text-sm md:text-base text-gray-600 dark:text-slate-400">
+            Create tickets and track your support requests
+          </p>
+        </div>
 
-            {/* Десктопная шапка */}
-            <div className="hidden sm:flex items-center justify-between mb-8">
-              <button
-                onClick={() => router.push('/')}
-                className="flex items-center gap-2 px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors"
-              >
-                <ArrowLeftIcon className="w-4 h-4" />
-                На главную
-              </button>
-              
-              <div className="text-center flex-1">
-                <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">
-                  Обращение в поддержку
-                </h1>
-                <p className="text-gray-600 dark:text-slate-300">
-                  Опишите вашу проблему, и мы постараемся помочь как можно скорее
-                </p>
-              </div>
-              
-              {tickets.length > 0 && (
-                <button
-                  onClick={() => setShowForm(false)}
-                  className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"
-                >
-                  Мои тикеты
-                </button>
-              )}
-            </div>
+        {/* Grid: Форма слева, Тикеты справа */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {/* ФОРМА СОЗДАНИЯ ТИКЕТА */}
+          <div className="bg-white dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-slate-700 p-4 sm:p-6">
+            <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-4">
+              Create new ticket
+            </h2>
 
-            <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-6">
+            <form onSubmit={handleSubmit} className="space-y-4">
               {/* Тема */}
               <div>
                 <label htmlFor="subject" className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-2">
-                  Тема <span className="text-red-500">*</span>
+                  Subject <span className="text-red-500">*</span>
                 </label>
                 <input
                   type="text"
                   id="subject"
                   value={subject}
                   onChange={(e) => setSubject(e.target.value)}
-                  className="w-full px-3 sm:px-4 py-2 sm:py-3 border border-gray-300 dark:border-slate-600 rounded-lg sm:rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent dark:bg-slate-700 dark:text-white transition-all duration-300 text-base"
-                  placeholder="Кратко опишите проблему"
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent dark:bg-slate-700 dark:text-white transition-all text-sm"
+                  placeholder="Briefly describe the problem"
                   maxLength={100}
                   required
                 />
@@ -351,19 +306,19 @@ export default function SupportPage() {
               {/* Описание */}
               <div>
                 <label htmlFor="description" className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-2">
-                  Описание проблемы <span className="text-red-500">*</span>
+                  Description <span className="text-red-500">*</span>
                 </label>
                 <textarea
                   id="description"
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
-                  rows={4}
-                  className="w-full px-3 sm:px-4 py-2 sm:py-3 border border-gray-300 dark:border-slate-600 rounded-lg sm:rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent dark:bg-slate-700 dark:text-white transition-all duration-300 resize-none text-base"
-                  placeholder="Подробно опишите проблему, которую вы испытываете..."
+                  rows={5}
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent dark:bg-slate-700 dark:text-white transition-all resize-none text-sm"
+                  placeholder="Describe your problem in detail..."
                   maxLength={1000}
                   required
                 />
-                <div className="text-right text-sm text-gray-500 mt-1">
+                <div className="text-right text-xs text-gray-500 mt-1">
                   {description.length}/1000
                 </div>
               </div>
@@ -371,25 +326,18 @@ export default function SupportPage() {
               {/* Загрузка изображений */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-2">
-                  Изображения (необязательно)
+                  Images (optional)
                 </label>
                 
-                {/* Кнопка загрузки */}
                 <button
                   type="button"
                   onClick={() => fileInputRef.current?.click()}
                   disabled={images.length >= 5}
-                  className="w-full border-2 border-dashed border-gray-300 dark:border-slate-600 rounded-lg sm:rounded-xl p-4 sm:p-6 hover:border-purple-500 dark:hover:border-purple-500 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="w-full border-2 border-dashed border-gray-300 dark:border-slate-600 rounded-lg p-4 hover:border-purple-500 dark:hover:border-purple-500 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  <PhotoIcon className="w-6 h-6 sm:w-8 sm:h-8 text-gray-400 mx-auto mb-2" />
-                  <p className="text-sm sm:text-base text-gray-600 dark:text-slate-400">
-                    {images.length >= 5 
-                      ? 'Достигнут лимит изображений (5)'
-                      : 'Нажмите для загрузки изображений (максимум 5)'
-                    }
-                  </p>
-                  <p className="text-xs sm:text-sm text-gray-500 mt-1">
-                    Поддерживаемые форматы: JPG, PNG, GIF
+                  <PhotoIcon className="w-6 h-6 text-gray-400 mx-auto mb-1" />
+                  <p className="text-xs text-gray-600 dark:text-slate-400">
+                    {images.length >= 5 ? 'Max 5 images' : 'Click to upload (max 5)'}
                   </p>
                 </button>
                 
@@ -402,22 +350,22 @@ export default function SupportPage() {
                   className="hidden"
                 />
 
-                {/* Превью изображений */}
+                {/* Превью */}
                 {previewUrls.length > 0 && (
-                  <div className="mt-4 grid grid-cols-2 sm:grid-cols-3 gap-2 sm:gap-4">
+                  <div className="mt-3 grid grid-cols-3 gap-2">
                     {previewUrls.map((url, index) => (
                       <div key={index} className="relative group">
                         <img
                           src={url}
                           alt={`Preview ${index + 1}`}
-                          className="w-full h-20 sm:h-24 object-cover rounded-lg"
+                          className="w-full h-16 object-cover rounded-lg"
                         />
                         <button
                           type="button"
                           onClick={() => removeImage(index)}
-                          className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200 hover:bg-red-600"
+                          className="absolute top-0.5 right-0.5 bg-red-500 text-white rounded-full p-0.5 opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-600"
                         >
-                          <XMarkIcon className="w-4 h-4" />
+                          <XMarkIcon className="w-3 h-3" />
                         </button>
                       </div>
                     ))}
@@ -425,153 +373,74 @@ export default function SupportPage() {
                 )}
               </div>
 
-              {/* Информация о пользователе */}
-              <div className="bg-gray-50 dark:bg-slate-700 rounded-lg sm:rounded-xl p-3 sm:p-4">
-                <h3 className="font-medium text-gray-900 dark:text-white mb-2 text-sm sm:text-base">Информация о пользователе</h3>
-                <div className="space-y-1 sm:space-y-2 text-xs sm:text-sm text-gray-600 dark:text-slate-300">
-                  <p><span className="font-medium">ID:</span> {user.id}</p>
-                  <p><span className="font-medium">Кошелек:</span> {publicKeyString}</p>
-                  <p><span className="font-medium">Имя:</span> {user.nickname || user.fullName || 'Не указано'}</p>
-                </div>
-              </div>
-
               {/* Кнопка отправки */}
               <button
                 type="submit"
                 disabled={isSubmitting || !subject.trim() || !description.trim()}
-                className="w-full bg-gradient-to-r from-purple-600 to-pink-600 text-white font-semibold py-3 sm:py-4 px-4 sm:px-6 rounded-lg sm:rounded-xl hover:from-purple-700 hover:to-pink-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-300 flex items-center justify-center gap-2 text-sm sm:text-base"
+                className="w-full bg-gradient-to-r from-purple-600 to-pink-600 text-white font-semibold py-3 px-4 rounded-lg hover:from-purple-700 hover:to-pink-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center justify-center gap-2 text-sm"
               >
                 {isSubmitting ? (
                   <>
-                    <div className="w-4 h-4 sm:w-5 sm:h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                    Отправка...
+                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                    Sending...
                   </>
                 ) : (
                   <>
-                    <PaperAirplaneIcon className="w-4 h-4 sm:w-5 sm:h-5" />
-                    Отправить обращение
+                    <PaperAirplaneIcon className="w-4 h-4" />
+                    Send request
                   </>
                 )}
               </button>
             </form>
           </div>
-        </div>
-      </div>
-    )
-  }
 
-  // Показываем список тикетов
-  return (
-    <div className="min-h-screen bg-gradient-to-br from-purple-50 to-pink-50 dark:from-slate-900 dark:to-slate-800 py-6 sm:py-12 px-4">
-      <div className="max-w-4xl mx-auto">
-        <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-xl p-4 sm:p-8">
-          {/* Мобильная шапка */}
-          <div className="block sm:hidden mb-6">
-            <div className="flex items-center justify-between mb-4">
-              <button
-                onClick={() => router.push('/')}
-                className="flex items-center gap-2 px-3 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors text-sm"
-              >
-                <ArrowLeftIcon className="w-4 h-4" />
-                Назад
-              </button>
-              
-              <button
-                onClick={() => setShowForm(true)}
-                className="inline-flex items-center gap-2 px-3 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors font-semibold text-sm"
-              >
-                <PlusIcon className="w-4 h-4" />
-                Новый
-              </button>
-            </div>
-            
-            <div className="flex items-center gap-3 justify-center">
-              <TicketIcon className="w-6 h-6 text-purple-600" />
-              <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
-                Мои обращения
-              </h1>
-            </div>
-          </div>
-
-          {/* Десктопная шапка */}
-          <div className="hidden sm:flex items-center justify-between mb-8">
-            <div className="flex items-center gap-4">
-              <button
-                onClick={() => router.push('/')}
-                className="flex items-center gap-2 px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors"
-              >
-                <ArrowLeftIcon className="w-4 h-4" />
-                На главную
-              </button>
-              
-              <div className="flex items-center gap-3">
-                <TicketIcon className="w-8 h-8 text-purple-600" />
-                <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
-                  Мои обращения в поддержку
-                </h1>
-              </div>
-            </div>
-            
-            <button
-              onClick={() => setShowForm(true)}
-              className="inline-flex items-center gap-2 px-6 py-3 bg-purple-600 text-white rounded-xl hover:bg-purple-700 transition-colors font-semibold"
-            >
-              <PlusIcon className="w-5 h-5" />
-              Новое обращение
-            </button>
-          </div>
+          {/* СПИСОК ТИКЕТОВ */}
+          <div className="bg-white dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-slate-700 p-4 sm:p-6">
+            <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-4">
+              My tickets {tickets.length > 0 && `(${tickets.length})`}
+            </h2>
 
           {tickets.length === 0 ? (
-            <div className="text-center py-8 sm:py-12 text-gray-500 dark:text-slate-400">
-              <TicketIcon className="w-12 h-12 sm:w-16 sm:h-16 mx-auto mb-4 opacity-50" />
-              <p className="text-base sm:text-lg mb-2">У вас пока нет обращений</p>
-              <p className="text-xs sm:text-sm mb-6">Создайте первое обращение в поддержку, если у вас есть вопросы</p>
-              <div className="flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-4">
-                <button
-                  onClick={() => router.push('/')}
-                  className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-4 sm:px-6 py-2 sm:py-3 bg-gray-600 text-white rounded-lg sm:rounded-xl hover:bg-gray-700 transition-colors font-semibold text-sm"
-                >
-                  <ArrowLeftIcon className="w-4 h-4 sm:w-5 sm:h-5" />
-                  На главную
-                </button>
-                <button
-                  onClick={() => setShowForm(true)}
-                  className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-4 sm:px-6 py-2 sm:py-3 bg-purple-600 text-white rounded-lg sm:rounded-xl hover:bg-purple-700 transition-colors font-semibold text-sm"
-                >
-                  <PlusIcon className="w-4 h-4 sm:w-5 sm:h-5" />
-                  Создать обращение
-                </button>
+            <div className="text-center py-8">
+              <div className="w-16 h-16 rounded-full bg-gray-100 dark:bg-slate-700 flex items-center justify-center mx-auto mb-3">
+                <TicketIcon className="w-8 h-8 text-gray-400 dark:text-slate-500" />
               </div>
+              <h3 className="text-base font-semibold text-gray-900 dark:text-white mb-1">
+                No tickets yet
+              </h3>
+              <p className="text-sm text-gray-600 dark:text-slate-400">
+                Fill out the form on the left to create your first ticket
+              </p>
             </div>
           ) : (
-            <div className="space-y-3 sm:space-y-4">
+            <div className="space-y-3">
               {tickets.map((ticket) => (
                 <div
                   key={ticket.id}
-                  className={`border rounded-lg sm:rounded-xl p-3 sm:p-4 cursor-pointer transition-all duration-200 ${
+                  className={`border rounded-lg p-3 cursor-pointer transition-all ${
                     selectedTicket?.id === ticket.id
                       ? 'border-purple-500 bg-purple-50 dark:bg-purple-900/20'
                       : 'border-gray-200 dark:border-slate-600 hover:border-purple-300 dark:hover:border-purple-500'
                   }`}
                   onClick={() => setSelectedTicket(selectedTicket?.id === ticket.id ? null : ticket)}
                 >
-                  <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2 sm:gap-0 mb-3">
-                    <h3 className="font-medium text-gray-900 dark:text-white text-base sm:text-lg order-1 sm:order-1">
+                  <div className="flex items-start justify-between gap-2 mb-2">
+                    <h3 className="font-medium text-gray-900 dark:text-white text-sm">
                       {ticket.subject}
                     </h3>
-                    <span className={`inline-flex items-center gap-1 px-2 sm:px-3 py-1 rounded-full text-xs sm:text-sm font-medium ${getStatusColor(ticket.status)} order-2 sm:order-2 self-start sm:self-auto`}>
+                    <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium shrink-0 ${getStatusColor(ticket.status)}`}>
                       {getStatusIcon(ticket.status)}
                       {getStatusText(ticket.status)}
                     </span>
                   </div>
                   
-                  <p className="text-gray-600 dark:text-slate-300 mb-3 line-clamp-2 text-sm sm:text-base">
+                  <p className="text-gray-600 dark:text-slate-300 mb-2 line-clamp-2 text-xs">
                     {ticket.description}
                   </p>
                   
-                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1 sm:gap-0 text-xs sm:text-sm text-gray-500 dark:text-slate-400">
-                    <span>Создан: {formatDate(ticket.createdAt)}</span>
-                    <span>{ticket.responses.length} ответов</span>
+                  <div className="flex items-center justify-between text-xs text-gray-500 dark:text-slate-400">
+                    <span>{formatDate(ticket.createdAt)}</span>
+                    <span>{ticket.responses.length} responses</span>
                   </div>
 
                   {/* Детали тикета */}
@@ -601,7 +470,7 @@ export default function SupportPage() {
 
                       {/* Ответы */}
                       <div>
-                        <h4 className="font-medium text-gray-900 dark:text-white mb-3 text-sm sm:text-base">История ответов:</h4>
+                        <h4 className="font-medium text-gray-900 dark:text-white mb-3 text-sm sm:text-base">Answer history:</h4>
                         <div className="space-y-2 sm:space-y-3">
                           {ticket.responses.map((response) => (
                             <div
@@ -628,7 +497,7 @@ export default function SupportPage() {
 
                           {ticket.responses.length === 0 && (
                             <p className="text-gray-500 dark:text-slate-400 text-xs sm:text-sm">
-                              Пока нет ответов на ваше обращение. Мы ответим в ближайшее время.
+                              No answers yet. We will respond as soon as possible.
                             </p>
                           )}
                         </div>
@@ -639,6 +508,278 @@ export default function SupportPage() {
               ))}
             </div>
           )}
+          </div>
+        </div>
+
+        {/* FAQ SECTION */}
+        <div className="mt-8 bg-white dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-slate-700 p-6">
+          <div className="flex items-center gap-3 mb-6">
+            <QuestionMarkCircleIcon className="w-7 h-7 text-purple-600" />
+            <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
+              Frequently Asked Questions
+            </h2>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {/* Account & Authentication */}
+            <div className="space-y-4">
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-3 flex items-center gap-2">
+                <UserIcon className="w-5 h-5 text-purple-600" />
+                Account & Authentication
+              </h3>
+              
+              <div className="space-y-3">
+                <details className="group">
+                  <summary className="cursor-pointer list-none">
+                    <div className="flex items-start gap-2 p-3 rounded-lg hover:bg-gray-50 dark:hover:bg-slate-700 transition-colors">
+                      <div className="mt-0.5 text-purple-600 group-open:rotate-90 transition-transform">▶</div>
+                      <div>
+                        <p className="font-medium text-gray-900 dark:text-white text-sm">
+                          How do I connect my wallet?
+                        </p>
+                      </div>
+                    </div>
+                  </summary>
+                  <div className="ml-7 mr-3 mb-2 text-sm text-gray-600 dark:text-slate-400">
+                    Click "Connect Wallet" in the top right corner or profile menu. We support Phantom wallet. Make sure you have it installed as a browser extension. If you're on mobile, you can also use Guest mode to explore the platform.
+                  </div>
+                </details>
+
+                <details className="group">
+                  <summary className="cursor-pointer list-none">
+                    <div className="flex items-start gap-2 p-3 rounded-lg hover:bg-gray-50 dark:hover:bg-slate-700 transition-colors">
+                      <div className="mt-0.5 text-purple-600 group-open:rotate-90 transition-transform">▶</div>
+                      <div>
+                        <p className="font-medium text-gray-900 dark:text-white text-sm">
+                          What is Guest mode?
+                        </p>
+                      </div>
+                    </div>
+                  </summary>
+                  <div className="ml-7 mr-3 mb-2 text-sm text-gray-600 dark:text-slate-400">
+                    Guest mode allows you to explore Fonana without connecting a wallet. You can view posts, creators, and interact with content. However, features like purchasing posts, subscribing to creators, and sending tips require a connected wallet.
+                  </div>
+                </details>
+
+                <details className="group">
+                  <summary className="cursor-pointer list-none">
+                    <div className="flex items-start gap-2 p-3 rounded-lg hover:bg-gray-50 dark:hover:bg-slate-700 transition-colors">
+                      <div className="mt-0.5 text-purple-600 group-open:rotate-90 transition-transform">▶</div>
+                      <div>
+                        <p className="font-medium text-gray-900 dark:text-white text-sm">
+                          Can I upgrade from Guest to Wallet user?
+                        </p>
+                      </div>
+                    </div>
+                  </summary>
+                  <div className="ml-7 mr-3 mb-2 text-sm text-gray-600 dark:text-slate-400">
+                    Yes! Click "Connect Wallet" in the profile menu. Your guest account will be automatically linked to your wallet, and all your data (likes, bookmarks) will be preserved.
+                  </div>
+                </details>
+              </div>
+            </div>
+
+            {/* Subscriptions & Payments */}
+            <div className="space-y-4">
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-3 flex items-center gap-2">
+                <ShoppingBagIcon className="w-5 h-5 text-purple-600" />
+                Subscriptions & Payments
+              </h3>
+              
+              <div className="space-y-3">
+                <details className="group">
+                  <summary className="cursor-pointer list-none">
+                    <div className="flex items-start gap-2 p-3 rounded-lg hover:bg-gray-50 dark:hover:bg-slate-700 transition-colors">
+                      <div className="mt-0.5 text-purple-600 group-open:rotate-90 transition-transform">▶</div>
+                      <div>
+                        <p className="font-medium text-gray-900 dark:text-white text-sm">
+                          How do subscriptions work?
+                        </p>
+                      </div>
+                    </div>
+                  </summary>
+                  <div className="ml-7 mr-3 mb-2 text-sm text-gray-600 dark:text-slate-400">
+                    Creators can offer free or paid subscriptions. Free subscriptions give you access to basic content, while paid subscriptions (Bronze, Silver, Gold) unlock premium posts and exclusive content. Subscriptions are managed via Solana blockchain.
+                  </div>
+                </details>
+
+                <details className="group">
+                  <summary className="cursor-pointer list-none">
+                    <div className="flex items-start gap-2 p-3 rounded-lg hover:bg-gray-50 dark:hover:bg-slate-700 transition-colors">
+                      <div className="mt-0.5 text-purple-600 group-open:rotate-90 transition-transform">▶</div>
+                      <div>
+                        <p className="font-medium text-gray-900 dark:text-white text-sm">
+                          What payment methods are supported?
+                        </p>
+                      </div>
+                    </div>
+                  </summary>
+                  <div className="ml-7 mr-3 mb-2 text-sm text-gray-600 dark:text-slate-400">
+                    All payments are made using SOL (Solana's native cryptocurrency) through your connected Phantom wallet. Make sure you have enough SOL in your wallet for subscriptions and purchases.
+                  </div>
+                </details>
+
+                <details className="group">
+                  <summary className="cursor-pointer list-none">
+                    <div className="flex items-start gap-2 p-3 rounded-lg hover:bg-gray-50 dark:hover:bg-slate-700 transition-colors">
+                      <div className="mt-0.5 text-purple-600 group-open:rotate-90 transition-transform">▶</div>
+                      <div>
+                        <p className="font-medium text-gray-900 dark:text-white text-sm">
+                          Can I purchase individual posts?
+                        </p>
+                      </div>
+                    </div>
+                  </summary>
+                  <div className="ml-7 mr-3 mb-2 text-sm text-gray-600 dark:text-slate-400">
+                    Yes! Some posts are available for individual purchase. Look for the "Unlock" button on locked posts. You can buy specific content without subscribing to the creator.
+                  </div>
+                </details>
+              </div>
+            </div>
+
+            {/* Content & Features */}
+            <div className="space-y-4">
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-3 flex items-center gap-2">
+                <SparklesIcon className="w-5 h-5 text-purple-600" />
+                Content & Features
+              </h3>
+              
+              <div className="space-y-3">
+                <details className="group">
+                  <summary className="cursor-pointer list-none">
+                    <div className="flex items-start gap-2 p-3 rounded-lg hover:bg-gray-50 dark:hover:bg-slate-700 transition-colors">
+                      <div className="mt-0.5 text-purple-600 group-open:rotate-90 transition-transform">▶</div>
+                      <div>
+                        <p className="font-medium text-gray-900 dark:text-white text-sm">
+                          What types of content can I post?
+                        </p>
+                      </div>
+                    </div>
+                  </summary>
+                  <div className="ml-7 mr-3 mb-2 text-sm text-gray-600 dark:text-slate-400">
+                    You can post images, videos, and AI-generated content. Creators can also create Stories and mark posts as Premium or Sellable. We support various categories: Art, Music, Gaming, Tech, Lifestyle, and more.
+                  </div>
+                </details>
+
+                <details className="group">
+                  <summary className="cursor-pointer list-none">
+                    <div className="flex items-start gap-2 p-3 rounded-lg hover:bg-gray-50 dark:hover:bg-slate-700 transition-colors">
+                      <div className="mt-0.5 text-purple-600 group-open:rotate-90 transition-transform">▶</div>
+                      <div>
+                        <p className="font-medium text-gray-900 dark:text-white text-sm">
+                          How do Tips work?
+                        </p>
+                      </div>
+                    </div>
+                  </summary>
+                  <div className="ml-7 mr-3 mb-2 text-sm text-gray-600 dark:text-slate-400">
+                    You can send SOL tips to creators you love! Click the tip icon on any post and choose an amount (0.01, 0.05, 0.1 SOL or custom). Tips go directly to the creator's wallet and are recorded on-chain.
+                  </div>
+                </details>
+
+                <details className="group">
+                  <summary className="cursor-pointer list-none">
+                    <div className="flex items-start gap-2 p-3 rounded-lg hover:bg-gray-50 dark:hover:bg-slate-700 transition-colors">
+                      <div className="mt-0.5 text-purple-600 group-open:rotate-90 transition-transform">▶</div>
+                      <div>
+                        <p className="font-medium text-gray-900 dark:text-white text-sm">
+                          What are Remixes?
+                        </p>
+                      </div>
+                    </div>
+                  </summary>
+                  <div className="ml-7 mr-3 mb-2 text-sm text-gray-600 dark:text-slate-400">
+                    Remixes allow you to create derivative content based on existing posts. Click "Remix" on a post to add your own spin - edit images, add effects, or create variations. Original creators are always credited.
+                  </div>
+                </details>
+              </div>
+            </div>
+
+            {/* Technical & Support */}
+            <div className="space-y-4">
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-3 flex items-center gap-2">
+                <TicketIcon className="w-5 h-5 text-purple-600" />
+                Technical & Support
+              </h3>
+              
+              <div className="space-y-3">
+                <details className="group">
+                  <summary className="cursor-pointer list-none">
+                    <div className="flex items-start gap-2 p-3 rounded-lg hover:bg-gray-50 dark:hover:bg-slate-700 transition-colors">
+                      <div className="mt-0.5 text-purple-600 group-open:rotate-90 transition-transform">▶</div>
+                      <div>
+                        <p className="font-medium text-gray-900 dark:text-white text-sm">
+                          What if my transaction fails?
+                        </p>
+                      </div>
+                    </div>
+                  </summary>
+                  <div className="ml-7 mr-3 mb-2 text-sm text-gray-600 dark:text-slate-400">
+                    Transaction failures usually occur due to insufficient SOL balance or network congestion. Make sure you have enough SOL to cover transaction fees (usually 0.000005 SOL). If the issue persists, create a support ticket above.
+                  </div>
+                </details>
+
+                <details className="group">
+                  <summary className="cursor-pointer list-none">
+                    <div className="flex items-start gap-2 p-3 rounded-lg hover:bg-gray-50 dark:hover:bg-slate-700 transition-colors">
+                      <div className="mt-0.5 text-purple-600 group-open:rotate-90 transition-transform">▶</div>
+                      <div>
+                        <p className="font-medium text-gray-900 dark:text-white text-sm">
+                          How do I become a Creator?
+                        </p>
+                      </div>
+                    </div>
+                  </summary>
+                  <div className="ml-7 mr-3 mb-2 text-sm text-gray-600 dark:text-slate-400">
+                    Currently, creator accounts are invitation-only or require application. Connect your wallet and check your profile settings - if you have creator access, you'll see the "Create Post" button and Dashboard. Contact us for creator applications.
+                  </div>
+                </details>
+
+                <details className="group">
+                  <summary className="cursor-pointer list-none">
+                    <div className="flex items-start gap-2 p-3 rounded-lg hover:bg-gray-50 dark:hover:bg-slate-700 transition-colors">
+                      <div className="mt-0.5 text-purple-600 group-open:rotate-90 transition-transform">▶</div>
+                      <div>
+                        <p className="font-medium text-gray-900 dark:text-white text-sm">
+                          Where can I see my purchase history?
+                        </p>
+                      </div>
+                    </div>
+                  </summary>
+                  <div className="ml-7 mr-3 mb-2 text-sm text-gray-600 dark:text-slate-400">
+                    Go to the "Purchases" section in the sidebar. There you'll find all your bought posts and active subscriptions. All transactions are also recorded on the Solana blockchain and can be verified via your wallet.
+                  </div>
+                </details>
+
+                <details className="group">
+                  <summary className="cursor-pointer list-none">
+                    <div className="flex items-start gap-2 p-3 rounded-lg hover:bg-gray-50 dark:hover:bg-slate-700 transition-colors">
+                      <div className="mt-0.5 text-purple-600 group-open:rotate-90 transition-transform">▶</div>
+                      <div>
+                        <p className="font-medium text-gray-900 dark:text-white text-sm">
+                          How do I report inappropriate content?
+                        </p>
+                      </div>
+                    </div>
+                  </summary>
+                  <div className="ml-7 mr-3 mb-2 text-sm text-gray-600 dark:text-slate-400">
+                    Click the three dots menu on any post and select "Report". Choose the reason (spam, inappropriate content, copyright violation, etc.) and submit. Our moderation team reviews reports within 24 hours. For urgent issues, create a support ticket above.
+                  </div>
+                </details>
+              </div>
+            </div>
+          </div>
+
+          {/* Still need help? */}
+          {/*
+          <div className="mt-8 pt-6 border-t border-gray-200 dark:border-slate-700 text-center">
+            <p className="text-gray-600 dark:text-slate-400 mb-4">
+              Didn't find what you were looking for?
+            </p>
+            <p className="text-sm text-gray-500 dark:text-slate-500">
+              Use the form above to create a support ticket, and our team will get back to you as soon as possible.
+            </p>
+          </div> */}
         </div>
       </div>
     </div>

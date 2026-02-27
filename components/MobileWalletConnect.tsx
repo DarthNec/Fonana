@@ -6,37 +6,8 @@ import { useSafeWalletModal } from '@/lib/hooks/useSafeWalletModal'
 import { SafeWalletButton } from '@/components/ui/ssr-safe'
 import { WalletIcon, ArrowRightOnRectangleIcon, ChevronDownIcon } from '@heroicons/react/24/outline'
 import toast from 'react-hot-toast'
-
-// Проверка мобильного устройства
-const isMobileDevice = () => {
-  if (typeof window === 'undefined') return null
-  
-  const userAgent = window.navigator.userAgent.toLowerCase()
-  const isMobile = /android|webos|iphone|ipad|ipod|blackberry|iemobile|opera mini/i.test(userAgent)
-  const isTablet = /ipad|tablet|playbook|silk/i.test(userAgent)
-  
-  return isMobile || isTablet
-}
-
-// Проверка, установлен ли Phantom
-const isPhantomInstalled = (): boolean | null => {
-  if (typeof window === 'undefined') return null
-  return !!(window.solana && window.solana.isPhantom)
-}
-
-// Получение deeplink для Phantom
-const getPhantomDeeplink = () => {
-  if (typeof window === 'undefined') return ''
-  
-  // Получаем текущий URL для возврата после подключения
-  const currentUrl = encodeURIComponent(window.location.href)
-  const appUrl = encodeURIComponent(window.location.origin)
-  console.log('appUrl', window.location.origin)
-  console.log('currentUrl', window.location.href)
-  console.log('Full url', `https://phantom.app/ul/browse/${currentUrl}`)
-  // Phantom универсальная ссылка - используем полный URL вместо origin
-  return `https://phantom.app/ul/browse/${currentUrl}`
-}
+import { createPhantomConnectDeepLink } from '@/lib/utils/phantomMobile'
+import { detectWalletEnvironment } from '@/lib/auth/solana'
 
 
 export function MobileWalletConnect() {
@@ -44,35 +15,72 @@ export function MobileWalletConnect() {
   const { setVisible } = useSafeWalletModal()
   const [isDropdownOpen, setIsDropdownOpen] = useState(false)
   const [publicKey, setPublicKey] = useState<string | null>(null)
-  const [isMobile, setIsMobile] = useState(false)
-  const [hasPhantom, setHasPhantom] = useState(false)
+  const [walletEnv, setWalletEnv] = useState<ReturnType<typeof detectWalletEnvironment> | null>(null)
 
   useEffect(() => {
-    setIsMobile(isMobileDevice() || false)
-    setHasPhantom(isPhantomInstalled() || false)
+    // Используем unified detectWalletEnvironment вместо локальных функций
+    const env = detectWalletEnvironment()
+    setWalletEnv(env)
+    
+    console.log('[MobileWalletConnect] Wallet environment:', {
+      isInWalletBrowser: env.isInWalletBrowser,
+      isMobile: env.isMobile,
+      hasPhantomProvider: env.hasPhantomProvider
+    })
   }, [])
 
-  const handleMobileConnect = () => {
-    if (isMobile && !hasPhantom) {
-      // На мобильном устройстве без установленного Phantom
-      const deeplink = getPhantomDeeplink()
+  const handleMobileConnect = async () => {
+    if (!walletEnv) {
+      console.log('[MobileWalletConnect] Environment not detected yet')
+      return
+    }
+
+    // ✅ СЦЕНАРИЙ 1: УЖЕ ВНУТРИ Phantom app → Прямое подключение
+    if (walletEnv.isInWalletBrowser) {
+      console.log('[MobileWalletConnect] Inside Phantom app, using direct connect')
       
-      // Показываем сообщение
+      try {
+        toast.loading('Connecting to Phantom...', { duration: 2000 })
+        
+        if ((window as any).solana?.connect) {
+          const response = await (window as any).solana.connect()
+          console.log('[MobileWalletConnect] Connected:', response.publicKey.toString())
+          toast.success('Wallet connected!', { duration: 2000 })
+        } else {
+          throw new Error('Phantom provider not available')
+        }
+      } catch (error) {
+        console.error('[MobileWalletConnect] Direct connect failed:', error)
+        toast.error('Failed to connect wallet', { duration: 3000 })
+      }
+      return
+    }
+
+    // ⚠️ СЦЕНАРИЙ 2: Мобильный браузер БЕЗ Phantom → Deep link
+    if (walletEnv.isMobile && !walletEnv.hasPhantomProvider) {
+      console.log('[MobileWalletConnect] Mobile without Phantom, opening deep link')
+      
+      const deeplink = createPhantomConnectDeepLink({
+        appUrl: window.location.origin,
+        redirectLink: window.location.href,
+        cluster: 'mainnet-beta'
+      })
+      
       toast.loading('Opening Phantom Wallet...', { duration: 3000 })
       
-      // Небольшая задержка перед переходом
       setTimeout(() => {
         window.location.href = deeplink
       }, 100)
-    } else {
-      setVisible(true)
-      // На десктопе или если Phantom установлен - используем стандартное поведение
-      // Кнопка сама обработает клик
+      return
     }
+
+    // 🖥️ СЦЕНАРИЙ 3: Desktop или Phantom установлен → Стандартный modal
+    console.log('[MobileWalletConnect] Using standard wallet modal')
+    setVisible(true)
   }
 
   // Если мобильное устройство без Phantom, показываем кастомную кнопку
-  if (isMobile && !hasPhantom && !connected) {
+  if (walletEnv?.isMobile && !walletEnv?.hasPhantomProvider && !connected) {
     return (
       <button
         onClick={handleMobileConnect}

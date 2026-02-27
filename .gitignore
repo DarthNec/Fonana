@@ -69,6 +69,10 @@ dist/
 # AI Assistant instructions (local only)
 AI_CHAT_INSTRUCTIONS.md
 
+# Export scripts output (contains sensitive data)
+paid_posts.json
+explore_posts.json
+
 # WebSocket server
 websocket-server/node_modules/
 websocket-server/logs/

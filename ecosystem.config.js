@@ -20,6 +20,7 @@ module.exports = {
       max_restarts: 3,
       restart_delay: 4000
     },
+    /*
     {
       name: 'websocket-server',
       script: './websocket-server/index.js',
@@ -37,6 +38,7 @@ module.exports = {
       restart_delay: 4000,
       cron_restart: '0 4 * * *'
     },
+    */
     {
       name: 'sora-checker',
       script: './sorachecker.js',
@@ -123,6 +125,44 @@ module.exports = {
       out_file: '/var/www/Fonana/logs/ai-sora-generation-out.log',
       time: true,
       merge_logs: true
+    },
+    {
+      name: 'wheel-spins-reset',
+      script: './resetWheelSpins.js',
+      instances: 1,
+      exec_mode: 'fork',
+      cron_restart: '0 0 * * *', // Каждый день в 00:00 (полночь)
+      autorestart: false, // Не перезапускаем автоматически, только по крону
+      watch: false,
+      max_memory_restart: '200M',
+      env_file: './.env',
+      env: {
+        NODE_ENV: 'production'
+      },
+      error_file: '/var/www/Fonana/logs/wheel-spins-reset-error.log',
+      out_file: '/var/www/Fonana/logs/wheel-spins-reset-out.log',
+      time: true,
+      merge_logs: true
+    },
+    /*
+    {
+      name: 'explore-posts-exporter',
+      script: './export-explore-posts.js',
+      instances: 1,
+      exec_mode: 'fork',
+      cron_restart: '0 3 * * *', // Каждый день в 3:00 утра
+      autorestart: false, // Не перезапускаем автоматически, только по крону
+      watch: false,
+      max_memory_restart: '300M',
+      env_file: './.env',
+      env: {
+        NODE_ENV: 'production'
+      },
+      error_file: '/var/www/Fonana/logs/explore-posts-exporter-error.log',
+      out_file: '/var/www/Fonana/logs/explore-posts-exporter-out.log',
+      time: true,
+      merge_logs: true
     }
+    */
   ]
 } 

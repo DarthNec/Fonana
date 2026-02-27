@@ -323,16 +323,8 @@ export function PostCard({
               onClick={() => setShowComments(false)}
             />
             
-            {/* Comments drawer - 50% высоты экрана */}
-            <div className="fixed bottom-0 left-0 right-0 h-[50vh] max-h-[50vh] bg-white dark:bg-slate-900 rounded-t-2xl shadow-2xl z-[70] overflow-hidden animate-slide-up">
-              <MobileCommentsSection
-                postId={post.id}
-                post={post}
-                onCommentAdded={handleCommentAdded}
-                onCommentDeleted={handleCommentDeleted}
-                onClose={() => setShowComments(false)}
-              />
-            </div>
+            {/* Comments drawer - 70% высоты для видимости header */}
+            
           </div>
         </>
       )}

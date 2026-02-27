@@ -35,7 +35,6 @@ export default function Avatar({
  
   // Нормализуем src для Next.js Image
   const normalizeSrc = (src: string | null | undefined): string | null => {
-    console.log('[Avatar] Normalizing src: ', src);
     if (!src || src.length === 0 || src === 'undefined' || src === 'null') {
       return null;
     }
@@ -53,7 +52,7 @@ export default function Avatar({
     return src;
   }
   
-  const normalizedSrc = normalizeSrc(src);
+  const normalizedSrc = src;
   
   // Проверяем есть ли валидный src для изображения
   const hasValidSrc = normalizedSrc && normalizedSrc.length > 0

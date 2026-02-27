@@ -86,6 +86,9 @@ export function CommentsSection({
   const [emotionProcessing, setEmotionProcessing] = useState<string | null>(null)
   const emotionPickerRefs = useRef<{ [key: string]: HTMLDivElement | null }>({})
   const emotionContainerRefs = useRef<{ [key: string]: HTMLDivElement | null }>({})
+  
+  // ✅ FIX: Ref для контейнера списка комментариев (для предотвращения event propagation)
+  const commentsListRef = useRef<HTMLDivElement>(null)
 
   // Функции для работы с развернутыми комментариями
   const toggleCommentExpansion = (commentId: string) => {
@@ -285,6 +288,28 @@ export function CommentsSection({
       document.removeEventListener('mousedown', handleClickOutside)
     }
   }, [showEmotionPicker])
+
+  // ✅ FIX: Предотвращаем propagation wheel events из списка комментариев
+  // Без этого wheel события "всплывают" до FullscreenCarousel и вызывают переключение постов
+  useEffect(() => {
+    const commentsListEl = commentsListRef.current
+    if (!commentsListEl) return
+    
+    const handleWheel = (e: WheelEvent) => {
+      // Останавливаем propagation, чтобы FullscreenCarousel не перехватывал wheel events
+      e.stopPropagation()
+      
+      // НЕ вызываем preventDefault() - позволяем нормальный скролл комментариев
+    }
+    
+    commentsListEl.addEventListener('wheel', handleWheel, {
+      passive: false // Нужно для stopPropagation в некоторых браузерах
+    })
+    
+    return () => {
+      commentsListEl.removeEventListener('wheel', handleWheel)
+    }
+  }, [])
 
   // Обработчик выбора эмоции для комментария
   const handleCommentEmotionSelect = async (commentId: string, emotionId: number) => {
@@ -515,20 +540,23 @@ export function CommentsSection({
       {!formAtBottom && commentForm}
 
       {/* Comments list */}
-      <div className={cn(
-        'space-y-4',
-        formAtBottom ? 'flex-1 overflow-y-auto pt-4' : ''
-      )}>
+      <div 
+        ref={commentsListRef}
+        className={cn(
+          'space-y-4',
+          formAtBottom ? 'flex-1 overflow-y-auto pt-4' : ''
+        )}
+      >
         {loading ? (
           <div className="flex items-center justify-center py-12">
             <div className="text-center">
               <div className="w-12 h-12 border-4 border-purple-500/30 border-t-purple-500 rounded-full animate-spin mx-auto mb-3"></div>
-              <p className="text-gray-600 dark:text-slate-400 text-sm">Загружаем комментарии...</p>
+              <p className="text-gray-600 dark:text-slate-400 text-sm">Loading comments...</p>
             </div>
           </div>
         ) : comments.length === 0 ? (
           <p className="text-center text-gray-500 dark:text-slate-400 py-8">
-            Пока нет комментариев. Будьте первым!
+            No comments yet. Be the first!
           </p>
         ) : (
           comments.map((comment) => (
@@ -653,7 +681,7 @@ export function CommentsSection({
                           })}
                         </div>
                         <div className="text-xs text-gray-500 dark:text-slate-400 text-center mt-1 px-2">
-                          Выберите эмоцию
+                          Select emotion
                         </div>
                       </div>
                     )}

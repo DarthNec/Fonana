@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import { Squares2X2Icon, LockClosedIcon, CurrencyDollarIcon, GlobeAltIcon } from '@heroicons/react/24/outline'
 import { PostsContainer } from '@/components/posts/layouts/PostsContainer'
 import { FullscreenCarousel } from '@/components/feed/FullscreenCarousel'
+import { SharePopup } from '@/components/posts/core/SharePopup'
 import { PostAction, UnifiedPost } from '@/types/posts'
 import toast from 'react-hot-toast'
 import { useWallet } from '@/lib/hooks/useSafeWallet'
@@ -27,6 +28,7 @@ export default function ExplorePageClient() {
   const [fullscreenIndex, setFullscreenIndex] = useState(0)
   const [activeTab, setActiveTab] = useState<ContentTab>('public')
   const [isMobile, setIsMobile] = useState(false)
+  const [sharePost, setSharePost] = useState<UnifiedPost | null>(null)
   
   // Модалки
   const [showSubscribeModal, setShowSubscribeModal] = useState(false)
@@ -185,8 +187,20 @@ export default function ExplorePageClient() {
   }, [posts, activeTab])
 
   const handlePostAction = async (action: PostAction) => {
-    // Находим пост для действия
-    const post = posts.find(p => p.id === action.postId)
+    // ✅ FIX: Ищем пост в filteredPosts, а не в posts
+    const post = filteredPosts.find(p => p.id === action.postId)
+    
+    if (!post) {
+      console.error('[Explore] Post not found in filteredPosts:', {
+        actionType: action.type,
+        postId: action.postId,
+        filteredPostsLength: filteredPosts.length,
+        filteredPostIds: filteredPosts.map(p => p.id)
+      })
+      return
+    }
+    
+    console.log('[Explore] handlePostAction:', action.type, 'for post:', post.id)
     
     switch (action.type) {
       case 'bookmark':
@@ -230,6 +244,10 @@ export default function ExplorePageClient() {
         break
         
       case 'purchase':
+        if(!user?.id) {
+          toast.error('You need to be logged in to purchase posts')
+          return
+        }
         if (!post) return
         // Формируем структуру для PurchaseModal
         const purchasePost = {
@@ -275,20 +293,28 @@ export default function ExplorePageClient() {
         break
         
       case 'share':
-        // Копируем ссылку на пост
-        const postUrl = `${window.location.origin}/post/${action.postId}`
-        try {
-          await navigator.clipboard.writeText(postUrl)
-          toast.success('Link copied to clipboard!', {
-            duration: 2000,
-            position: 'top-center',
-          })
-        } catch (err) {
-          console.error('Error copying link:', err)
-          toast.error('Failed to copy link', {
-            duration: 2000,
-            position: 'top-center',
-          })
+        // Открываем SharePopup модалку
+        console.log('[Explore] Opening share popup for:', action.postId)
+        const sharePostData = posts.find(p => p.id === action.postId)
+        if (sharePostData) {
+          console.log('[Explore] Share post data:', sharePostData)
+          setSharePost(sharePostData)
+        } else {
+          // Fallback: если пост не найден, копируем ссылку
+          const postUrl = `${window.location.origin}/post/${action.postId}`
+          try {
+            await navigator.clipboard.writeText(postUrl)
+            toast.success('Link copied to clipboard!', {
+              duration: 2000,
+              position: 'top-center',
+            })
+          } catch (err) {
+            console.error('Error copying link:', err)
+            toast.error('Failed to copy link', {
+              duration: 2000,
+              position: 'top-center',
+            })
+          }
         }
         break
         
@@ -371,6 +397,17 @@ export default function ExplorePageClient() {
             />
           </div>
         )}
+
+        {/* Share Popup */}
+        {sharePost && (
+          <div className="fixed inset-0 z-[500]">
+            <SharePopup
+              post={sharePost}
+              isOpen={!!sharePost}
+              onClose={() => setSharePost(null)}
+            />
+          </div>
+        )}
       </>
     )
   }
@@ -448,12 +485,12 @@ export default function ExplorePageClient() {
           <div className="text-center py-20">
             <Squares2X2Icon className="w-20 h-20 text-gray-400 mx-auto mb-4" />
             <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
-              {activeTab === 'public' && 'Нет публичного контента'}
-              {activeTab === 'feed' && 'Нет контента по подпискам'}
-              {activeTab === 'store' && 'Нет платного контента'}
+              {activeTab === 'public' && 'No public content'}
+              {activeTab === 'feed' && 'No content for subscriptions'}
+              {activeTab === 'store' && 'No paid content'}
             </h2>
             <p className="text-gray-600 dark:text-gray-400 mb-6">
-              Попробуйте другую категорию
+              Try another category
             </p>
           </div>
         )}
@@ -505,6 +542,15 @@ export default function ExplorePageClient() {
             creatorName={selectedTipCreator.name || selectedTipCreator.nickname}
           />
         </div>
+      )}
+
+      {/* Share Popup */}
+      {sharePost && (
+        <SharePopup
+          post={sharePost}
+          isOpen={!!sharePost}
+          onClose={() => setSharePost(null)}
+        />
       )}
     </div>
   )

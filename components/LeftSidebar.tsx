@@ -16,6 +16,7 @@ import {
   BellIcon,
   BookmarkIcon,
   PlusIcon,
+  GiftIcon,
   // CurrencyDollarIcon,
   QuestionMarkCircleIcon,
   ArrowRightOnRectangleIcon,
@@ -148,8 +149,7 @@ export function LeftSidebar({ isOpen = true, onClose, isMobile = false }: LeftSi
 
   const handleCreateClick = () => {
     if (!connected) {
-      setVisible(true)
-      toast.success('Подключите кошелек для создания поста')
+      setShowLoginPopup(true)
       return
     }
     setShowCreateModal(true)
@@ -237,25 +237,39 @@ export function LeftSidebar({ isOpen = true, onClose, isMobile = false }: LeftSi
             <div onClick={handleNavItemClick}>
               <NavItem href="/feed" icon={RssIcon} label="Feed" />
             </div>
-            <div onClick={handleNavItemClick}>
-              <NavItem 
-                href="/messages" 
-                icon={ChatBubbleLeftEllipsisIcon} 
-                label="Messages" 
-                badge={unreadMessages}
-              />
-            </div>
+            {/* Lottery - только для пользователей с подключенным кошельком */}
+            {connected && user && !needsWalletConnection && (
+              <div onClick={handleNavItemClick}>
+                <NavItem href="/lottery" icon={GiftIcon} label="Lottery" />
+              </div>
+            )}
+            {connected && user && (
+              <div onClick={handleNavItemClick}>
+                <NavItem 
+                  href="/messages" 
+                  icon={ChatBubbleLeftEllipsisIcon} 
+                  label="Messages" 
+                  badge={unreadMessages}
+                />
+              </div>
+            )}
             {connected && user && (
               <>
                 <div onClick={handleNavItemClick}>
                   <NavItem href="/notifications" icon={BellIcon} label="Notifications" />
                 </div>
-                <div onClick={handleNavItemClick}>
-                  <NavItem href="/bookmarks" icon={BookmarkIcon} label="Library" />
-                </div>
-                <div onClick={handleNavItemClick}>
-                  <NavItem href="/purchases" icon={ShoppingBagIcon} label="Purchases" />
-                </div>
+                {/* Bookmarks - только для пользователей с реальным кошельком */}
+                {!needsWalletConnection && (
+                  <div onClick={handleNavItemClick}>
+                    <NavItem href="/bookmarks" icon={BookmarkIcon} label="Bookmarks" />
+                  </div>
+                )}
+                {/* Purchases - только для пользователей с реальным кошельком */}
+                {!needsWalletConnection && (
+                  <div onClick={handleNavItemClick}>
+                    <NavItem href="/purchases" icon={ShoppingBagIcon} label="Purchases" />
+                  </div>
+                )}
               </>
             )}
             <NavItem 
@@ -295,8 +309,8 @@ export function LeftSidebar({ isOpen = true, onClose, isMobile = false }: LeftSi
           {/* DIVIDER */}
           <div className="mx-6 my-2 border-t border-gray-200 dark:border-slate-700" />
 
-          {/* CREATOR TOOLS (if user is creator and connected) */}
-          {connected && user?.isCreator && (
+          {/* CREATOR TOOLS (if user is creator and connected) - только для пользователей с реальным кошельком */}
+          {connected && user?.isCreator && !needsWalletConnection && (
             <>
               <nav className="px-3 py-4 space-y-1">
                 <div onClick={handleNavItemClick}>

@@ -153,7 +153,7 @@ export default function CreateStoryModal({ onClose, onStoryCreated }: CreateStor
       setShowCropModal(false)
       setOriginalImage('')
       
-      toast.success('Image cropped successfully!')
+      // toast.success('Image cropped successfully!')
     } catch (error) {
       console.error('[CreateStoryModal] Error processing cropped image:', error)
       toast.error(`Error processing image: ${error instanceof Error ? error.message : 'Unknown error'}`)

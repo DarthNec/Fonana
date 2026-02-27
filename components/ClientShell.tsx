@@ -13,8 +13,9 @@ import ReferralNotification from '@/components/ReferralNotification'
 import VerifyAccountPopup from '@/components/VerifyAccountPopup'
 import NewUserProfileSetup from '@/components/NewUserProfileSetup'
 import AutoLoginPrompt from '@/components/AutoLoginPrompt'
-import Footer from '@/components/Footer'
+import { PhantomCallbackHandler } from '@/components/PhantomCallbackHandler'
 import ServiceWorkerRegistration from '@/components/ServiceWorkerRegistration'
+import CookieBanner from '@/components/CookieBanner'
 import { useState, useEffect } from 'react'
 import { usePathname } from 'next/navigation'
 import SkeletonLoader from '@/components/ui/SkeletonLoader'
@@ -72,8 +73,6 @@ export default function ClientShell({ children }: { children: React.ReactNode })
   const isIndividualChatPage = pathname?.startsWith('/messages/') && pathname !== '/messages'
   // Скрываем Navbar на странице реферальной регистрации
   const isRefPage = pathname === '/ref'
-  // Скрываем Navbar на странице загрузки приложения
-  const isDownloadPage = pathname === '/download'
   // Feed страница - fullscreen без padding
   const isFeedPage = pathname === '/feed'
 
@@ -94,13 +93,13 @@ export default function ClientShell({ children }: { children: React.ReactNode })
               <AppProvider>
               <div className="flex min-h-screen bg-gray-50 dark:bg-slate-900">
                 {/* Left Sidebar - Desktop only (hidden on special pages) */}
-                {!isRefPage && !isDownloadPage && (
+                {!isRefPage && (
                   <LeftSidebar />
                 )}
 
                 {/* Main Content - with margin-left for sidebar on desktop */}
                 <main className={`flex-1 ${
-                  isRefPage || isDownloadPage || isFeedPage
+                  isRefPage || isFeedPage
                     ? 'pb-0' 
                     : 'pb-14 md:pb-0 md:ml-[220px]'
                 } ${isFeedPage ? 'md:ml-[220px]' : ''}`}>
@@ -108,7 +107,7 @@ export default function ClientShell({ children }: { children: React.ReactNode })
                 </main>
 
                 {/* Mobile Bottom Navigation (hidden on desktop and special pages) */}
-                <div className={`block md:hidden ${isIndividualChatPage || isRefPage || isDownloadPage ? 'hidden' : 'block'}`}>
+                <div className={`block md:hidden ${isIndividualChatPage || isRefPage ? 'hidden' : 'block'}`}>
                   <BottomNav />
                 </div>
 
@@ -118,6 +117,10 @@ export default function ClientShell({ children }: { children: React.ReactNode })
                 */}
               </div>
               <ServiceWorkerRegistration />
+              {/* Phantom Mobile Callback Handler */}
+              <PhantomCallbackHandler />
+              {/* Cookie Banner */}
+              <CookieBanner />
               {/* ВРЕМЕННО ЗАКОММЕНТИРОВАНО: Попап заполнения профиля для новых пользователей */}
               {/* <NewUserProfileSetup /> */}
               <AutoLoginPrompt />

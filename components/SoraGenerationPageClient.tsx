@@ -134,7 +134,7 @@ export default function SoraGenerationPageClient() {
             <div className="w-16 h-16 border-4 border-purple-200 dark:border-purple-900 border-t-purple-600 dark:border-t-purple-400 rounded-full animate-spin"></div>
             <SparklesIcon className="w-6 h-6 text-purple-600 dark:text-purple-400 absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2" />
           </div>
-          <p className="text-gray-600 dark:text-gray-400 text-sm">Загрузка генераций...</p>
+          <p className="text-gray-600 dark:text-gray-400 text-sm">Loading generations...</p>
         </div>
       </div>
     )
@@ -146,16 +146,16 @@ export default function SoraGenerationPageClient() {
         <div className="text-center max-w-md">
           <SparklesIcon className="w-20 h-20 text-gray-400 mx-auto mb-4" />
           <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
-            Нет активных генераций
+            No active generations
           </h2>
           <p className="text-gray-600 dark:text-gray-400 mb-6">
-            У вас пока нет активных AI-видео генераций. Создайте новый пост с помощью Sora-2!
+            You don't have any active AI video generations. Create a new post using Sora-2!
           </p>
           <button
             onClick={() => router.push('/feed')}
             className="px-6 py-3 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-xl font-semibold hover:from-purple-700 hover:to-pink-700 transition-all"
           >
-            Вернуться в ленту
+            Return to the feed
           </button>
         </div>
       </div>
@@ -169,10 +169,10 @@ export default function SoraGenerationPageClient() {
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2 flex items-center gap-3">
             <SparklesIcon className="w-8 h-8 text-purple-600 dark:text-purple-400" />
-            Sora-2 Генерации
+            Sora-2 Generations
           </h1>
           <p className="text-gray-600 dark:text-gray-400">
-            Отслеживайте статус ваших AI-видео генераций в реальном времени
+            Track the status of your AI video generations in real time
           </p>
         </div>
 
@@ -206,7 +206,7 @@ export default function SoraGenerationPageClient() {
                         <SparklesIcon className="w-6 h-6 text-white absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2" />
                       </div>
                       <p className="text-white font-semibold text-center text-sm px-4">
-                        Генерируем Sora 2 видео...
+                        Generating Sora 2 video...
                       </p>
                     </div>
                   ) : post.requestStatus === 'failed' ? (
@@ -215,10 +215,10 @@ export default function SoraGenerationPageClient() {
                       <XCircleIcon className="w-16 h-16 text-red-400" />
                       <div className="text-center px-4">
                         <p className="text-white font-bold text-base mb-1">
-                          Генерация отклонена
+                          Generation rejected
                         </p>
                         <p className="text-white/80 text-sm mb-4">
-                          Sora не смогла обработать ваш запрос
+                          Sora was unable to process your request
                         </p>
                         {/* Delete button */}
                         <button
@@ -226,7 +226,7 @@ export default function SoraGenerationPageClient() {
                           className="px-4 py-2 bg-red-500/20 hover:bg-red-500/30 text-red-300 hover:text-red-200 rounded-lg font-semibold text-sm flex items-center gap-2 mx-auto transition-all border border-red-500/30 hover:border-red-500/50"
                         >
                           <TrashIcon className="w-4 h-4" />
-                          Удалить
+                          Delete
                         </button>
                       </div>
                     </div>
@@ -245,7 +245,7 @@ export default function SoraGenerationPageClient() {
 
                 {/* Title */}
                 <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-2 line-clamp-2">
-                  Prompt: {post.title || 'Без названия'}
+                  Prompt: {post.title || 'No title'}
                 </h3>
 
                 {/* Description */}
@@ -257,7 +257,7 @@ export default function SoraGenerationPageClient() {
 
                 {/* Date */}
                 <p className="text-xs text-gray-500 dark:text-gray-500">
-                  Создан: {new Date(post.createdAt).toLocaleString('ru-RU', {
+                  Created: {new Date(post.createdAt).toLocaleString('ru-RU', {
                     day: 'numeric',
                     month: 'short',
                     hour: '2-digit',
@@ -280,7 +280,7 @@ export default function SoraGenerationPageClient() {
         <div className="mt-8 text-center">
           <p className="text-xs text-gray-500 dark:text-gray-500 flex items-center justify-center gap-2">
             <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></span>
-            Автообновление каждые 10 секунд
+            Auto-refresh every 10 seconds
           </p>
         </div>
       </div>

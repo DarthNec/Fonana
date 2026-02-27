@@ -12,6 +12,17 @@ import { safeToFixed } from '@/lib/utils/format'
 import toast from 'react-hot-toast'
 import { useSafeWalletModal } from '@/lib/hooks/useSafeWalletModal'
 
+// Динамическое изменение размера шрифта на основе количества цифр
+const getTipFontSize = (amount: number): string => {
+  const formatted = `$${amount.toFixed(2)}`
+  const length = formatted.length
+  
+  if (length <= 5) return 'text-6xl'   // $0.00-$99.99
+  if (length <= 6) return 'text-5xl'   // $100.00-$999.99
+  if (length <= 7) return 'text-4xl'   // $1000.00-$9999.99
+  return 'text-3xl'                     // $10000.00+
+}
+
 interface TipSendModalProps {
   isOpen: boolean
   onClose: () => void
@@ -173,7 +184,7 @@ export function TipSendModal({ isOpen, onClose, creatorId, creatorName }: TipSen
             </button>
 
             <div className="text-center">
-              <div className="text-6xl font-bold text-gray-900 dark:text-white mb-2">
+              <div className={`${getTipFontSize(tipAmountUSD)} font-bold text-gray-900 dark:text-white mb-2`}>
                 ${tipAmountUSD.toFixed(2)}
               </div>
               <div className="text-gray-500 dark:text-gray-400 text-sm">

@@ -1,5 +1,10 @@
+import ClientShell from '@/components/ClientShell'
 import SupportPage from '@/components/SupportPage'
 
 export default function SupportPageRoute() {
-  return <SupportPage />
+  return (
+    <ClientShell>
+      <SupportPage />
+    </ClientShell>
+  )
 } 

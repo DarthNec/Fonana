@@ -61,15 +61,26 @@ export function isValidSolanaAddress(address: string): boolean {
 // Простое определение окружения кошелька
 export function detectWalletEnvironment() {
   if (typeof window === 'undefined') {
-    return { isPhantom: false, isMobile: false, isInWalletBrowser: false }
+    return { isPhantom: false, isMobile: false, isInWalletBrowser: false, hasPhantomProvider: false }
   }
   
   const userAgent = window.navigator.userAgent.toLowerCase()
   const isMobile = /android|webos|iphone|ipad|ipod|blackberry|iemobile|opera mini/i.test(userAgent)
-  const isPhantom = !!(window as any).phantom?.solana?.isPhantom
+  
+  // Проверяем оба namespace (legacy window.solana и новый window.phantom)
+  const hasPhantomProvider = !!(
+    (window as any).solana?.isPhantom ||
+    (window as any).phantom?.solana?.isPhantom
+  )
   
   // Проверяем встроенный браузер кошелька ТОЛЬКО для Phantom mobile app
-  const isInWalletBrowser = userAgent.includes('phantom') && isMobile
+  // Если на мобильном устройстве И есть Phantom provider → Это in-app browser!
+  const isInWalletBrowser = isMobile && hasPhantomProvider
   
-  return { isPhantom, isMobile, isInWalletBrowser }
+  return { 
+    isPhantom: hasPhantomProvider,
+    isMobile, 
+    isInWalletBrowser,
+    hasPhantomProvider
+  }
 } 

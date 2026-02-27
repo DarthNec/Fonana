@@ -28,7 +28,7 @@ import { formatSolToUsd } from '@/lib/utils/format'
 import { createFFmpeg, fetchFile } from '@ffmpeg/ffmpeg'
 
 const categories = [
-  'Art', 'Music', 'Gaming', 'Lifestyle', 'Fitness', 
+  'Art', 'Music', 'Gaming', 'Lifestyle', 'Fitness', 'Travel', 'Animals',
   'Tech', 'DeFi', 'NFT', 'Trading', 'GameFi', 
   'Blockchain', 'Intimate', 'Education', 'Comedy',
   'Food', 'Party', 'Landscape', 'Work', 'Adult', 'Couple', 'Solo'
@@ -598,7 +598,7 @@ export default function CreatePostModal({ onPostCreated, onPostUpdated, onClose,
       setShowCropModal(false)
       setOriginalImage('')
       
-      toast.success('Image cropped successfully!')
+      // toast.success('Image cropped successfully!')
     } catch (error) {
       console.error('[CreatePostModal] Error processing cropped image:', error)
       toast.error(`Error processing image: ${error instanceof Error ? error.message : 'Unknown error'}`)
@@ -1591,7 +1591,7 @@ export default function CreatePostModal({ onPostCreated, onPostUpdated, onClose,
                               {showGenerationTooltip && (
                                 <div className="absolute z-50 bottom-full right-0 mb-2 w-64 px-3 py-2 text-xs text-white bg-gray-900 dark:bg-gray-800 rounded-lg shadow-lg border border-gray-700">
                                   <div className="relative">
-                                    Количество Sora-2 генераций, которые вы можете использовать в сутки, автоматически обновляется раз в 24 часа
+                                    The number of Sora-2 generations you can use per day, automatically updated every 24 hours
                                     <div className="absolute -bottom-1 right-4 w-2 h-2 bg-gray-900 dark:bg-gray-800 border-r border-b border-gray-700 transform rotate-45"></div>
                                   </div>
                                 </div>

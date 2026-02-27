@@ -1,14 +1,49 @@
 'use client'
 
 import { useEffect } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 
 export default function HomePage() {
   const router = useRouter()
+  const searchParams = useSearchParams()
   
   useEffect(() => {
+    // 📊 Извлекаем UTM метки из URL
+    const source = searchParams.get('source')
+    const campaign = searchParams.get('campaign')
+    
+    // Сохраняем в localStorage
+    if (source) {
+      localStorage.setItem('fonana_source', source)
+      console.log('✅ [UTM] Source saved:', source)
+    } else {
+      // Если нет метки → ставим "None"
+      if (!localStorage.getItem('fonana_source')) {
+        localStorage.setItem('fonana_source', 'None')
+        console.log('ℹ️ [UTM] No source param, set to None')
+      }
+    }
+    
+    if (campaign) {
+      localStorage.setItem('fonana_campaign', campaign)
+      console.log('✅ [UTM] Campaign saved:', campaign)
+    } else {
+      // Если нет метки → ставим "None"
+      if (!localStorage.getItem('fonana_campaign')) {
+        localStorage.setItem('fonana_campaign', 'None')
+        console.log('ℹ️ [UTM] No campaign param, set to None')
+      }
+    }
+    
+    // Сохраняем timestamp первого визита
+    if (!localStorage.getItem('fonana_first_visit')) {
+      localStorage.setItem('fonana_first_visit', new Date().toISOString())
+      console.log('📅 [UTM] First visit timestamp saved')
+    }
+    
+    // Редирект на /creators
     router.replace('/creators')
-  }, [router])
+  }, [router, searchParams])
   
   // Loading state while redirecting
   return (
