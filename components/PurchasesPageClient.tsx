@@ -1,19 +1,28 @@
 'use client'
 
 import React, { useState, useEffect } from 'react'
-import { ShoppingBagIcon } from '@heroicons/react/24/outline'
+import { ShoppingBagIcon, WalletIcon } from '@heroicons/react/24/outline'
 import { PostsContainer } from '@/components/posts/layouts/PostsContainer'
 import { FullscreenCarousel } from '@/components/feed/FullscreenCarousel'
 import { PostAction, UnifiedPost } from '@/types/posts'
 import toast from 'react-hot-toast'
 import { useUser } from '@/lib/store/appStore'
+import { useWallet } from '@/lib/hooks/useSafeWallet'
 
 export default function PurchasesPageClient() {
   const user = useUser()
+  const { publicKey } = useWallet()
+  const userWallet = publicKey?.toBase58() || null
   const [posts, setPosts] = useState<UnifiedPost[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [showFullscreen, setShowFullscreen] = useState(false)
   const [fullscreenIndex, setFullscreenIndex] = useState(0)
+
+  // Проверяем, нужно ли пользователю подключить кошелёк
+  const needsWalletConnection = user?.wallet?.startsWith('TG_') || 
+                                 user?.wallet?.startsWith('FK_') || 
+                                 user?.wallet?.startsWith('GOOGLE_') || 
+                                 user?.wallet?.startsWith('EMAIL_')
 
   useEffect(() => {
     if (user?.id) {
@@ -90,10 +99,10 @@ export default function PurchasesPageClient() {
             </div>
             <div>
               <h1 className="text-xl font-bold text-gray-900 dark:text-white">
-                Мои покупки
+                My Purchases
               </h1>
               <p className="text-sm text-gray-500 dark:text-slate-400">
-                {posts.length} {posts.length === 1 ? 'пост' : 'постов'}
+                {posts.length} {posts.length === 1 ? 'post' : 'posts'}
               </p>
             </div>
           </div>
@@ -102,6 +111,27 @@ export default function PurchasesPageClient() {
 
       {/* Content */}
       <div className="p-6">
+        {/* Wallet Connection Notice */}
+        {needsWalletConnection && (
+          <div className="mb-6 bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-800 rounded-xl p-6">
+            <div className="flex items-start gap-4">
+              <div className="flex-shrink-0">
+                <div className="w-12 h-12 rounded-full bg-purple-100 dark:bg-purple-900/40 flex items-center justify-center">
+                  <WalletIcon className="w-6 h-6 text-purple-600 dark:text-purple-400" />
+                </div>
+              </div>
+              <div className="flex-1">
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
+                  Connect Your Wallet
+                </h3>
+                <p className="text-sm text-gray-600 dark:text-gray-300 mb-4">
+                  Connect your Solana wallet to interact with your purchased content and unlock all features.
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+
         {isLoading ? (
           <div className="flex items-center justify-center py-20">
             <div className="w-12 h-12 border-4 border-purple-500/30 border-t-purple-500 rounded-full animate-spin" />
@@ -112,10 +142,10 @@ export default function PurchasesPageClient() {
               <ShoppingBagIcon className="w-10 h-10 text-gray-400 dark:text-slate-500" />
             </div>
             <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
-              Нет покупок
+              No Purchases Yet
             </h3>
             <p className="text-gray-500 dark:text-slate-400 max-w-sm mx-auto">
-              Здесь будут отображаться посты, которые вы приобрели
+              Posts you purchase will appear here
             </p>
           </div>
         ) : (

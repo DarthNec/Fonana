@@ -87,19 +87,17 @@ export function PostGallery({
 
   return (
     <>
-      <div className={cn('p-6', className)}>
-        <div className={cn('grid gap-3', getGridClass())}>
-          {mediaPosts.map((post, index) => (
-            <MediaTile
-              key={post.id}
-              post={post}
-              index={index}
-              onClick={() => handleTileClick(index)}
-              onAction={onAction}
-              showUsername={showUsername}
-            />
-          ))}
-        </div>
+      <div className={cn('grid gap-3', getGridClass(), className)}>
+        {mediaPosts.map((post, index) => (
+          <MediaTile
+            key={post.id}
+            post={post}
+            index={index}
+            onClick={() => handleTileClick(index)}
+            onAction={onAction}
+            showUsername={showUsername}
+          />
+        ))}
       </div>
 
       {/* Media Viewer Modal */}

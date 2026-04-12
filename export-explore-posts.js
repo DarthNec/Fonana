@@ -19,6 +19,135 @@ const prisma = new PrismaClient()
  * node export-explore-posts.js
  */
 
+/**
+ * Трансформирует пост в формат совместимый с UnifiedPost
+ * Добавляет недостающие поля для совместимости с /api/posts
+ */
+function transformPostForExplore(post) {
+  // Определяем статус Sora-2 генерации
+  let requestStatus = null
+  if (post.requestId && post.type === 'ai-video') {
+    if (post.error) {
+      requestStatus = 'failed'
+    } else if (post.mediaUrl) {
+      requestStatus = 'completed'
+    } else {
+      requestStatus = 'processing'
+    }
+  }
+
+  // Определяем требуемый тир для доступа
+  const requiredTier = post.minSubscriptionTier || (post.isPremium ? 'vip' : null)
+
+  return {
+    // Оригинальные поля из БД
+    id: post.id,
+    title: post.title,
+    content: post.content,
+    mediaUrl: post.mediaUrl,
+    type: post.type,
+    category: post.category,
+    thumbnail: post.thumbnail,
+    blurUrl: post.blurUrl,
+    previewUrl: post.previewUrl,
+    price: post.price,
+    currency: post.currency || 'SOL',
+    isLocked: post.isLocked,
+    isPremium: post.isPremium,
+    minSubscriptionTier: post.minSubscriptionTier,
+    imageAspectRatio: post.imageAspectRatio,
+    isSellable: post.isSellable,
+    requestId: post.requestId,
+    error: post.error,
+    remixId: post.remixId,
+    containerId: post.containerId,
+    likesCount: post.likesCount || 0,
+    commentsCount: post.commentsCount || 0,
+    viewsCount: post.viewsCount || 0,
+    createdAt: post.createdAt,
+    updatedAt: post.updatedAt,
+    creatorId: post.creatorId,
+
+    // ✅ Добавляем поля для совместимости с /api/posts
+    likes: post.likesCount || 0,
+    comments: post.commentsCount || 0,
+    
+    // Creator с дополнительными полями
+    creator: {
+      id: post.creator.id,
+      nickname: post.creator.nickname,
+      wallet: post.creator.wallet,
+      fullName: post.creator.fullName,
+      avatar: post.creator.avatar,
+      isCreator: post.creator.isCreator,
+      // Добавляем name и username для UnifiedPost
+      name: post.creator.fullName || post.creator.nickname || 'Unknown',
+      username: post.creator.nickname || 'unknown',
+    },
+
+    // ✅ Объект access (для UnifiedPost) - БЕЗ user-specific данных
+    access: {
+      isLocked: post.isLocked,
+      tier: requiredTier,
+      price: post.price,
+      currency: post.currency || 'SOL',
+      // User-specific поля будут заполняться на фронте из localStorage
+      isPurchased: false,
+      isSubscribed: false,
+      userTier: null,
+      shouldHideContent: post.isLocked, // По умолчанию скрываем если заблокирован
+      isCreatorPost: false,
+      hasAccess: !post.isLocked, // По умолчанию доступ есть только если не заблокирован
+      shouldBlur: false,
+      shouldDim: false,
+      upgradePrompt: null,
+      requiredTier,
+    },
+
+    // ✅ Объект media (для UnifiedPost)
+    media: {
+      type: post.type,
+      url: post.mediaUrl,
+      thumbnail: post.thumbnail,
+      preview: post.previewUrl,
+      error: post.error,
+      blurUrl: post.blurUrl,
+    },
+
+    // ✅ Объект engagement (для UnifiedPost)
+    engagement: {
+      likes: post.likesCount || 0,
+      comments: post.commentsCount || 0,
+      views: post.viewsCount || 0,
+      isLiked: false, // User-specific, заполняется на фронте
+    },
+
+    // User-specific поля (будут обновляться на фронте)
+    isSubscribed: false,
+    hasPurchased: false,
+    isCreatorPost: false,
+    requestStatus,
+    requiredTier,
+    userTier: null,
+    hasAccess: !post.isLocked,
+    shouldBlur: false,
+    shouldDim: false,
+    upgradePrompt: null,
+    accessType: post.isLocked ? 'restricted' : 'public',
+    shouldHideContent: post.isLocked,
+
+    // ✅ Emotions (пустой массив, можно заполнить позже если нужно)
+    emotions: [],
+
+    // ✅ _count сохраняем для совместимости
+    _count: post._count || {
+      likes: post.likesCount || 0,
+      comments: post.commentsCount || 0,
+      purchases: 0,
+    },
+  }
+}
+
 async function exportExplorePosts() {
   try {
     console.log('🔍 [Explore Export] Starting export...\n')
@@ -141,10 +270,12 @@ async function exportExplorePosts() {
     })
     
     // Фильтруем: только CDN URLs и непустые
-    const filteredAllPosts = allPosts.filter(post => {
-      if (!post.mediaUrl || post.mediaUrl.trim() === '') return false
-      return post.mediaUrl.startsWith('https://fonanastorage.b-cdn.net/')
-    })
+    const filteredAllPosts = allPosts
+      .filter(post => {
+        if (!post.mediaUrl || post.mediaUrl.trim() === '') return false
+        return post.mediaUrl.startsWith('https://fonanastorage.b-cdn.net/')
+      })
+      .map(post => transformPostForExplore(post))
     
     console.log(`   Found ${allPosts.length} posts`)
     console.log(`   Filtered to ${filteredAllPosts.length} posts (CDN only)\n`)
@@ -211,10 +342,12 @@ async function exportExplorePosts() {
     })
     
     // Фильтруем платные посты
-    const filteredPaidPosts = paidPosts.filter(post => {
-      if (!post.mediaUrl || post.mediaUrl.trim() === '') return false
-      return post.mediaUrl.startsWith('https://fonanastorage.b-cdn.net/')
-    })
+    const filteredPaidPosts = paidPosts
+      .filter(post => {
+        if (!post.mediaUrl || post.mediaUrl.trim() === '') return false
+        return post.mediaUrl.startsWith('https://fonanastorage.b-cdn.net/')
+      })
+      .map(post => transformPostForExplore(post))
     
     console.log(`   Found ${paidPosts.length} paid posts`)
     console.log(`   Filtered to ${filteredPaidPosts.length} paid posts (CDN only)\n`)
@@ -278,10 +411,12 @@ async function exportExplorePosts() {
     })
     
     // Фильтруем premium посты
-    const filteredPremiumPosts = premiumPosts.filter(post => {
-      if (!post.mediaUrl || post.mediaUrl.trim() === '') return false
-      return post.mediaUrl.startsWith('https://fonanastorage.b-cdn.net/')
-    })
+    const filteredPremiumPosts = premiumPosts
+      .filter(post => {
+        if (!post.mediaUrl || post.mediaUrl.trim() === '') return false
+        return post.mediaUrl.startsWith('https://fonanastorage.b-cdn.net/')
+      })
+      .map(post => transformPostForExplore(post))
     
     console.log(`   Found ${premiumPosts.length} premium posts`)
     console.log(`   Filtered to ${filteredPremiumPosts.length} premium posts (CDN only)\n`)

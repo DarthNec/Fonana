@@ -1,7 +1,6 @@
 // Утилита для автоматического назначения уникальных CDN аватаров новым пользователям
-import { PrismaClient } from '@prisma/client'
-
-const prisma = new PrismaClient()
+// 🔥 FIX 2026-03-09: Используем синглтон prisma для предотвращения connection pool exhaustion
+import { prisma } from '@/lib/prisma'
 
 const AVATAR_CONFIG = {
   cdnBasePath: 'https://fonanastorage.b-cdn.net/avatars/default/',

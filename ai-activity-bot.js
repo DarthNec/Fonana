@@ -10,12 +10,11 @@
  * - Берёт последние 80 постов (не супер старые!)
  */
 
-const { PrismaClient } = require('@prisma/client')
+// 🔥 FIX 2026-03-09: Используем синглтон prisma для предотвращения connection pool exhaustion
+const { prisma } = require('./lib/prisma')
 const OpenAI = require('openai')
 const fs = require('fs')
 const path = require('path')
-
-const prisma = new PrismaClient()
 
 // Путь к файлу со списком AI пользователей
 const AI_USERS_FILE = path.join(__dirname, 'ai-chat-users.json')
@@ -281,9 +280,8 @@ async function runActivityCycle() {
     console.error('\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━')
     console.error('[AI Activity Bot] ❌ Error in activity cycle:', error)
     console.error('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n')
-  } finally {
-    await prisma.$disconnect()
   }
+  // 🔥 FIX 2026-03-09: Не вызываем prisma.$disconnect() - синглтон управляет lifecycle сам
 }
 
 // Запуск

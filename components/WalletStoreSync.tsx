@@ -202,25 +202,30 @@ export function WalletStoreSync() {
       const isTelegramAuth = localStorage.getItem('fonana_telegram_auth') === 'true'
       const isGuestAuth = localStorage.getItem('fonana_guest_auth') === 'true'
       const isMobilePhantom = localStorage.getItem('fonana_phantom_mobile_auth') === 'true'
+      const isGoogleAuth = localStorage.getItem('fonana_google_auth') === 'true'
+      const isEmailAuth = localStorage.getItem('fonana_email_auth') === 'true'
       
-      if (!isTelegramAuth && !isGuestAuth && !isMobilePhantom) {
+      if (!isTelegramAuth && !isGuestAuth && !isMobilePhantom && !isGoogleAuth && !isEmailAuth) {
         console.log('🔵 [SAVED USER] Not an authenticated user type')
         return
       }
       
-      const userType = isTelegramAuth ? 'Telegram' : (isGuestAuth ? 'Guest' : 'Mobile Phantom')
+      const userType = isTelegramAuth ? 'Telegram' : 
+                       (isGuestAuth ? 'Guest' : 
+                       (isMobilePhantom ? 'Mobile Phantom' : 
+                       (isEmailAuth ? 'Email' : 'Google')))
       console.log(`🔵 [${userType.toUpperCase()} USER] Found ${userType} user in localStorage, restoring session...`)
       console.log(`🔵 [${userType.toUpperCase()} USER] Wallet:`, savedWallet.substring(0, 8) + '...')
       
       // Загружаем пользователя
       await fetchAndSetUser(savedWallet)
       
-      // 🔥 ЭМУЛИРУЕМ ПОДКЛЮЧЕННЫЙ КОШЕЛЕК для Telegram/Guest
+      // 🔥 ЭМУЛИРУЕМ ПОДКЛЮЧЕННЫЙ КОШЕЛЕК для Telegram/Guest/Google/Email
       console.log(`🔵 [${userType.toUpperCase()} USER] Emulating connected wallet state...`)
       
-      // Для Telegram (TG_) и Guest (FK_) пользователей НЕ создаем PublicKey
+      // Для Telegram (TG_), Guest (FK_), Google (GOOGLE_) и Email (EMAIL_) пользователей НЕ создаем PublicKey
       // т.к. это НЕ валидный Solana адрес
-      const fakePublicKey = (savedWallet.startsWith('TG_') || savedWallet.startsWith('FK_')) 
+      const fakePublicKey = (savedWallet.startsWith('TG_') || savedWallet.startsWith('FK_') || savedWallet.startsWith('GOOGLE_') || savedWallet.startsWith('EMAIL_')) 
         ? null 
         : new PublicKey(savedWallet)
       
@@ -264,16 +269,22 @@ export function WalletStoreSync() {
         disconnecting: walletState.disconnecting
       })
 
-      // 🔥 НЕ ПЕРЕЗАПИСЫВАЕМ connected для Telegram/Guest пользователей
+      // 🔥 НЕ ПЕРЕЗАПИСЫВАЕМ connected для Telegram/Guest/Google/Email/MobilePhantom пользователей
       const isTelegramAuth = localStorage.getItem('fonana_telegram_auth') === 'true'
       const isGuestAuth = localStorage.getItem('fonana_guest_auth') === 'true'
+      const isGoogleAuth = localStorage.getItem('fonana_google_auth') === 'true'
+      const isEmailAuth = localStorage.getItem('fonana_email_auth') === 'true'
+      const isMobilePhantom = localStorage.getItem('fonana_phantom_mobile_auth') === 'true'
       
-      if ((isTelegramAuth || isGuestAuth) && !walletAdapter.connected) {
-        // Для Telegram/Guest пользователей НЕ обновляем состояние если Phantom не подключен
-        const userType = isTelegramAuth ? 'Telegram' : 'Guest'
+      if ((isTelegramAuth || isGuestAuth || isGoogleAuth || isEmailAuth || isMobilePhantom) && !walletAdapter.connected) {
+        // Для Telegram/Guest/Google/Email/MobilePhantom пользователей НЕ обновляем состояние если Phantom не подключен
+        const userType = isTelegramAuth ? 'Telegram' : 
+                         (isGuestAuth ? 'Guest' : 
+                         (isEmailAuth ? 'Email' : 
+                         (isMobilePhantom ? 'Mobile Phantom' : 'Google')))
         console.log(`🔵 [WALLET STORE SYNC] Skipping wallet state update: ${userType} session active, preserving connected=true`)
         
-        // Но если Telegram/Guest пользователь подключил Phantom, разрешаем обновление
+        // Но если пользователь подключил Phantom, разрешаем обновление
         if (walletState.connected) {
           console.log(`🔵 [WALLET STORE SYNC] ${userType} user connected Phantom, allowing update`)
           debouncedUpdateState(walletState)

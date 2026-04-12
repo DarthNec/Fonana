@@ -9,7 +9,6 @@ import { FullscreenCarousel } from '@/components/feed/FullscreenCarousel'
 import { PostAction, UnifiedPost } from '@/types/posts'
 import { PostNormalizer } from '@/services/posts/normalizer'
 import toast from 'react-hot-toast'
-import { useWallet } from '@/lib/hooks/useSafeWallet'
 
 interface BookmarkedPost {
   id: string
@@ -58,28 +57,27 @@ interface BookmarkedPost {
 export default function BookmarksPageClient() {
   const user = useUser()
   const router = useRouter()
-  const { publicKey } = useWallet()
-  const userWallet = publicKey?.toBase58() || null
   const [bookmarks, setBookmarks] = useState<BookmarkedPost[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [showFullscreen, setShowFullscreen] = useState(false)
   const [fullscreenIndex, setFullscreenIndex] = useState(0)
 
   useEffect(() => {
-    if (!userWallet) {
-      // Не делаем редирект, просто не загружаем закладки
+    if (!user?.id) {
+      // Не авторизован - не загружаем закладки
       setIsLoading(false)
       return
     }
 
     loadBookmarks()
-  }, [userWallet, router])
+  }, [user?.id, router])
 
   const loadBookmarks = async () => {
-    if (!userWallet) return
+    if (!user?.id) return
 
     try {
-      const response = await fetch(`/api/bookmarks?userWallet=${encodeURIComponent(userWallet)}`)
+      // Используем user.id вместо userWallet для всех типов пользователей
+      const response = await fetch(`/api/bookmarks?userId=${encodeURIComponent(user.id)}`)
 
       if (response.ok) {
         const data = await response.json()
@@ -100,8 +98,8 @@ export default function BookmarksPageClient() {
   }
 
   const handlePostAction = async (action: PostAction) => {
-    if (!userWallet) {
-      toast.error('Please connect your wallet')
+    if (!user?.id) {
+      toast.error('Please log in to continue')
       return
     }
 
@@ -115,7 +113,7 @@ export default function BookmarksPageClient() {
               'Content-Type': 'application/json'
             },
             body: JSON.stringify({ 
-              userWallet: userWallet,
+              userId: user.id,
               postId: action.postId 
             })
           })
@@ -202,8 +200,8 @@ export default function BookmarksPageClient() {
     )
   }
 
-  // Если кошелек не подключен, показываем сообщение
-  if (!userWallet) {
+  // Если пользователь не авторизован, показываем сообщение
+  if (!user?.id) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-slate-900 pb-20 md:pb-0 px-4">
         <div className="text-center p-6 md:p-8 bg-white dark:bg-slate-800 rounded-2xl shadow-xl max-w-sm w-full">
@@ -211,23 +209,16 @@ export default function BookmarksPageClient() {
             <BookmarkIcon className="w-8 h-8 text-purple-600 dark:text-purple-400" />
           </div>
           <h2 className="text-lg md:text-xl font-bold text-gray-900 dark:text-white mb-2">
-            Connect your wallet
+            Log in to view bookmarks
           </h2>
           <p className="text-sm text-gray-600 dark:text-gray-400 mb-6">
-            To view bookmarks, you need to connect your Solana wallet
+            Sign in to save and access your favorite posts
           </p>
           <button
-            onClick={() => {
-              const walletButton = document.querySelector('.wallet-adapter-button-trigger') as HTMLButtonElement
-              if (walletButton) {
-                walletButton.click()
-              } else {
-                toast.error('Wallet button not found')
-              }
-            }}
+            onClick={() => router.push('/')}
             className="w-full px-6 py-3 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-xl font-semibold hover:from-purple-700 hover:to-pink-700 transition-all"
           >
-            Connect
+            Log In
           </button>
         </div>
       </div>
@@ -254,10 +245,10 @@ export default function BookmarksPageClient() {
               </div>
               <div>
                 <h1 className="text-lg md:text-xl font-bold text-gray-900 dark:text-white">
-                  Закладки
+                  Bookmarks
                 </h1>
                 <p className="text-xs md:text-sm text-gray-500 dark:text-slate-400">
-                  {bookmarks.length} {bookmarks.length === 1 ? 'пост' : 'постов'}
+                  {bookmarks.length} {bookmarks.length === 1 ? 'post' : 'posts'}
                 </p>
               </div>
             </div>
@@ -282,7 +273,7 @@ export default function BookmarksPageClient() {
               <BookmarkIcon className="w-8 h-8 md:w-10 md:h-10 text-gray-400 dark:text-slate-500" />
             </div>
             <h3 className="text-base md:text-lg font-semibold text-gray-900 dark:text-white mb-2">
-              No bookmarks
+              No Bookmarks Yet
             </h3>
             <p className="text-sm text-gray-500 dark:text-slate-400 max-w-sm mx-auto mb-6 px-4">
               Save your favorite posts to view them later
@@ -291,7 +282,7 @@ export default function BookmarksPageClient() {
               onClick={() => router.push('/feed')}
               className="px-6 py-3 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-xl font-semibold hover:from-purple-700 hover:to-pink-700 transition-all"
             >
-              Open feed
+              Explore Feed
             </button>
           </div>
         )}

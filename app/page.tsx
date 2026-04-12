@@ -1,11 +1,16 @@
 'use client'
 
 import { useEffect } from 'react'
-import { useRouter, useSearchParams } from 'next/navigation'
+import { useSearchParams } from 'next/navigation'
+import dynamic from 'next/dynamic'
+import ClientShell from '@/components/ClientShell'
+
+const ExplorePageClient = dynamic(() => import('@/components/ExplorePageClient'), { ssr: false })
+const ExplorePageClientMobile = dynamic(() => import('@/components/ExplorePageClientMobile'), { ssr: false })
 
 export default function HomePage() {
-  const router = useRouter()
   const searchParams = useSearchParams()
+  const filter = searchParams.get('filter')
   
   useEffect(() => {
     // 📊 Извлекаем UTM метки из URL
@@ -40,18 +45,29 @@ export default function HomePage() {
       localStorage.setItem('fonana_first_visit', new Date().toISOString())
       console.log('📅 [UTM] First visit timestamp saved')
     }
-    
-    // Редирект на /creators
-    router.replace('/creators')
-  }, [router, searchParams])
+  }, [searchParams])
   
-  // Loading state while redirecting
+  // Если есть filter (public или premium), показываем версию с сеткой на всех экранах
+  const showGridView = filter === 'public' || filter === 'premium'
+  
   return (
-    <div className="flex items-center justify-center min-h-screen bg-white dark:bg-slate-900">
-      <div className="text-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-500 mx-auto mb-4" />
-        <p className="text-gray-600 dark:text-gray-400">Redirecting to explore...</p>
-      </div>
-    </div>
+    <ClientShell>
+      {showGridView ? (
+        // Версия с сеткой для фильтрованных постов (на мобильном и десктопе)
+        <ExplorePageClient />
+      ) : (
+        <>
+          {/* Desktop version */}
+          <div className="hidden md:block">
+            <ExplorePageClient />
+          </div>
+          
+          {/* Mobile version */}
+          <div className="block md:hidden">
+            <ExplorePageClientMobile />
+          </div>
+        </>
+      )}
+    </ClientShell>
   )
 }

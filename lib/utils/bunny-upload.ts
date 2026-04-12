@@ -27,8 +27,59 @@ export async function uploadToBunnyStorage(
     // Генерируем уникальное имя файла
     const buffer = Buffer.from(await file.arrayBuffer())
     const hash = crypto.createHash('md5').update(buffer).digest('hex')
-    const ext = path.extname(file.name)
+    
+    // 🔥 FIX 2026-03-09: Безопасное извлечение расширения с fallback
+    let ext = path.extname(file.name).toLowerCase()
+    
+    // Если расширения нет или оно пустое - определяем по MIME type
+    if (!ext || ext.length === 0) {
+      const mimeToExt: Record<string, string> = {
+        'video/mp4': '.mp4',
+        'video/webm': '.webm',
+        'video/quicktime': '.mov',
+        'image/jpeg': '.jpg',
+        'image/jpg': '.jpg',
+        'image/png': '.png',
+        'image/gif': '.gif',
+        'image/webp': '.webp',
+        'audio/mpeg': '.mp3',
+        'audio/mp3': '.mp3',
+        'audio/wav': '.wav',
+        'audio/webm': '.webm'
+      }
+      ext = mimeToExt[file.type] || '.bin'
+      console.warn(`⚠️ [BUNNY UPLOAD] No extension in filename "${file.name}", using MIME-based fallback: ${ext}`)
+    }
+    
+    // Санитизация расширения: только разрешённые символы (a-z, 0-9, точка)
+    if (!/^\.[a-z0-9]+$/.test(ext)) {
+      const originalExt = ext
+      ext = ext.replace(/[^.a-z0-9]/g, '')
+      if (ext.length === 0 || ext === '.') {
+        // Если после санитизации ничего не осталось - fallback к MIME type
+        const mimeToExt: Record<string, string> = {
+          'video/mp4': '.mp4',
+          'video/webm': '.webm',
+          'video/quicktime': '.mov',
+          'image/jpeg': '.jpg',
+          'image/png': '.png',
+          'image/webp': '.webp',
+          'audio/mpeg': '.mp3'
+        }
+        ext = mimeToExt[file.type] || '.bin'
+      }
+      console.warn(`⚠️ [BUNNY UPLOAD] Invalid extension "${originalExt}", sanitized to: ${ext}`)
+    }
+    
     const fileName = `${hash}${ext}`
+    
+    console.log('🎯 [BUNNY UPLOAD] Generated filename:', {
+      originalName: file.name,
+      extractedExt: path.extname(file.name),
+      finalExt: ext,
+      fileName,
+      mimeType: file.type
+    })
 
     // Определяем путь в BunnyStorage
     let bunnyPath: string

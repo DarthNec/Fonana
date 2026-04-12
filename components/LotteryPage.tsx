@@ -6,6 +6,7 @@ import { SparklesIcon, ClockIcon, WalletIcon } from '@heroicons/react/24/outline
 import { useAppStore } from '@/lib/store/appStore'
 import { useSafeWalletModal } from '@/lib/hooks/useSafeWalletModal'
 import Image from 'next/image'
+import BuySpinsModal from './BuySpinsModal'
 
 // Конфигурация призов
 const PRIZES: Sector[] = [
@@ -42,6 +43,7 @@ export default function LotteryPage() {
   const [isWaitingForSpin, setIsWaitingForSpin] = useState(false)
   const [isLoading, setIsLoading] = useState(true) // ✅ Loading state для загрузки данных
   const [prizePost, setPrizePost] = useState<any>(null) // ✅ Выигранный пост
+  const [showBuySpinsModal, setShowBuySpinsModal] = useState(false) // ✅ Попап покупки спинов
   
   // 🔊 Audio refs для звуков колеса
   const spinSoundRef = useRef<HTMLAudioElement | null>(null)
@@ -107,9 +109,9 @@ export default function LotteryPage() {
   
   // 🔊 Инициализация аудио объектов
   useEffect(() => {
-    spinSoundRef.current = new Audio('/Sounds/wheel_fortune.mp3')
-    winSoundRef.current = new Audio('/Sounds/wheel_win.mp3')
-    failSoundRef.current = new Audio('/Sounds/wheel_fail.mp3')
+    spinSoundRef.current = new Audio('/sounds/wheel_fortune.mp3')
+    winSoundRef.current = new Audio('/sounds/wheel_win.mp3')
+    failSoundRef.current = new Audio('/sounds/wheel_fail.mp3')
     
     // Настройка звука вращения (loop)
     if (spinSoundRef.current) {
@@ -575,14 +577,44 @@ export default function LotteryPage() {
           </div>
         )}
 
-        {/* No spins message */}
+        {/* No spins message + Buy More Spins button */}
         {spinsRemaining <= 0 && !winner && (
           <div className="max-w-md mx-auto p-5 sm:p-6 mx-4 bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-2xl text-center shadow-sm">
             <p className="text-base sm:text-lg font-semibold mb-2 text-gray-900 dark:text-white">No spins remaining!</p>
-            <p className="text-sm text-gray-600 dark:text-slate-400">Come back tomorrow for more spins 🎰</p>
+            <p className="text-sm text-gray-600 dark:text-slate-400 mb-4">Get more spins to keep playing 🎰</p>
+            
+            <button
+              onClick={() => setShowBuySpinsModal(true)}
+              className="w-full py-3 px-6 bg-gradient-to-r from-yellow-400 via-orange-500 to-pink-500 hover:from-yellow-500 hover:via-orange-600 hover:to-pink-600 text-white font-bold rounded-xl shadow-lg hover:shadow-xl transform hover:scale-[1.02] transition-all duration-200 flex items-center justify-center gap-2"
+            >
+              <SparklesIcon className="w-5 h-5" />
+              <span>Get More Spins</span>
+            </button>
           </div>
         )}
       </div>
+
+      {/* Buy Spins Modal */}
+      {showBuySpinsModal && (
+        <BuySpinsModal
+          onClose={() => setShowBuySpinsModal(false)}
+          onSuccess={async (spinsAdded) => {
+            // Перезагружаем количество спинов
+            const wallet = localStorage.getItem('fonana_user_wallet')
+            if (wallet) {
+              try {
+                const response = await fetch(`/api/wheel?wallet=${wallet}`)
+                if (response.ok) {
+                  const data = await response.json()
+                  setSpinsRemaining(data.availableSpins || 0)
+                }
+              } catch (error) {
+                console.error('[Lottery] Failed to refresh spins:', error)
+              }
+            }
+          }}
+        />
+      )}
 
       <style jsx global>{`
         @keyframes fadeIn {

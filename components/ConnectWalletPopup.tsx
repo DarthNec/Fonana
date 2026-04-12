@@ -12,8 +12,8 @@ import toast from 'react-hot-toast'
 interface ConnectWalletPopupProps {
   isOpen: boolean
   onClose: () => void
-  currentWallet: string // TG_ or FK_ wallet
-  userType: 'telegram' | 'guest'
+  currentWallet: string // TG_, FK_, GOOGLE_, EMAIL_ wallet
+  userType: 'telegram' | 'guest' | 'google' | 'email'
 }
 
 export default function ConnectWalletPopup({ 
@@ -85,7 +85,11 @@ export default function ConnectWalletPopup({
               localStorage.removeItem('fonana_telegram_auth')
             } else if (userType === 'guest') {
               localStorage.removeItem('fonana_guest_auth')
-              localStorage.removeItem('fonana_device_id')
+              // localStorage.removeItem('fonana_device_id')
+            } else if (userType === 'google') {
+              localStorage.removeItem('fonana_google_auth')
+            } else if (userType === 'email') {
+              localStorage.removeItem('fonana_email_auth')
             }
             
             console.log('🔗 [CONNECT WALLET] Updated localStorage')
@@ -185,6 +189,10 @@ export default function ConnectWalletPopup({
                 <p className="text-sm text-gray-600 dark:text-gray-400">
                   {userType === 'guest' 
                     ? 'Your guest account will be linked to your wallet'
+                    : userType === 'google'
+                    ? 'Your Google account will remain linked'
+                    : userType === 'email'
+                    ? 'Your Email account will remain linked'
                     : 'Your Telegram account will remain linked'
                   }
                 </p>

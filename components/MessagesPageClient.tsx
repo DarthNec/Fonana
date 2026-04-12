@@ -163,6 +163,11 @@ function MessagesPageClientInner() {
   const [audioBlob, setAudioBlob] = useState<Blob | null>(null)
   const [audioPreviewUrl, setAudioPreviewUrl] = useState<string | null>(null)
   
+  // 🤖 AI Typing Indicator state
+  const [isAITyping, setIsAITyping] = useState(false)
+  const aiTypingTimeoutRef = useRef<NodeJS.Timeout | null>(null)
+  const [pendingAIMessages, setPendingAIMessages] = useState<Message[]>([])
+  
   // Settings modal
   const [showSettingsModal, setShowSettingsModal] = useState(false)
   
@@ -373,17 +378,79 @@ function MessagesPageClientInner() {
       if (response.ok) {
         const data = await response.json()
         
+        // 🤖 Проверяем первое сообщение на AI ответ
+        if (data.messages.length > 0) {
+          const latestMessage = data.messages[0]
+          if (latestMessage.isAIanswer && !latestMessage.isOwn) {
+            const messageTime = new Date(latestMessage.createdAt).getTime()
+            const now = Date.now()
+            const ageInSeconds = (now - messageTime) / 1000
+            
+            // Если сообщение свежее 15 секунд - фильтруем и показываем typing
+            if (ageInSeconds < 15) {
+              console.log('[AI Message] Fresh AI message detected, showing typing indicator')
+              
+              // Добавляем в pending
+              setPendingAIMessages(prev => {
+                if (!prev.find(m => m.id === latestMessage.id)) {
+                  return [...prev, latestMessage]
+                }
+                return prev
+              })
+              
+              // Случайная задержка от 10 до 30 секунд
+              const randomDelay = Math.floor(Math.random() * (30000 - 10000 + 1)) + 10000
+              console.log(`[AI Typing] Showing typing indicator for ${randomDelay}ms`)
+              
+              setIsAITyping(true)
+              
+              if (aiTypingTimeoutRef.current) {
+                clearTimeout(aiTypingTimeoutRef.current)
+              }
+              
+              aiTypingTimeoutRef.current = setTimeout(() => {
+                console.log('[AI Typing] Delay complete, showing AI message')
+                setIsAITyping(false)
+                
+                setPendingAIMessages(prev => {
+                  const msgToShow = prev.find(m => m.id === latestMessage.id)
+                  if (msgToShow) {
+                    setMessages(prevMsgs => {
+                      if (!prevMsgs.find(m => m.id === msgToShow.id)) {
+                        return [msgToShow, ...prevMsgs]
+                      }
+                      return prevMsgs
+                    })
+                  }
+                  return prev.filter(m => m.id !== latestMessage.id)
+                })
+                
+                aiTypingTimeoutRef.current = null
+              }, randomDelay)
+              
+              // Фильтруем AI сообщение из data
+              data.messages = data.messages.filter((msg: Message) => msg.id !== latestMessage.id)
+            }
+          }
+        }
+        
         // 🔥 FIX: DEDUPLICATION - Prevent duplicate messages from appearing
         const deduplicated = deduplicateMessages(data.messages || [])
+        
+        // Фильтруем AI сообщения которые в pending
+        const filteredMessages = deduplicated.filter((msg: Message) => 
+          !msg.isAIanswer || !pendingAIMessages.find(pm => pm.id === msg.id)
+        )
         
         console.log('[Messages] Loaded messages:', {
           total: data.messages?.length || 0,
           afterDedup: deduplicated.length,
-          removed: (data.messages?.length || 0) - deduplicated.length,
+          afterAIFilter: filteredMessages.length,
+          removed: (data.messages?.length || 0) - filteredMessages.length,
           isPolling
         })
         
-        setMessages(deduplicated)
+        setMessages(filteredMessages)
         
         // 🔥 FIX: isFirstLoad теперь сбрасывается в useEffect ПОСЛЕ автоскролла
         // Это гарантирует однократное срабатывание скролла
@@ -770,6 +837,10 @@ function MessagesPageClientInner() {
       }
       if (recordingTimerRef.current) {
         clearInterval(recordingTimerRef.current)
+      }
+      // 🤖 Очищаем AI typing timeout
+      if (aiTypingTimeoutRef.current) {
+        clearTimeout(aiTypingTimeoutRef.current)
       }
     }
   }, [audioPreviewUrl])
@@ -1801,6 +1872,20 @@ function MessagesPageClientInner() {
                       </div>
                     )}
 
+                    {/* 🤖 AI Typing Indicator */}
+                    {isAITyping && (
+                      <div className="mb-3 px-3 py-2 bg-gradient-to-r from-purple-50 to-pink-50 dark:from-purple-900/20 dark:to-pink-900/20 border border-purple-200 dark:border-purple-800/50 rounded-lg flex items-center gap-2 animate-pulse">
+                        <div className="flex gap-1">
+                          <div className="w-2 h-2 bg-purple-500 rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></div>
+                          <div className="w-2 h-2 bg-purple-500 rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></div>
+                          <div className="w-2 h-2 bg-purple-500 rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></div>
+                        </div>
+                        <span className="text-sm text-purple-700 dark:text-purple-300 font-medium">
+                          {selectedConversation?.participant.nickname || 'Interlocutor'} is typing...
+                        </span>
+                      </div>
+                    )}
+
                     <div className="flex items-center gap-2 w-full max-w-full">
                       <textarea
                         value={messageText}
@@ -2144,7 +2229,7 @@ function MessagesPageClientInner() {
                 <label className="relative inline-flex items-center cursor-pointer">
                   <input
                     type="checkbox"
-                  checked={user?.isAutoAnswerInChat ?? true}
+                  checked={user?.isAutoAnswerInChat ?? false}
                   onChange={async (e) => {
                     const newValue = e.target.checked
                     

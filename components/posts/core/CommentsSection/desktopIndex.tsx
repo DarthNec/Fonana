@@ -6,6 +6,7 @@ import { useUser } from '@/lib/store/appStore'
 import toast from 'react-hot-toast'
 import Avatar from '@/components/Avatar'
 import EmojiPicker from 'emoji-picker-react'
+import { validateCommentForLinks } from '@/lib/utils/linkValidator'
 
 // Типы эмоций (такие же как в PostActions)
 const EMOTIONS = [
@@ -81,6 +82,9 @@ export function CommentsSection({
   const emojiPickerRef = useRef<HTMLDivElement>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   
+  // 🔥 NEW: Состояние для ответов на комментарии
+  const [replyTo, setReplyTo] = useState<{ commentId: string; username: string } | null>(null)
+  
   // Состояния для emotion picker
   const [showEmotionPicker, setShowEmotionPicker] = useState<string | null>(null) // ID комментария
   const [emotionProcessing, setEmotionProcessing] = useState<string | null>(null)
@@ -150,6 +154,13 @@ export function CommentsSection({
       return
     }
 
+    // 🔥 LINK VALIDATION: Проверяем на наличие ссылок
+    const linkValidation = validateCommentForLinks(newComment)
+    if (!linkValidation.isValid) {
+      toast.error(linkValidation.message || 'Links are not allowed in comments')
+      return
+    }
+
     try {
       setIsSubmitting(true)
       const response = await fetch(`/api/posts/${postId}/comments`, {
@@ -158,15 +169,16 @@ export function CommentsSection({
         body: JSON.stringify({
           userId: user.id,
           content: newComment.trim(),
-          isAnonymous
+          isAnonymous,
+          parentId: replyTo?.commentId || null // 🔥 NEW: Передаём parentId если это reply
         })
       })
 
       if (response.ok) {
         setNewComment('')
         setIsAnonymous(false)
+        setReplyTo(null) // 🔥 NEW: Сбрасываем replyTo после отправки
         await fetchComments()
-        toast.success('Comment added')
         console.log('post', post);
         onCommentAdded?.()
       } else {
@@ -178,6 +190,18 @@ export function CommentsSection({
     } finally {
       setIsSubmitting(false)
     }
+  }
+  
+  // 🔥 NEW: Функция для установки reply
+  const handleReplyToComment = (commentId: string, username: string) => {
+    setReplyTo({ commentId, username })
+    // Фокусируемся на textarea
+    textareaRef.current?.focus()
+  }
+  
+  // 🔥 NEW: Функция для отмены reply
+  const handleCancelReply = () => {
+    setReplyTo(null)
   }
 
   const handleDeleteComment = async (commentId: string) => {
@@ -433,6 +457,29 @@ export function CommentsSection({
           />
         )}
         <div className={cn(hideFormAvatar ? 'w-full' : 'flex-1')}>
+              {/* 🔥 NEW: Reply Indicator - показываем если отвечаем на комментарий */}
+              {replyTo && (
+                <div className="mb-2 px-3 py-2 bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-800 rounded-lg flex items-center justify-between">
+                  <div className="flex items-center gap-2 flex-1 min-w-0">
+                    <svg className="w-4 h-4 text-purple-600 dark:text-purple-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" />
+                    </svg>
+                    <span className="text-sm text-purple-700 dark:text-purple-300 truncate">
+                      Replying to <span className="font-semibold">@{replyTo.username}</span>
+                    </span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleCancelReply}
+                    className="p-1 text-purple-600 dark:text-purple-400 hover:text-purple-800 dark:hover:text-purple-200 hover:bg-purple-100 dark:hover:bg-purple-900/40 rounded transition-colors flex-shrink-0"
+                    title="Cancel reply"
+                  >
+                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                </div>
+              )}
               {/* Контейнер для textarea с кнопкой эмодзи */}
               <div className="relative">
                 <textarea
@@ -695,15 +742,176 @@ export function CommentsSection({
                       <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                       </svg>
-                      Удалить
+                      Delete
                     </button>
                   )}
-                  {/* 
-                  <button className="text-xs text-gray-500 dark:text-slate-400 hover:text-purple-600 dark:hover:text-purple-400 transition-colors">
-                    Ответить
-                  </button>
-                  */}
+                  {/* 🔥 NEW: Reply button - добавляем возможность отвечать на комментарии */}
+                  {user?.id && (
+                    <button 
+                      onClick={() => handleReplyToComment(comment.id, comment.user.nickname || comment.user.fullName || 'User')}
+                      className="text-xs text-gray-500 dark:text-slate-400 hover:text-purple-600 dark:hover:text-purple-400 transition-colors flex items-center gap-1"
+                      title="Reply to comment"
+                    >
+                      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" />
+                      </svg>
+                      Reply
+                    </button>
+                  )}
                 </div>
+                
+                {/* 🔥 NEW: Render replies (вложенные ответы) */}
+                {comment.replies && comment.replies.length > 0 && (
+                  <div className="mt-3 space-y-3 pl-4 border-l-2 border-gray-200 dark:border-slate-700">
+                    {comment.replies.map((reply) => (
+                      <div key={reply.id} className="flex gap-3">
+                        <Avatar
+                          src={reply.isAnonymous ? null : reply.user?.avatar}
+                          alt="Avatar"
+                          seed={reply.isAnonymous ? 'anonymous' : reply.user?.nickname || 'user'}
+                          size={28}
+                          className="flex-shrink-0"
+                          rounded="full"
+                        />
+                        <div className="flex-1">
+                          <div className="bg-gray-50 dark:bg-slate-800/50 rounded-lg px-3 py-2">
+                            <div className="flex items-center gap-2 mb-1">
+                              <span className="font-semibold text-xs text-gray-900 dark:text-white">
+                                {reply.isAnonymous ? 'Аноним' : reply.user.fullName || reply.user.nickname || 'Пользователь'}
+                              </span>
+                              <span className="text-xs text-gray-500 dark:text-slate-400">
+                                {formatDate(reply.createdAt)}
+                              </span>
+                            </div>
+                            <p className="text-sm text-gray-700 dark:text-slate-300 break-words whitespace-pre-wrap overflow-hidden" style={{ wordBreak: 'break-word', overflowWrap: 'break-word' }}>
+                              {reply.content}
+                            </p>
+                          </div>
+                          <div className="mt-1 flex items-center gap-3">
+                            {/* Emotions for reply */}
+                            <div className="relative" ref={el => { emotionContainerRefs.current[reply.id] = el }}>
+                              {(() => {
+                                const emotionCounts = getEmotionCounts(reply)
+                                const hasEmotions = Object.keys(emotionCounts).length > 0
+                                const userEmotionId = reply.userEmotion?.emotionId || null
+
+                                if (hasEmotions) {
+                                  return (
+                                    <div className="flex items-center gap-1">
+                                      {EMOTIONS.map((emotion) => {
+                                        const count = emotionCounts[emotion.id]
+                                        if (!count || count === 0) return null
+                                        
+                                        const isUserEmotion = userEmotionId === emotion.id
+                                        
+                                        return (
+                                          <button
+                                            key={emotion.id}
+                                            onClick={() => setShowEmotionPicker(reply.id)}
+                                            disabled={emotionProcessing === reply.id}
+                                            className={cn(
+                                              'flex items-center gap-1 px-1.5 py-0.5 rounded-md transition-all text-xs',
+                                              emotion.color,
+                                              'hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed',
+                                              isUserEmotion && 'bg-blue-50 dark:bg-blue-900/20 ring-1 ring-blue-200 dark:ring-blue-800'
+                                            )}
+                                          >
+                                            <span className="text-sm">{emotion.emoji}</span>
+                                            <span className="text-xs font-medium text-gray-700 dark:text-slate-300">{count}</span>
+                                          </button>
+                                        )
+                                      })}
+                                    </div>
+                                  )
+                                } else {
+                                  return (
+                                    <button
+                                      onClick={() => setShowEmotionPicker(reply.id)}
+                                      disabled={emotionProcessing === reply.id}
+                                      className="text-xs text-gray-500 dark:text-slate-400 hover:text-red-500 dark:hover:text-red-400 transition-colors flex items-center gap-1 disabled:opacity-50"
+                                    >
+                                      <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+                                      </svg>
+                                    </button>
+                                  )
+                                }
+                              })()}
+
+                              {/* Emotion picker for reply */}
+                              {showEmotionPicker === reply.id && (
+                                <div
+                                  ref={el => { emotionPickerRefs.current[reply.id] = el }}
+                                  className="absolute bottom-full left-0 mb-2 bg-white dark:bg-slate-800 rounded-xl shadow-lg border border-gray-200 dark:border-slate-700 p-2 z-50 animate-in fade-in slide-in-from-bottom-2 duration-200"
+                                >
+                                  <div className="flex gap-1">
+                                    {EMOTIONS.map((emotion) => {
+                                      const isSelected = reply.userEmotion?.emotionId === emotion.id
+                                      return (
+                                        <button
+                                          key={emotion.id}
+                                          onClick={() => handleCommentEmotionSelect(reply.id, emotion.id)}
+                                          disabled={emotionProcessing === reply.id}
+                                          className={cn(
+                                            'relative flex flex-col items-center gap-1 p-2 rounded-lg transition-all',
+                                            emotion.color,
+                                            'disabled:opacity-50 disabled:cursor-not-allowed',
+                                            isSelected && 'ring-2 ring-red-500 dark:ring-red-400'
+                                          )}
+                                          title={emotion.label}
+                                        >
+                                          <span className="text-lg">{emotion.emoji}</span>
+                                          {isSelected && (
+                                            <div className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 dark:bg-red-400 rounded-full flex items-center justify-center">
+                                              <svg className="w-2 h-2 text-white" fill="currentColor" viewBox="0 0 20 20">
+                                                <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                                              </svg>
+                                            </div>
+                                          )}
+                                        </button>
+                                      )
+                                    })}
+                                  </div>
+                                  <div className="text-xs text-gray-500 dark:text-slate-400 text-center mt-1 px-2">
+                                    Select emotion
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                            
+                            {/* Delete button for reply */}
+                            {reply.userId === user?.id && (
+                              <button 
+                                onClick={() => handleDeleteComment(reply.id)}
+                                className="text-xs text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 transition-colors flex items-center gap-1"
+                                title="Удалить ответ"
+                              >
+                                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                </svg>
+                                Delete
+                              </button>
+                            )}
+                            
+                            {/* Reply to reply button */}
+                            {user?.id && (
+                              <button 
+                                onClick={() => handleReplyToComment(comment.id, reply.user.nickname || reply.user.fullName || 'User')}
+                                className="text-xs text-gray-500 dark:text-slate-400 hover:text-purple-600 dark:hover:text-purple-400 transition-colors flex items-center gap-1"
+                                title="Reply"
+                              >
+                                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" />
+                                </svg>
+                                Reply
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             </div>
           ))

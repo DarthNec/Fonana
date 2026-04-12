@@ -63,6 +63,17 @@ async function generateUniqueNickname(): Promise<string> {
 }
 
 export async function POST(request: NextRequest) {
+  // 🚨 TEMPORARY SHUTDOWN: Guest registration disabled due to DDoS attack
+  console.log('🔓 [GUEST AUTH] ⛔ Guest registration is temporarily disabled')
+  return NextResponse.json(
+    { 
+      error: 'Guest registration is temporarily unavailable. Please try again later or use Phantom/Telegram login.', 
+      success: false 
+    },
+    { status: 503 } // Service Unavailable
+  )
+  
+  /* ORIGINAL CODE - RE-ENABLE WHEN PROTECTION IS IMPLEMENTED
   try {
     console.log('🔓 [GUEST AUTH] Starting guest authentication...')
     
@@ -258,4 +269,5 @@ export async function POST(request: NextRequest) {
       { status: 500 }
     )
   }
+  */
 }

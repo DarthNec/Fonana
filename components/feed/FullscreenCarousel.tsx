@@ -416,6 +416,19 @@ export function FullscreenCarousel({
         }}
       >
         {posts.map((post, index) => {
+          // ✅ FIX: Рендерим только ±2 поста от текущего (5 постов max вместо 750)
+          const isInRange = Math.abs(index - currentIndex) <= 2
+          
+          if (!isInRange) {
+            // Рендерим пустой placeholder для сохранения позиции в transform
+            return (
+              <div
+                key={post.id}
+                className="relative w-full h-screen"
+              />
+            )
+          }
+          
           const isActive = index === currentIndex
           const postRemixes = post.postRemixes && post.postRemixes.length > 1
           const displayPost = post // postRemixes && isActive ? post.postRemixes[currentRemixIndex] : post

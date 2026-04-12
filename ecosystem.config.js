@@ -1,5 +1,6 @@
 module.exports = {
   apps: [
+    /*
     {
       name: 'fonana',
       script: 'npm',
@@ -39,22 +40,7 @@ module.exports = {
       cron_restart: '0 4 * * *'
     },
     */
-    {
-      name: 'sora-checker',
-      script: './sorachecker.js',
-      instances: 1,
-      exec_mode: 'fork',
-      cron_restart: '*/1 * * * *', // Запускается каждые 1 минут
-      autorestart: false, // Отключаем автоперезапуск, только по крону
-      env_file: './.env',
-      env: {
-        NODE_ENV: 'production'
-      },
-      error_file: '/var/www/Fonana/logs/sora-checker-error.log',
-      out_file: '/var/www/Fonana/logs/sora-checker-out.log',
-      time: true,
-      merge_logs: true
-    },
+    /*
     {
       name: 'generation-updater',
       script: './updateUserGeneration.js',
@@ -109,24 +95,6 @@ module.exports = {
       merge_logs: true
     },
     {
-      name: 'ai-sora-generation-activity',
-      script: './ai-sora-generation-activity.js',
-      instances: 1,
-      exec_mode: 'fork',
-      cron_restart: '0 */4 * * *', // Каждые 4 часа (в 00:00, 04:00, 08:00, 12:00, 16:00, 20:00)
-      autorestart: false, // Не перезапускаем автоматически, только по крону
-      watch: false,
-      max_memory_restart: '300M',
-      env_file: './.env',
-      env: {
-        NODE_ENV: 'production'
-      },
-      error_file: '/var/www/Fonana/logs/ai-sora-generation-error.log',
-      out_file: '/var/www/Fonana/logs/ai-sora-generation-out.log',
-      time: true,
-      merge_logs: true
-    },
-    {
       name: 'wheel-spins-reset',
       script: './resetWheelSpins.js',
       instances: 1,
@@ -166,3 +134,41 @@ module.exports = {
     */
   ]
 } 
+
+
+/*{
+      name: 'ai-sora-generation-activity',
+      script: './ai-sora-generation-activity.js',
+      instances: 1,
+      exec_mode: 'fork',
+      cron_restart: '0 * 4 * * *', // Каждые 4 часа (в 00:00, 04:00, 08:00, 12:00, 16:00, 20:00) 'перед 4 убрал /'
+      autorestart: false, // Не перезапускаем автоматически, только по крону
+      watch: false,
+      max_memory_restart: '300M',
+      env_file: './.env',
+      env: {
+        NODE_ENV: 'production'
+      },
+      error_file: '/var/www/Fonana/logs/ai-sora-generation-error.log',
+      out_file: '/var/www/Fonana/logs/ai-sora-generation-out.log',
+      time: true,
+      merge_logs: true
+    },
+    {
+      name: 'sora-checker',
+      script: './sorachecker.js',
+      instances: 1,
+      exec_mode: 'fork',
+      cron_restart: '* 1 * * * *', // Запускается каждые 1 минут а тут около 1
+      autorestart: false, // Отключаем автоперезапуск, только по крону
+      env_file: './.env',
+      env: {
+        NODE_ENV: 'production'
+      },
+      error_file: '/var/www/Fonana/logs/sora-checker-error.log',
+      out_file: '/var/www/Fonana/logs/sora-checker-out.log',
+      time: true,
+      merge_logs: true
+    },
+
+    */

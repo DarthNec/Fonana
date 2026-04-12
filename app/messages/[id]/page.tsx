@@ -78,6 +78,8 @@ interface Message {
   isFailed?: boolean  // Отправка не удалась
   tempId?: string     // Временный ID для локальных сообщений
   isNew?: boolean     // Анимация нового сообщения
+  // 🤖 AI Response flag
+  isAIanswer?: boolean // Это AI ответ
 }
 
 interface Participant {
@@ -96,7 +98,6 @@ export default function ConversationPage() {
   const user = useUser()
   const isUserLoading = false // Zustand не имеет отдельного состояния загрузки пользователя
   const params = useParams()
-  const router = useRouter()
   const conversationId = params.id as string
   
   // 🔥 CRITICAL FIX: Unmount protection для async operations
@@ -126,6 +127,11 @@ export default function ConversationPage() {
   const [isSendingTip, setIsSendingTip] = useState(false)
   const [showQuickTips, setShowQuickTips] = useState(false)
   const [showActionsMenu, setShowActionsMenu] = useState(false) // 🆕 NEW: Actions Menu state
+  
+  // 🤖 AI Typing Indicator state
+  const [isAITyping, setIsAITyping] = useState(false)
+  const aiTypingTimeoutRef = useRef<NodeJS.Timeout | null>(null)
+  const [pendingAIMessages, setPendingAIMessages] = useState<Message[]>([]) // Скрытые AI сообщения
   
   // 🎤 Voice recording states
   const [isRecording, setIsRecording] = useState(false)
@@ -307,7 +313,7 @@ export default function ConversationPage() {
     }
   }, [conversationId, conversationLoadState, checkCircuitBreaker, incrementCallCounter])
 
-
+  const [intervalMessages, setIntervalMessages] = useState<NodeJS.Timeout | null>(null);
   useEffect(() => {
     if (!isUserReady || !conversationId) {
       if (!isUserLoading && !userId) {
@@ -315,7 +321,9 @@ export default function ConversationPage() {
       }
       return;
     }
-    
+    if(intervalMessages) {
+      return;
+    }
     loadMessages()
     // 🔥 FIX: Загружаем информацию о участнике сразу при инициализации
     loadConversationInfo()
@@ -326,13 +334,15 @@ export default function ConversationPage() {
     }
     
     // Polling для новых сообщений
+    console.log('Polling for new messages')
     const interval = setInterval(loadMessages, 5000)
+    setIntervalMessages(interval);
     return () => {
       clearInterval(interval)
       // Mark component as unmounted
       isMountedRef.current = false
     }
-  }, [userId, isUserReady, conversationId]) // ✅ Убираем loadConversationInfo из зависимостей
+  }, []) // ✅ Убираем loadConversationInfo из зависимостей
 
   const [wasScrolled, setWasScrolled] = useState(false);
 
@@ -403,38 +413,131 @@ export default function ConversationPage() {
 
       if (response.ok) {
         const data = await response.json()
+
+        if(data.messages.length > 0) {
+          const latestMessage = data.messages[0];
+          if(latestMessage.isAIanswer) {
+            const messageTime = new Date(latestMessage.createdAt).getTime()
+            const now = Date.now()
+            const ageInSeconds = (now - messageTime) / 1000
+                
+                
+            // Если сообщение свежее 40 секунд - показываем typing indicator
+            if (ageInSeconds < 15) {
+              setMessages(data.messages.filter(msg => msg.id !== latestMessage.id));
+            }  
+          }
+          
+        }
+        console.log('[loadMessages] data', data);
         
         if (before) {
           setMessages(prev => [...data.messages, ...prev])
         } else {
           // Check for new messages and show notification
-          if (lastMessageCount > 0 && data.messages.length > lastMessageCount) {
-            const newMessagesCount = data.messages.length - lastMessageCount
-            const latestMessage = data.messages[data.messages.length - 1]
-            
+          if (data.messages.length > 0) {
+            const latestMessage = data.messages[0]
+            console.log('latestMessage', latestMessage);
             // Only show notification for messages from others
             if (!latestMessage.isOwn) {
-              // Show browser notification if permission granted
-              if ('Notification' in window && Notification.permission === 'granted') {
-                new Notification(`New message from ${latestMessage.sender.nickname}`, {
-                  body: latestMessage.isPaid 
-                    ? '💰 Paid message' 
-                    : latestMessage.content?.substring(0, 50) || 'Media message',
-                  icon: '/favicon.png'
+
+              // 🤖 Если это AI ответ - проверяем возраст сообщения
+              if (latestMessage.isAIanswer) {
+                // Вычисляем возраст сообщения в секундах
+                const messageTime = new Date(latestMessage.createdAt).getTime()
+                const now = Date.now()
+                const ageInSeconds = (now - messageTime) / 1000
+                
+                console.log('[AI Message] Message age:', ageInSeconds, 'seconds')
+                
+                // Если сообщение свежее 40 секунд - показываем typing indicator
+                if (ageInSeconds < 15) {
+                  console.log('[AI Message] Fresh message, showing typing indicator')
+                  
+                  // Добавляем сообщение в pending список (не показываем сразу)
+                  setPendingAIMessages(prev => {
+                    // Проверяем что сообщение еще не в pending
+                    if (!prev.find(m => m.id === latestMessage.id)) {
+                      return [...prev, latestMessage]
+                    }
+                    return prev
+                  })
+                  
+                  // Случайная задержка от 10 до 30 секунд
+                  const randomDelay = Math.floor(Math.random() * (30000 - 10000 + 1)) + 10000
+                  console.log(`[AI Typing] Showing typing indicator for ${randomDelay}ms`)
+                  
+                  setIsAITyping(true)
+                  
+                  // Очищаем предыдущий таймаут если он есть
+                  if (aiTypingTimeoutRef.current) {
+                    clearTimeout(aiTypingTimeoutRef.current)
+                  }
+                  
+                  // Устанавливаем таймаут для показа сообщения
+                  aiTypingTimeoutRef.current = setTimeout(() => {
+                    console.log('[AI Typing] Delay complete, showing AI message')
+                    setIsAITyping(false)
+                    
+                    // Показываем AI сообщение
+                    setPendingAIMessages(prev => {
+                      const msgToShow = prev.find(m => m.id === latestMessage.id)
+                      if (msgToShow) {
+                        setMessages(prevMsgs => {
+                          // Проверяем что сообщение еще не в списке
+                          if (!prevMsgs.find(m => m.id === msgToShow.id)) {
+                            return [msgToShow, ...prevMsgs]
+                          }
+                          return prevMsgs
+                        })
+                        
+                        
+                      }
+                      
+                      // Удаляем из pending
+                      return prev.filter(m => m.id !== latestMessage.id)
+                    })
+                    
+                    aiTypingTimeoutRef.current = null
+                  }, randomDelay)
+                } else {
+                  setMessages(prev => {
+                    const localMessages = prev.filter(msg => msg.isPending || msg.isFailed)
+                    const regularMessages = data.messages.filter((msg: Message) => {
+                      // Не показываем AI сообщения которые в pending
+                      return !msg.isAIanswer || !pendingAIMessages.find(pm => pm.id === msg.id)
+                    })
+                    return [...regularMessages, ...localMessages]
+                  })
+                  setLastMessageCount(data.messages.length)
+                }
+              } else{
+                setMessages(prev => {
+                  const localMessages = prev.filter(msg => msg.isPending || msg.isFailed)
+                  const regularMessages = data.messages.filter((msg: Message) => {
+                    // Не показываем AI сообщения которые в pending
+                    return !msg.isAIanswer || !pendingAIMessages.find(pm => pm.id === msg.id)
+                  })
+                  return [...regularMessages, ...localMessages]
                 })
+                setLastMessageCount(data.messages.length)    
               }
-              
-              // Show toast notification
-              toast.success(`New message from ${latestMessage.sender.nickname}`)
             }
+          } else {
+            console.log('setMessages', data.messages);
+            setMessages(prev => {
+              const localMessages = prev.filter(msg => msg.isPending || msg.isFailed)
+              const regularMessages = data.messages.filter((msg: Message) => {
+                // Не показываем AI сообщения которые в pending
+                return !msg.isAIanswer || !pendingAIMessages.find(pm => pm.id === msg.id)
+              })
+              return [...regularMessages, ...localMessages]
+            })
+            setLastMessageCount(data.messages.length)
           }
           
           // 🚀 OPTIMISTIC UI: Сохраняем локальные сообщения (pending/failed)
-          setMessages(prev => {
-            const localMessages = prev.filter(msg => msg.isPending || msg.isFailed)
-            return [...data.messages, ...localMessages]
-          })
-          setLastMessageCount(data.messages.length)
+          // 🤖 Фильтруем AI сообщения которые в pending
         }
         
         setHasMore(data.hasMore)
@@ -697,6 +800,10 @@ export default function ConversationPage() {
       if (recordingTimerRef.current) {
         clearInterval(recordingTimerRef.current)
       }
+      // 🤖 Очищаем AI typing timeout
+      if (aiTypingTimeoutRef.current) {
+        clearTimeout(aiTypingTimeoutRef.current)
+      }
     }
   }, [audioPreviewUrl])
 
@@ -793,24 +900,11 @@ export default function ConversationPage() {
       if (response.ok) {
         const data = await response.json()
         
-        // 🚀 OPTIMISTIC UI: Заменяем временное сообщение на реальное
-        setMessages(prev => prev.map(msg => 
-          msg.tempId === tempId ? {
-            ...data.message,
-            content: data.message.content || originalMessageText,
-            mediaUrl: data.message.mediaUrl || mediaUrl,
-            isOwn: true,
-            isNew: true,
-            isPending: false // Убираем состояние "отправляется"
-          } : msg
-        ))
+        // 🚀 OPTIMISTIC UI: Удаляем временное сообщение, реальное придёт из polling
+        // setMessages(prev => prev.filter(msg => msg.tempId !== tempId))
         
         // Remove animation flag after a delay
-        setTimeout(() => {
-          setMessages(prev => prev.map(msg => 
-            msg.id === data.message.id ? { ...msg, isNew: false } : msg
-          ))
-        }, 500)
+        
       } else {
         const error = await response.json()
         throw new Error(error.error || 'Failed to send message')
@@ -1377,10 +1471,12 @@ export default function ConversationPage() {
       <div className="flex-1 overflow-y-auto p-4">
         <div className="max-w-2xl mx-auto space-y-4">
         {isLoading ? (
-          <div className="flex items-center justify-center py-20">
+          <div className="flex items-center justify-center min-h-[60vh]">
             <div className="text-center">
-              <div className="w-12 h-12 border-3 border-purple-500/30 border-t-purple-500 rounded-full animate-spin mx-auto mb-3"></div>
-              <p className="text-gray-600 dark:text-slate-400 text-sm">Loading messages...</p>
+              <div className="w-16 h-16 border-4 border-purple-500/30 border-t-purple-500 rounded-full animate-spin mx-auto mb-4"></div>
+              <p className="text-gray-600 dark:text-slate-400 text-base font-medium animate-pulse">
+                Loading messages...
+              </p>
             </div>
           </div>
         ) : messages.length === 0 ? (
@@ -1436,11 +1532,18 @@ export default function ConversationPage() {
                         </div>
                       )}
                     </div>
-                    <div className="text-xs text-gray-500 dark:text-slate-500 mt-1 px-2">
-                      {new Date(message.createdAt).toLocaleTimeString('en-US', {
-                        hour: '2-digit',
-                        minute: '2-digit'
-                      })}
+                    <div className="flex items-center gap-2 mt-1 px-2">
+                      {message.isAIanswer && (
+                        <span className="text-xs text-purple-500 dark:text-purple-400 font-medium flex items-center gap-1">
+                          auto translate
+                        </span>
+                      )}
+                      <span className="text-xs text-gray-500 dark:text-slate-500">
+                        {new Date(message.createdAt).toLocaleTimeString('en-US', {
+                          hour: '2-digit',
+                          minute: '2-digit'
+                        })}
+                      </span>
                     </div>
                   </div>
                 )}
@@ -1605,6 +1708,11 @@ export default function ConversationPage() {
                     </div>
                     
                     <div className="flex items-center gap-2 mt-1 px-2">
+                      {message.isAIanswer && (
+                        <span className="text-xs text-purple-500 dark:text-purple-400 font-medium flex items-center gap-1">
+                          auto translate
+                        </span>
+                      )}
                       <span className="text-xs text-gray-500 dark:text-slate-500">
                         {new Date(message.createdAt).toLocaleTimeString('en-US', {
                           hour: '2-digit',
@@ -1849,6 +1957,20 @@ export default function ConversationPage() {
             </button>
 
             <div className="flex-1">
+              {/* 🤖 AI Typing Indicator */}
+              {isAITyping && (
+                <div className="mb-2 px-3 py-2 bg-gradient-to-r from-purple-50 to-pink-50 dark:from-purple-900/20 dark:to-pink-900/20 border border-purple-200 dark:border-purple-800/50 rounded-lg flex items-center gap-2 animate-pulse">
+                  <div className="flex gap-1">
+                    <div className="w-2 h-2 bg-purple-500 rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></div>
+                    <div className="w-2 h-2 bg-purple-500 rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></div>
+                    <div className="w-2 h-2 bg-purple-500 rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></div>
+                  </div>
+                  <span className="text-sm text-purple-700 dark:text-purple-300 font-medium">
+                    {participant?.nickname || 'Interlocutor'} is typing...
+                  </span>
+                </div>
+              )}
+              
               {/* Индикатор режима редактирования */}
               {editingMessage && (
                 <div className="mb-2 px-3 py-1 bg-gradient-to-r from-purple-100 to-pink-100 dark:from-purple-900/30 dark:to-pink-900/30 text-purple-700 dark:text-purple-300 rounded-lg text-sm font-medium flex items-center justify-between">

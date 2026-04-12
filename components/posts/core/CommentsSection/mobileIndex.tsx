@@ -5,6 +5,7 @@ import { cn } from '@/lib/utils'
 import { useUser } from '@/lib/store/appStore'
 import toast from 'react-hot-toast'
 import Avatar from '@/components/Avatar'
+import { validateCommentForLinks } from '@/lib/utils/linkValidator'
 
 // Типы эмоций (такие же как в PostActions)
 const EMOTIONS = [
@@ -127,6 +128,13 @@ export function MobileCommentsSection({ postId, post, className, onClose, onComm
       return
     }
 
+    // 🔥 LINK VALIDATION: Проверяем на наличие ссылок
+    const linkValidation = validateCommentForLinks(newComment)
+    if (!linkValidation.isValid) {
+      toast.error(linkValidation.message || 'Links are not allowed in comments')
+      return
+    }
+
     try {
       setIsSubmitting(true)
       const response = await fetch(`/api/posts/${postId}/comments`, {
@@ -143,7 +151,6 @@ export function MobileCommentsSection({ postId, post, className, onClose, onComm
         setNewComment('')
         setIsAnonymous(false)
         await fetchComments()
-        toast.success('Comment added')
         onCommentAdded?.()
       } else {
         throw new Error('Failed to add comment')
@@ -510,7 +517,7 @@ export function MobileCommentsSection({ postId, post, className, onClose, onComm
                         <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                         </svg>
-                        Удалить
+                        Delete
                       </button>
                     )}
                   </div>

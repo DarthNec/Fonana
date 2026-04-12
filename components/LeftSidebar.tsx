@@ -26,7 +26,8 @@ import {
   XMarkIcon,
   ShoppingBagIcon,
   WalletIcon,
-  TrashIcon
+  TrashIcon,
+  DevicePhoneMobileIcon
 } from '@heroicons/react/24/outline'
 import { 
   HomeIcon as HomeSolidIcon,
@@ -61,10 +62,12 @@ export function LeftSidebar({ isOpen = true, onClose, isMobile = false }: LeftSi
   const user = useUser()
   const router = useRouter()
   
-  // Проверяем, является ли пользователь Telegram или гостевым пользователем
+  // Проверяем, является ли пользователь Telegram, Google или гостевым пользователем
   const isTelegramUser = user?.wallet?.startsWith('TG_')
   const isGuestUser = user?.wallet?.startsWith('FK_')
-  const needsWalletConnection = isTelegramUser || isGuestUser
+  const isGoogleUser = user?.wallet?.startsWith('GOOGLE_')
+  const isEmailUser = user?.wallet?.startsWith('EMAIL_')
+  const needsWalletConnection = isTelegramUser || isGuestUser || isGoogleUser || isEmailUser
 
   // Unread messages subscription
   useEffect(() => {
@@ -139,10 +142,10 @@ export function LeftSidebar({ isOpen = true, onClose, isMobile = false }: LeftSi
   const handleWalletClick = () => {
     if (!connected) {
       setVisible(true)
-      toast.success('Подключите кошелек для доступа к функциям')
+      toast.success('Connect your wallet to access the functions')
     } else {
       // TODO: Navigate to wallet page or show wallet modal
-      toast.success('Wallet функционал в разработке')
+      toast.success('Wallet functionality is under development')
     }
     if (isMobile && onClose) onClose()
   }
@@ -161,14 +164,29 @@ export function LeftSidebar({ isOpen = true, onClose, isMobile = false }: LeftSi
       if (connected) {
         await disconnect()
       }
-      // Clear user data
+      
+      // Clear session-specific data (selective removal)\
+      const device_id = localStorage.getItem('fonana_device_id')
       localStorage.clear()
-      toast.success('Вы вышли из аккаунта')
+      if(device_id)
+      {
+        localStorage.setItem('fonana_device_id', device_id)
+      }
+      
+      // IMPORTANT: fonana_device_id is NOT removed!
+      // Device ID must persist across logouts to prevent creating
+      // duplicate guest accounts. It's only removed when guest
+      // migrates to a real wallet (see ConnectWalletPopup.tsx)
+      //
+      // ALSO PRESERVED: fonana_cookie_consent, fonana_source, fonana_campaign
+      // (user preferences and UTM tracking should persist)
+      
+      toast.success('You have been logged out')
       router.push('/')
       if (isMobile && onClose) onClose()
     } catch (error) {
       console.error('Logout error:', error)
-      toast.error('Ошибка при выходе')
+      toast.error('Error logging out')
     }
   }
 
@@ -232,7 +250,7 @@ export function LeftSidebar({ isOpen = true, onClose, isMobile = false }: LeftSi
             </div>
             */}
             <div onClick={handleNavItemClick}>
-              <NavItem href="/creators" icon={UsersIcon} label="Explore" />
+              <NavItem href="/" icon={UsersIcon} label="Explore" />
             </div>
             <div onClick={handleNavItemClick}>
               <NavItem href="/feed" icon={RssIcon} label="Feed" />
@@ -240,7 +258,14 @@ export function LeftSidebar({ isOpen = true, onClose, isMobile = false }: LeftSi
             {/* Lottery - только для пользователей с подключенным кошельком */}
             {connected && user && !needsWalletConnection && (
               <div onClick={handleNavItemClick}>
-                <NavItem href="/lottery" icon={GiftIcon} label="Lottery" />
+                <Link 
+                  href="/lottery"
+                  className="flex items-center w-full px-3 py-2.5 rounded-lg transition-all duration-200 bg-gradient-to-r from-yellow-400 via-orange-500 to-pink-500 hover:from-yellow-500 hover:via-orange-600 hover:to-pink-600 text-white shadow-lg hover:shadow-xl hover:scale-[1.03] group"
+                >
+                  <GiftIcon className="w-6 h-6 flex-shrink-0 group-hover:rotate-12 transition-transform" />
+                  <span className="ml-3 text-base font-bold flex-1">Lottery</span>
+                  <span className="text-lg">✨</span>
+                </Link>
               </div>
             )}
             {connected && user && (
@@ -258,18 +283,14 @@ export function LeftSidebar({ isOpen = true, onClose, isMobile = false }: LeftSi
                 <div onClick={handleNavItemClick}>
                   <NavItem href="/notifications" icon={BellIcon} label="Notifications" />
                 </div>
-                {/* Bookmarks - только для пользователей с реальным кошельком */}
-                {!needsWalletConnection && (
-                  <div onClick={handleNavItemClick}>
-                    <NavItem href="/bookmarks" icon={BookmarkIcon} label="Bookmarks" />
-                  </div>
-                )}
-                {/* Purchases - только для пользователей с реальным кошельком */}
-                {!needsWalletConnection && (
-                  <div onClick={handleNavItemClick}>
-                    <NavItem href="/purchases" icon={ShoppingBagIcon} label="Purchases" />
-                  </div>
-                )}
+                {/* Bookmarks - доступны всем авторизованным */}
+                <div onClick={handleNavItemClick}>
+                  <NavItem href="/bookmarks" icon={BookmarkIcon} label="Bookmarks" />
+                </div>
+                {/* Purchases - доступны всем авторизованным */}
+                <div onClick={handleNavItemClick}>
+                  <NavItem href="/purchases" icon={ShoppingBagIcon} label="Purchases" />
+                </div>
               </>
             )}
             <NavItem 
@@ -294,6 +315,14 @@ export function LeftSidebar({ isOpen = true, onClose, isMobile = false }: LeftSi
 
           {/* SECONDARY NAVIGATION */}
           <nav className="px-3 py-4 space-y-1">
+            {/* Mobile App - для всех пользователей */}
+            <div onClick={handleNavItemClick}>
+              <NavItem 
+                href="/download" 
+                icon={DevicePhoneMobileIcon} 
+                label="Mobile App" 
+              />
+            </div>
             {/* Закомментировано - не нужны пока
             <NavItem 
               icon={CurrencyDollarIcon} 
@@ -342,17 +371,18 @@ export function LeftSidebar({ isOpen = true, onClose, isMobile = false }: LeftSi
           {/* ACTIONS */}
           {connected && user && (
             <nav className="px-3 py-4 space-y-2">
-              {/* Connect Wallet для Telegram и гостевых пользователей */}
+              {/* Connect Wallet для Telegram, Email, Google и гостевых пользователей */}
               {needsWalletConnection && (
-                <NavItem 
-                  icon={WalletIcon} 
-                  label="Connect Wallet" 
+                <button
                   onClick={() => {
                     setShowConnectWalletPopup(true)
                     if (isMobile && onClose) onClose()
                   }}
-                  className="text-purple-600 dark:text-purple-400 hover:bg-purple-50 dark:hover:bg-purple-900/20"
-                />
+                  className="flex items-center w-full px-3 py-2.5 rounded-lg transition-all duration-200 text-purple-600 dark:text-purple-400 hover:bg-purple-50 dark:hover:bg-purple-900/20"
+                >
+                  <WalletIcon className="w-6 h-6 flex-shrink-0" />
+                  <span className="ml-3 text-base font-medium flex-1">Connect Wallet</span>
+                </button>
               )}
               
               {/* Logout */}
@@ -445,13 +475,13 @@ export function LeftSidebar({ isOpen = true, onClose, isMobile = false }: LeftSi
         onPhantomLogin={() => setVisible(true)}
       />
 
-      {/* Connect Wallet Popup for Telegram and Guest Users */}
+      {/* Connect Wallet Popup for Telegram, Google, Email and Guest Users */}
       {needsWalletConnection && user?.wallet && (
         <ConnectWalletPopup
           isOpen={showConnectWalletPopup}
           onClose={() => setShowConnectWalletPopup(false)}
           currentWallet={user.wallet}
-          userType={isGuestUser ? 'guest' : 'telegram'}
+          userType={isGuestUser ? 'guest' : (isTelegramUser ? 'telegram' : (isEmailUser ? 'email' : 'google'))}
         />
       )}
     </>

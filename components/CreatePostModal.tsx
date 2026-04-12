@@ -60,6 +60,12 @@ export default function CreatePostModal({ onPostCreated, onPostUpdated, onClose,
     return null
   }
   
+  // 🔥 Проверка: нужно ли пользователю подключить кошелёк для премиум-функций
+  const needsWalletForPremium = user.wallet?.startsWith('TG_') || 
+                                 user.wallet?.startsWith('FK_') || 
+                                 user.wallet?.startsWith('GOOGLE_') || 
+                                 user.wallet?.startsWith('EMAIL_')
+  
   // Состояния для режима редактирования
   const [isLoadingPost, setIsLoadingPost] = useState(false)
   const [postData, setPostData] = useState<any>(null)
@@ -82,6 +88,9 @@ export default function CreatePostModal({ onPostCreated, onPostUpdated, onClose,
   
   // 🎯 UX IMPROVEMENT: Tooltip для Content Access
   const [showAccessTooltip, setShowAccessTooltip] = useState(false)
+  
+  // 🎯 UX IMPROVEMENT: Modal popup для гостей (объяснение Content Access)
+  const [showGuestAccessModal, setShowGuestAccessModal] = useState(false)
   
   // 🎯 UX IMPROVEMENT: Preview Mode (кроме Sora-2)
   const [showPreview, setShowPreview] = useState(false)
@@ -1416,7 +1425,7 @@ export default function CreatePostModal({ onPostCreated, onPostUpdated, onClose,
                 <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-3">
                   What do you want to create?
                 </label>
-                <div className="grid grid-cols-3 gap-2">
+                <div className="grid grid-cols-2 gap-3">
                   {/* Text посты - УБРАНО */}
                   {/*
                   <button
@@ -1459,31 +1468,7 @@ export default function CreatePostModal({ onPostCreated, onPostUpdated, onClose,
                     <div className="text-xs font-medium text-gray-900 dark:text-white">Video</div>
                   </button>
 
-                  <button
-                    type="button"
-                    onClick={() => setFormData(prev => ({ ...prev, contentSource: 'sora2', type: 'video', accessType: 'free', price: 0 }))}
-                    disabled={availableGenerations === 0}
-                    className={`p-3 rounded-xl border-2 transition-all relative ${
-                      formData.contentSource === 'sora2'
-                        ? 'border-pink-500 bg-pink-50 dark:bg-pink-900/20'
-                        : availableGenerations === 0
-                        ? 'border-gray-200 dark:border-slate-700 opacity-50 cursor-not-allowed'
-                        : 'border-gray-200 dark:border-slate-700 hover:border-gray-300'
-                    }`}
-                  >
-                    {/* 🎯 UX IMPROVEMENT: Badge с количеством генераций */}
-                    {availableGenerations !== null && (
-                      <div className={`absolute -top-1 -right-1 px-1.5 py-0.5 rounded-full text-[10px] font-bold ${
-                        availableGenerations > 0 
-                          ? 'bg-green-500 text-white' 
-                          : 'bg-red-500 text-white'
-                      }`}>
-                        {availableGenerations}
-                      </div>
-                    )}
-                    <SparklesIcon className="w-5 h-5 mx-auto mb-1 text-pink-600 dark:text-pink-400" />
-                    <div className="text-xs font-medium text-gray-900 dark:text-white">Sora-2</div>
-                  </button>
+                  {/* Sora-2 button temporarily disabled */}
                 </div>
               </div>
 
@@ -1850,57 +1835,85 @@ export default function CreatePostModal({ onPostCreated, onPostUpdated, onClose,
 
               {/* Access type - 🎯 UX IMPROVEMENT: Простой dropdown с tooltip */}
               {/* 🔥 Скрыт для Sora-2 - AI генерации всегда бесплатны */}
-              {/* 🔥 Скрыт для Telegram пользователей (wallet начинается с TG_) */}
-              {/* 🔥 Скрыт для гостевых пользователей (wallet начинается с FK_) */}
-              {formData.contentSource !== 'sora2' && !user.wallet?.startsWith('TG_') && !user.wallet?.startsWith('FK_') && (
+              {/* 🔥 Скрыт для Telegram пользователей и пользователей без кошелька */}
+              {/* 🎯 Для пользователей без кошелька (TG/FK/GOOGLE/EMAIL) - показываем, но locked на Free */}
+              {formData.contentSource !== 'sora2' && !user.wallet?.startsWith('TG_') && (
                 <div>
                   <label className="flex items-center gap-2 text-sm font-medium text-gray-700 dark:text-slate-300 mb-2">
                     <span>Content access</span>
-                    {/* Tooltip с объяснением */}
-                    <div 
-                      className="relative"
-                      onMouseEnter={() => setShowAccessTooltip(true)}
-                      onMouseLeave={() => setShowAccessTooltip(false)}
-                    >
-                      <QuestionMarkCircleIcon className="w-4 h-4 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 cursor-help transition-colors" />
-                      {showAccessTooltip && (
-                        <div className="absolute z-50 bottom-full left-1/2 -translate-x-1/2 mb-2 w-64 px-3 py-2 text-xs text-white bg-gray-900 dark:bg-gray-800 rounded-lg shadow-lg border border-gray-700">
-                          <div className="relative">
-                            <p className="font-medium mb-1">Content Access Levels:</p>
-                            <ul className="space-y-0.5 text-gray-200">
-                              <li>• <strong>Free</strong> - Everyone can see</li>
-                              <li>• <strong>Subscribers</strong> - Basic tier+</li>
-                              <li>• <strong>Premium</strong> - Premium tier+</li>
-                              <li>• <strong>VIP</strong> - Only VIP subscribers</li>
-                              <li>• <strong>Paid</strong> - One-time purchase</li>
-                            </ul>
-                            <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-2 h-2 bg-gray-900 dark:bg-gray-800 border-r border-b border-gray-700 transform rotate-45"></div>
+                    
+                    {/* Для пользователей без кошелька - кнопка с попапом объяснения */}
+                    {needsWalletForPremium ? (
+                      <button
+                        type="button"
+                        onClick={() => setShowGuestAccessModal(true)}
+                        className="flex items-center justify-center w-5 h-5 rounded-full bg-purple-100 dark:bg-purple-900/30 hover:bg-purple-200 dark:hover:bg-purple-900/50 transition-colors"
+                      >
+                        <QuestionMarkCircleIcon className="w-4 h-4 text-purple-600 dark:text-purple-400" />
+                      </button>
+                    ) : (
+                      /* Для обычных пользователей - tooltip */
+                      <div 
+                        className="relative"
+                        onMouseEnter={() => setShowAccessTooltip(true)}
+                        onMouseLeave={() => setShowAccessTooltip(false)}
+                      >
+                        <QuestionMarkCircleIcon className="w-4 h-4 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 cursor-help transition-colors" />
+                        {showAccessTooltip && (
+                          <div className="absolute z-50 bottom-full left-1/2 -translate-x-1/2 mb-2 w-64 px-3 py-2 text-xs text-white bg-gray-900 dark:bg-gray-800 rounded-lg shadow-lg border border-gray-700">
+                            <div className="relative">
+                              <p className="font-medium mb-1">Content Access Levels:</p>
+                              <ul className="space-y-0.5 text-gray-200">
+                                <li>• <strong>Free</strong> - Everyone can see</li>
+                                <li>• <strong>Subscribers</strong> - Basic tier+</li>
+                                <li>• <strong>Premium</strong> - Premium tier+</li>
+                                <li>• <strong>VIP</strong> - Only VIP subscribers</li>
+                                <li>• <strong>Paid</strong> - One-time purchase</li>
+                              </ul>
+                              <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-2 h-2 bg-gray-900 dark:bg-gray-800 border-r border-b border-gray-700 transform rotate-45"></div>
+                            </div>
                           </div>
-                        </div>
-                      )}
-                    </div>
+                        )}
+                      </div>
+                    )}
                   </label>
-                  <select
-                    value={formData.accessType}
-                    onChange={(e) => setFormData(prev => ({ 
-                      ...prev, 
-                      accessType: e.target.value as any,
-                      // Сбрасываем цену если выбран не платный доступ
-                      price: e.target.value === 'paid' ? prev.price : 0
-                    }))}
-                    className="w-full px-4 py-2 bg-white dark:bg-slate-800/50 border border-gray-300 dark:border-slate-700 rounded-xl text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent font-sans"
-                  >
-                    <option value="free" className="font-sans">🌍 Free - Available to all</option>
-                    <option value="subscribers" className="font-sans">👥 For subscribers - Basic and above</option>
-                    <option value="premium" className="font-sans">✨ Premium - Premium and VIP</option>
-                    <option value="vip" className="font-sans">⭐ VIP content - Only VIP</option>
-                    <option value="paid" className="font-sans">💰 Paid - One-time purchase</option>
-                  </select>
+                  <div className="relative">
+                    <select
+                      value={formData.accessType}
+                      onChange={(e) => setFormData(prev => ({ 
+                        ...prev, 
+                        accessType: e.target.value as any,
+                        // Сбрасываем цену если выбран не платный доступ
+                        price: e.target.value === 'paid' ? prev.price : 0
+                      }))}
+                      disabled={needsWalletForPremium} // 🔒 Locked для пользователей без кошелька
+                      className={`
+                        w-full px-4 py-2 bg-white dark:bg-slate-800/50 border rounded-xl text-gray-900 dark:text-white 
+                        focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent font-sans
+                        ${needsWalletForPremium
+                          ? 'border-gray-200 dark:border-slate-800 cursor-not-allowed opacity-60' 
+                          : 'border-gray-300 dark:border-slate-700'
+                        }
+                      `}
+                    >
+                      <option value="free" className="font-sans">🌍 Free - Available to all</option>
+                      <option value="subscribers" className="font-sans">👥 For subscribers - Basic and above</option>
+                      <option value="premium" className="font-sans">✨ Premium - Premium and VIP</option>
+                      <option value="vip" className="font-sans">⭐ VIP content - Only VIP</option>
+                      <option value="paid" className="font-sans">💰 Paid - One-time purchase</option>
+                    </select>
+                    {/* 🔒 Lock icon для пользователей без кошелька */}
+                    {needsWalletForPremium && (
+                      <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none">
+                        <LockClosedIcon className="w-5 h-5 text-gray-400 dark:text-slate-600" />
+                      </div>
+                    )}
+                  </div>
                 </div>
               )}
 
-              {/* Price settings - скрыт для Sora-2, Telegram и гостевых пользователей */}
-              {formData.accessType === 'paid' && formData.contentSource !== 'sora2' && !user.wallet?.startsWith('TG_') && !user.wallet?.startsWith('FK_') && (
+              {/* Price settings - скрыт для Sora-2, Telegram и пользователей без кошелька */}
+              {formData.accessType === 'paid' && formData.contentSource !== 'sora2' && !user.wallet?.startsWith('TG_') && !needsWalletForPremium && (
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-2">
@@ -1991,59 +2004,14 @@ export default function CreatePostModal({ onPostCreated, onPostUpdated, onClose,
               type="submit"
               disabled={(() => {
                     // 🔧 FALLBACK: Проверяем реальное состояние кошелька
-    const windowSolana = typeof window !== 'undefined' ? (window as any).solana : null
-    const realConnected = windowSolana?.isConnected || false
-    const realPublicKey = windowSolana?.publicKey
-                console.log(windowSolana);
+                const windowSolana = typeof window !== 'undefined' ? (window as any).solana : null
+                const realConnected = windowSolana?.isConnected || false
+                const realPublicKey = windowSolana?.publicKey
                 
-                console.log('🔍 [CreatePostModal DEBUG] Raw wallet state:', JSON.stringify({ 
-                  connected, 
-                  publicKeyString: publicKeyString || null, 
-                  publicKeyExists: !!publicKeyString 
-                }))
-                console.log('🔧 [CreatePostModal DEBUG] REAL wallet state:', JSON.stringify({
-                  realConnected,
-                  realPublicKey: realPublicKey ? realPublicKey.toString() : null,
-                  windowSolanaExists: !!windowSolana
-                }))
-                console.log('🔍 [CreatePostModal DEBUG] Upload state:', JSON.stringify({ isUploading }))
-                console.log('🔍 [CreatePostModal DEBUG] Edit mode state:', JSON.stringify({ mode, isLoadingPost }))
-                console.log('🔍 [CreatePostModal DEBUG] Compression state:', JSON.stringify({ isCompressing }))
-                
-                const condition1 = isUploading || isCompressing
-                // 🔧 ИСПРАВЛЕНИЕ: Используем реальное состояние кошелька как fallback
-                const condition2 = !connected && !publicKeyString && !realConnected && !realPublicKey
-                const condition3 = mode === 'edit' && isLoadingPost
-                // Проверка генераций для Sora-2
-                const condition4 = formData.contentSource === 'sora2' && (availableGenerations === null || availableGenerations <= 0)
-                const isDisabled = condition1 || condition2 || condition3 || condition4
-                
-                console.log('🎯 [CreatePostModal DEBUG] Disable conditions:', JSON.stringify({ 
-                  condition1_isUploading: condition1,
-                  condition2_noWallet: condition2, 
-                  condition3_editLoading: condition3,
-                  condition4_noGenerations: condition4,
-                  finalDisabled: isDisabled,
-                  connected_value: connected,
-                  publicKeyString_value: publicKeyString || null,
-                  realConnected_value: realConnected,
-                  realPublicKey_value: realPublicKey ? realPublicKey.toString() : null,
-                  contentSource: formData.contentSource,
-                  availableGenerations: availableGenerations
-                }))
-                
-                if (isDisabled) {
-                  console.log('❌ [CreatePostModal DEBUG] Button DISABLED because:', 
-                    condition1 ? 'isUploading=true' : 
-                    condition2 ? `no wallet connected (useWallet: connected=${connected}, publicKeyString=${!!publicKeyString}) AND (window.solana: connected=${realConnected}, publicKey=${!!realPublicKey})` : 
-                    condition3 ? 'edit mode loading' : 
-                    condition4 ? 'no generations available for Sora-2' : 'unknown')
-                } else {
-                  console.log('✅ [CreatePostModal DEBUG] Button ENABLED - wallet detected:', {
-                    source: connected && publicKeyString ? 'useWallet' : realConnected && realPublicKey ? 'window.solana' : 'unknown',
-                    hasGenerations: formData.contentSource === 'sora2' ? availableGenerations : 'N/A'
-                  })
-                }
+                const isDisabled = isUploading || isCompressing || 
+                  (!connected && !publicKeyString && !realConnected && !realPublicKey) || 
+                  (mode === 'edit' && isLoadingPost) ||
+                  (formData.contentSource === 'sora2' && (availableGenerations === null || availableGenerations <= 0))
                 
                 return isDisabled
               })()}
@@ -2482,6 +2450,107 @@ export default function CreatePostModal({ onPostCreated, onPostUpdated, onClose,
               {isUploading ? 'Publishing...' : '🚀 Publish Now'}
             </button>
           </div>
+        </div>
+      </div>
+    )}
+    
+    {/* 🎯 Guest Access Modal - объяснение Content Access для гостей */}
+    {showGuestAccessModal && (
+      <div 
+        className="fixed inset-0 bg-black/70 backdrop-blur-sm z-[110] flex items-center justify-center p-4 animate-fadeIn"
+        onClick={() => setShowGuestAccessModal(false)}
+      >
+        <div 
+          className="relative bg-white dark:bg-slate-800 rounded-2xl shadow-2xl max-w-md w-full p-6 transform transition-all animate-scaleIn"
+          onClick={(e) => e.stopPropagation()}
+        >
+          {/* Close button */}
+          <button
+            onClick={() => setShowGuestAccessModal(false)}
+            className="absolute top-4 right-4 p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-slate-700 transition-colors"
+          >
+            <XMarkIcon className="w-5 h-5 text-gray-500 dark:text-gray-400" />
+          </button>
+          
+          {/* Header */}
+          <div className="text-center mb-6">
+            <div className="w-16 h-16 bg-gradient-to-br from-purple-500 to-pink-500 rounded-full flex items-center justify-center mx-auto mb-4 shadow-lg">
+              <LockClosedIcon className="w-8 h-8 text-white" />
+            </div>
+            <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
+              Content Access Levels
+            </h2>
+            <p className="text-sm text-gray-600 dark:text-slate-400">
+              Control who can see your content
+            </p>
+          </div>
+          
+          {/* Content */}
+          <div className="space-y-4 text-sm text-gray-700 dark:text-slate-300 mb-6">
+            <div>
+              <h3 className="font-semibold text-gray-900 dark:text-white mb-2">
+                Available Access Types:
+              </h3>
+              <ul className="space-y-2">
+                <li className="flex items-start gap-2">
+                  <span className="text-lg">🌍</span>
+                  <div>
+                    <strong>Free</strong> - Everyone can see your content
+                  </div>
+                </li>
+                <li className="flex items-start gap-2">
+                  <span className="text-lg">👥</span>
+                  <div>
+                    <strong>For Subscribers</strong> - Only users with Basic tier and above
+                  </div>
+                </li>
+                <li className="flex items-start gap-2">
+                  <span className="text-lg">✨</span>
+                  <div>
+                    <strong>Premium</strong> - Only Premium and VIP subscribers
+                  </div>
+                </li>
+                <li className="flex items-start gap-2">
+                  <span className="text-lg">⭐</span>
+                  <div>
+                    <strong>VIP</strong> - Exclusive content for VIP subscribers only
+                  </div>
+                </li>
+                <li className="flex items-start gap-2">
+                  <span className="text-lg">💰</span>
+                  <div>
+                    <strong>Paid</strong> - One-time purchase to unlock content
+                  </div>
+                </li>
+              </ul>
+            </div>
+            
+            {/* Guest account limitation */}
+            <div className="p-4 bg-purple-50 dark:bg-purple-900/20 rounded-xl border border-purple-200 dark:border-purple-800">
+              <div className="flex items-start gap-3">
+                <div className="flex-shrink-0 w-8 h-8 bg-purple-500 rounded-full flex items-center justify-center">
+                  <span className="text-white text-lg">ℹ️</span>
+                </div>
+                <div>
+                  <h4 className="font-semibold text-purple-900 dark:text-purple-300 mb-1">
+                    Guest Account Limitation
+                  </h4>
+                  <p className="text-sm text-purple-800 dark:text-purple-400">
+                    To use premium content access features (Subscribers, Premium, VIP, Paid), 
+                    you need to connect a <strong>Phantom wallet</strong> to your account.
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          {/* Action button */}
+          <button
+            onClick={() => setShowGuestAccessModal(false)}
+            className="w-full bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white font-semibold py-3 px-4 rounded-xl transition-all duration-200 hover:scale-[1.02] shadow-lg"
+          >
+            Got it!
+          </button>
         </div>
       </div>
     )}

@@ -6,32 +6,21 @@ import { ENV } from '@/lib/constants/env'
 // 🔥 ДОБАВЛЯЕМ ПРЯМОЙ ИМПОРТ СЕКРЕТА
 const JWT_SECRET = process.env.JWT_SECRET || process.env.NEXTAUTH_SECRET || 'rFbhMWHvRfv9AacQlVquu9JnY1jCoioNdpaPfIkAK9U='
 
-export async function GET(request: NextRequest) {
-  console.log('[Conversations API] Starting GET request')
-  
+export async function GET(request: NextRequest) {  
   try {
     // Проверяем JWT токен
     const authHeader = request.headers.get('authorization')
-    console.log('[Conversations API] Authorization header:', authHeader ? 'present' : 'missing')
     
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
       console.log('[Conversations API] No token provided')
       return NextResponse.json({ error: 'No token provided' }, { status: 401 })
     }
 
-    const token = authHeader.split(' ')[1]
-    console.log('[Conversations API] JWT token received:', token.substring(0, 20) + '...')
-    console.log('[Conversations API] Using secret:', JWT_SECRET.substring(0, 20) + '...')
-    
+    const token = authHeader.split(' ')[1]    
     let decoded: any
     
     try {
       decoded = jwt.verify(token, JWT_SECRET)
-      console.log('[Conversations API] Token verified successfully:', {
-        userId: decoded.userId,
-        wallet: decoded.wallet,
-        exp: decoded.exp ? new Date(decoded.exp * 1000) : 'no exp'
-      })
     } catch (error) {
       console.error('[Conversations API] JWT verification failed:', {
         error: error instanceof Error ? error.message : 'Unknown error',
@@ -41,8 +30,6 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Invalid token' }, { status: 401 })
     }
     
-    // Получаем пользователя по ID из токена
-    console.log('[Conversations API] Fetching user by ID...')
     const user = await prisma.user.findUnique({
       where: { id: decoded.userId }
     })
@@ -53,8 +40,6 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'User not found' }, { status: 404 })
     }
     
-    // Получаем все чаты пользователя используя новую структуру
-    console.log('[Conversations API] Fetching conversations...')
     
     // Получаем чаты где пользователь является fromUserId или toUserId
     const conversations = await prisma.$queryRaw<{
@@ -147,8 +132,7 @@ export async function GET(request: NextRequest) {
       unreadCounts.map((item: any) => [item.conversationId, item._count.id])
     )
     
-    // Форматируем данные
-    console.log('[Conversations API] Formatting conversations...')
+
     const formattedConversations = conversations.map((conv: any) => {
       // Определяем другого участника
       const otherParticipant = conv.fromUserId === user.id ? conv.toUser : conv.fromUser
@@ -185,12 +169,6 @@ export async function GET(request: NextRequest) {
       }
     }).filter(Boolean) // Фильтруем null значения
     
-    console.log('[Conversations API] Successfully formatted', formattedConversations.length, 'conversations')
-    console.log('[Conversations API] Returning response with conversations:', formattedConversations.map(c => ({
-      id: c.id,
-      participant: c.participant.nickname,
-      hasLastMessage: !!c.lastMessage
-    })))
     return NextResponse.json({ conversations: formattedConversations })
   } catch (error: any) {
     console.error('[Conversations API] Error details:', error)

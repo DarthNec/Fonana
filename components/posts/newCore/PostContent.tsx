@@ -30,6 +30,7 @@ export function PostContent({ post, onAction, className, isFullscreen = false }:
   const [imageLoaded, setImageLoaded] = useState(false)
   const [imageError, setImageError] = useState(false)
   const [isVideoPlaying, setIsVideoPlaying] = useState(false)
+  const [isMuted, setIsMuted] = useState(false) // По умолчанию видео без звука
   const [showRemixModal, setShowRemixModal] = useState(false)
   const [showRemixImageModal, setShowRemixImageModal] = useState(false)
   const [isMenuOpen, setIsMenuOpen] = useState(false)
@@ -49,6 +50,14 @@ export function PostContent({ post, onAction, className, isFullscreen = false }:
   const handleVideoPlayPause = (e: React.MouseEvent) => {
     e.stopPropagation()
     handleVideoClick()
+  }
+
+  const handleMuteToggle = (e: React.MouseEvent) => {
+    e.stopPropagation()
+    if (videoRef.current) {
+      videoRef.current.muted = !videoRef.current.muted
+      setIsMuted(!isMuted)
+    }
   }
 
   // Определение ориентации изображения
@@ -141,6 +150,7 @@ export function PostContent({ post, onAction, className, isFullscreen = false }:
             <img
               src={post.media.url}
               alt={post.content.title || 'Post image'}
+              loading="lazy"
               className={cn(
                 'transition-opacity duration-300',
                 // Mobile: вертикальные на весь экран по высоте, горизонтальные по ширине
@@ -193,8 +203,9 @@ export function PostContent({ post, onAction, className, isFullscreen = false }:
                 // Desktop: со скруглением
                 'md:max-h-[95vh] md:rounded-3xl'
               )}
-              preload="auto"
+              preload="metadata"
               playsInline
+              muted={isMuted}
               onPlay={() => setIsVideoPlaying(true)}
               onPause={() => setIsVideoPlaying(false)}
               onEnded={() => setIsVideoPlaying(false)}
@@ -230,6 +241,26 @@ export function PostContent({ post, onAction, className, isFullscreen = false }:
                 </svg>
               </button>
             )}
+
+            {/* Mute/Unmute button */}
+            <button
+              onClick={handleMuteToggle}
+              className="absolute top-16 right-3 w-8 h-8 sm:w-10 sm:h-10 sm:right-4 sm:top-20 flex items-center justify-center bg-black/60 hover:bg-black/70 text-white rounded-full transition-colors backdrop-blur-sm z-30"
+              aria-label={isMuted ? "Unmute video" : "Mute video"}
+            >
+              {isMuted ? (
+                // Иконка перечёркнутого динамика (звук выключен)
+                <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2" />
+                </svg>
+              ) : (
+                // Иконка обычного динамика (звук включён)
+                <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" />
+                </svg>
+              )}
+            </button>
           </div>
         )}
 

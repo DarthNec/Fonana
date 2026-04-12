@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { notifyNewComment, notifyCommentReply } from '@/lib/notifications'
+import { validateCommentForLinks } from '@/lib/utils/linkValidator'
 
 // WebSocket события
 import { notifyNewComment as wsNotifyNewComment, sendNotification } from '@/lib/services/websocket-client'
@@ -151,6 +152,15 @@ export async function POST(
     if (!userId || !content) {
       return NextResponse.json(
         { error: 'User ID and content are required' },
+        { status: 400 }
+      )
+    }
+
+    // 🔥 LINK VALIDATION: Backend защита от ссылок
+    const linkValidation = validateCommentForLinks(content)
+    if (!linkValidation.isValid) {
+      return NextResponse.json(
+        { error: linkValidation.message || 'Links are not allowed in comments' },
         { status: 400 }
       )
     }

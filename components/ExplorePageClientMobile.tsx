@@ -75,8 +75,8 @@ export default function ExplorePageClientMobile() {
   const loadData = async () => {
     setIsLoading(true)
     try {
-      // Загружаем посты
-      const postsResponse = await fetch('/api/posts?limit=150')
+      // Загружаем посты (initial load: 40 вместо 150 для быстрой загрузки)
+      const postsResponse = await fetch('/api/posts?limit=40')
       if (postsResponse.ok) {
         const postsData = await postsResponse.json()
         const rawPosts = postsData.posts || []
@@ -168,7 +168,7 @@ export default function ExplorePageClientMobile() {
           return 0
         })
         
-        setCreators(sortedCreators)
+        setCreators(sortCreatorsByPriority(sortedCreators))
       }
     } catch (error) {
       console.error('Error loading data:', error)
@@ -176,6 +176,60 @@ export default function ExplorePageClientMobile() {
     } finally {
       setIsLoading(false)
     }
+  }
+
+  // Сортировка создателей: приоритетные (@mia-, @nana, @-chnytng, @priya-4) всегда первыми
+  const sortCreatorsByPriority = (creatorsArray: Creator[]) => {
+    const priorityNicknames = ['mia-', 'nana', '-chnytng', 'priya-4']
+    
+    return creatorsArray.sort((a, b) => {
+      const aPriority = priorityNicknames.indexOf(a.nickname)
+      const bPriority = priorityNicknames.indexOf(b.nickname)
+      
+      const aIsPriority = aPriority !== -1
+      const bIsPriority = bPriority !== -1
+      
+      // Приоритетные креаторы всегда первыми
+      if (aIsPriority && !bIsPriority) return -1
+      if (!aIsPriority && bIsPriority) return 1
+      
+      // Если оба приоритетные - сортируем по порядку в массиве
+      if (aIsPriority && bIsPriority) return aPriority - bPriority
+      
+      // Остальные - по наличию аватара (как было раньше)
+      const hasAvatarA = a.avatar && 
+                        a.avatar.trim() !== '' && 
+                        !a.avatar.includes('dicebear.com')
+      const hasAvatarB = b.avatar && 
+                        b.avatar.trim() !== '' && 
+                        !b.avatar.includes('dicebear.com')
+      
+      if (hasAvatarA && !hasAvatarB) return -1
+      if (!hasAvatarA && hasAvatarB) return 1
+      return 0
+    })
+  }
+
+  // Сортировка платных постов: контент от приоритетных креаторов первым (в рандомном порядке)
+  const sortLockedPostsByPriority = (posts: UnifiedPost[]) => {
+    const priorityNicknames = ['mia-', 'nana', '-chnytng', 'priya-4']
+    const priorityPosts: UnifiedPost[] = []
+    const regularPosts: UnifiedPost[] = []
+    
+    posts.forEach(post => {
+      const nickname = post.creator.nickname || ''
+      if (priorityNicknames.includes(nickname)) {
+        priorityPosts.push(post)
+      } else {
+        regularPosts.push(post)
+      }
+    })
+    
+    // Рандомизируем приоритетные посты
+    const shuffledPriority = priorityPosts.sort(() => Math.random() - 0.5)
+    
+    // Возвращаем: сначала приоритетные (рандом), потом остальные
+    return [...shuffledPriority, ...regularPosts]
   }
 
   // Открытый контент (бесплатный)
@@ -193,9 +247,12 @@ export default function ExplorePageClientMobile() {
   const lockedPosts = useMemo(() => {
     if (!posts.length) return []
     
-    return posts.filter(post => 
+    const filtered = posts.filter(post => 
       post.access?.price || post.commerce?.isSellable || post.access?.tier
     )
+    
+    // Сортируем: контент от приоритетных креаторов первым (в рандомном порядке)
+    return sortLockedPostsByPriority(filtered)
   }, [posts])
 
   const handlePostAction = async (action: PostAction) => {
@@ -251,6 +308,36 @@ export default function ExplorePageClientMobile() {
             duration: 2000,
             position: 'top-center',
           })
+        }
+        break
+      
+      case 'delete':
+        // Удаляем пост напрямую без confirmation
+        try {
+          if (!user?.wallet) {
+            toast.error('Wallet not connected')
+            return
+          }
+          
+          const response = await fetch(`/api/posts/${action.postId}?userWallet=${user.wallet}`, {
+            method: 'DELETE'
+          })
+          
+          if (response.ok) {
+            setPosts(prev => prev.filter(p => p.id !== action.postId))
+            toast.success('Post deleted successfully')
+            
+            // Если в fullscreen режиме - закрываем
+            if (showFullscreen) {
+              setShowFullscreen(false)
+            }
+          } else {
+            const errorData = await response.json()
+            toast.error(errorData.error || 'Failed to delete post')
+          }
+        } catch (error) {
+          console.error('[ExplorePageClientMobile] Delete error:', error)
+          toast.error('Failed to delete post')
         }
         break
     }
@@ -529,13 +616,46 @@ export default function ExplorePageClientMobile() {
         </div>
       </div>
 
+      {/* Lottery Button */}
+      <div className="mb-4 w-full flex justify-center px-3 mt-4">
+        <button
+          onClick={() => {
+            // Проверяем авторизацию
+            if (!user) {
+              setVisible(true) // Открываем модалку выбора метода входа
+              return
+            }
+            // Переход на страницу лотереи
+            router.push('/lottery')
+          }}
+          className="w-[95%] py-2 bg-gradient-to-r from-yellow-400 via-orange-500 to-pink-500 hover:from-yellow-500 hover:via-orange-600 hover:to-pink-600 text-white font-bold rounded-xl shadow-lg hover:shadow-xl transform hover:scale-[1.02] transition-all duration-200 flex items-center justify-center gap-2"
+        >
+          <span className="text-xl">🎰</span>
+          <span className="text-sm">Try Your Luck - Spin the Wheel!</span>
+          <span className="text-xl">✨</span>
+        </button>
+      </div>
+
       {/* Creators Horizontal Scroll */}
       {creators.length > 0 && (
         <div className="mb-6 mt-4 w-full max-w-full">
-          <div className="px-3 mb-4">
+          <div className="px-3 mb-4 flex items-center justify-between">
             <h2 className="text-lg font-bold text-gray-900 dark:text-white">
               Creators
             </h2>
+            <button 
+              onClick={(e) => {
+                e.preventDefault()
+                e.stopPropagation()
+                console.log('[ExplorePageClientMobile] Navigating to all creators')
+                router.push('/creators')
+              }}
+              className="text-purple-600 dark:text-purple-400 hover:text-purple-700 dark:hover:text-purple-300 transition-colors flex-shrink-0"
+            >
+              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+              </svg>
+            </button>
           </div>
           <div className="w-full overflow-x-auto scrollbar-hide">
             <div className="flex gap-3 px-3 pb-2 pt-1">
@@ -708,9 +828,9 @@ export default function ExplorePageClientMobile() {
                     {/* Media */}
                     {post.media.type === 'image' && post.media.url && (
                       <img
-                        src={post.media.blurUrl}
+                        src={post.media.thumbnail || post.media.url}
                         alt={post.content.title || 'Post'}
-                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300 blur-sm"
                       />
                     )}
                     {post.media.type === 'video' && post.media.url && (

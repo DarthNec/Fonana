@@ -416,8 +416,11 @@ export default function FeedPageClient() {
         return post;
       });
   
-      console.log("[FILTERED AND SORTED POSTS]", processedPosts);
-      setFilteredAndSortedPosts(processedPosts);
+      // Перемешиваем посты для хаотичности
+      const shuffledPosts = processedPosts.sort(() => Math.random() - 0.5);
+  
+      console.log("[FILTERED AND SORTED POSTS]", shuffledPosts);
+      setFilteredAndSortedPosts(shuffledPosts);
     };
   
     fetchAndProcess();

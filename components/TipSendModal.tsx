@@ -31,7 +31,8 @@ interface TipSendModalProps {
 }
 
 export function TipSendModal({ isOpen, onClose, creatorId, creatorName }: TipSendModalProps) {
-  const [tipAmountUSD, setTipAmountUSD] = useState(5) // Начинаем с $5
+  const [tipAmountUSD, setTipAmountUSD] = useState(1) // Начинаем с $1
+  const [inputValue, setInputValue] = useState('1') // Строковое значение для инпута
   const [message, setMessage] = useState('')
   const [isSending, setIsSending] = useState(false)
   
@@ -47,12 +48,56 @@ export function TipSendModal({ isOpen, onClose, creatorId, creatorName }: TipSen
   const tipAmountSOL = solRate > 0 ? tipAmountUSD / solRate : 0
 
   const handleIncrease = () => {
-    setTipAmountUSD(prev => prev + 5)
+    const newValue = tipAmountUSD + 1
+    setTipAmountUSD(newValue)
+    setInputValue(newValue.toString())
   }
 
   const handleDecrease = () => {
-    if (tipAmountUSD > 5) {
-      setTipAmountUSD(prev => prev - 5)
+    if (tipAmountUSD > 1) {
+      const newValue = tipAmountUSD - 1
+      setTipAmountUSD(newValue)
+      setInputValue(newValue.toString())
+    }
+  }
+
+  const handleManualInput = (value: string) => {
+    // Удаляем знак $
+    const withoutDollar = value.replace(/\$/g, '')
+    
+    // Разрешаем пустое поле, цифры и точку
+    if (withoutDollar === '') {
+      setInputValue('')
+      setTipAmountUSD(0)
+      return
+    }
+    
+    // Удаляем все нечисловые символы кроме точки
+    const cleaned = withoutDollar.replace(/[^\d.]/g, '')
+    
+    // Разрешаем только одну точку
+    const parts = cleaned.split('.')
+    const formatted = parts.length > 2 
+      ? parts[0] + '.' + parts.slice(1).join('') 
+      : cleaned
+    
+    setInputValue(formatted)
+    
+    // Парсим число
+    const num = parseFloat(formatted)
+    if (!isNaN(num) && num >= 0) {
+      setTipAmountUSD(num)
+    }
+  }
+
+  const handleBlur = () => {
+    // При потере фокуса проверяем минимум
+    if (tipAmountUSD < 1 || inputValue === '') {
+      setTipAmountUSD(1)
+      setInputValue('1')
+    } else {
+      // Форматируем введённое значение
+      setInputValue(tipAmountUSD.toString())
     }
   }
 
@@ -129,7 +174,8 @@ export function TipSendModal({ isOpen, onClose, creatorId, creatorName }: TipSen
         toast.success(`Tip sent!`)
         onClose()
         // Сбрасываем значения
-        setTipAmountUSD(5)
+        setTipAmountUSD(1)
+        setInputValue('1')
         setMessage('')
       } else {
         const error = await response.json()
@@ -177,16 +223,22 @@ export function TipSendModal({ isOpen, onClose, creatorId, creatorName }: TipSen
           <div className="flex items-center justify-center gap-8 mb-8">
             <button
               onClick={handleDecrease}
-              disabled={tipAmountUSD <= 5}
+              disabled={tipAmountUSD <= 1}
               className="w-16 h-16 flex items-center justify-center rounded-full bg-gray-100 dark:bg-slate-800 hover:bg-gray-200 dark:hover:bg-slate-700 transition-colors disabled:opacity-30 disabled:cursor-not-allowed border border-gray-200 dark:border-slate-700"
             >
               <MinusIcon className="w-8 h-8 text-gray-700 dark:text-white" />
             </button>
 
             <div className="text-center">
-              <div className={`${getTipFontSize(tipAmountUSD)} font-bold text-gray-900 dark:text-white mb-2`}>
-                ${tipAmountUSD.toFixed(2)}
-              </div>
+              <input
+                type="text"
+                inputMode="decimal"
+                value={`$${inputValue}`}
+                onChange={(e) => handleManualInput(e.target.value)}
+                onBlur={handleBlur}
+                className={`${getTipFontSize(tipAmountUSD)} font-bold text-gray-900 dark:text-white bg-transparent text-center focus:outline-none focus:ring-0 focus:border-0 border-0 outline-none ring-0 px-2 mb-2 w-full`}
+                style={{ maxWidth: '300px', border: 'none', outline: 'none', boxShadow: 'none' }}
+              />
               <div className="text-gray-500 dark:text-gray-400 text-sm">
                 {parseFloat(safeToFixed(tipAmountSOL, 3))} SOL
               </div>
@@ -212,7 +264,7 @@ export function TipSendModal({ isOpen, onClose, creatorId, creatorName }: TipSen
           {/* Send Button */}
           <button
             onClick={!publicKeyString ? handleConnectWallet : handleSendTip}
-            disabled={isSending || (!publicKeyString ? false : tipAmountSOL <= 0)}
+            disabled={isSending || tipAmountUSD < 1 || inputValue === ''}
             className="w-full py-4 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white font-bold text-lg rounded-2xl transition-all transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 flex items-center justify-center gap-3"
           >
             {isSending ? (

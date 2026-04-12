@@ -7,9 +7,9 @@
  * - Получение истории удалений
  */
 
-import { PrismaClient, Post, DeletedPost } from '@prisma/client'
-
-const prisma = new PrismaClient()
+// 🔥 FIX 2026-03-09: Используем синглтон prisma для предотвращения connection pool exhaustion
+import { Post, DeletedPost } from '@prisma/client'
+import { prisma } from '@/lib/prisma'
 
 interface DeletePostOptions {
   postId: string

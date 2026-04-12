@@ -328,7 +328,6 @@ export default function TikTokVideoViewerComponent({ onClose }: TikTokVideoViewe
       if (response.ok) {
         setNewComment('')
         await fetchComments(currentVideo.id)
-        toast.success('Comment added')
         
         // Обновляем счетчик комментариев в видео
         setVideos(prev => prev.map(v => 

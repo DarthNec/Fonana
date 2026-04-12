@@ -1,6 +1,5 @@
-const { PrismaClient } = require('@prisma/client')
-
-const prisma = new PrismaClient()
+// 🔥 FIX 2026-03-09: Используем синглтон prisma для предотвращения connection pool exhaustion
+const { prisma } = require('./lib/prisma')
 
 /**
  * Получает всех пользователей с availableGenerationCount < 3
@@ -79,7 +78,7 @@ async function main() {
     // Выводим информацию о пользователях
     console.log('[GenerationUpdater] Users to update:')
     usersToUpdate.forEach(user => {
-      console.log(`  - ${user.nickname || user.wallet.substring(0, 8)} (ID: ${user.id}) | Current: ${user.availableGenerationCount} → New: 3`)
+      console.log(`  - ${user.nickname || user.wallet.substring(0, 8)} (ID: ${user.id}) | Current: ${user.availableGenerationCount} → New: 1`)
     })
     console.log('')
     
@@ -93,9 +92,8 @@ async function main() {
     
   } catch (error) {
     console.error('[GenerationUpdater] Fatal error:', error)
-  } finally {
-    await prisma.$disconnect()
   }
+  // 🔥 FIX 2026-03-09: Не вызываем prisma.$disconnect() - синглтон управляет lifecycle сам
 }
 
 // Запускаем скрипт

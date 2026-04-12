@@ -236,8 +236,13 @@ export function VerticalActions({ post, onAction, className, isFullscreen = true
   
   // Обработка добавления/удаления закладки
   const handleBookmarkClick = async () => {
-    if (!userWallet) {
-      toast.error('Connect your wallet to save posts')
+    if (!user?.id) {
+      // toast.warning('Connect your wallet to save posts')
+      toast('You need to be logged in to save posts',
+        {
+          icon: '⚠️'
+        }
+      );
       return
     }
     
@@ -320,7 +325,12 @@ export function VerticalActions({ post, onAction, className, isFullscreen = true
     if (!onAction || isProcessing) return
 
     if(!user?.id) {
-      toast.error('You need to be logged in to add emotions')
+      // toast.error('You need to be logged in to add emotions')
+      toast('You need to be logged in to add emotions',
+        {
+          icon: '⚠️'
+        }
+      );
       return
     }
 
@@ -600,23 +610,6 @@ export function VerticalActions({ post, onAction, className, isFullscreen = true
         
         {/* Menu с Download кнопкой */}
         <div className="relative" ref={menuRef}>
-          {/* Download - слева от Menu на мобильном, НЕ показывается на десктопе */}
-          {post.media?.url && 
-           !post.access?.isLocked && 
-           !post.access?.price && 
-           !post.commerce?.isSellable && 
-           (post.media.type === 'video' || post.media.type === 'image' || post.media.type === 'ai-video') && (
-            <a
-              href={`/api/download?url=${encodeURIComponent(post.media.url)}`}
-              onClick={(e) => e.stopPropagation()}
-              className="md:hidden absolute -left-14 top-0 flex flex-col items-center gap-1 group"
-            >
-              <div className="w-12 h-12 rounded-full flex items-center justify-center bg-white dark:bg-slate-800 border-2 border-gray-200 dark:border-slate-700 group-hover:border-green-400 dark:group-hover:border-green-500 group-hover:scale-110 group-hover:shadow-lg transition-all duration-200">
-                <ArrowDownTrayIcon className="w-6 h-6 text-gray-700 dark:text-slate-300 group-hover:text-green-600 dark:group-hover:text-green-400" />
-              </div>
-            </a>
-          )}
-          
           <button
             onClick={() => setShowMenu(!showMenu)}
             className="flex flex-col items-center gap-1 group"
@@ -636,6 +629,25 @@ export function VerticalActions({ post, onAction, className, isFullscreen = true
           {/* Dropdown Menu */}
           {showMenu && (
             <div className="absolute bottom-14 right-0 w-48 bg-white dark:bg-slate-800 rounded-xl shadow-xl border border-gray-200 dark:border-slate-700 overflow-hidden z-50">
+              {/* Download - для всех (только на мобильном) */}
+              {post.media?.url && 
+               !post.access?.isLocked && 
+               !post.access?.price && 
+               !post.commerce?.isSellable && 
+               (post.media.type === 'video' || post.media.type === 'image' || post.media.type === 'ai-video') && (
+                <a
+                  href={`/api/download?url=${encodeURIComponent(post.media.url)}`}
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    setShowMenu(false)
+                  }}
+                  className="md:hidden w-full flex items-center gap-3 px-4 py-3 text-left text-gray-700 dark:text-slate-300 hover:bg-gray-100 dark:hover:bg-slate-700 transition-colors"
+                >
+                  <ArrowDownTrayIcon className="w-5 h-5" />
+                  <span>Download</span>
+                </a>
+              )}
+              
               {/* Share - для всех */}
               <button
                 onClick={() => {

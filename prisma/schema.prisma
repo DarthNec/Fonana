@@ -45,6 +45,8 @@ model User {
   twitter              String?
   telegram             String?
   telegramId           String?               @unique // Telegram User ID for authentication
+  googleId             String?               @unique // Google OAuth ID for authentication
+  password             String?               // Password for email/password authentication
   location             String?
   createdAt            DateTime              @default(now())
   updatedAt            DateTime              @updatedAt
@@ -65,7 +67,7 @@ model User {
   dogWaterTokens       Float                 @default(0)
   availableGenerationCount Int               @default(3)
   availableWheelSpins  Int                   @default(1)
-  isAutoAnswerInChat   Boolean               @default(true)
+  isAutoAnswerInChat   Boolean               @default(false)
   accounts             Account[]
   auctionBids          AuctionBid[]
   auctionDeposits      AuctionDeposit[]
@@ -736,4 +738,18 @@ model AiChatMessage {
 
   @@index([createdAt])
   @@map("ai_chat_messages")
+}
+
+model EmailVerificationCode {
+  id        String   @id @default(cuid())
+  email     String   // Email адрес для регистрации
+  code      String   // 6-значный код подтверждения
+  password  String   // Захешированный пароль (сохраняем до подтверждения)
+  createdAt DateTime @default(now())
+  expiresAt DateTime // Время истечения кода (10 минут)
+
+  @@index([email])
+  @@index([code])
+  @@index([expiresAt])
+  @@map("email_verification_codes")
 }

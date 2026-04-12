@@ -96,9 +96,25 @@ function classifyUserIntent(content: string): UserIntent {
   ]
   
   // Purchase keywords
+  // 🔥 FIX 2026-03-05: Extended keywords for payment intent detection
   const purchaseKeywords = [
+    // Existing
     'buy', 'price', 'cost', 'сколько', 'купить', 'how much', 
-    'subscribe', 'подписаться', 'оплата', 'payment'
+    'subscribe', 'подписаться', 'оплата', 'payment',
+    
+    // 🔥 NEW - Direct payment intent (Russian)
+    'заплачу', 'заплатить', 'плачу', 'оплачу', 'оплатить',
+    'готов', 'готова', 'готов заплатить', 'готова заплатить',
+    'беру', 'возьму', 'покупаю', 'оформляю',
+    'хочу купить', 'хочу оформить', 'хочу подписаться',
+    'давай купим', 'давай оформим', 'давай я оплачу',
+    'дай оформить', 'дай купить', 'дай подписаться',
+    
+    // 🔥 NEW - Direct payment intent (English)
+    "i'll pay", "i will pay", "let me pay", "ready to pay",
+    "i'm ready", "want to buy", "ready to buy", "let's buy",
+    "i'll buy", "i will buy", "i want to subscribe",
+    "let me subscribe", "ready to subscribe"
   ]
   
   // Flirt keywords
@@ -108,10 +124,12 @@ function classifyUserIntent(content: string): UserIntent {
   ]
   
   if (explicitKeywords.some(k => lowerContent.includes(k))) {
+    console.log('[AI CHAT] 🔥 Classified as EXPLICIT_REQUEST:', content.substring(0, 50))
     return UserIntent.EXPLICIT_REQUEST
   }
   
   if (purchaseKeywords.some(k => lowerContent.includes(k))) {
+    console.log('[AI CHAT] 💰 Classified as PURCHASE_INQUIRY:', content.substring(0, 50))
     return UserIntent.PURCHASE_INQUIRY
   }
   
@@ -251,6 +269,46 @@ function buildDynamicPrompt(context: PromptContext): string {
     }
   }
 
+  // 🔥 FIX 2026-03-05: Handle direct payment inquiries
+  if (context.intent === UserIntent.PURCHASE_INQUIRY) {
+    baseRules += `
+
+🔥💰 PURCHASE INQUIRY DETECTED - DIRECT REDIRECT:
+Пользователь выразил ПРЯМОЕ намерение заплатить!
+Ключевые слова: "заплачу", "готов", "давай оплачу", "беру", "возьму"
+
+СТРАТЕГИЯ ОТВЕТА (ОБЯЗАТЕЛЬНЫЙ REDIRECT):
+
+1. СНАЧАЛА благодарность + восторг (выбери ОДИН вариант):
+   - "Ммм, я так рада что ты готов! 🔥💋"
+   - "О да, я знала что ты решишься 😈💕"
+   - "Ты такой щедрый, обожаю 🥵💦"
+   - "Вау, ты серьезно? Это так заводит! 😘🔥"
+   - "Я в восторге, милый! 💋✨"
+
+2. ПОТОМ redirect на профиль (ОБЯЗАТЕЛЬНО):
+   - "Переходи в мой профиль, там всё самое горячее 🔥"
+   - "Заходи в профиль, увидишь ВСЁ что я для тебя приготовила 😈"
+   - "В моём профиле тебя ждёт кое-что особенное 💋"
+   - "Открывай мой профиль, там я покажу тебе рай 🥵"
+   - "В профиле ты найдёшь всё что хотел увидеть 😘"
+
+3. ЗАВЕРШЕНИЕ обещанием (ВАРЬИРУЙ):
+   - "Обещаю, ты не пожалеешь, детка 💕🔥"
+   - "Там ты увидишь меня такой, какой я ещё не была 😈"
+   - "Уверена, тебе понравится каждый момент 💋"
+   - "Готовься к самому горячему контенту 🥵💦"
+   - "Ты будешь в восторге, обещаю 😘✨"
+
+ВАЖНО:
+- Тон: восторженный, благодарный, соблазнительный
+- НЕ продавай агрессивно - он УЖЕ готов платить!
+- Используй: "переходи", "заходи", "открывай", "смотри"
+- НЕ говори: "buy", "subscribe", "purchase", "оплати"
+- Эмодзи: 🔥💋😈💕🥵💦😘✨ (варьируй расположение)
+- ОБЯЗАТЕЛЬНО упомяни профиль - это главная цель!`
+  }
+
   // Stage-specific instructions
   let stageInstructions = ''
   
@@ -335,7 +393,16 @@ ${context.engagement > 60 ? '⚡ ВЫСОКАЯ ВОВЛЕЧЕННОСТЬ - д�
 Можешь намекнуть "I post more on my profile 😊"
 ТОЛЬКО если контекст подходящий.`
   } else if (context.stage === ConversationStage.ENGAGED) {
-    if (context.intent === UserIntent.EXPLICIT_REQUEST) {
+    if (context.intent === UserIntent.PURCHASE_INQUIRY) {
+      // 🔥 FIX 2026-03-05: PURCHASE_INQUIRY gets 100% redirect (no randomness)
+      monetization = `
+МОНЕТИЗАЦИЯ: DIRECT SELL (100% - он УЖЕ готов платить!)
+- Он ЯВНО сказал что готов заплатить
+- НЕТ рандомизации - ВСЕГДА редирект на профиль
+- Тон: благодарный, восторженный, НЕ агрессивный
+- Подчеркни value: "там ты увидишь ВСЁ"
+- ОБЯЗАТЕЛЬНО: упоминание профиля в каждом ответе`
+    } else if (context.intent === UserIntent.EXPLICIT_REQUEST) {
       // 🔥 FIX #3: Reduce Redirect Probability (M7 Analysis 2026-02-13)
       // Was: 50% redirect (too high, breaks flow)
       // Now: 20% redirect, ONLY when LOW engagement (<50)
@@ -361,23 +428,34 @@ ${context.engagement > 60 ? '⚡ ВЫСОКАЯ ВОВЛЕЧЕННОСТЬ - д�
 Приоритет на engagement, не на продажах.`
     }
   } else if (context.stage === ConversationStage.HOT && context.engagement > 70) {
-    // 🔥 FIX #3: Reduce HOT stage redirect (M7 Analysis)
-    // Was: 70% redirect (too aggressive)
-    // Now: 30% redirect, ONLY when engagement not super high
-    const shouldRedirect = context.engagement < 80 && Math.random() < 0.3
-    
-    if (shouldRedirect) {
+    if (context.intent === UserIntent.PURCHASE_INQUIRY) {
+      // 🔥 FIX 2026-03-05: PURCHASE_INQUIRY always gets redirect in HOT stage
       monetization = `
+МОНЕТИЗАЦИЯ: DIRECT SELL (100% - он УЖЕ готов платить!)
+- Он готов И заинтересован (HOT stage + payment intent)
+- ВСЕГДА редирект на профиль
+- Тон: очень восторженный, страстный
+- Value: "там тебя ждёт ВСЁ что ты хотел"
+- ОБЯЗАТЕЛЬНО: упоминание профиля`
+    } else {
+      // 🔥 FIX #3: Reduce HOT stage redirect (M7 Analysis)
+      // Was: 70% redirect (too aggressive)
+      // Now: 30% redirect, ONLY when engagement not super high
+      const shouldRedirect = context.engagement < 80 && Math.random() < 0.3
+      
+      if (shouldRedirect) {
+        monetization = `
 МОНЕТИЗАЦИЯ: SOFT SELL (30% вероятность)
 Он готов! Но НЕ дави.
 - Создавай desire: "Wait till you see what I have..."
 - Показывай value: "My profile has so much more 😈"
 - НЕ говори "BUY" или "SUBSCRIBE"`
-    } else {
-      monetization = `
+      } else {
+        monetization = `
 МОНЕТИЗАЦИЯ: OFF (70% вероятность)
 Просто флиртуй БЕЗ редиректа - он уже в огне 🔥
 Создавай максимальный heat, удерживай в чате.`
+      }
     }
   } else {
     monetization = `

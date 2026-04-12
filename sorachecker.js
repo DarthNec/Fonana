@@ -1,4 +1,5 @@
-const { PrismaClient } = require('@prisma/client')
+// 🔥 FIX 2026-03-09: Используем синглтон prisma для предотвращения connection pool exhaustion
+const { prisma } = require('./lib/prisma')
 const axios = require('axios')
 const fs = require('fs')
 const path = require('path')
@@ -6,8 +7,6 @@ const { exec } = require('child_process')
 const util = require('util')
 const execPromise = util.promisify(exec)
 const { updatePostInRemix, deletePostFromRemix } = require('./lib/remixFileSystem')
-
-const prisma = new PrismaClient()
 
 
 // Конфигурация
@@ -37,6 +36,7 @@ async function getPendingAIVideoPosts() {
       where: {
         type: 'ai-video',
         mediaUrl: null,
+        error: null, // Исключаем посты с ошибками
         requestId: {
           not: null
         }
@@ -106,6 +106,13 @@ async function downloadSoraVideo(requestId) {
     return filePath
   } catch (error) {
     console.error(`[SoraChecker] Error downloading video ${requestId}:`, error.message)
+    
+    // Если 404 - видео не найдено, возвращаем специальный флаг
+    if (error.response?.status === 404) {
+      console.error(`[SoraChecker] Video ${requestId} not found (404)`)
+      return '404_NOT_FOUND'
+    }
+    
     return null
   }
 }
@@ -445,6 +452,61 @@ async function processPost(post) {
     
     // 4. Скачиваем видео
     const downloadedPath = await downloadSoraVideo(post.requestId)
+    
+    // Обрабатываем 404 ошибку (видео не найдено)
+    if (downloadedPath === '404_NOT_FOUND') {
+      console.error(`[SoraChecker] Video ${post.requestId} not found (404), marking as error...`)
+      
+      // 🔥 ВОЗВРАЩАЕМ ГЕНЕРАЦИЮ ПОЛЬЗОВАТЕЛЮ
+      console.log(`[SoraChecker] Returning video generation to user ${post.creatorId}...`)
+      try {
+        const user = await prisma.user.findUnique({
+          where: { id: post.creatorId },
+          select: { availableGenerationCount: true, nickname: true }
+        })
+        
+        if (user) {
+          const newGenerationsCount = (user.availableGenerationCount || 0) + 1
+          await prisma.user.update({
+            where: { id: post.creatorId },
+            data: { availableGenerationCount: newGenerationsCount }
+          })
+          console.log(`[SoraChecker] ✅ Video generation returned to user ${user.nickname || post.creatorId}: ${user.availableGenerationCount || 0} → ${newGenerationsCount}`)
+        } else {
+          console.warn(`[SoraChecker] User ${post.creatorId} not found, cannot return generation`)
+        }
+      } catch (refundError) {
+        console.error(`[SoraChecker] Error returning generation to user ${post.creatorId}:`, refundError)
+      }
+      
+      // Обновляем пост с сообщением об ошибке
+      console.log(`[SoraChecker] Updating post ${post.id} with 404 error message...`)
+      await prisma.post.update({
+        where: { id: post.id },
+        data: {
+          error: 'Video not found (404). The video may have expired or been deleted from OpenAI.',
+          mediaUrl: "/"
+        }
+      })
+      console.log(`[SoraChecker] Post ${post.id} updated with 404 error message`)
+      
+      // Удаляем пост из файла ремикса (если файл существует)
+      const containerId = post.containerId || post.id
+      if (containerId) {
+        const deleted = await deletePostFromRemixFile(containerId, post.id)
+        if (deleted) {
+          console.log(`[SoraChecker] Post ${post.id} removed from remix file due to 404 error`)
+        } else {
+          console.log(`[SoraChecker] Remix file doesn't exist or post not in file (expected for posts without remixes)`)
+        }
+      }
+      
+      // Пытаемся удалить видео из OpenAI (если оно там ещё есть)
+      await deleteSoraVideo(post.requestId)
+      
+      return false
+    }
+    
     if (!downloadedPath) {
       console.error(`[SoraChecker] Failed to download video ${post.requestId}`)
       return false
@@ -646,9 +708,8 @@ async function main() {
     
   } catch (error) {
     console.error('[SoraChecker] Fatal error:', error)
-  } finally {
-    await prisma.$disconnect()
   }
+  // 🔥 FIX 2026-03-09: Не вызываем prisma.$disconnect() - синглтон управляет lifecycle сам
 }
 
 // Запускаем скрипт

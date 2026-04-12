@@ -4,12 +4,11 @@
  * Общается на РУССКОМ языке
  */
 
-const { PrismaClient } = require('@prisma/client')
+// 🔥 FIX 2026-03-09: Используем синглтон prisma для предотвращения connection pool exhaustion
+const { prisma } = require('./lib/prisma')
 const OpenAI = require('openai')
 const fs = require('fs')
 const path = require('path')
-
-const prisma = new PrismaClient()
 
 // Путь к файлу со списком AI пользователей
 const AI_USERS_FILE = path.join(__dirname, 'ai-chat-users.json')
@@ -289,15 +288,14 @@ async function runBot() {
 }
 
 // Graceful shutdown
+// 🔥 FIX 2026-03-09: Не вызываем prisma.$disconnect() - синглтон управляет lifecycle сам
 process.on('SIGINT', async () => {
   console.log('[AI Chat Bot] Shutting down...')
-  await prisma.$disconnect()
   process.exit(0)
 })
 
 process.on('SIGTERM', async () => {
   console.log('[AI Chat Bot] Shutting down...')
-  await prisma.$disconnect()
   process.exit(0)
 })
 

@@ -12,9 +12,8 @@
  * - Логирует количество обновлённых пользователей
  */
 
-const { PrismaClient } = require('@prisma/client')
-
-const prisma = new PrismaClient()
+// 🔥 FIX 2026-03-09: Используем синглтон prisma для предотвращения connection pool exhaustion
+const { prisma } = require('./lib/prisma')
 
 async function resetWheelSpins() {
   console.log('🎰 [Wheel Spins Reset] Starting daily wheel spins reset...')
@@ -40,7 +39,7 @@ async function resetWheelSpins() {
 
     if (usersWithZeroSpins.length === 0) {
       console.log('✅ [Wheel Spins Reset] No users to update. All users already have spins.')
-      await prisma.$disconnect()
+      // 🔥 FIX 2026-03-09: Не вызываем prisma.$disconnect() - синглтон управляет lifecycle сам
       process.exit(0)
     }
 
@@ -74,14 +73,13 @@ async function resetWheelSpins() {
     console.log(`   - Users updated: ${updateResult.count}`)
     console.log(`   - Completion time: ${new Date().toISOString()}`)
 
-    // ==================== 4. ЗАКРЫТЬ СОЕДИНЕНИЕ ====================
-    await prisma.$disconnect()
+    // 🔥 FIX 2026-03-09: Не вызываем prisma.$disconnect() - синглтон управляет lifecycle сам
     console.log('\n✅ [Wheel Spins Reset] Script completed successfully!\n')
     process.exit(0)
 
   } catch (error) {
     console.error('❌ [Wheel Spins Reset] Error:', error)
-    await prisma.$disconnect()
+    // 🔥 FIX 2026-03-09: Не вызываем prisma.$disconnect() - синглтон управляет lifecycle сам
     process.exit(1)
   }
 }

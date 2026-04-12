@@ -128,25 +128,9 @@ class SocketIOService extends EventEmitter {
       
       this.socket = io(url, socketOptions)
 
-      // Добавляем обработчик ошибки подключения для fallback
-      this.socket.on('connect_error', (error) => {
-        console.error('❌ [Socket.IO] Connect error:', error.message)
-        
-        // Если это production и ошибка связана с доменом, пробуем IP
-        if (window.location.hostname === 'fonana.me' || window.location.hostname.endsWith('.fonana.me')) {
-          if (url.includes('fonana.me') && !url.includes('64.20.37.222')) {
-            console.log('🔄 [Socket.IO] Domain failed, trying IP fallback...')
-            this.socket?.disconnect()
-            
-            // Пробуем подключиться к IP с правильным SocketIO путем
-            const fallbackUrl = 'http://64.20.37.222:3004'
-            console.log('🔄 [Socket.IO] Fallback URL:', fallbackUrl)
-            
-            this.socket = io(fallbackUrl, socketOptions)
-            this.setupEventHandlers()
-          }
-        }
-      })
+      // 🔥 FIX 2026-03-09: Removed HTTP fallback to prevent Mixed Content errors
+      // Socket.IO has built-in reconnection logic and transport fallback (WebSocket → Polling)
+      // No manual IP fallback needed - relying on Socket.IO's proven reconnection mechanism
 
       this.setupEventHandlers()
       

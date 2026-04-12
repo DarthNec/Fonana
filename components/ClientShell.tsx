@@ -7,15 +7,15 @@ import { AppProvider } from '@/lib/providers/AppProvider'
 import { ThemeProvider } from '@/lib/contexts/ThemeContext'
 import { LeftSidebar } from '@/components/LeftSidebar'
 import BottomNav from '@/components/BottomNav'
-import { AiChatWidget } from '@/components/AiChatWidget'
+// import { AiChatWidget } from '@/components/AiChatWidget'
 import ErrorBoundary from '@/components/ErrorBoundary'
-import ReferralNotification from '@/components/ReferralNotification'
-import VerifyAccountPopup from '@/components/VerifyAccountPopup'
-import NewUserProfileSetup from '@/components/NewUserProfileSetup'
-import AutoLoginPrompt from '@/components/AutoLoginPrompt'
+// import ReferralNotification from '@/components/ReferralNotification'
+// import VerifyAccountPopup from '@/components/VerifyAccountPopup'
+// import NewUserProfileSetup from '@/components/NewUserProfileSetup'
+// import AutoLoginPrompt from '@/components/AutoLoginPrompt'
 import { PhantomCallbackHandler } from '@/components/PhantomCallbackHandler'
 import ServiceWorkerRegistration from '@/components/ServiceWorkerRegistration'
-import CookieBanner from '@/components/CookieBanner'
+// import CookieBanner from '@/components/CookieBanner'
 import { useState, useEffect } from 'react'
 import { usePathname } from 'next/navigation'
 import SkeletonLoader from '@/components/ui/SkeletonLoader'
@@ -120,10 +120,10 @@ export default function ClientShell({ children }: { children: React.ReactNode })
               {/* Phantom Mobile Callback Handler */}
               <PhantomCallbackHandler />
               {/* Cookie Banner */}
-              <CookieBanner />
+              {/* <CookieBanner /> */}
               {/* ВРЕМЕННО ЗАКОММЕНТИРОВАНО: Попап заполнения профиля для новых пользователей */}
               {/* <NewUserProfileSetup /> */}
-              <AutoLoginPrompt />
+              {/* <AutoLoginPrompt /> */}
               {/*
               <VerifyAccountPopup />
               */}

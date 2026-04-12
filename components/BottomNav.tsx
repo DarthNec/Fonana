@@ -107,11 +107,7 @@ export default function BottomNav() {
       icon: UserIcon,
       activeIcon: UserSolidIcon,
       onClick: () => {
-        if (!connected || !user) {
-          // Показываем LogInMethodPopup вместо прямого Phantom
-          setShowLoginPopup(true)
-          return
-        }
+        // Открываем панель для всех пользователей (авторизованных и нет)
         setShowProfilePanel(true)
       }
     }
@@ -138,13 +134,30 @@ export default function BottomNav() {
     try {
       await disconnect()
       clearUser()
-      // Очищаем все маркеры авторизации
+      
+      // Clear session-specific data
       localStorage.removeItem('fonana_user_wallet')
       localStorage.removeItem('fonana_jwt_token')
-      localStorage.removeItem('fonana_telegram_auth') // Telegram маркер
-      localStorage.removeItem('fonana_guest_auth')    // Guest маркер
-      localStorage.removeItem('fonana_device_id')     // Device ID для гостей
-      localStorage.removeItem('fonana_phantom_mobile_auth') // Mobile Phantom маркер
+      localStorage.removeItem('fonana_telegram_auth')
+      localStorage.removeItem('fonana_guest_auth')
+      localStorage.removeItem('fonana_phantom_mobile_auth')
+      localStorage.removeItem('fonana_is_new_user')
+      localStorage.removeItem('fonana_user_data')
+      localStorage.removeItem('show_login_screen')
+      localStorage.removeItem('fonana_connection_source')
+      localStorage.removeItem('deletedPostsCount')
+      localStorage.removeItem('user_likes')
+      localStorage.removeItem('user_emotions')
+      localStorage.removeItem('user_subscriptions')
+      
+      // IMPORTANT: fonana_device_id is NOT removed!
+      // Device ID must persist across logouts to prevent creating
+      // duplicate guest accounts. It's only removed when guest
+      // migrates to a real wallet (see ConnectWalletPopup.tsx)
+      //
+      // ALSO PRESERVED: fonana_cookie_consent, fonana_source, fonana_campaign
+      // (user preferences and UTM tracking should persist)
+      
       setShowProfilePanel(false)
       router.push('/feed')
       toast.success('Logged out successfully')
@@ -258,184 +271,219 @@ export default function BottomNav() {
           
           {/* Panel */}
           <div className="md:hidden fixed top-0 right-0 bottom-0 w-[280px] bg-white dark:bg-slate-900 z-[70] shadow-2xl animate-slideInFromRight">
-            {/* Close button */}
-
-            {/*
-            <button
-              onClick={() => setShowProfilePanel(false)}
-              className="absolute top-4 right-4 p-2 hover:bg-gray-100 dark:hover:bg-slate-800 rounded-full transition-colors"
-            >
-              <XMarkIcon className="w-6 h-6 text-gray-600 dark:text-slate-400" />
-            </button>   
-            */}
-
             
-            {/* User Info */}
-            <div className="pt-6 px-6 pb-6 border-b border-gray-200 dark:border-slate-700">
-              <div className="flex flex-col items-center">
-                <Avatar
-                  src={user?.avatar}
-                  alt={user?.fullName || user?.nickname || 'User'}
-                  seed={user?.nickname || user?.id || 'user'}
-                  size={80}
-                  rounded="full"
-                  className="mb-4"
-                />
-                <h3 className="text-lg font-bold text-gray-900 dark:text-white">
-                  {user?.fullName || user?.nickname || 'User'}
-                </h3>
-                <p className="text-sm text-gray-500 dark:text-slate-400">
-                  @{user?.nickname || 'username'}
-                </p>
-              </div>
-            </div>
-            
-            {/* Menu Items */}
-            <div className="py-4 px-4">
-              <button
-                onClick={() => {
-                  setShowProfilePanel(false)
-                  router.push(`/creator/${user?.id}`)
-                }}
-                className="w-full flex items-center gap-4 px-4 py-3 text-gray-700 dark:text-slate-300 hover:bg-gray-100 dark:hover:bg-slate-800 rounded-xl transition-colors"
-              >
-                <UserIcon className="w-5 h-5" />
-                <span className="font-medium">My Profile</span>
-              </button>
-              
-              {/* Bookmarks - только для пользователей с реальным кошельком */}
-              {!needsWalletConnection && (
-                <button
-                  onClick={() => {
-                    setShowProfilePanel(false)
-                    router.push('/bookmarks')
-                  }}
-                  className="w-full flex items-center gap-4 px-4 py-3 text-gray-700 dark:text-slate-300 hover:bg-gray-100 dark:hover:bg-slate-800 rounded-xl transition-colors"
-                >
-                  <BookmarkIcon className="w-5 h-5" />
-                  <span className="font-medium">Bookmarks</span>
-                </button>
-              )}
-              
-              {/* Purchases - только для пользователей с реальным кошельком */}
-              {!needsWalletConnection && (
-                <button
-                  onClick={() => {
-                    setShowProfilePanel(false)
-                    router.push('/purchases')
-                  }}
-                  className="w-full flex items-center gap-4 px-4 py-3 text-gray-700 dark:text-slate-300 hover:bg-gray-100 dark:hover:bg-slate-800 rounded-xl transition-colors"
-                >
-                  <ShoppingBagIcon className="w-5 h-5" />
-                  <span className="font-medium">Purchases</span>
-                </button>
-              )}
-              
-              <button
-                onClick={() => {
-                  setShowProfilePanel(false)
-                  router.push('/notifications')
-                }}
-                className="w-full flex items-center gap-4 px-4 py-3 text-gray-700 dark:text-slate-300 hover:bg-gray-100 dark:hover:bg-slate-800 rounded-xl transition-colors"
-              >
-                <BellIcon className="w-5 h-5" />
-                <span className="font-medium">Notifications</span>
-              </button>
-              
-              <button
-                onClick={() => {
-                  setShowProfilePanel(false)
-                  setShowProfileSetupModal(true)
-                }}
-                className="w-full flex items-center gap-4 px-4 py-3 text-gray-700 dark:text-slate-300 hover:bg-gray-100 dark:hover:bg-slate-800 rounded-xl transition-colors"
-              >
-                <Cog6ToothIcon className="w-5 h-5" />
-                <span className="font-medium">Settings</span>
-              </button>
-              
-              {/* Lottery - для всех пользователей (авторизованных и гостевых) */}
-              <button
-                onClick={() => {
-                  setShowProfilePanel(false)
-                  router.push('/lottery')
-                }}
-                className="w-full flex items-center gap-4 px-4 py-3 text-gray-700 dark:text-slate-300 hover:bg-gray-100 dark:hover:bg-slate-800 rounded-xl transition-colors"
-              >
-                <SparklesIcon className="w-5 h-5" />
-                <span className="font-medium">Lottery</span>
-              </button>
-              
-            </div>
-            
-            {/* Divider */}
-            <div className="mx-4 border-t border-gray-200 dark:border-slate-700" />
-            
-            {/* Help & Logout */}
-            <div className="py-4 px-4">
-              {/* Deleted Posts для креаторов */}
-              {user?.isCreator && deletedPostsCount > 0 && (
-                <button
-                  onClick={() => {
-                    setShowProfilePanel(false)
-                    router.push('/deleted-posts')
-                  }}
-                  className="w-full flex items-center gap-4 px-4 py-3 text-gray-700 dark:text-slate-300 hover:bg-gray-100 dark:hover:bg-slate-800 rounded-xl transition-colors mb-1"
-                >
-                  <TrashIcon className="w-5 h-5" />
-                  <span className="font-medium">Deleted Posts</span>
-                  {deletedPostsCount > 0 && (
-                    <span className="ml-auto px-2 py-0.5 text-xs font-semibold bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 rounded-full">
-                      {deletedPostsCount}
-                    </span>
+            {/* Для авторизованных пользователей */}
+            {connected && user ? (
+              <>
+                {/* User Info */}
+                <div className="pt-6 px-6 pb-6 border-b border-gray-200 dark:border-slate-700">
+                  <div className="flex flex-col items-center">
+                    <Avatar
+                      src={user?.avatar}
+                      alt={user?.fullName || user?.nickname || 'User'}
+                      seed={user?.nickname || user?.id || 'user'}
+                      size={80}
+                      rounded="full"
+                      className="mb-4"
+                    />
+                    <h3 className="text-lg font-bold text-gray-900 dark:text-white">
+                      {user?.fullName || user?.nickname || 'User'}
+                    </h3>
+                    <p className="text-sm text-gray-500 dark:text-slate-400">
+                      @{user?.nickname || 'username'}
+                    </p>
+                  </div>
+                </div>
+                
+                {/* Menu Items */}
+                <div className="py-4 px-4">
+                  <button
+                    onClick={() => {
+                      setShowProfilePanel(false)
+                      router.push(`/creator/${user?.id}`)
+                    }}
+                    className="w-full flex items-center gap-4 px-4 py-3 text-gray-700 dark:text-slate-300 hover:bg-gray-100 dark:hover:bg-slate-800 rounded-xl transition-colors"
+                  >
+                    <UserIcon className="w-5 h-5" />
+                    <span className="font-medium">My Profile</span>
+                  </button>
+                  
+                  {/* Bookmarks - только для пользователей с реальным кошельком */}
+                  {!needsWalletConnection && (
+                    <button
+                      onClick={() => {
+                        setShowProfilePanel(false)
+                        router.push('/bookmarks')
+                      }}
+                      className="w-full flex items-center gap-4 px-4 py-3 text-gray-700 dark:text-slate-300 hover:bg-gray-100 dark:hover:bg-slate-800 rounded-xl transition-colors"
+                    >
+                      <BookmarkIcon className="w-5 h-5" />
+                      <span className="font-medium">Bookmarks</span>
+                    </button>
                   )}
-                </button>
-              )}
-              
-              {/* Mobile App */}
-              <button
-                onClick={() => {
-                  setShowProfilePanel(false)
-                  router.push('/download')
-                }}
-                className="w-full flex items-center gap-4 px-4 py-3 text-gray-700 dark:text-slate-300 hover:bg-gray-100 dark:hover:bg-slate-800 rounded-xl transition-colors"
-              >
-                <DevicePhoneMobileIcon className="w-5 h-5" />
-                <span className="font-medium">Mobile App</span>
-              </button>
-              
-              <button
-                onClick={() => {
-                  setShowProfilePanel(false)
-                  router.push('/help')
-                }}
-                className="w-full flex items-center gap-4 px-4 py-3 text-gray-700 dark:text-slate-300 hover:bg-gray-100 dark:hover:bg-slate-800 rounded-xl transition-colors"
-              >
-                <QuestionMarkCircleIcon className="w-5 h-5" />
-                <span className="font-medium">Help and Support</span>
-              </button>
-              
-              {/* Connect Wallet для Telegram и гостевых пользователей */}
-              {needsWalletConnection && (
-                <button
-                  onClick={() => {
-                    setShowProfilePanel(false)
-                    setShowConnectWalletPopup(true)
-                  }}
-                  className="w-full flex items-center gap-4 px-4 py-3 text-purple-600 dark:text-purple-400 hover:bg-purple-50 dark:hover:bg-purple-900/20 rounded-xl transition-colors font-medium"
-                >
-                  <WalletIcon className="w-5 h-5" />
-                  <span className="font-medium">Connect Wallet</span>
-                </button>
-              )}
-              
-              <button
-                onClick={handleLogout}
-                className="w-full flex items-center gap-4 px-4 py-3 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-xl transition-colors"
-              >
-                <ArrowRightOnRectangleIcon className="w-5 h-5" />
-                <span className="font-medium">Logout</span>
-              </button>
-            </div>
+                  
+                  {/* Purchases - только для пользователей с реальным кошельком */}
+                  {!needsWalletConnection && (
+                    <button
+                      onClick={() => {
+                        setShowProfilePanel(false)
+                        router.push('/purchases')
+                      }}
+                      className="w-full flex items-center gap-4 px-4 py-3 text-gray-700 dark:text-slate-300 hover:bg-gray-100 dark:hover:bg-slate-800 rounded-xl transition-colors"
+                    >
+                      <ShoppingBagIcon className="w-5 h-5" />
+                      <span className="font-medium">Purchases</span>
+                    </button>
+                  )}
+                  
+                  <button
+                    onClick={() => {
+                      setShowProfilePanel(false)
+                      router.push('/notifications')
+                    }}
+                    className="w-full flex items-center gap-4 px-4 py-3 text-gray-700 dark:text-slate-300 hover:bg-gray-100 dark:hover:bg-slate-800 rounded-xl transition-colors"
+                  >
+                    <BellIcon className="w-5 h-5" />
+                    <span className="font-medium">Notifications</span>
+                  </button>
+                  
+                  <button
+                    onClick={() => {
+                      setShowProfilePanel(false)
+                      setShowProfileSetupModal(true)
+                    }}
+                    className="w-full flex items-center gap-4 px-4 py-3 text-gray-700 dark:text-slate-300 hover:bg-gray-100 dark:hover:bg-slate-800 rounded-xl transition-colors"
+                  >
+                    <Cog6ToothIcon className="w-5 h-5" />
+                    <span className="font-medium">Settings</span>
+                  </button>
+                  
+                  {/* Lottery - для всех пользователей (авторизованных и гостевых) - ВЫДЕЛЕНО */}
+                  <button
+                    onClick={() => {
+                      setShowProfilePanel(false)
+                      router.push('/lottery')
+                    }}
+                    className="w-full flex items-center gap-4 px-4 py-3 rounded-xl transition-all duration-200 bg-gradient-to-r from-yellow-400 via-orange-500 to-pink-500 hover:from-yellow-500 hover:via-orange-600 hover:to-pink-600 text-white shadow-lg hover:shadow-xl hover:scale-[1.02] font-bold"
+                  >
+                    <SparklesIcon className="w-5 h-5 animate-pulse" />
+                    <span className="font-bold">Lottery</span>
+                    <span className="ml-auto text-lg">✨</span>
+                  </button>
+                  
+                </div>
+                
+                {/* Divider */}
+                <div className="mx-4 border-t border-gray-200 dark:border-slate-700" />
+                
+                {/* Help & Logout */}
+                <div className="py-4 px-4">
+                  {/* Deleted Posts для креаторов */}
+                  {user?.isCreator && deletedPostsCount > 0 && (
+                    <button
+                      onClick={() => {
+                        setShowProfilePanel(false)
+                        router.push('/deleted-posts')
+                      }}
+                      className="w-full flex items-center gap-4 px-4 py-3 text-gray-700 dark:text-slate-300 hover:bg-gray-100 dark:hover:bg-slate-800 rounded-xl transition-colors mb-1"
+                    >
+                      <TrashIcon className="w-5 h-5" />
+                      <span className="font-medium">Deleted Posts</span>
+                      {deletedPostsCount > 0 && (
+                        <span className="ml-auto px-2 py-0.5 text-xs font-semibold bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 rounded-full">
+                          {deletedPostsCount}
+                        </span>
+                      )}
+                    </button>
+                  )}
+                  
+                  {/* Mobile App */}
+                  <button
+                    onClick={() => {
+                      setShowProfilePanel(false)
+                      router.push('/download')
+                    }}
+                    className="w-full flex items-center gap-4 px-4 py-3 text-gray-700 dark:text-slate-300 hover:bg-gray-100 dark:hover:bg-slate-800 rounded-xl transition-colors"
+                  >
+                    <DevicePhoneMobileIcon className="w-5 h-5" />
+                    <span className="font-medium">Mobile App</span>
+                  </button>
+                  
+                  <button
+                    onClick={() => {
+                      setShowProfilePanel(false)
+                      router.push('/support')
+                    }}
+                    className="w-full flex items-center gap-4 px-4 py-3 text-gray-700 dark:text-slate-300 hover:bg-gray-100 dark:hover:bg-slate-800 rounded-xl transition-colors"
+                  >
+                    <QuestionMarkCircleIcon className="w-5 h-5" />
+                    <span className="font-medium">Help and Support</span>
+                  </button>
+                  
+                  {/* Connect Wallet для Telegram и гостевых пользователей */}
+                  {needsWalletConnection && (
+                    <button
+                      onClick={() => {
+                        setShowProfilePanel(false)
+                        setShowConnectWalletPopup(true)
+                      }}
+                      className="w-full flex items-center gap-4 px-4 py-3 text-purple-600 dark:text-purple-400 hover:bg-purple-50 dark:hover:bg-purple-900/20 rounded-xl transition-colors font-medium"
+                    >
+                      <WalletIcon className="w-5 h-5" />
+                      <span className="font-medium">Connect Wallet</span>
+                    </button>
+                  )}
+                  
+                  <button
+                    onClick={handleLogout}
+                    className="w-full flex items-center gap-4 px-4 py-3 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-xl transition-colors"
+                  >
+                    <ArrowRightOnRectangleIcon className="w-5 h-5" />
+                    <span className="font-medium">Logout</span>
+                  </button>
+                </div>
+              </>
+            ) : (
+              /* Для неавторизованных пользователей */
+              <>
+                {/* Header */}
+                <div className="pt-8 px-6 pb-6 border-b border-gray-200 dark:border-slate-700">
+                  <h3 className="text-xl font-bold text-gray-900 dark:text-white text-center mb-2">
+                    Welcome to Fonana
+                  </h3>
+                  <p className="text-sm text-gray-500 dark:text-slate-400 text-center">
+                    Log in to access all features
+                  </p>
+                </div>
+                
+                {/* Menu Items for Guests */}
+                <div className="py-4 px-4 flex-1">
+                  <button
+                    onClick={() => {
+                      setShowProfilePanel(false)
+                      router.push('/support')
+                    }}
+                    className="w-full flex items-center gap-4 px-4 py-3 text-gray-700 dark:text-slate-300 hover:bg-gray-100 dark:hover:bg-slate-800 rounded-xl transition-colors"
+                  >
+                    <QuestionMarkCircleIcon className="w-5 h-5" />
+                    <span className="font-medium">Help & Support</span>
+                  </button>
+                </div>
+                
+                {/* Log In Button */}
+                <div className="p-4 border-t border-gray-200 dark:border-slate-700">
+                  <button
+                    onClick={() => {
+                      setShowProfilePanel(false)
+                      setShowLoginPopup(true)
+                    }}
+                    className="w-full py-3 px-4 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-xl font-semibold hover:from-purple-700 hover:to-pink-700 transition-all duration-200 hover:scale-[1.02] shadow-lg"
+                  >
+                    Log In
+                  </button>
+                </div>
+              </>
+            )}
           </div>
         </>
       )}
@@ -480,7 +528,7 @@ export default function BottomNav() {
       )}
 
       {/* Profile Setup Modal */}
-      {showProfileSetupModal && (
+      {showProfileSetupModal && user && (
         <ProfileSetupModal
           isOpen={showProfileSetupModal}
           onClose={() => setShowProfileSetupModal(false)}
@@ -489,6 +537,17 @@ export default function BottomNav() {
             toast.success('Profile updated successfully!')
           }}
           mode="edit"
+          userWallet={user.wallet}
+          initialData={{
+            nickname: user.nickname || '',
+            fullName: user.fullName || '',
+            bio: user.bio || '',
+            avatar: user.avatar,
+            backgroundImage: user.backgroundImage,
+            website: user.website,
+            twitter: user.twitter,
+            telegram: user.telegram
+          }}
         />
       )}
     </>

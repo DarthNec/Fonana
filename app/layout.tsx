@@ -3,6 +3,7 @@ import '@solana/wallet-adapter-react-ui/styles.css'
 import type { Metadata, Viewport } from 'next'
 import { Inter } from 'next/font/google'
 import { headers } from 'next/headers'
+import { NextAuthProvider } from '@/components/providers/NextAuthProvider'
 
 // Отключаем статическую генерацию для решения проблемы с useContext
 export const dynamic = 'force-dynamic'
@@ -64,7 +65,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         )}
       </head>
       <body className={inter.className}>
-        {children}
+        <NextAuthProvider>
+          {children}
+        </NextAuthProvider>
       </body>
     </html>
   )
